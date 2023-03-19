@@ -111,6 +111,7 @@ class TestFullLikeOp1(OpTest):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
+        self.public_python_api = fill_any_like_wrapper
         self.init_data()
         self.if_enable_cinn()
 

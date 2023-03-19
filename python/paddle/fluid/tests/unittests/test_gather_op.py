@@ -34,6 +34,7 @@ class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
         self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
         self.config()
         self.prim_op_type = "prim"
         xnp = np.random.random(self.x_shape).astype(self.x_type)

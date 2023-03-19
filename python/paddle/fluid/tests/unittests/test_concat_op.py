@@ -17,21 +17,18 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    skip_check_grad_ci,
-)
 
 
 class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
         self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.dtype = self.get_dtype()
@@ -135,6 +132,7 @@ class TestConcatOp6(TestConcatOp):
         self.op_type = "concat"
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.init_test_data()
@@ -175,6 +173,7 @@ class TestConcatOp7(TestConcatOp):
     def setUp(self):
         self.op_type = "concat"
         self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
         self.enable_cinn = True
         self.dtype = self.get_dtype()
@@ -224,6 +223,7 @@ def create_test_AxisTensor(parent):
         def setUp(self):
             self.op_type = "concat"
             self.python_api = paddle.concat
+            self.public_python_api = paddle.concat
             self.dtype = self.get_dtype()
             self.init_test_data()
 

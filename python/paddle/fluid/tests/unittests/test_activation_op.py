@@ -56,6 +56,7 @@ class TestActivation(OpTest):
         self.init_shape()
         self.init_kernel_type()
         self.python_api = paddle.exp
+        self.public_python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -97,6 +98,7 @@ class TestExpFp32_Prim(OpTest):
         self.init_dtype()
         self.init_shape()
         self.python_api = paddle.exp
+        self.public_python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -236,6 +238,7 @@ class TestSigmoid(TestActivation):
         self.prim_op_type = "comp"
         self.enable_cinn = False
         self.python_api = paddle.nn.functional.sigmoid
+        self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -269,6 +272,7 @@ class TestSigmoidBF16(OpTest):
         self.prim_op_type = "comp"
         self.enable_cinn = False
         self.python_api = paddle.nn.functional.sigmoid
+        self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
         np.random.seed(1024)
@@ -310,6 +314,7 @@ class TestSilu(TestActivation):
         self.prim_op_type = "comp"
         self.enable_cinn = True
         self.python_api = paddle.nn.functional.silu
+        self.public_python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
@@ -1131,6 +1136,8 @@ class TestSqrt(TestActivation, TestParameter):
         self.op_type = "sqrt"
         self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
+
         self.init_dtype()
         self.init_shape()
 
@@ -1157,6 +1164,7 @@ class TestSqrtPrimFp32(TestActivation):
         self.op_type = "sqrt"
         self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
         np.random.seed(1023)
@@ -1207,6 +1215,7 @@ class TestSqrtBF16(OpTest):
         self.op_type = "sqrt"
         self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
 
@@ -1240,6 +1249,7 @@ class TestSqrtComp(TestActivation, TestParameter):
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
 
@@ -1265,6 +1275,7 @@ class TestSqrtCompFp32(TestActivation):
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
         np.random.seed(1023)
@@ -1292,6 +1303,7 @@ class TestRsqrt(TestActivation):
         self.op_type = "rsqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
+        self.public_python_api = paddle.rsqrt
         self.init_dtype()
         self.init_shape()
 
@@ -1333,6 +1345,7 @@ class TestAbs(TestActivation):
         self.op_type = "abs"
         self.prim_op_type = "prim"
         self.python_api = paddle.abs
+        self.public_python_api = paddle.abs
         self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
@@ -1395,6 +1408,7 @@ class TestFloor(TestActivation):
         self.op_type = "floor"
         self.prim_op_type = "prim"
         self.python_api = paddle.floor
+        self.public_python_api = paddle.floor
         self.init_dtype()
         self.init_shape()
 
@@ -1425,6 +1439,7 @@ class TestFloor_Prim(TestActivation):
         self.op_type = "floor"
         self.prim_op_type = "prim"
         self.python_api = paddle.floor
+        self.public_python_api = paddle.floor
         self.init_dtype()
         self.init_shape()
 
@@ -1765,6 +1780,7 @@ class TestRelu(TestActivation):
         self.op_type = "relu"
         self.python_api = paddle.nn.functional.relu
         self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.relu
         self.init_dtype()
         self.init_shape()
         self.skip_cinn()
@@ -1996,6 +2012,7 @@ class TestGeluApproximate(TestActivation):
         self.op_type = "gelu"
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.gelu
+        self.public_python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
         approximate = True
@@ -2022,6 +2039,7 @@ class TestGelu(TestActivation):
         self.op_type = "gelu"
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.gelu
+        self.public_python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
         approximate = False
@@ -2280,6 +2298,7 @@ class TestHardSwish(TestActivation):
         self.init_shape()
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.hardswish
+        self.public_python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
         x = np.random.uniform(-6, 6, self.shape).astype(self.dtype)
@@ -2666,6 +2685,7 @@ class TestLog(TestActivation):
         self.op_type = "log"
         self.prim_op_type = "prim"
         self.python_api = paddle.log
+        self.public_python_api = paddle.log
         self.init_dtype()
         self.init_shape()
 
@@ -2980,6 +3000,7 @@ class TestPow(TestActivation):
         self.op_type = "pow"
         self.prim_op_type = "comp"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.init_dtype()
         self.init_shape()
 
