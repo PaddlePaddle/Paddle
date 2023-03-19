@@ -43,17 +43,20 @@ class TestPoissonOp1(OpTest):
     def setUp(self):
         self.op_type = "poisson"
         self.python_api = paddle.tensor.poisson
+        self.init_dtype()
         self.config()
 
         self.attrs = {}
         self.inputs = {'X': np.full([2048, 1024], self.lam, dtype=self.dtype)}
         self.outputs = {'Out': np.ones([2048, 1024], dtype=self.dtype)}
 
+    def init_dtype(self):
+        self.dtype = "float64"
+
     def config(self):
         self.lam = 10
         self.a = 5
         self.b = 15
-        self.dtype = "float64"
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
@@ -369,36 +372,9 @@ class TestPoissonAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestPoissonFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "poisson"
-        self.python_api = paddle.tensor.poisson
-        self.config()
-        self.__class__.op_type = self.op_type
-        x = np.full([2048, 1024], self.lam, dtype=self.dtype)
-        out = np.ones([2048, 1024])
-        self.attrs = {}
-        self.inputs = {'X': x.astype(self.dtype)}
-        self.outputs = {'Out': out}
-
-    def config(self):
-        self.lam = 10
-        self.a = 5
-        self.b = 15
+class TestPoissonFP16OP(TestPoissonOp1):
+    def init_dtype(self):
         self.dtype = np.float16
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
 
 
 @unittest.skipIf(
@@ -426,11 +402,11 @@ class TestPoissonBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
