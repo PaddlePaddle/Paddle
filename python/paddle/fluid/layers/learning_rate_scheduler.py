@@ -435,24 +435,22 @@ def piecewise_decay(boundaries, values):
                 name="learning_rate",
             )
 
-            pred_fns = []
-            for i in range(len(boundaries)):
-                boundary_val = tensor.fill_constant(
-                    shape=[1],
-                    dtype='float32',
-                    value=float(boundaries[i]),
-                    force_cpu=True,
+            current_lr = paddle.static.nn.cond(
+                pred=paddle.greater_equal(
+                    global_step, paddle.to_tensor(float(boundaries[-1]))
+                ),
+                true_fn=lambda: values[len(values) - 1],
+                false_fn=lambda: lr,
+            )
+            for i in range(len(boundaries) - 1, -1, -1):
+                current_lr = paddle.static.nn.cond(
+                    pred=paddle.less_than(
+                        global_step, paddle.to_tensor(float(boundaries[i]))
+                    ),
+                    true_fn=lambda: values[i],
+                    false_fn=lambda: current_lr,
                 )
-
-                pred_fns.append((global_step < boundary_val, lambda: values[i]))
-
-            lr_tmp = paddle.static.nn.case(
-                pred_fn_pairs=pred_fns, default=lambda: values[len(values) - 1]
-            )
-
-            tensor.fill_constant(
-                shape=[1], dtype="float32", value=lr_tmp, out=lr
-            )
+            paddle.assign(current_lr, lr)
             return lr
 
 
