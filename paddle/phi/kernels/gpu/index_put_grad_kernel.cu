@@ -104,13 +104,50 @@ void LaunchIndexPutGradCudaKernel(
                                     dev_ctx.stream()>>>(
         numel, pd_indices, stride_a, shape_a, x_grad_data);
   }
+
   if (value_grad) {
     if (value_grad->numel() == 1) {
-      std::vector<int> v_dims(out_grad.dims().size());
+      DenseTensor tmp_value_grad(value_grad->dtype());
+      tmp_value_grad.Resize(indices_v[0]->dims());
+
+      T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
+      auto out_grad_data = out_grad.data<T>();
+
+      auto out_grad_dims = out_grad.dims();
+      const int64_t numel = indices_v[0]->numel();
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+      auto out_grad_stride = phi::stride(out_grad_dims);
+
+      phi::Array<int64_t, Rank> stride_a;
+      phi::Array<int64_t, Rank> shape_a;
+
+      for (size_t idx = 0; idx < Rank; ++idx) {
+        stride_a[idx] = out_grad_stride[idx];
+        shape_a[idx] = out_grad_dims[idx];
+      }
+
+      auto pd_indices =
+          GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
+      index_put_grad_cuda_kernel<T, Rank>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(numel,
+                                 out_grad_data,
+                                 pd_indices,
+                                 stride_a,
+                                 shape_a,
+                                 tmp_value_grad_data);
+
+      std::vector<int> v_dims(tmp_value_grad.dims().size());
       std::iota(v_dims.begin(), v_dims.end(), 0);
       IntArray v_axis(v_dims);
-      SumKernel<T>(
-          dev_ctx, out_grad, v_axis, value_grad->dtype(), false, value_grad);
+      SumKernel<T>(dev_ctx,
+                   tmp_value_grad,
+                   v_axis,
+                   value_grad->dtype(),
+                   false,
+                   value_grad);
     } else if (value_grad->numel() == indices_v[0]->numel()) {
       T* value_grad_data = dev_ctx.template Alloc<T>(value_grad);
       auto out_grad_data = out_grad.data<T>();
@@ -148,8 +185,8 @@ void IndexPutGradKernel(const Context& dev_ctx,
                         const std::vector<const DenseTensor*>& indices_v,
                         const DenseTensor& value,
                         const DenseTensor& out_grad,
-                        DenseTensor* value_grad,
-                        DenseTensor* x_grad) {
+                        DenseTensor* x_grad,
+                        DenseTensor* value_grad) {
   const size_t total_dims = out_grad.dims().size();
   PADDLE_ENFORCE_EQ(indices_v.size(),
                     total_dims,
