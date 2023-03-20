@@ -39,140 +39,8 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'fill_constant_batch_size_like',
-    'fill_constant',
     'zeros',
 ]
-
-
-def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    """
-
-    This OP creates a Tensor with specified `shape` and `dtype`, and
-    initializes it with a constant specified by `value`.
-
-    The attribute `stop_gradient` of the created Tensor is set to True.
-
-    Args:
-        shape(list|tuple|Tensor): Shape of the output Tensor, the data type of ``shape`` is int32 or int64.
-            If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
-        dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, uint8, int16, int32, int64.
-        value(bool|float|int|Tensor): The constant value used to initialize
-            the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
-        force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
-        out(Tensor, optional): Optional output which can be any created
-            Tensor that meets the requirements to store the result of operation.
-            if ``out`` is None, a new Tensor will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Tensor which is created according to shape and dtype.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          # attr shape is a list which doesn't contain  Tensor.
-          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[5], [5]] data2=[[5], [5]]
-
-          # attr shape is a list which contains Tensor.
-          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
-
-          # attr shape is a Tensor.
-          shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
-          data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
-
-          # attr value is a Tensor.
-          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
-          data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
-    """
-
-    if in_dygraph_mode():
-        place = _current_expected_place()
-        if force_cpu:
-            place = core.CPUPlace()
-        if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.convert_shape_to_list(shape)
-
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-
-        if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
-            out.stop_gradient = True
-            return out
-
-        if out is not None:
-            # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
-            out.stop_gradient = True
-            return out
-    else:
-        attrs = {'force_cpu': force_cpu}
-        dtype = convert_dtype(dtype)
-        if not isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value))
-                attrs['value'] = int(value)
-            else:
-                attrs['str_value'] = str(float(value))
-                attrs['value'] = float(value)
-
-        helper = LayerHelper("fill_constant", **locals())
-        inputs = {}
-        if isinstance(value, Variable):
-            if convert_dtype(value.dtype) != dtype:
-                value = paddle.cast(value, dtype)
-            inputs['ValueTensor'] = value
-
-        paddle.utils.check_shape(shape)
-        check_dtype(
-            dtype,
-            'dtype',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'uint8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-                'uint16',
-            ],
-            'fill_constant',
-        )
-        check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-
-        if out is not None:
-            check_variable_and_dtype(
-                out, 'out', [convert_dtype(dtype)], 'fill_constant'
-            )
-
-        helper = LayerHelper("fill_constant", **locals())
-        paddle.utils.get_shape_tensor_inputs(
-            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
-        )
-
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=dtype)
-        attrs['dtype'] = out.dtype
-        helper.append_op(
-            type='fill_constant',
-            inputs=inputs,
-            outputs={'Out': [out]},
-            attrs=attrs,
-            stop_gradient=True,
-        )
-        out.stop_gradient = True
-        return out
 
 
 @deprecated(since='1.8.0', update_to="paddle.fluid.layers.fill_constant")
@@ -214,8 +82,9 @@ def fill_constant_batch_size_like(
 
         .. code-block:: python
 
+             import paddle
              import paddle.fluid as fluid
-             like = fluid.layers.fill_constant(shape=[1,2], value=10, dtype='int64') #like=[[10, 10]]
+             like = paddle.full(shape=[1,2], fill_value=10, dtype='int64') #like=[[10, 10]]
              data = fluid.layers.fill_constant_batch_size_like(
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
@@ -279,10 +148,16 @@ def zeros(shape, dtype, force_cpu=False, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
 
           # shape is a Tensor
-          shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
-    return fill_constant(value=0.0, **locals())
+    # TODO: remove zeros
+    from paddle.tensor import fill_constant
+
+    return fill_constant(
+        value=0.0, shape=shape, dtype=dtype, force_cpu=force_cpu, name=name
+    )

@@ -137,7 +137,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.sf = F.softmax
 
     def forward(self, x, current_axis):

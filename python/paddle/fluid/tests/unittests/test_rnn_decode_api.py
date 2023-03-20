@@ -407,7 +407,7 @@ class EncoderCell(SimpleRNNCell):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super(EncoderCell, self).__init__(input_size, hidden_size)
+        super().__init__(input_size, hidden_size)
         self.dropout_prob = dropout_prob
         # use add_sublayer to add multi-layers
         self.lstm_cells = []
@@ -453,7 +453,7 @@ class Encoder(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.embedder = Embedding(vocab_size, embed_dim)
         self.stack_lstm = RNN(
             EncoderCell(
@@ -484,7 +484,7 @@ class Decoder(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super(Decoder, self).__init__()
+        super().__init__()
         self.embedder = Embedding(vocab_size, embed_dim)
         self.stack_lstm = RNN(
             DecoderCell(
@@ -603,7 +603,7 @@ class BaseModel(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super(BaseModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.word_embedding = Embedding(vocab_size, embed_dim)
         self.encoder = Encoder(

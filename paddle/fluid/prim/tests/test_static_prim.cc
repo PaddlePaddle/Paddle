@@ -38,6 +38,12 @@ PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(not_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_than, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
@@ -51,6 +57,12 @@ PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(subtract, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(not_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_than, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
@@ -429,6 +441,99 @@ TEST(StaticCompositeGradMaker, LogicalOperantsTest) {
             std::size_t(1));
 }
 
+TEST(StaticCompositeGradMaker, CompareOperantsTest) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+
+  TestBaseProgram base_program = TestBaseProgram();
+  auto* target_block = base_program.GetBlock(0);
+  std::vector<int64_t> shape = {2, 2};
+  StaticCompositeContext::Instance().SetBlock(target_block);
+  Tensor x0 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x0_name =
+      std::static_pointer_cast<prim::DescTensor>(x0.impl())->Name();
+  Tensor x1 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x1_name =
+      std::static_pointer_cast<prim::DescTensor>(x1.impl())->Name();
+  Tensor x2 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x2_name =
+      std::static_pointer_cast<prim::DescTensor>(x2.impl())->Name();
+  Tensor x3 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x3_name =
+      std::static_pointer_cast<prim::DescTensor>(x3.impl())->Name();
+  Tensor x4 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x4_name =
+      std::static_pointer_cast<prim::DescTensor>(x4.impl())->Name();
+  Tensor x5 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x5_name =
+      std::static_pointer_cast<prim::DescTensor>(x5.impl())->Name();
+  Tensor x6 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x6_name =
+      std::static_pointer_cast<prim::DescTensor>(x6.impl())->Name();
+
+  Tensor out_less = (x0 < x1);
+  Tensor out_less_equal = (out_less <= x2);
+  Tensor out_equal = (out_less_equal == x3);
+  Tensor out_not_equal = (out_equal != x4);
+  Tensor out_greater = (out_not_equal > x5);
+  Tensor out_greater_equal = (out_greater >= x6);
+
+  ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(6));
+  ASSERT_EQ(target_block->AllOps()[0]->Type(), "less_than");
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X")[0], x0_name);
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("Y")[0], x1_name);
+  ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[1]->Type(), "less_equal");
+  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("Y")[0], x2_name);
+  ASSERT_EQ(target_block->AllOps()[1]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[2]->Type(), "equal");
+  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("Y")[0], x3_name);
+  ASSERT_EQ(target_block->AllOps()[2]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[3]->Type(), "not_equal");
+  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y")[0], x4_name);
+  ASSERT_EQ(target_block->AllOps()[3]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[4]->Type(), "greater_than");
+  ASSERT_EQ(target_block->AllOps()[4]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[4]->Inputs().at("Y")[0], x5_name);
+  ASSERT_EQ(target_block->AllOps()[4]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[5]->Type(), "greater_equal");
+  ASSERT_EQ(target_block->AllOps()[5]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[5]->Inputs().at("Y")[0], x6_name);
+  ASSERT_EQ(target_block->AllOps()[5]->Outputs().at("Out").size(),
+            std::size_t(1));
+}
+
 TEST(StaticPrim, TestFlags) {
   PrimCommonUtils::SetBwdPrimEnabled(true);
   ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
@@ -445,6 +550,12 @@ USE_OP_ITSELF(elementwise_mul);
 USE_OP_ITSELF(elementwise_sub);
 USE_OP_ITSELF(elementwise_pow);
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(less_equal);
+USE_OP_ITSELF(less_than);
+USE_OP_ITSELF(equal);
+USE_OP_ITSELF(not_equal);
+USE_OP_ITSELF(greater_equal);
+USE_OP_ITSELF(greater_than);
 USE_OP_ITSELF(bitwise_xor);
 USE_OP_ITSELF(bitwise_and);
 USE_OP_ITSELF(bitwise_not);
