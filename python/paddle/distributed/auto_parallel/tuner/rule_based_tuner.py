@@ -725,6 +725,8 @@ class GraphUtil:
 
 
 class OperatorClusteringUtil:
+    """Operator clustering util is used to cluster operators to layers."""
+
     common_starts = ["layer_norm", "matmul_v2", "matmul"]
 
     @staticmethod
@@ -899,6 +901,8 @@ class OperatorClusteringUtil:
 
 
 class ClusterPartitionUtil:
+    """Cluster partition util is used to get device meshes and process meshes."""
+
     @staticmethod
     def factorization(num):
         factors = []
@@ -928,13 +932,11 @@ class ClusterPartitionUtil:
         ],
     ) -> list:
         """
-        Partition cluster into possible device meshes.
-
+        Partiton cluster into possible device meshes.
         Args:
             n (int): The number of nodes.
             m (int): The number of single devices on each node.
             filter (list): Functions for filtering useful meshes
-
         Returns:
             device_meshed (list) : The possible device meshes.
         """
@@ -966,10 +968,8 @@ class ClusterPartitionUtil:
 def convert_to_process_meshes(device_mesh: list) -> list:
     """
     Transfer device_meshes into possible process meshes.
-
     Args:
         device meshes (list): [n,m], one device mesh.
-
     Returns:
         process_meshes (list): Possible process_meshes
     """
