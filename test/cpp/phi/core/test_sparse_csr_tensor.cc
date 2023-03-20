@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/tests/core/allocator.h"
+#include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
 namespace tests {

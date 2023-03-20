@@ -24,10 +24,10 @@ from ...device import (
     is_compiled_with_rocm,
 )
 from ...utils import convert_to_list
-from .. import Layer
 from .. import functional as F
 from ..functional.conv import _update_padding_nd
 from ..initializer import Normal
+from .layers import Layer
 
 __all__ = []
 

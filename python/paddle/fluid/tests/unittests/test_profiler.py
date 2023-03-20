@@ -45,7 +45,7 @@ class TestProfiler(unittest.TestCase):
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
             )
-            until = layers.fill_constant([1], dtype='int64', value=10)
+            until = paddle.tensor.fill_constant([1], dtype='int64', value=10)
             data_arr = paddle.tensor.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)

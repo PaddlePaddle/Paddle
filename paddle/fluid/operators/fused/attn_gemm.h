@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -66,18 +67,26 @@ class AttnMatMul {
           phi::errors::InvalidArgument(
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
-      ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
-                                         input,
-                                         weight,
-                                         bias,
-                                         bsz_seq_,      // M
-                                         output_size_,  // N
-                                         input_size_,   // K
-                                         transA_,
-                                         transB_,
-                                         "none",
-                                         bias_out,
-                                         nullptr);
+
+      auto fused_impl = phi::funcs::MatmulPlanner(
+          vectorize(input->dims()),
+          vectorize(weight->dims()),
+          transA_,
+          transB_,
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::funcs::MatmulFusedType::kMatmulBias,
+          static_cast<const void*>(bias->data<T>()),
+          nullptr);
+      phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx_,
+                                             input->data<T>(),
+                                             weight->data<T>(),
+                                             bias_out->data<T>(),
+                                             bsz_seq_,      // M
+                                             output_size_,  // N
+                                             input_size_,   // K
+                                             transA_,
+                                             transB_,
+                                             &fused_impl);
       return;
     }
 #endif

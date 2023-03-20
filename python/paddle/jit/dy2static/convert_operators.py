@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.base import (
     in_declarative_mode,
 )
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow, fill_constant
+from paddle.fluid.layers import Print, control_flow
 from paddle.fluid.layers.control_flow import while_loop
 
 from .utils import (
@@ -799,6 +799,8 @@ def _run_paddle_pop(array, *args):
     if idx < 0:
         idx = idx + arr_len
     else:
+        from paddle.tensor import fill_constant
+
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
     pop_item = paddle.tensor.array_read(array, idx)

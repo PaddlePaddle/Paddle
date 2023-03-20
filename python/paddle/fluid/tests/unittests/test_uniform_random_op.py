@@ -329,7 +329,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
+            dim_tensor = paddle.tensor.fill_constant([1], "int64", 3)
             ret = paddle.uniform([1, dim_tensor, 2])
 
             place = fluid.CPUPlace()
@@ -344,8 +344,8 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 2)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 2)
             ret = paddle.uniform([1, dim_1, dim_2])
 
             place = fluid.CPUPlace()
@@ -570,9 +570,8 @@ class TestUniformDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.uniform([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -592,6 +591,9 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.uniform([2, 3], dtype=paddle.float16)
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
         test_dygraph_fp16()
