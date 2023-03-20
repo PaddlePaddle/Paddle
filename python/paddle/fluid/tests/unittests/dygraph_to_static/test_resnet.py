@@ -14,7 +14,6 @@
 
 import math
 import os
-import platform
 import tempfile
 import time
 import unittest
@@ -442,22 +441,18 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_resnet_composite_forward_backward(self):
-        plat = platform.system()
-        if plat == "Linux":
-            core._set_prim_all_enabled(True)
-            static_loss = self.train(to_static=True)
-            core._set_prim_all_enabled(False)
-            dygraph_loss = self.train(to_static=True)
-            np.testing.assert_allclose(
-                static_loss,
-                dygraph_loss,
-                rtol=1e-02,
-                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                    static_loss, dygraph_loss
-                ),
-            )
-        else:
-            pass
+        core._set_prim_all_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_all_enabled(False)
+        dygraph_loss = self.train(to_static=True)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-02,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
 
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})

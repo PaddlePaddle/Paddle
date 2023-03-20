@@ -380,7 +380,7 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from ..fluid.layers.tensor import fill_constant
+    from paddle.tensor import fill_constant
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -435,7 +435,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     Converts all elements of a list to Variable.
     """
-    from ..fluid.layers.tensor import fill_constant
+    from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:

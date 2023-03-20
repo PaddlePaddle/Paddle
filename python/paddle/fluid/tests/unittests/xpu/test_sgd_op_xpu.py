@@ -68,8 +68,8 @@ for stype in support_types:
 
 class TestSGDOpWithLargeInput(unittest.TestCase):
     def runTest(self):
-        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
-        label = fluid.layers.fill_constant(
+        data = paddle.tensor.fill_constant(shape=[1], value=128, dtype='int64')
+        label = paddle.tensor.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
         emb = paddle.static.nn.embedding(

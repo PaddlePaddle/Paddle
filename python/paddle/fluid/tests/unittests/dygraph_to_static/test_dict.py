@@ -84,12 +84,12 @@ class MainNetWithDict(fluid.dygraph.Layer):
     def forward(self, input, max_len=4):
         input = fluid.dygraph.to_variable(input)
         cache = {
-            "k": fluid.layers.fill_constant(
+            "k": paddle.tensor.fill_constant(
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
                 value=0,
             ),
-            "v": fluid.layers.fill_constant(
+            "v": paddle.tensor.fill_constant(
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
                 value=0,
