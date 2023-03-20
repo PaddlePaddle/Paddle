@@ -55,7 +55,7 @@ from paddle.jit.translated_layer import (
     INFER_PARAMS_INFO_SUFFIX,
     INFER_PROPERTY_SUFFIX,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
@@ -126,6 +126,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           from paddle.jit.api import dygraph_to_static_func
@@ -139,7 +140,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -1617,7 +1618,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)

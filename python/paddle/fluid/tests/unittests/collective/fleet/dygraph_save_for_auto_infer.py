@@ -23,7 +23,6 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle import distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel import engine
@@ -86,7 +85,7 @@ class MLP_pipe(PipelineLayer):
         )
 
 
-class MLP_Hybrid(fluid.Layer):
+class MLP_Hybrid(paddle.nn.Layer):
     def __init__(
         self,
         embedding_size=1000,
@@ -121,7 +120,7 @@ class MLP_Hybrid(fluid.Layer):
         return y
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(
         self,
         embedding_size=1000,

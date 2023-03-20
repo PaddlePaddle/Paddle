@@ -17,8 +17,8 @@ from collections import OrderedDict
 import paddle
 from paddle import _legacy_C_ops
 from paddle.framework import core, in_dygraph_mode
+from paddle.tensor import fill_constant
 
-from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
 
 

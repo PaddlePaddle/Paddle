@@ -18,7 +18,6 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
@@ -529,7 +528,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
+                        paddle.tensor.fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
                         new_size_tensor.append(temp_out)
