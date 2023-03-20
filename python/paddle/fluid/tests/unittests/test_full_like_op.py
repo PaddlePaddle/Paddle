@@ -15,7 +15,8 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -143,7 +144,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], ['Out'])
@@ -188,7 +189,7 @@ class TestFullLikeOp4(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestFullLikeOp5(TestFullLikeOp1):
+class TestFullLikeFP16Op(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 6666
         self.shape = [10, 10]
@@ -203,7 +204,7 @@ class TestFullLikeOp5(TestFullLikeOp1):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestFullLikeOp6(TestFullLikeOp1):
+class TestFullLikeBF16Op(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 6666
         self.shape = [10, 10]
