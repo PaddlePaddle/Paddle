@@ -194,7 +194,7 @@ class TestDistFP16OP(TestDistOp):
         self.data_type = np.float16
 
     def test_check_grad(self):
-        self.check_grad_with_place(["X", "Y"], "Out")
+        self.check_grad(["X", "Y"], "Out")
 
 
 class TestDistFP16OPCase1(TestDistFP16OP):
