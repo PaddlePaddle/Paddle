@@ -12,9 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import logging
 import math
+import os
 from abc import abstractmethod
+from collections import OrderedDict
 
+import paddle
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.fluid import program_guard
+from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Parameter, unique_name
+
+from ...utils.log_utils import get_logger
 from ..graph import Graph
 
 _PATTERNS = {}
@@ -999,20 +1016,161 @@ def convert_to_process_meshes(device_mesh: list) -> list:
 
 
 class RuleBasedTuner:
-    def __init__(self, dist_context, mode="train"):
+    """
+    A tuner based on rule from expert experience to search a good parallel strategy.
+    Args:
+        dist_context (DistributedContext): The distributed context.
+        mode (str): The mode of current task, it can be train or eval. Default: train.
+        level (str): The level of this tuner, it can be o1 or o2.
+                     o2 level may find better strategy but need more time than o1.
+                     If level is o1, it means all layers within same parallelism and place layers evenly when in pipeline parallism.
+                     If level is o2, it means layers can has own parallelism and place layers may not evenly.
+                     Default: o1.
+    """
+
+    def __init__(self, dist_context, mode="train", level="o1"):
         self._dist_context = dist_context
+        self._cluster = self._dist_context.cluster
         self._mode = mode
+        assert level in ["o1", "o2"]
+        self._level = level
+        self._logger = get_logger(logging.INFO)
+        self._use_dp = False
 
-    def cluster_operators(self, ops):
-        """
-        Cluster operators to layers.
+        # forward sub program
+        self.fwd_sub_programs = OrderedDict()
 
-        Args:
-            ops (list): A operator list.
+        # dist_context of sub program
+        self.sub_programs_dist_context = OrderedDict()
 
-        Returns:
-            List: The list contains the list of operators which belong to the same layer.
-        """
+        # graph of forward sub program
+        self.fwd_sub_program_graphs = OrderedDict()
+
+        # full main program
+        self.full_main_program = None
+
+        # full startup program
+        self.full_startup_program = None
+
+        # full main program dist context
+        self.full_main_program_dist_context = None
+
+        # tensor dist attribute from pattern setting
+        self.tensor_dist_attrs = {}
+
+        # op original id to op mapping
+        self.op_original_id_to_op = {}
+
+        # op original id to op idx in program
+        self.op_original_id_to_idx = {}
+
+        # op original id to grad op original id mapping
+        self.op_original_id_to_grad_op_original_id = {}
+
+        # all process meshes that the cluster can express
+        self.process_meshes = []
+
+        # all device meshes that the cluster can be partitioned
+        self.device_meshes_list = []
+
+        # the best cost of stage in a given device mesh
+        self.stage_best_cost_of_dm = {}
+
+        # the best cost of stage in a given process mesh
+        self.stage_best_cost_of_pm = {}
+
+        # the op clustering result
+        self.layers = []
+
+        self._is_run = True
+        if os.getenv("PADDLE_AUTO_PARALLEL_STAGE") != "tuner":
+            self._is_run = True
+        else:
+            self._is_run = False
+        self._strategy_path = None
+        if self._dist_context._json_config:
+            try:
+                self._strategy_path = self._dist_context._json_config[
+                    "tuner_save_path"
+                ]
+            except:
+                self._strategy_path = None
+
+    @property
+    def dist_context(self):
+        return self._dist_context
+
+    @property
+    def cluster(self):
+        return self._cluster
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @property
+    def level(self):
+        return self._level
+
+    def gen_full_program(self):
+        """Generate full program that contain backward and update phase program if mode is train."""
+        self.full_main_program = self.dist_context.serial_main_program.clone()
+        if self.mode == "train":
+            self.full_startup_program = (
+                self.dist_context.serial_startup_program.clone()
+            )
+            loss = self.full_main_program.global_block().vars[
+                self.dist_context.serial_loss.name
+            ]
+            serial_optimizer = self._dist_context.serial_optimizer
+            optimizer = copy.deepcopy(serial_optimizer)
+            self.full_main_program_dist_context = DistributedContext(
+                serial_main_prog=self.full_main_program,
+                serial_startup_prog=self.full_startup_program,
+                serial_loss=loss,
+            )
+            # if in train mode, generate backward and update program.
+            with program_guard(
+                self.full_main_program, self.full_startup_program
+            ):
+                params_grads = append_backward(
+                    loss,
+                    distop_context=self.full_main_program_dist_context.dist_op_context,
+                )
+
+            with program_guard(
+                self.full_main_program, self.full_startup_program
+            ):
+                with unique_name.guard("opt_"):
+                    optimizer_ops = optimizer.apply_gradients(params_grads)
+
+            # op original id to grad op id
+            for idx, op in enumerate(self.full_main_program.global_block().ops):
+                self.op_original_id_to_op[op.desc.original_id()] = op
+                self.op_original_id_to_idx[op.desc.original_id()] = idx
+
+            grad_op_id_to_op_id = (
+                self.full_main_program_dist_context.dist_op_context.grad_op_id_to_op_id
+            )
+
+            for grad_op_original_id in grad_op_id_to_op_id:
+                op_id = grad_op_id_to_op_id[grad_op_original_id]
+                self.op_original_id_to_grad_op_original_id[
+                    op_id
+                ] = grad_op_original_id
+
+    def cluster_operators(self):
+        """Group operators to layers."""
+        ops = self._dist_context._serial_main_program.global_block().ops
+
+        # clear op dist attr when user shard tensor or op but in the full auto parallel mode.
+        for op in ops:
+            op.dist_attr = OperatorDistAttr(op.desc)
+
+        vars = self._dist_context._serial_main_program.global_block().vars
+        for var_name in vars:
+            vars[var_name].dist_attr = TensorDistAttr(vars[var_name].desc)
+
         seq = [op.type for op in ops]
 
         while not OperatorClusteringUtil.stop_replace(seq):
@@ -1062,6 +1220,7 @@ class RuleBasedTuner:
             to_replace_seq = OperatorClusteringUtil.replace_by_decomposed_seq(
                 decomposed_sub_seq, to_replace_seq
             )
+
             result = seq[: to_replace_idxes[0]]
             if not has_merged:
                 result.extend(to_replace_seq)
@@ -1078,3 +1237,170 @@ class RuleBasedTuner:
             layers.append(layer)
 
         return layers
+
+    def match_program(self, program):
+        """Use patterns to match the program and get tensor shard spec when pattern matched."""
+        graph = GraphUtil.convert_to_graph(program.global_block())
+        results = GraphUtil.match_all_patterns(graph)
+        if results:
+            for pattern_name in results.keys():
+                pattern = _PATTERNS[pattern_name]
+                for parallelism in pattern.attrs["shard_spec"].keys():
+                    shard_spec = pattern.attrs["shard_spec"][parallelism]
+                    for pattern_node_id in shard_spec.keys():
+                        for item in results[pattern_name]:
+                            var_id = item[pattern_node_id]
+                            var_desc_id = graph.attrs["id_to_var_desc_id"][
+                                var_id
+                            ]
+                            if var_desc_id not in self.tensor_dist_attrs:
+                                self.tensor_dist_attrs[var_desc_id] = {}
+                            self.tensor_dist_attrs[var_desc_id][
+                                parallelism
+                            ] = shard_spec[pattern_node_id]
+                            tensor_name = graph.attrs["id_to_var_name"][var_id]
+                            self._logger.info(
+                                "{}'s shard_spec may be {} when under {} parallelism.".format(
+                                    tensor_name,
+                                    shard_spec[pattern_node_id],
+                                    parallelism,
+                                )
+                            )
+        else:
+            self._logger.info(
+                "No pattern has be matched by this program. Currently, only the transformer-based models are supported. Data parallelism will be used."
+            )
+            self._use_dp = True
+
+    def gen_fwd_sub_programs_by_clone(self):
+        """Generate all forward sub programs by cloned from the original program."""
+        for idx, layer in enumerate(self.layers):
+            sub_fwd_program = self._gen_fwd_sub_program_by_clone(layer)
+            self.fwd_sub_programs[idx] = sub_fwd_program
+
+    def _gen_fwd_sub_program_by_clone(self, ops):
+        """Generate the forward sub program of the given ops."""
+        program = paddle.static.Program()
+        block = ops[0].block
+        vars = block.vars
+        target_block = program.global_block()
+        with paddle.static.program_guard(program):
+            has_cloned_vars = set()
+            for op in ops:
+                new_op_desc = target_block.desc.append_op()
+                new_op_desc.copy_from(op.desc)
+                for var_name in op.input_arg_names:
+                    if var_name not in has_cloned_vars:
+                        if vars[var_name].is_parameter:
+                            src_var = vars[var_name]
+                            copied_kwargs = {}
+                            copied_kwargs['trainable'] = src_var.trainable
+                            copied_kwargs[
+                                'optimize_attr'
+                            ] = src_var.optimize_attr
+                            copied_kwargs['regularizer'] = src_var.regularizer
+                            copied_kwargs[
+                                'do_model_average'
+                            ] = src_var.do_model_average
+                            copied_kwargs['need_clip'] = src_var.need_clip
+
+                            param = Parameter(
+                                block=target_block,
+                                type=src_var.type,
+                                name=src_var.name,
+                                shape=src_var.shape,
+                                dtype=src_var.dtype,
+                                lod_level=src_var.lod_level,
+                                error_clip=src_var.error_clip,
+                                stop_gradient=src_var.stop_gradient,
+                                is_data=src_var.is_data,
+                                belong_to_optimizer=src_var.belong_to_optimizer,
+                                **copied_kwargs
+                            )
+                        else:
+                            target_block._clone_variable(vars[var_name])
+                            target_block.vars[var_name].persistable = vars[
+                                var_name
+                            ].persistable
+                        target_block.vars[var_name].desc.set_original_id(
+                            vars[var_name].desc.original_id()
+                        )
+                        has_cloned_vars.add(var_name)
+
+                for var_name in op.output_arg_names:
+                    if var_name not in has_cloned_vars:
+                        target_block._clone_variable(vars[var_name])
+                        target_block.vars[var_name].persistable = vars[
+                            var_name
+                        ].persistable
+                        target_block.vars[var_name].desc.set_original_id(
+                            vars[var_name].desc.original_id()
+                        )
+                        has_cloned_vars.add(var_name)
+
+        target_block._sync_with_cpp()
+
+        return program
+
+    def _compelte_sub_fwd_program(self, idx, sub_fwd_program, process_mesh):
+        """Compelete forward sub  program."""
+        selective_parallelisms = (
+            ["dp", "mp"] if len(process_mesh.shape) == 1 else ["dp_mp", "mp_dp"]
+        )
+        for parallelism in selective_parallelisms:
+            has_set_tensor_count = 0
+            dist_context = DistributedContext(sub_fwd_program)
+            has_set_dist_attr_tensors = set()
+            dist_context.process_meshes = []
+            dist_context.add_process_mesh(process_mesh)
+            vars = sub_fwd_program.global_block().vars
+
+            # clear op dist attr
+            ops = sub_fwd_program.global_block().ops
+            for op in ops:
+                op.dist_attr = OperatorDistAttr(op.desc)
+            # clear tensor dist attr
+            for var_name in vars:
+                vars[var_name].dist_attr = TensorDistAttr(vars[var_name].desc)
+
+            for var_name in vars:
+                var_id = vars[var_name].desc.original_id()
+                if var_id in self.tensor_dist_attrs:
+                    if parallelism in self.tensor_dist_attrs[var_id]:
+                        dims_mapping = self.tensor_dist_attrs[var_id][
+                            parallelism
+                        ]
+                        dist_tensor = DistributedTensor(vars[var_name])
+                        dist_tensor.dist_attr.process_mesh = process_mesh
+                        dist_tensor.dist_attr.dims_mapping = dims_mapping
+                        dist_tensor.dist_attr.mark_annotated("dims_mapping")
+                        dist_tensor.dist_attr.mark_annotated("process_mesh")
+                        dist_context.add_dist_tensor_for_program(dist_tensor)
+                        has_set_tensor_count += 1
+                        has_set_dist_attr_tensors.add(var_id)
+
+            # check whether no dist attr in dist context
+            if has_set_tensor_count > 0:
+                dist_context.initialize(no_default=True)
+                completer = Completer(dist_context)
+                completer.complete_forward_annotation()
+                if parallelism not in self.sub_programs_dist_context[idx]:
+                    self.sub_programs_dist_context[idx][parallelism] = {}
+                key = self.convert_process_mesh_to_key(process_mesh)
+                self.sub_programs_dist_context[idx][parallelism][
+                    key
+                ] = dist_context
+            else:
+                self._logger.info(
+                    "No pattern has be matched under {} parallelism whe sub program is {}.".format(
+                        parallelism, sub_fwd_program
+                    )
+                )
+
+    def complete_sub_fwd_programs(self, process_mesh):
+        """Complete all forward sub programs."""
+        for idx in self.fwd_sub_programs.keys():
+            sub_fwd_program = self.fwd_sub_programs[idx]
+            if idx not in self.sub_programs_dist_context:
+                self.sub_programs_dist_context[idx] = {}
+            self._compelte_sub_fwd_program(idx, sub_fwd_program, process_mesh)
