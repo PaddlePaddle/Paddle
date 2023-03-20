@@ -39,7 +39,6 @@ void Conv2dFusionKernel(const Context& ctx,
                         float fuse_alpha,
                         DenseTensor* output,
                         std::vector<DenseTensor*> outs) {
-  LOG(INFO) << "JZZ Run conv2d_fusion cutlass kernel";
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
