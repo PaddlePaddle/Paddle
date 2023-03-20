@@ -75,7 +75,15 @@ def find_first_selected_rows_param(inputs, kernel):
     )
 
 
-def to_name_without_underline(op_name):
+def assert_dense_or_sr(input_type):
+    return (
+        "ctx.IsSelectedRowsInput"
+        if input_type == "selected_rows"
+        else "ctx.IsDenseTensorInput"
+    )
+
+
+def delete_last_underline(op_name):
     return op_name if op_name[-1] != '_' else op_name[:-1]
 
 
