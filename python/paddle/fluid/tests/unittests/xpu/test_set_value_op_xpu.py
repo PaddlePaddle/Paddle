@@ -1255,17 +1255,17 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
             def op1(x):
-                value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+                value = paddle.tensor.fill_constant([1], "float32", 1)
                 # test stop_gradient
                 value.stop_gradient = True
                 x.stop_gradient = False
-                start = paddle.fluid.layers.fill_constant(
+                start = paddle.tensor.layers.fill_constant(
                     [1], "int32", 5, force_cpu=True
                 )
-                end = paddle.fluid.layers.fill_constant(
+                end = paddle.tensor.layers.fill_constant(
                     [1], "int32", 0, force_cpu=True
                 )
-                step = paddle.fluid.layers.fill_constant(
+                step = paddle.tensor.layers.fill_constant(
                     [1], "int32", -2, force_cpu=True
                 )
 
@@ -1296,9 +1296,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 return y, value
 
             def op2(x):
-                value = paddle.fluid.layers.fill_constant(
-                    [1, 3, 2], "float32", 1
-                )
+                value = paddle.tensor.fill_constant([1, 3, 2], "float32", 1)
                 # test stop_gradient
                 value.stop_gradient = False
                 x.stop_gradient = False
@@ -1326,16 +1324,16 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 return y, value
 
             def op3(x):
-                value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+                value = paddle.tensor.fill_constant([1], "float32", 1)
                 x.stop_gradient = True
                 value.stop_gradient = False
-                start = paddle.fluid.layers.fill_constant(
+                start = paddle.tensor.fill_constant(
                     [1], "int32", 0, force_cpu=True
                 )
-                end = paddle.fluid.layers.fill_constant(
+                end = paddle.tensor.fill_constant(
                     [1], "int32", 5, force_cpu=True
                 )
-                step = paddle.fluid.layers.fill_constant(
+                step = paddle.tensor.fill_constant(
                     [1], "int32", 3, force_cpu=True
                 )
 

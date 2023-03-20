@@ -204,6 +204,20 @@ class TestReduceAPI(unittest.TestCase):
                 np.testing.assert_allclose(x.grad.numpy(), np.array(1.0))
                 np.testing.assert_allclose(out.grad.numpy(), np.array(1.0))
 
+            out1 = api(x, 0)
+            self.assertEqual(out1.shape, [])
+            self.assertEqual(out1, out)
+            out1.backward()
+
+            out2 = api(x, -1)
+            self.assertEqual(out2.shape, [])
+            self.assertEqual(out2, out)
+            out2.backward()
+
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
+
         paddle.enable_static()
 
     def test_static_reduce(self):
@@ -226,6 +240,12 @@ class TestReduceAPI(unittest.TestCase):
 
                 out_empty_list = api(x, None)
                 self.assertEqual(out_empty_list.shape, ())
+
+                out1 = api(x, 0)
+                self.assertEqual(out1.shape, ())
+
+                out2 = api(x, -1)
+                self.assertEqual(out2.shape, ())
 
                 fetch_list = [x, out]
                 if block.has_var(x.grad_name):
@@ -549,6 +569,16 @@ class TestSundryAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.rand([])
+
+    def test_create_parameter_var(self):
+        zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
+        self.assertEqual(zero_dim_param.shape, [])
+
+        zero_dim_var = paddle.tensor.creation.create_global_var(
+            shape=[], value=0.5, dtype='float32'
+        )
+        self.assertEqual(zero_dim_var.shape, [])
+        self.assertEqual(zero_dim_var.item(), 0.5)
 
     def test_expand(self):
         # case1
@@ -1070,17 +1100,39 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_numpy(self):
         x = paddle.full([], 0.5)
-        np.testing.assert_array_equal(x.numpy(), np.array(0.5))
+        # 0D Tensor hack to 1D Numpy defaut, will remove in future
+        x_np = x.numpy()
+        np.testing.assert_array_equal(x_np.shape, (1,))
+        np.testing.assert_array_equal(x_np, np.array([0.5]))
+
+        # return origin correct numpy
+        x_np = x.numpy(False)
+        np.testing.assert_array_equal(x_np.shape, ())
+        np.testing.assert_array_equal(x_np, np.array(0.5))
 
     def test_numel(self):
+        # 1) x is 0D
         out = paddle.numel(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(1))
 
+        # 2) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.numel(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(15))
+
     def test_rank(self):
+        # 1) x is 0D
         out = paddle.rank(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(0))
+
+        # 1) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.rank(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(2))
 
     def test_shape(self):
         out = paddle.shape(self.x)
@@ -1983,6 +2035,23 @@ class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_create_parameter_var(self):
+        zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
+        self.assertEqual(zero_dim_param.shape, ())
+        prog = paddle.static.default_startup_program()
+        res = self.exe.run(prog, fetch_list=[zero_dim_param])
+        self.assertEqual(res[0].shape, ())
+
+        zero_dim_var = paddle.static.create_global_var(
+            shape=[], value=0.5, dtype='float32'
+        )
+        self.assertEqual(zero_dim_var.shape, ())
+        prog = paddle.static.default_startup_program()
+        res = self.exe.run(prog, fetch_list=[zero_dim_var])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 0.5)
 
     @prog_scope()
     def test_expand(self):
@@ -3328,6 +3397,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
         self.assertEqual(res[0].shape, (3, 4, 2))
 
+    @prog_scope()
     def test_prelu(self):
         x1 = paddle.full([], 1.0, 'float32')
         x1.stop_gradient = False
@@ -3360,6 +3430,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
 
+    @prog_scope()
     def test_static_nn_prelu(self):
         x1 = paddle.full([], 1.0, 'float32')
         x1.stop_gradient = False
@@ -3419,6 +3490,57 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[2], np.array(10))
         self.assertEqual(res[3].shape, ())
         np.testing.assert_allclose(res[3], np.array(1.0))
+
+    @prog_scope()
+    def test_numel(self):
+        # 1) x is 0D
+        x = paddle.full([], 0.5)
+        out = paddle.numel(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_array_equal(res[0], np.array(1))
+
+        # 2) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.numel(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_array_equal(res[0], np.array(15))
+
+    @prog_scope()
+    def test_rank(self):
+        # 1) x is 0D
+        x = paddle.full([], 0.5)
+        out = paddle.rank(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_array_equal(res[0], np.array(0))
+
+        # 1) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.rank(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_array_equal(res[0], np.array(2))
+
+    @prog_scope()
+    def _test_shape(self):
+        x = paddle.full([], 0.5)
+        out = paddle.shape(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        # 0-Size should be [ np.array([]) ], its [None] now
+        self.assertEqual(res[0].shape, (0))
+        np.testing.assert_array_equal(res[0], np.array([]))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

@@ -275,6 +275,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -979,31 +980,38 @@ class Optimizer:
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
-                if isinstance(parameters_and_grads, list):
-                    for param_and_grad in parameters_and_grads:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            self._append_optimize_op(
-                                target_block, param_and_grad
-                            )
+                found_inf = self._get_auxiliary_var('found_inf')
+                if found_inf:
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', True)
                 else:
-                    for param_and_grad in parameters_and_grads['params']:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            param_grad_dict = dict()
-                            param_grad_dict['params'] = param_and_grad
-                            param_grad_dict.update(
-                                {
-                                    k: v
-                                    for k, v in parameters_and_grads.items()
-                                    if k != 'params'
-                                }
-                            )
-                            self._append_optimize_op(
-                                target_block, param_grad_dict
-                            )
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', False)
+                    if isinstance(parameters_and_grads, list):
+                        for param_and_grad in parameters_and_grads:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                self._append_optimize_op(
+                                    target_block, param_and_grad
+                                )
+                    else:
+                        for param_and_grad in parameters_and_grads['params']:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                param_grad_dict = dict()
+                                param_grad_dict['params'] = param_and_grad
+                                param_grad_dict.update(
+                                    {
+                                        k: v
+                                        for k, v in parameters_and_grads.items()
+                                        if k != 'params'
+                                    }
+                                )
+                                self._append_optimize_op(
+                                    target_block, param_grad_dict
+                                )
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -1100,8 +1108,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )

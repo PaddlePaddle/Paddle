@@ -714,10 +714,12 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
-    # profiler headers
-    list(find_files('trace_event.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform/profiler')) +  # phi profiler headers
+    # phi profiler headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/profiler')) +
     # utils api headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True))) # paddle utils headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)) + # paddle utils headers
+    # init headers
+    list(find_files('init_phi.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')))  # phi init headers
 
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:
@@ -775,9 +777,6 @@ class InstallHeaders(Command):
             if 'fluid/jit' in install_dir:
                 install_dir = re.sub('fluid/jit', 'jit', install_dir)
                 print('fluid/jit install_dir: ', install_dir)
-            if 'trace_event.h' in install_dir:
-                install_dir = re.sub('fluid/platform/profiler', 'phi/backends/custom', install_dir)
-                print('trace_event.h install_dir: ', install_dir)
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

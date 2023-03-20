@@ -15,7 +15,6 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -925,11 +924,12 @@ class While:
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)           # loop counter
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
 
-            loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
+            loop_len = paddle.full(shape=[1],dtype='int64', fill_value=10)    # loop length
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -952,11 +952,11 @@ class While:
             import numpy as np
 
             paddle.enable_static()
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+            loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
+            one = paddle.full(shape=[1], dtype='float32', fill_value=1)
             data = fluid.data(name='data', shape=[1], dtype='float32')
-            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+            sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -1537,13 +1537,15 @@ class Switch:
     .. code-block:: python
 
         '''
+        import paddle
+        import paddle.fluid as fluid
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=1)
             with switch.case(cond2):
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=2)
             with switch.default():
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=0)
         '''
 
     Args:
@@ -1561,20 +1563,20 @@ class Switch:
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            zero_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
-            two_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            zero_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=0.0)
+            one_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=1.0)
+            two_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=2.0)
 
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.assign(input=one_var, output=lr)
+                    paddle.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.assign(input=two_var, output=lr)
+                    paddle.assign(input=two_var, output=lr)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())

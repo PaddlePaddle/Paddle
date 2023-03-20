@@ -236,7 +236,7 @@ class Optimizer:
                     None, name='global_step', dtype='int32'
                 )
 
-                tensor.fill_constant(
+                paddle.tensor.fill_constant(
                     [1], "int32", self._learning_rate.step_num, out=var_temp
                 )
 
@@ -970,11 +970,18 @@ class Optimizer:
         self._create_global_learning_rate()
 
         if in_dygraph_mode():
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                if param_and_grad[0].trainable is True:
-                    self._append_optimize_op(target_block, param_and_grad)
+            found_inf = self._get_auxiliary_var('found_inf')
+            if found_inf:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', True)
+            else:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', False)
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].trainable is True:
+                        self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -1108,8 +1115,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )
@@ -2425,12 +2432,12 @@ class AdamOptimizer(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
             master_weight = None
             _, _, _, _, _, _ = _legacy_C_ops.adam(
@@ -2802,7 +2809,7 @@ class AdamaxOptimizer(Optimizer):
             with param.block.program._optimized_guard(
                 [param, grad]
             ), name_scope('adamx'):
-                beta1_pow_acc = self._get_accumulator(
+                beta1_pow_acc = self._get_accumulator_master(
                     self._beta1_pow_acc_str, param
                 )
                 if in_dygraph_mode():
@@ -7386,11 +7393,11 @@ class LookaheadOptimizer:
             paddle.increment(x=step, value=1.0)
 
             # lookahead
-            zero_var = layers.fill_constant(
+            zero_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0
             )
 
-            one_var = layers.fill_constant(
+            one_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.0
             )
 
@@ -7740,7 +7747,7 @@ class GradientMergeOptimizer:
 
             # clear gradient_merge_vars
             for param, new_grad in new_params_grads:
-                layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=new_grad.shape,
                     dtype=new_grad.dtype,
                     value=0.0,
