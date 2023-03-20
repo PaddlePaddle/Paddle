@@ -148,12 +148,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestScaleBF16Op(OpTest):
