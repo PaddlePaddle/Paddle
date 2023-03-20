@@ -74,15 +74,44 @@ class TestLerpWithDim6(TestLerp):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
-class TestLerpWihFp16NoBroadXY(TestLerp):
-    def setUp(self):
-        self.op_type = "lerp"
-        self.python_api = paddle.lerp
-        x = np.arange(1.0, 201.0).astype(np.float16).reshape([2, 1, 2, 50])
-        y = np.full(200, 10.0).astype(np.float16).reshape([2, 2, 1, 50])
-        w = np.asarray([0.5]).astype(np.float16)
-        self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + w * (y - x)}
+class TestLerpWithDim2Fp16(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 50]
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLerpWithDim3Fp16(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 2, 25]
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLerpWithDim4Fp16(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 2, 5, 5]
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLerpWithDim5Fp16(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 1, 2, 5, 5]
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLerpWithDim6Fp16(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 1, 2, 5, 1, 5]
+
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestLerpWihFp16BroadXY(TestLerp):
@@ -90,7 +119,7 @@ class TestLerpWihFp16BroadXY(TestLerp):
         self.op_type = "lerp"
         self.python_api = paddle.lerp
         x = np.arange(1.0, 201.0).astype(np.float16).reshape([2, 1, 2, 50])
-        y = np.full(200, 10.0).astype(np.float16).reshape([2, 1, 2, 50])
+        y = np.full(200, 10.0).astype(np.float16).reshape([2, 2, 1, 50])
         w = np.asarray([0.5]).astype(np.float16)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
