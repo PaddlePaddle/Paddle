@@ -22,12 +22,12 @@
 namespace phi {
 
 template <typename TI, typename TO, typename Context>
-void CastSumRawKernelImpl(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const IntArray& dims,
-                          bool keep_dim,
-                          bool reduce_all,
-                          DenseTensor* out) {
+void SumRawToINT64KernelImpl(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& dims,
+                             bool keep_dim,
+                             bool reduce_all,
+                             DenseTensor* out) {
   DenseTensor tmp_x;
   tmp_x.Resize(x.dims());
   TO* tmp_x_data = dev_ctx.template Alloc<TO>(&tmp_x);
@@ -86,18 +86,20 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  // reduce_sum only support bool/int32 input transformed to int64.
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype() &&
       out->dtype() == phi::DataType::INT64) {
     out_dtype = out->dtype();
     if (x.dtype() == phi::DataType::INT32) {
-      CastSumRawKernelImpl<int32_t, int64_t, Context>(
+      SumRawToINT64KernelImpl<int32_t, int64_t, Context>(
           dev_ctx, x, dims, keep_dim, reduce_all, out);
     } else if (x.dtype() == phi::DataType::BOOL) {
-      CastSumRawKernelImpl<bool, int64_t, Context>(
+      SumRawToINT64KernelImpl<bool, int64_t, Context>(
           dev_ctx, x, dims, keep_dim, reduce_all, out);
     } else {
-      PADDLE_THROW(errors::Unimplemented(
-          "Only support transform int32/bool input to int64 output"));
+      PADDLE_THROW(
+          errors::Unimplemented("Only support transform int32/bool input to "
+                                "int64 output in reduce_usm op"));
     }
   } else {
     SumRawKernelImpl<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out);
