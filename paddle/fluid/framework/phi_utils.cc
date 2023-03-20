@@ -312,7 +312,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
-    return paddle::experimental::MakePhiIntArray(tensor);
+    return phi::IntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to IntArray when call pt "

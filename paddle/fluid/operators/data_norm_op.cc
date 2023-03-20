@@ -284,6 +284,16 @@ class DataNormKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
+
+    PADDLE_ENFORCE_LT(0,
+                      N,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+    PADDLE_ENFORCE_LT(0,
+                      C,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+
     auto *y = ctx.Output<phi::DenseTensor>("Y");
     auto *mean_out = ctx.Output<phi::DenseTensor>("Means");
     auto *scales = ctx.Output<phi::DenseTensor>("Scales");

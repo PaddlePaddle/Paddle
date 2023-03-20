@@ -15,7 +15,6 @@
 import paddle
 from paddle.autograd import PyLayer
 from paddle.fluid import core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 
 from ...base import topology as tp
@@ -33,7 +32,7 @@ def is_fused_matmul_bias_supported():
     return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
-class VocabParallelEmbedding(Layer):
+class VocabParallelEmbedding(paddle.nn.Layer):
     """Embedding mp parallelized in the vocabulary dimension.
     this class is used for splitting embedding in mp group.
 
@@ -144,7 +143,7 @@ class VocabParallelEmbedding(Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
         if self.weight.is_distributed:
-            setattr(self.weight, "split_axis", 0)
+            self.weight.split_axis = 0
 
     def forward(self, x):
         if self.is_mp:
@@ -171,7 +170,7 @@ class VocabParallelEmbedding(Layer):
         return output
 
 
-class ColumnParallelLinear(Layer):
+class ColumnParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
 
@@ -278,7 +277,7 @@ class ColumnParallelLinear(Layer):
         self.weight.is_distributed = True if self.is_mp else False
 
         if self.weight.is_distributed:
-            setattr(self.weight, "split_axis", 1)
+            self.weight.split_axis = 1
 
         if has_bias:
             # initialize bias to zero like Megatron
@@ -290,7 +289,7 @@ class ColumnParallelLinear(Layer):
             )
             self.bias.is_distributed = True if self.is_mp else False
             if self.bias.is_distributed:
-                setattr(self.bias, "split_axis", 0)
+                self.bias.split_axis = 0
         else:
             self.bias = None
 
@@ -341,7 +340,8 @@ class MPScale(PyLayer):
         return dout
 
 
-class RowParallelLinear(Layer):
+class RowParallelLinear(paddle.nn.Layer):
+
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
 
@@ -455,7 +455,7 @@ class RowParallelLinear(Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
         if self.weight.is_distributed:
-            setattr(self.weight, "split_axis", 0)
+            self.weight.split_axis = 0
 
         if has_bias:
             self.bias = self.create_parameter(
@@ -522,7 +522,7 @@ class RowParallelLinear(Layer):
         return output
 
 
-class ParallelCrossEntropy(Layer):
+class ParallelCrossEntropy(paddle.nn.Layer):
     """CrossEntropy with mp parallelized.
     this class is used for splitting softmax cross entropy in mp group.
 

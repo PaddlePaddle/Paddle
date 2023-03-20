@@ -69,7 +69,7 @@ def test_return_if_else(x):
 @to_static
 def test_return_in_while(x):
     x = fluid.dygraph.to_variable(x)
-    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
         if i > 5:
