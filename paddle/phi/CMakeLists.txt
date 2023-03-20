@@ -28,7 +28,6 @@ endif()
 set(PHI_DEPS
     convert_utils
     dense_tensor
-    phi_os_info
     phi_backends
     kernel_factory
     kernel_context
