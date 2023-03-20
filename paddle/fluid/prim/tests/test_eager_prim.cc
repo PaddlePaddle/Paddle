@@ -35,6 +35,12 @@ PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(not_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_equal, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_than, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
@@ -46,6 +52,12 @@ PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(not_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_equal, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(greater_than, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
@@ -149,6 +161,50 @@ TEST(EagerPrim, LogicalOperantsTest) {
   out0 = ~tensor0;
   out1 = bitwise_not_ad_func(tensor0);
   EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+}
+
+TEST(EagerPrim, CompareOperantsTest) {
+  // 1. Initialized
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+  FLAGS_tensor_operants_mode = "eager";
+  paddle::prim::InitTensorOperants();
+  // 2. pre
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::Tensor tensor0 =
+      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
+                                                  paddle::platform::CPUPlace(),
+                                                  phi::DataType::INT32,
+                                                  phi::DataLayout::NCHW,
+                                                  1 /*value*/,
+                                                  true /*is_leaf*/);
+  ::egr::egr_utils_api::RetainGradForTensor(tensor0);
+  paddle::Tensor tensor1 =
+      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
+                                                  paddle::platform::CPUPlace(),
+                                                  phi::DataType::INT32,
+                                                  phi::DataLayout::NCHW,
+                                                  0 /*value*/,
+                                                  true /*is_leaf*/);
+  ::egr::egr_utils_api::RetainGradForTensor(tensor1);
+  // 3. Run Forward once
+  paddle::Tensor out0 = (tensor0 < tensor1);
+  paddle::Tensor out1 = less_than_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+  out0 = (tensor0 <= tensor1);
+  out1 = less_equal_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+  out0 = (tensor0 == tensor1);
+  out1 = equal_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+  out0 = (tensor0 != tensor1);
+  out1 = not_equal_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+  out0 = (tensor0 > tensor1);
+  out1 = greater_than_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+  out0 = (tensor0 >= tensor1);
+  out1 = greater_equal_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
 }
 
 TEST(EagerPrim, TestFlags) {

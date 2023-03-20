@@ -953,7 +953,7 @@ class TrtConvertElementwiseTestTwoInputSkipCase(TrtLayerAutoScanTest):
                 )
             # Paddle mul support bool and TensorRT not
             if op_type == "elementwise_mul":
-                return np.random.random(shape).astype(np.bool)
+                return np.random.random(shape).astype(np.bool_)
 
         for shape in [[4], [4, 32], [2, 32, 16], [1, 8, 16, 32]]:
             for op_type in [
