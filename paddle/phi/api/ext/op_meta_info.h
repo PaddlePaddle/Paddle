@@ -576,7 +576,7 @@ class PADDLE_API OpMetaInfo {
 
   // format: {"<input_name1>:<output_name1>",
   // "<input_name2>:<output_name2>",...}
-  OpMetaInfo& Inplace(
+  OpMetaInfo& SetInplaceMap(
       std::unordered_map<std::string, std::string>&& inplace_map);
 
   // format: PD_KERNEL(...)
@@ -635,7 +635,7 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
   OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);
-  OpMetaInfoBuilder& Inplace(
+  OpMetaInfoBuilder& SetInplaceMap(
       std::unordered_map<std::string, std::string>&& inplace_map);
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);

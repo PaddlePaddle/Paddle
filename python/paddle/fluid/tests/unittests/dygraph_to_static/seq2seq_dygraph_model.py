@@ -19,10 +19,9 @@ from seq2seq_utils import Seq2SeqModelHyperParams as args
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
-from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.jit.api import to_static
-from paddle.nn import Embedding
+from paddle.nn import Embedding, Layer
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -84,7 +83,7 @@ class BasicLSTMUnit(Layer):
         return new_hidden, new_cell
 
 
-class BaseModel(fluid.dygraph.Layer):
+class BaseModel(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -511,7 +510,7 @@ class BaseModel(fluid.dygraph.Layer):
         return predicted_ids
 
 
-class AttentionModel(fluid.dygraph.Layer):
+class AttentionModel(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,

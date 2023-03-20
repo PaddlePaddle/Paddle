@@ -257,7 +257,7 @@ def to_string(var, prefix='Tensor'):
 
     if var.dtype == core.VarDesc.VarType.BF16:
         var = var.astype('float32')
-    np_var = var.numpy()
+    np_var = var.numpy(False)
 
     if len(var.shape) == 0:
         size = 0
@@ -291,7 +291,8 @@ def _format_dense_tensor(tensor, indent):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         tensor = tensor.astype('float32')
 
-    np_tensor = tensor.numpy()
+    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    np_tensor = tensor.numpy(False)
 
     if len(tensor.shape) == 0:
         size = 0

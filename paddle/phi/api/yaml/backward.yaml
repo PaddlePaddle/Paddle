@@ -1142,6 +1142,7 @@
   kernel :
     func : relu_grad
   backward: relu_double_grad
+  composite: relu_grad(out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : renorm_grad
@@ -1297,6 +1298,7 @@
     func : sigmoid_grad
   backward : sigmoid_double_grad
   inplace : (out_grad -> x_grad)
+  composite : sigmoid_grad(out, out_grad, x_grad)
 
 - backward_op : sigmoid_triple_grad
   forward : sigmoid_double_grad (Tensor out, Tensor fwd_grad_out, Tensor grad_grad_x) -> Tensor(grad_out), Tensor(grad_grad_out)

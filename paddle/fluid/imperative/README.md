@@ -14,7 +14,7 @@ https://www.tensorflow.org/guide/eager
 
 ## API
 ```python
-class Layer(object):
+class Layer:
 
   def __call__(inputs):
     # build some parameter once.
@@ -49,7 +49,7 @@ Longer term.
 ```python
 
 # Parent class.
-class PyVarBase(object):
+class PyVarBase:
   pass
 
 # Current python variable.

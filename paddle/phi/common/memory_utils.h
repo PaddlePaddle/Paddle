@@ -125,6 +125,11 @@ struct MemoryInterface {
    */
   void (*gpu_memory_usage)(size_t* available, size_t* total);
 #endif
+
+  /**
+   * @brief init devices info and device context
+   */
+  void (*init_devices)();
 };
 
 class MemoryUtils {
@@ -258,6 +263,16 @@ class MemoryUtils {
   }
 #endif
 
+  void InitDevices() {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->init_devices,
+        nullptr,
+        phi::errors::Unavailable("init_devices method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    memory_method_->init_devices();
+  }
+
   void CheckMemoryMethod() {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
@@ -333,6 +348,8 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
+
+void InitDevices();
 
 class Buffer {
  public:
