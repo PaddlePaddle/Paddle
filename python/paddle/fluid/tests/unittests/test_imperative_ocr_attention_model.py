@@ -212,7 +212,7 @@ class EncoderNet(fluid.dygraph.Layer):
             )
             h_0 = to_variable(h_0)
         else:
-            h_0 = fluid.layers.fill_constant(
+            h_0 = paddle.tensor.fill_constant(
                 shape=[Config.batch_size, rnn_hidden_size],
                 dtype='float32',
                 value=0,

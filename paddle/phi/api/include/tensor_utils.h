@@ -33,12 +33,11 @@ using Deleter = std::function<void(void*)>;
  * @param dtype The data type of the tensor, should correspond to data type of
  *              `data`. See PD_FOR_EACH_DATA_TYPE in `phi/common/data_type.h`
  * @param layout The data layout of the tensor.
- * @param place The place where the tensor is located, should correspond to
- *              place of `data`.
- *              If `place` use the default value, it will be inferred from
- *              `data`， However，the feature is only supported on CPU or GPU.
- *              So make sure that `place` is equal to the place of `data` when
- *              using other devices.
+ * @param place The place where the tensor is located.
+ *              If `place` is default value, it will be inferred from `data`，
+ *              However，the feature is only supported on CPU or GPU.
+ *              If `place` is not default value, make sure that `place` is equal
+ *              to the place of `data`
  * @param deleter A function or function object that will be called to free the
  *                memory buffer.
  *

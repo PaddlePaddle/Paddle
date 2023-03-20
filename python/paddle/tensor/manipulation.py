@@ -18,15 +18,16 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..fluid.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,

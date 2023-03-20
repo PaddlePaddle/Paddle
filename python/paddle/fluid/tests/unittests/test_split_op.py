@@ -281,9 +281,9 @@ create_test_bf16(TestSplitOp)
 class TestSplitAPI(unittest.TestCase):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
-        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
         x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
         x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
 

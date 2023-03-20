@@ -352,10 +352,10 @@ def polynomial_decay(
 
             if cycle:
                 div_res = paddle.ceil(global_step / decay_steps)
-                zero_var = tensor.fill_constant(
+                zero_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=0.0
                 )
-                one_var = tensor.fill_constant(
+                one_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=1.0
                 )
 
@@ -366,7 +366,7 @@ def polynomial_decay(
 
                 decay_steps = decay_steps * div_res
             else:
-                decay_steps_var = tensor.fill_constant(
+                decay_steps_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(decay_steps)
                 )
                 global_step = paddle.minimum(x=global_step, y=decay_steps_var)
