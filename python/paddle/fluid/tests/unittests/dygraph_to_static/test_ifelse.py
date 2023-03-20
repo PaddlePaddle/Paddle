@@ -158,8 +158,8 @@ def dyfunc_ifExp_with_while(x):
         i += 1
         return [i, ten, y]
 
-    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-    ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
+    ten = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=10)
     i, ten, y = paddle.static.nn.while_loop(cond, body, [i, ten, y])
     return y[0]
 
@@ -180,7 +180,7 @@ def dyfunc_ifExp(x):
     def map_func(func, tensor_list):
         return [func(x) for x in tensor_list]
 
-    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
     # It will be converted into `layers.cond` as followed.
     # map_func(lambda x: paddle.static.nn.cond(i==1, lambda: x, lambda: add_fn(x), y)
     # `if (Tensor) == 1` is supported in dygraph.

@@ -4791,15 +4791,10 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dtype(x.dtype());
     out->set_dims(phi::make_ddim(vec_out_dims));
-  } else if (!axes.GetData().empty()) {
-    std::vector<int32_t> tmp;
-    tmp.reserve(axes.GetData().size());
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
-                  [&tmp](const int64_t& t) { tmp.push_back(t); });
-    auto out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
+  } else {
+    auto out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
     out->set_dims(out_dims);
-    if (x_dims[0] == out_dims[0]) {
+    if (x_dims.size() > 0 && x_dims[0] == out_dims[0]) {
       out->share_lod(x);
     }
     out->set_dtype(x.dtype());

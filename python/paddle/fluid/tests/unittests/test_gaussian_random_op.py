@@ -209,9 +209,9 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
 # Test python API
 class TestGaussianRandomAPI(unittest.TestCase):
     def test_api(self):
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2000)
+        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2000)
 
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 500)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 500)
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
@@ -292,9 +292,8 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.gaussian([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -306,6 +305,9 @@ class TestGaussianRandomAPI(unittest.TestCase):
             out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
 
@@ -318,9 +320,8 @@ class TestStandardNormalDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.standard_normal([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -332,6 +333,9 @@ class TestStandardNormalDtype(unittest.TestCase):
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
 
