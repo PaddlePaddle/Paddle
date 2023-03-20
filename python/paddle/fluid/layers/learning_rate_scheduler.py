@@ -585,7 +585,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
             global_step = _decay_step_counter()
             if not isinstance(learning_rate, Variable):
-                learning_rate = tensor.fill_constant(
+                learning_rate = paddle.tensor.fill_constant(
                     shape=[1], dtype=dtype, value=float(learning_rate)
                 )
             lr_val = paddle.static.nn.case(
