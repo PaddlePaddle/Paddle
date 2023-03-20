@@ -75,7 +75,7 @@ class SetValueConverter : public OpConverter {
       axes = input_dims.nbDims - 1;
     }
 
-    if (ends == -1 || ends > input_dims.d[input_dims.nbDims - 1]) {
+    if (ends == -1 || ends > input_dims.d[axes]) {
       ends = input_dims.d[input_dims.nbDims - 1];
     }
 
