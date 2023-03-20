@@ -502,7 +502,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 class TestArgsortFP16OP(OpTest):
     def setUp(self):
-        self.op_type = "argsort"
+        self.__class__.op_type = "argsort"
         self.dtype = "float16"
         self.inputs = {'X': np.random.randn(2, 8).astype(self.dtype)}
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
@@ -544,7 +544,7 @@ class TestArgsortFP16OP(OpTest):
 
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
-        self.op_type = "argsort"
+        self.__class__.op_type = "argsort"
         self.dtype = "uint16"
         self.inputs = {'X': np.random.randn(11, 17).astype(self.dtype)}
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
