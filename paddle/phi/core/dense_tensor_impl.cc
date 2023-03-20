@@ -24,7 +24,7 @@ namespace phi {
 /*   From phi::DenseTensor     */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
-  meta_.dtype = paddle::experimental::DataType::FLOAT32;
+  meta_.dtype = phi::DataType::FLOAT32;
   meta_.offset = 0;
 }
 

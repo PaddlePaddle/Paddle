@@ -44,7 +44,7 @@ class TestBroadcastToAPI(unittest.TestCase):
         input = np.random.random([12, 14]).astype("float32")
         x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+        positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
         expand_shape = paddle.static.data(
             name="expand_shape",
             shape=[2],
@@ -81,7 +81,7 @@ class TestBroadcastToAPI(unittest.TestCase):
                     name="x", shape=[12, 14], dtype="float16"
                 )
 
-                positive_2 = paddle.fluid.layers.fill_constant([1], "int32", 12)
+                positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
                 expand_shape = paddle.static.data(
                     name="expand_shape",
                     shape=[2],

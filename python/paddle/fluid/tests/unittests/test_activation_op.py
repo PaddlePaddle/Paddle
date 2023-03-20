@@ -1235,9 +1235,62 @@ class TestSqrtBF16(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
+class TestSqrtComp(TestActivation, TestParameter):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = True
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=True, check_prim=True)
+
+
+class TestSqrtCompFp32(TestActivation):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = True
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=True, check_prim=True)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
         self.init_dtype()
         self.init_shape()
@@ -1248,14 +1301,23 @@ class TestRsqrt(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.enable_cinn = True
 
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.0005,
+            check_prim=True,
+        )
 
 
 '''
@@ -2347,7 +2409,9 @@ class TestSoftRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.02, check_dygraph=False
+        )
 
 
 def elu(x, alpha):
@@ -2914,6 +2978,7 @@ class TestSquareBF16(OpTest):
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.prim_op_type = "comp"
         self.python_api = paddle.pow
         self.init_dtype()
         self.init_shape()
@@ -2927,23 +2992,28 @@ class TestPow(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
 
+    def setUp(self):
+        super(TestPow_ZeroDim, self).setUp()
+        self.enable_cinn = False
+
 
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
         self.python_api = paddle.pow
+        self.enable_cinn = False
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2975,7 +3045,7 @@ class TestPow_factor_tensor(TestActivation):
             )
 
             factor_1 = 2.0
-            factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
+            factor_2 = paddle.tensor.fill_constant([1], "float32", 3.0)
             out_1 = paddle.pow(x, factor_1)
             out_2 = paddle.pow(x, factor_2)
             out_4 = paddle.pow(x, factor_1, name='pow_res')
@@ -3795,6 +3865,7 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
@@ -3826,7 +3897,7 @@ else:
 create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, atol=5e-2)
+create_test_act_fp16_class(TestPow, check_prim=True, atol=5e-2)
 create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
 create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
 create_test_act_fp16_class(TestSoftplus)

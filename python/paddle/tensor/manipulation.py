@@ -18,15 +18,16 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..fluid.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -1710,6 +1711,21 @@ def roll(x, shifts, axis=None, name=None):
     if in_dygraph_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            [
+                'float16',
+                'float32',
+                'uint16',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'roll',
+        )
         helper = LayerHelper("roll", **locals())
         check_type(axis, 'axis', (list, tuple), 'roll')
 
