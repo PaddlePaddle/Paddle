@@ -773,7 +773,7 @@ def _var_base_to_np(var_base):
         "paddle.fluid.framework._var_base_to_np is deprecated, please use var_base.numpy() instead of _var_base_to_np(var_base)."
     )
 
-    return var_base.numpy()
+    return var_base.numpy(False)
 
 
 def _cpu_num():
