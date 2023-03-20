@@ -31,10 +31,6 @@ class StrAttribute : public ir::Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
 
-  int compare(const StrAttribute &right) const {
-    return storage()->GetAsKey().compare(right.storage()->GetAsKey());
-  }
-
   bool operator<(const StrAttribute &right) const {
     return storage() < right.storage();
   }
