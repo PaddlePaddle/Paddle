@@ -234,6 +234,7 @@ if(WITH_XPU)
   pass_library(link_xpu_op_max_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(delete_isolated_node_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(conv_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(max_pooling_pad_zero_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
