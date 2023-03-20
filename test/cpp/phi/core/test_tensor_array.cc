@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/tensor_array.h"
-#include "paddle/phi/tests/core/allocator.h"
+#include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
 namespace tests {

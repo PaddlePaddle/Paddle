@@ -629,6 +629,7 @@
   kernel :
     func : layer_norm_grad
     data_type : out_grad
+  composite : layer_norm_grad(x, scale, bias, mean,varience, out_grad, epsilon, begin_norm_axis, x_grad, scale_grad, bias_grad)
   no_need_buffer : bias
   optional : scale, bias
 
