@@ -509,7 +509,6 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
       platform::dynload::cublasLtMatrixLayoutDestroy(out_desc));
 }
 
-
 enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
 
 template <bool TransX, bool TransY>
