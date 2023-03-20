@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -30,20 +29,32 @@ paddle.enable_static()
 class TestAPISwitchCase(unittest.TestCase):
     def test_return_single_var(self):
         def fn_1():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=1
+            )
 
         def fn_2():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=2
+            )
 
         def fn_3():
-            return layers.fill_constant(shape=[4, 3], dtype='int32', value=3)
+            return paddle.tensor.fill_constant(
+                shape=[4, 3], dtype='int32', value=3
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
-            index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
-            index_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
+            index_1 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=1
+            )
+            index_2 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=2
+            )
+            index_5 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=5
+            )
 
             # call fn_1
             out_0 = paddle.static.nn.switch_case(
@@ -322,24 +333,32 @@ class TestAPISwitchCase(unittest.TestCase):
 
     def test_return_var_tuple(self):
         def fn_1():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
-            ), layers.fill_constant(shape=[2, 3], dtype='float32', value=2)
+            ), paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='float32', value=2
+            )
 
         def fn_2():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='int32', value=3
-            ), layers.fill_constant(shape=[4, 5], dtype='float32', value=4)
+            ), paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='float32', value=4
+            )
 
         def fn_3():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[5], dtype='int32', value=5
-            ), layers.fill_constant(shape=[5, 6], dtype='float32', value=6)
+            ), paddle.tensor.fill_constant(
+                shape=[5, 6], dtype='float32', value=6
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+            index_1 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=1
+            )
 
             out = paddle.static.nn.switch_case(
                 index_1, ((1, fn_1), (2, fn_2)), fn_3
@@ -365,15 +384,21 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
     def test_nested_switch_case(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
-                branch_index=layers.fill_constant(
+                branch_index=paddle.tensor.fill_constant(
                     shape=[1], dtype='int32', value=x
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant, shape=[1], dtype='int32', value=1
+                        paddle.tensor.fill_constant,
+                        shape=[1],
+                        dtype='int32',
+                        value=1,
                     ),
                     x: partial(
-                        layers.fill_constant, shape=[2], dtype='int32', value=x
+                        paddle.tensor.fill_constant,
+                        shape=[2],
+                        dtype='int32',
+                        value=x,
                     ),
                 },
             )
@@ -381,12 +406,12 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
         def fn_2(x=2):
             out = paddle.static.nn.switch_case(
-                branch_index=layers.fill_constant(
+                branch_index=paddle.tensor.fill_constant(
                     shape=[1], dtype='int32', value=2
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant,
+                        paddle.tensor.fill_constant,
                         shape=[4, 3],
                         dtype='int32',
                         value=1,
@@ -398,12 +423,12 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
         def fn_3():
             out = paddle.static.nn.switch_case(
-                branch_index=layers.fill_constant(
+                branch_index=paddle.tensor.fill_constant(
                     shape=[1], dtype='int32', value=3
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant,
+                        paddle.tensor.fill_constant,
                         shape=[4, 3],
                         dtype='int32',
                         value=1,
@@ -417,8 +442,12 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
-            index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
-            index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+            index_2 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=2
+            )
+            index_3 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=3
+            )
 
             out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
@@ -566,21 +595,27 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 class TestAPISwitchCase_Error(unittest.TestCase):
     def test_error(self):
         def fn_1():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=1
+            )
 
         def fn_2():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=2
+            )
 
         def fn_3():
-            return layers.fill_constant(shape=[4, 3], dtype='int32', value=3)
+            return paddle.tensor.fill_constant(
+                shape=[4, 3], dtype='int32', value=3
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            key_float32 = layers.fill_constant(
+            key_float32 = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
-            key_int32 = layers.fill_constant(
+            key_int32 = paddle.tensor.fill_constant(
                 shape=[1], dtype='int32', value=0.23
             )
 

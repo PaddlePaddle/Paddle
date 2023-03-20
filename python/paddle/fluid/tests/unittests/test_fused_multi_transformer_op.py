@@ -21,7 +21,6 @@ from eager_op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid import layers
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
@@ -862,7 +861,7 @@ class TestFusedMultiTransformerOp(OpTest):
                 assert self.query_length == self.cache_length
                 cache_kv[:] = 0
             else:
-                time_step = layers.fill_constant(
+                time_step = paddle.tensor.fill_constant(
                     shape=[1], dtype="int32", value=0, force_cpu=True
                 )
                 time_step_feed = self.cache_length
@@ -947,7 +946,7 @@ class TestFusedMultiTransformerOp(OpTest):
         for i in range(self.layers):
             if self.has_cache_kv:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
@@ -955,13 +954,13 @@ class TestFusedMultiTransformerOp(OpTest):
 
             if self.has_pre_cache:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
                 cache_kvs_feed.append(cache_kv)
                 pre_caches.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=self.pre_cache_kv.shape,
                         dtype=self.pre_cache_kv.dtype,
                         value=0,

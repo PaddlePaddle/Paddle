@@ -99,14 +99,12 @@ def add_supported_layer(layer, pruning_func=None):
     name = None
     if isinstance(layer, str):
         name = layer
-    elif isinstance(layer, paddle.fluid.dygraph.layers.Layer):
-        name = paddle.fluid.dygraph.layers._convert_camel_to_snake(
+    elif isinstance(layer, paddle.nn.Layer):
+        name = paddle.nn.layer.layers._convert_camel_to_snake(
             type(layer).__name__
         )
-    elif issubclass(layer, paddle.fluid.dygraph.layers.Layer):
-        name = paddle.fluid.dygraph.layers._convert_camel_to_snake(
-            layer.__name__
-        )
+    elif issubclass(layer, paddle.nn.Layer):
+        name = paddle.nn.layer.layers._convert_camel_to_snake(layer.__name__)
     else:
         assert (
             "The type of layer should be string of Layer, but got {}!".format(
