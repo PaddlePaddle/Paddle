@@ -18,6 +18,11 @@ import inspect
 import astor
 import numpy as np  # noqa: F401
 
+import paddle  # noqa: F401
+import paddle.fluid as fluid  # noqa: F401
+import paddle.fluid.dygraph as dygraph  # noqa: F401
+import paddle.fluid.layers as layers  # noqa: F401
+from paddle.fluid.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -61,13 +66,9 @@ def is_api_in_module(node, module_prefix):
 
     func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
-        import paddle  # noqa: F401
-        import paddle.fluid as fluid  # noqa: F401
-        import paddle.fluid.dygraph as dygraph  # noqa: F401
-        import paddle.fluid.layers as layers  # noqa: F401
+
         import paddle.jit.dy2static as _jst  # noqa: F401
         from paddle import to_tensor  # noqa: F401
-        from paddle.fluid.dygraph import to_variable  # noqa: F401
 
         return eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
