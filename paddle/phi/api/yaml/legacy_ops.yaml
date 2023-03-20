@@ -862,16 +862,6 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
 
-- op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction)
-  output : Tensor(out)
-  infer_meta :
-    func : KLDivInferMeta
-  kernel :
-    func : kldiv_loss
-    data_type : x
-  backward : kldiv_loss_grad
-
 - op : lamb_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)

@@ -721,6 +721,17 @@
   kernel :
     func : inverse_grad
 
+- backward_op : kldiv_loss_grad
+  forward : kldiv_loss(Tensor x, Tensor label, str reduction) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, str reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : kldiv_loss_grad
+  no_need_buffer : x
+
 - backward_op : kron_grad
   forward : kron (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
