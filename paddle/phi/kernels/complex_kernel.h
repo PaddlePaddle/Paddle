@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
