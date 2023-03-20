@@ -293,7 +293,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 one_var = fluid.layers.fill_constant(
                     shape=[1], dtype='int64', value=1
                 )
-                label_val = paddle.static.nn.case(
+                label_val = paddle.static.nn.cond(
                     label != zero_var, lambda: zero_var, lambda: one_var
                 )
                 paddle.assign(label_val, output=label)
