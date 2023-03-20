@@ -311,12 +311,18 @@ inline void RunProgramAPI(
 
   auto input_names = details::GetTensorsName(x);
   auto output_names = details::GetTensorsName(out);
+  auto param_names = details::GetTensorsName(params);
   auto dout_names = details::GetTensorsName(dout);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream s;
     s << "input_names: ";
     for (auto name : input_names) {
+      s << name << " ";
+    }
+    s << std::endl;
+    s << "param_names: ";
+    for (auto name : param_names) {
       s << name << " ";
     }
     s << std::endl;

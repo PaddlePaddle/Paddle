@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/phi/api/include/api.h"
-#include "paddle/phi/api/lib/from_blob.h"
+#include "paddle/phi/api/include/tensor_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -31,20 +31,18 @@ PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 #endif
 
-using paddle::experimental::DataType;
-using paddle::experimental::from_blob;
+using paddle::from_blob;
+using phi::DataType;
 
 namespace paddle {
-namespace experimental {
 phi::Place GetPlaceFromPtr(void* data);
-}  // namespace experimental
 }  // namespace paddle
 
 TEST(from_blob, CPU) {
   // 1. create data
   int64_t data[] = {4, 3, 2, 1};
 
-  ASSERT_EQ(paddle::experimental::GetPlaceFromPtr(data), phi::CPUPlace());
+  ASSERT_EQ(paddle::GetPlaceFromPtr(data), phi::CPUPlace());
 
   // 2. test API
   auto test_tesnor = from_blob(data, {1, 2, 2}, DataType::INT64);
@@ -84,7 +82,7 @@ TEST(from_blob, CPU) {
 using phi::memory_utils::Copy;
 
 TEST(GetPlaceFromPtr, GPU) {
-  using paddle::experimental::GetPlaceFromPtr;
+  using paddle::GetPlaceFromPtr;
 
   float cpu_data[6];
   auto cpu_data_place = GetPlaceFromPtr(cpu_data);

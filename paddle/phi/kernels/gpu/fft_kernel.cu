@@ -27,6 +27,9 @@ PD_REGISTER_KERNEL(fft_c2r,
                    ALL_LAYOUT,
                    phi::FFTC2RKernel,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 PD_REGISTER_KERNEL(fft_r2c, GPU, ALL_LAYOUT, phi::FFTR2CKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
