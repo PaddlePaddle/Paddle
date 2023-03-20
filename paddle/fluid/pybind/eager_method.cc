@@ -65,6 +65,8 @@ typedef SSIZE_T ssize_t;
 namespace paddle {
 namespace pybind {
 
+DECLARE_bool(set_to_1d);
+
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
                                      const paddle::platform::Place& place,
@@ -124,7 +126,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   size_t numel = 1;
   if (py_rank == 0) {
     Py_ssize_t args_num = PyTuple_Size(args);
-    bool set_to_1d = true;
+    bool set_to_1d = FLAGS_set_to_1d;
     if (args_num == (Py_ssize_t)1) {
       PyObject* obj = PyTuple_GET_ITEM(args, 0);
       if (obj == Py_False) {

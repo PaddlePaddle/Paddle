@@ -745,6 +745,12 @@ PADDLE_DEFINE_EXPORTED_int32(
     "instead of sum. Default is 0.");
 
 /**
+ * SET 0D Tensor to 1D Numpy
+ * will be removed in future.
+ */
+PADDLE_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+
+/**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_on
  * Since Version: 2.0.0
