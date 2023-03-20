@@ -19,14 +19,10 @@
 
 namespace ir {
 ///
-/// \brief The built-in Dialect will use this macro to quickly register all
-/// built-in attributes.
+/// \brief All built-in attributes.
 ///
 #define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute, ir::DictionaryAttribute
 
-///
-/// \brief Define built-in parameterless attributes.
-///
 class StrAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;

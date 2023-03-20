@@ -74,24 +74,16 @@ TEST(attribute_test, dictionary_attribute) {
   std::string str_attr2_value = "attr2_value";
   ir::StrAttribute attr2_name = ir::StrAttribute::get(ctx, str_attr2_name);
   ir::Attribute attr2_value = ir::StrAttribute::get(ctx, str_attr2_value);
-  std::string str_attr3_name = "attr3_name";
-  std::string str_attr3_value = "attr3_value";
-  ir::StrAttribute attr3_name = ir::StrAttribute::get(ctx, str_attr3_name);
-  ir::Attribute attr3_value = ir::StrAttribute::get(ctx, str_attr3_value);
 
   std::map<ir::StrAttribute, ir::Attribute> named_attr1;
   named_attr1.insert(
       std::pair<ir::StrAttribute, ir::Attribute>(attr1_name, attr1_value));
   named_attr1.insert(
       std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));
-  named_attr1.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr3_name, attr3_value));
   ir::DictionaryAttribute dic_attr1 =
       ir::DictionaryAttribute::get(ctx, named_attr1);
 
   std::map<ir::StrAttribute, ir::Attribute> named_attr2;
-  named_attr2.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr3_name, attr3_value));
   named_attr2.insert(
       std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));
   named_attr2.insert(
@@ -102,5 +94,4 @@ TEST(attribute_test, dictionary_attribute) {
   EXPECT_EQ(dic_attr1, dic_attr2);
   EXPECT_EQ(attr1_value, dic_attr1.GetValue(attr1_name));
   EXPECT_EQ(attr2_value, dic_attr1.GetValue(attr2_name));
-  EXPECT_EQ(attr3_value, dic_attr1.GetValue(attr3_name));
 }

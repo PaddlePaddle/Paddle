@@ -23,10 +23,7 @@ class Dialect;
 
 ///
 /// \brief Abstract the properties and behaviors common to all Attribute classes
-/// into an AbstractAttribute class. There are two kinds of attributes in
-/// Attribute system: non-parameter/parameterless attribute and
-/// parameteric-attribute. The common attr of all attributes is TypeId (and
-/// possibly others). Therefore, construct a class with TypeId as its member.
+/// into an AbstractAttribute class.
 ///
 class AbstractAttribute {
  public:
@@ -86,7 +83,6 @@ class AbstractAttribute {
       : type_id_(type_id), dialect_(dialect) {}
 
   TypeId type_id_;
-
   const Dialect &dialect_;
 };
 
@@ -185,8 +181,7 @@ struct AttributeManager {
   }
 
   ///
-  /// \brief Get a unique instance of parameterless Attribute T from IrContext,
-  /// only search.
+  /// \brief Get a unique instance of parameterless Attribute T from IrContext.
   ///
   /// \param ctx The IrContext instance.
   /// \param type_id The type id of the AbstractAttribute.
@@ -211,7 +206,7 @@ struct AttributeManager {
   }
 
   ///
-  /// \brief Register a unique instance of parametric Attribute T to IrContext.
+  /// \brief Register a unique parametric Attribute T to IrContext.
   ///
   /// \param ctx The IrContext instance.
   /// \param type_id The type id of the Attribute T.
@@ -225,8 +220,7 @@ struct AttributeManager {
   }
 
   ///
-  /// \brief Register a unique instance of parameterless Attribute T to
-  /// IrContext.
+  /// \brief Register a unique parameterless Attribute T to IrContext.
   ///
   /// \param ctx The IrContext instance.
   /// \param type_id The type id of the Attribute T.
@@ -244,8 +238,7 @@ struct AttributeManager {
 };
 
 ///
-/// \brief This macro definition is used to add some necessary functions to the
-/// custom Attribute class.
+/// \brief Add some necessary functions to the custom Attribute class.
 ///
 #define DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(concrete_attribute, storage_type)   \
   using Storage = storage_type;                                               \

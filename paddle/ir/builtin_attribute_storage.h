@@ -25,9 +25,6 @@ namespace ir {
 /// \brief Define Parameteric AttributeStorage for StrAttribute.
 ///
 struct StrAttributeStorage : public ir::AttributeStorage {
-  ///
-  /// \brief Declare ParamKey according to parameter type.
-  ///
   using ParamKey = std::tuple<char *, uint32_t>;
 
   StrAttributeStorage(char *data, uint32_t size) {
@@ -38,16 +35,10 @@ struct StrAttributeStorage : public ir::AttributeStorage {
 
   ~StrAttributeStorage() { free(data_); }
 
-  ///
-  /// \brief Construct a derived AttributeStorage.
-  ///
   static StrAttributeStorage *Construct(ParamKey key) {
     return new StrAttributeStorage(std::get<0>(key), std::get<1>(key));
   }
 
-  ///
-  /// \brief Provide a HashValue method.
-  ///
   static std::size_t HashValue(const ParamKey &key) {
     return hash_combine(0,
                         std::hash<std::string>()(
@@ -60,9 +51,6 @@ struct StrAttributeStorage : public ir::AttributeStorage {
 
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
 
-  ///
-  /// \brief StrAttributeStorage include two parameters: data, size.
-  ///
   char *data_;
   uint32_t size_;
 
@@ -93,7 +81,6 @@ struct DictionaryAttributeStorage : public AttributeStorage {
   ParamKey GetAsKey() const;
 
   NamedAttribute *data_;
-
   uint32_t size_;
 
  private:
