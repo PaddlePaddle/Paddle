@@ -126,6 +126,8 @@ class Scope {
 
   void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
 
+  std::vector<Variable*> FindVarFromChild(const std::string& name) const;
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {

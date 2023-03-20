@@ -219,7 +219,7 @@ int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
     auto& after_dims = check_data.after_dims;
     auto& after_lods = check_data.after_lods;
     RuntimeContext ctx(op.Inputs(), op.Outputs(), scope);
-    RuntimeInferShapeContext infer_shape_ctx(op, ctx);
+    RuntimeInferShapeContext infer_shape_ctx(op, ctx, &scope);
     auto outnames = op.Outputs();
     for (auto& var_name_item : outnames) {
       pre_dims.push_back(infer_shape_ctx.GetOutputsDim(var_name_item.first));

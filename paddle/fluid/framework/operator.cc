@@ -215,8 +215,9 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 RuntimeInferShapeContext::RuntimeInferShapeContext(const OperatorBase& op,
-                                                   const RuntimeContext& ctx)
-    : op_(op), ctx_(ctx) {}
+                                                   const RuntimeContext& ctx,
+                                                   const Scope* scope)
+    : op_(op), ctx_(ctx), scope_(scope) {}
 
 bool RuntimeInferShapeContext::HasInput(const std::string& name) const {
   // has only one input
@@ -1587,7 +1588,7 @@ void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
+  RuntimeInferShapeContext infer_shape_ctx(*this, ctx, &scope);
   this->Info().infer_shape_(&infer_shape_ctx);
 }
 

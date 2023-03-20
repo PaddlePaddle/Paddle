@@ -148,7 +148,9 @@ class RuntimeContext {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx);
+  RuntimeInferShapeContext(const OperatorBase& op,
+                           const RuntimeContext& ctx,
+                           const Scope* scope = nullptr);
 
   bool HasInput(const std::string& name) const override;
 
@@ -228,6 +230,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   std::vector<DDim> GetOutputsDim(const std::string& name) const;
 
+  const Scope* GetScopePtr() const override { return scope_; }
+
  protected:
   DDim GetDim(Variable* var) const;
 
@@ -256,6 +260,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
   bool can_skip_lod_{false};
+
+  const Scope* scope_;
 };
 
 /**
