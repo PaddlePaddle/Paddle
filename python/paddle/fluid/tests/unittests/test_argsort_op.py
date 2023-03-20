@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -499,7 +500,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestArgsortOpFp16(unittest.TestCase):
+class TestArgsortOpFp16(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = "float16"
@@ -538,7 +539,7 @@ class TestArgsortOpFp16(unittest.TestCase):
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
-class TestArgsortOpBF16(unittest.TestCase):
+class TestArgsortOpBF16(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = "uint16"
