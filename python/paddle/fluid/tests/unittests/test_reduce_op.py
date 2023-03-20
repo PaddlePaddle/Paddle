@@ -235,6 +235,7 @@ class TestMaxOp(OpTest):
         self.op_type = "reduce_max"
         self.prim_op_type = "prim"
         self.python_api = paddle.max
+        self.public_python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-1]}
         self.outputs = {
@@ -274,6 +275,7 @@ class TestMaxOp_ZeroDim(OpTest):
         self.op_type = "reduce_max"
         self.prim_op_type = "prim"
         self.python_api = paddle.max
+        self.public_python_api = paddle.max
         self.enable_cinn = False
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.attrs = {'dim': []}
@@ -302,6 +304,7 @@ class TestMaxOp_FP32(OpTest):
         self.op_type = "reduce_max"
         self.prim_op_type = "prim"
         self.python_api = paddle.max
+        self.public_python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.attrs = {'dim': [-1], 'keep_dim': True}
         self.outputs = {
@@ -868,6 +871,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         self.op_type = "reduce_max"
         self.prim_op_type = "prim"
         self.python_api = paddle.max
+        self.public_python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-2, -1]}
         self.outputs = {
