@@ -2809,7 +2809,7 @@ class AdamaxOptimizer(Optimizer):
             with param.block.program._optimized_guard(
                 [param, grad]
             ), name_scope('adamx'):
-                beta1_pow_acc = self._get_accumulator(
+                beta1_pow_acc = self._get_accumulator_master(
                     self._beta1_pow_acc_str, param
                 )
                 if in_dygraph_mode():
