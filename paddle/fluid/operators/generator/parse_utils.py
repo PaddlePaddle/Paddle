@@ -16,7 +16,7 @@ import re
 from copy import copy
 from typing import Any, Dict, List, Tuple
 
-from tests import is_attr, is_input, is_output, is_vec
+from tests_utils import is_attr, is_input, is_output, is_vec
 from type_mapping import opmaker_attr_types_map
 
 

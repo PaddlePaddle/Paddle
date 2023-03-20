@@ -57,8 +57,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "clip_by_norm",
     "eig_grad",
     "eigh",
-    "ftt_c2r",
-    "ftt_r2c",
     "graph_sample_neighbors",
     "group_norm",
     "lamb",
