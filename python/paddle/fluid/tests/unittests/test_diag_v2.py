@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -42,11 +42,11 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
     def init_config(self):
         pass

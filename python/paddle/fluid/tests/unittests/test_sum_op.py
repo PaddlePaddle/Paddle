@@ -356,18 +356,16 @@ class TestSumBF16Op(OpTest):
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_grad(
-            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
-        )
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
 
 
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
+            input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
-            input1 = fluid.layers.fill_constant(
+            input1 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=3
             )
             expected_result = np.empty((2, 3))

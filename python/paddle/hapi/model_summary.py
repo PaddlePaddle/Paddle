@@ -312,8 +312,8 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 params += np.prod(v.shape)
 
                 try:
-                    if (getattr(getattr(layer, k), 'trainable')) and (
-                        not getattr(getattr(layer, k), 'stop_gradient')
+                    if (getattr(layer, k).trainable) and (
+                        not getattr(layer, k).stop_gradient
                     ):
                         summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
