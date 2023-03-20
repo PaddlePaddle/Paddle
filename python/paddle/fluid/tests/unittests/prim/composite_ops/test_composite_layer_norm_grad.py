@@ -412,7 +412,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float32"]
+        self.dtypes = ["float16", "float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
