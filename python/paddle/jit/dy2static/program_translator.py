@@ -22,12 +22,12 @@ import weakref
 from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import (
     _switch_declarative_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
+from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
