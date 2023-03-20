@@ -31,6 +31,7 @@ class TestExpandV2OpRank1(OpTest):
         self.prim_op_type = "prim"
         self.init_data()
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
@@ -83,6 +84,7 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
@@ -125,6 +127,7 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.init_data()
 
         self.inputs = {
@@ -153,6 +156,7 @@ class TestExpandV2OpInteger(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -170,6 +174,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -185,6 +190,7 @@ class TestExpandV2OpInt64_t(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
@@ -339,6 +345,7 @@ class TestExpandV2CompOpRank1(OpTest):
         self.prim_op_type = "comp"
         self.init_data()
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
@@ -391,6 +398,7 @@ class TestExpandV2CompOpInteger(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "comp"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -408,6 +416,7 @@ class TestExpandV2CompOpBoolean(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "comp"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -423,6 +432,7 @@ class TestExpandV2CompOpInt64_t(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "comp"
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
