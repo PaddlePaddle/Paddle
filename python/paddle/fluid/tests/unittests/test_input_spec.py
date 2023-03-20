@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
@@ -35,7 +34,9 @@ class TestInputSpec(unittest.TestCase):
         self.assertIsNone(tensor_spec.name)
 
     def test_from_tensor(self):
-        x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
+        x_bool = paddle.tensor.fill_constant(
+            shape=[1], dtype='bool', value=True
+        )
         bool_spec = InputSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
         self.assertEqual(list(bool_spec.shape), list(x_bool.shape))
