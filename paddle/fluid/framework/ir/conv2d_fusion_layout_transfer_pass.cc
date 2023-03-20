@@ -171,8 +171,9 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   };
 
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
+    auto op_desc = op_node->Op();
     return CutlassTeller::Instance()->Conv2dFusionCanSupport(
-               op_node, scope, Get<int>("gpu_device_id")) &&
+               op_desc, scope, Get<int>("gpu_device_id")) &&
            cutlass_enable;
   };
 

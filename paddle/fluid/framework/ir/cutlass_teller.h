@@ -28,10 +28,7 @@ class CutlassTeller {
 
   // Determine this NCHW conv2d_fusion can be computed by cutlass?
   // will not set or change any attribute in op_desc
-  bool Conv2dFusionCanSupport(ir::Node *conv2d_fusion_node,
-                              Scope *scope,
-                              int device_id) {
-    auto op_desc = conv2d_fusion_node->Op();
+  bool Conv2dFusionCanSupport(OpDesc *op_desc, Scope *scope, int device_id) {
     if (op_desc->Type() != "conv2d_fusion") return false;
     auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
