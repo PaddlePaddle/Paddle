@@ -97,6 +97,7 @@ def composite_batchnorm(
     batch_mean = zeros(run_mean.shape, run_mean.dtype)
     batch_var = zeros(run_var.shape, run_var.dtype)
     if not use_run_stat:
+
         batch_mean = mean(x, reduce_axes, keepdim=True)
         temp = mean(x * x, reduce_axes, keepdim=True)
         batch_var = temp - batch_mean * batch_mean

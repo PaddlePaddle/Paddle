@@ -1143,6 +1143,7 @@
   kernel :
     func : relu_grad
   backward: relu_double_grad
+  composite: relu_grad(out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : renorm_grad
