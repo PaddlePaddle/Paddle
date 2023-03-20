@@ -548,6 +548,7 @@ class GraphUtil:
 
         def _match_core(src_node, tgt_node):
             nonlocal not_matched
+
             # not support one input name or output name corresponding to multiple vars
             if not_matched:
                 return
