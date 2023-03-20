@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #endif

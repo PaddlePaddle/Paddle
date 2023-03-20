@@ -14,6 +14,9 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11060
+
 #include <cublasLt.h>
 
 #include "paddle/fluid/memory/memory.h"
@@ -928,3 +931,5 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
 
 }  // namespace fusion
 }  // namespace phi
+#endif
+#endif
