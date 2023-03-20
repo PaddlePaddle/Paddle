@@ -31,17 +31,11 @@ typedef enum {
   kGRUH1,
   kGRUHtPart1,
   kGRUHtPart2,
-  kHSum,  // horizontal max
-  kHMax,  // horizontal sum
   kLSTMCtHt,
   kLSTMC1H1,
   kLayerNorm,
   kMatMul,
-  kNCHW16CMulNC,
   kSeqPool,
-  kSoftmax,
-  kStrideASum,
-  kStrideScal,
   kVAdd,
   kVAddBias,
   kVAddRelu,
@@ -94,10 +88,6 @@ struct XYNTuple {
   typedef void (*func_type)(const T*, T*, int);
 };
 
-// x, returned value, n
-template <typename T>
-struct XRNTuple : public XYNTuple<T> {};
-
 // x, returned value, n, stride
 template <typename T>
 struct XRNSTuple {
@@ -121,8 +111,6 @@ DECLARE_KERNELTUPLE(XYZNTuple, VSub);
 DECLARE_KERNELTUPLE(AXYNTuple, VScal);
 DECLARE_KERNELTUPLE(AXYNTuple, VAddBias);
 
-DECLARE_KERNELTUPLE(AXYNSTuple, StrideScal);
-
 DECLARE_KERNELTUPLE(XYNTuple, VRelu);
 DECLARE_KERNELTUPLE(XYNTuple, VIdentity);
 DECLARE_KERNELTUPLE(XYNTuple, VSquare);
@@ -130,11 +118,6 @@ DECLARE_KERNELTUPLE(XYNTuple, VExp);
 DECLARE_KERNELTUPLE(XYNTuple, VSigmoid);
 DECLARE_KERNELTUPLE(XYNTuple, VTanh);
 DECLARE_KERNELTUPLE(XYNTuple, VCopy);
-
-DECLARE_KERNELTUPLE(XRNTuple, HMax);
-DECLARE_KERNELTUPLE(XRNTuple, HSum);
-
-DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -349,23 +332,6 @@ struct LayerNormTuple {
   typedef int attr_type;
   typedef void (*func_type)(
       T*, T*, T*, T*, const T*, const T*, int, const float, int);
-};
-
-template <typename T>
-struct SoftmaxTuple {
-  static constexpr KernelType kernel_type = kSoftmax;
-  typedef T data_type;
-  typedef int attr_type;
-  typedef void (*func_type)(const T*, T*, int, int, int);
-};
-
-// nChw16c = nChw16c .* NC
-template <typename T>
-struct NCHW16CMulNCTuple {
-  static constexpr KernelType kernel_type = kNCHW16CMulNC;
-  typedef T data_type;
-  typedef int attr_type;
-  typedef void (*func_type)(const T*, const T*, T*, int, int);
 };
 
 // Just for adding to kernel pool without template
