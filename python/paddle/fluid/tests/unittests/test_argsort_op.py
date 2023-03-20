@@ -523,6 +523,7 @@ class TestArgsortFP16OP(OpTest):
                     place,
                     ['X'],
                     'Out',
+                    max_relative_error=1e-3,
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
                 )
