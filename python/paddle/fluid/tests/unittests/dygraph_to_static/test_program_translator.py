@@ -358,5 +358,32 @@ class TestParameterRecorder(unittest.TestCase):
         out = net.forward(x)
 
 
+k = 0
+
+
+class GlobalNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        global k
+        x = paddle.nn.functional.dropout(x)
+        return k
+
+
+class TestGlobalAttribute(unittest.TestCase):
+    def test_global_attribute(self):
+        global k
+        net = paddle.jit.to_static(GlobalNet())
+        net.eval()
+        x1 = paddle.rand([int(100 * 1024 * 1024 / 4)])
+        x2 = paddle.rand([int(1024 * 1024 / 4)])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        assert net(x1) == 0, "Must be 0"
+        k = 1
+        assert net(x2) == 1, "Must be 1"
+
+
 if __name__ == '__main__':
     unittest.main()
