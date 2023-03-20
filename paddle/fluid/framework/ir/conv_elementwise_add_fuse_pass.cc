@@ -78,7 +78,7 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
 void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
   FusePassBase::Init(pattern_name, graph);
-
+auto *scope = param_scope();
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("x")
@@ -108,7 +108,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = elementwise_add_out->Name();
 
     std::string act_type = "identity";
-    framework::OpDesc new_op_desc(base_op_desc, nullptr);
+    framework::OpDesc new_op_desc(base_op_desc, conv_op->Op()->Block());
     new_op_desc.SetType("conv2d_fusion");
     new_op_desc.SetInput("Bias", {bias_name});
     new_op_desc.SetInput("ResidualData", {});
@@ -140,6 +140,21 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(conv_filter, new_conv_op);           // Filter
     IR_NODE_LINK_TO(elementwise_add_in_y, new_conv_op);  // Bias
     IR_NODE_LINK_TO(new_conv_op, elementwise_add_out);   // Output
+
+    auto *conv_filter_tensor = scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
+    std::vector<int64_t> out_shape;
+    for (int i = 0; i< conv_filter_tensor->dims().size(); i++) {
+      out_shape.push_back(conv_filter_tensor->dims()[i]);
+    }
+    if(0){
+      std::cout << "out_s" << std::endl;
+    auto *conv_filter_node = new_conv_op->Op()->Block()->FindVar(conv_filter->Name());
+    std::cout << "out_s" << std::endl;
+    std::cout << conv_filter_node << "conv_filter_node" << std::endl;
+    conv_filter_node->SetShape(out_shape);
+    conv_filter_node->SetPersistable(true);
+    conv_filter_node->Flush();
+    }
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});

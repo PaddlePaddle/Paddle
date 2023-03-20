@@ -166,14 +166,15 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                          std::vector<int64_t> variance_shape,
                          bool with_silu,
                          bool with_fp16,
-                         bool with_int8)
+                         bool with_int8, int name)
       : groups_(groups),
         eps_(eps),
         mean_shape_(mean_shape),
         variance_shape_(variance_shape),
         with_silu_(with_silu),
         with_fp16_(with_fp16),
-        with_int8_(with_int8) {
+        with_int8_(with_int8),
+        name_(name) {
     scale_.resize(scale_num);
     bias_.resize(bias_num);
     std::copy(scale, scale + scale_num, scale_.data());
@@ -190,6 +191,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &with_silu_);
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
     DeserializeValue(&serialData, &serialLength, &with_int8_);
+    DeserializeValue(&serialData, &serialLength, &name_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     auto* ptr = new GroupNormPluginDynamic(scale_.data(),
@@ -202,7 +204,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                                            variance_shape_,
                                            with_silu_,
                                            with_fp16_,
-                                           with_int8_);
+                                           with_int8_, name_);
     ptr->scale_gpu_ = scale_gpu_;
     ptr->bias_gpu_ = bias_gpu_;
     return ptr;
@@ -219,7 +221,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
            SerializedSize(eps_) + SerializedSize(groups_) +
            SerializedSize(mean_shape_) + SerializedSize(variance_shape_) +
            SerializedSize(with_silu_) + SerializedSize(with_fp16_) +
-           +SerializedSize(with_int8_);
+           +SerializedSize(with_int8_)  +SerializedSize(name_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, scale_);
@@ -231,6 +233,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_silu_);
     SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, with_int8_);
+    SerializeValue(&buffer, name_);
   }
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index,
@@ -291,6 +294,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   bool with_silu_;
   bool with_fp16_;
   bool with_int8_;
+  int name_;
 };
 class GroupNormPluginDynamicCreator : public TensorRTPluginCreator {
  public:

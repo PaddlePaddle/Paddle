@@ -134,6 +134,38 @@ void TensorRTEngine::Execute(int batch_size,
   } else {
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
   }
+
+  if(min_input_shape_.count("latent")) {
+
+  // if (1){
+  // FILE* f = fopen("/zhoukangkang/Paddle/A.txt", "a+");
+  // int num = 3 * 1536 * 1536;
+  // float *tmp = new float[num];
+  // cudaMemcpy(tmp,
+  //             buffers->data()[1],
+  //             num * sizeof(float),
+  //             cudaMemcpyDeviceToHost);
+  // float max_float = -1.f;
+  // float vs_float = 60000;
+  // int bad_num = 0;
+  // for(int i = 0; i < num; i += 1) {
+  //   if (std::abs(tmp[i]) > max_float) {
+  //     max_float = tmp[i];
+  //   }
+  //   if (std::abs(tmp[i]) > vs_float)
+  //   {
+  //     bad_num ++;
+  //   }
+  // }
+  // fprintf(f,"\t最大的数字是%f\n",max_float);
+  // fprintf(f,"\t大的数字占比%f\n",bad_num / (float)num);
+  // delete [] tmp;
+  // fclose(f);
+  // }
+
+
+  }
+
   SetRuntimeBatch(batch_size);
 }
 
@@ -157,10 +189,13 @@ void TensorRTEngine::FreezeNetwork() {
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
+  //infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kTF32);
+  
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
@@ -344,7 +379,7 @@ void TensorRTEngine::FreezeNetwork() {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
+  if (use_inspector_ || 1) {
     GetEngineInfo();
   }
 }
@@ -553,7 +588,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
+  if (use_inspector_ || 1) {
     GetEngineInfo();
   }
 }
@@ -829,8 +864,8 @@ void TensorRTEngine::GetEngineInfo() {
       infer_engine_->createEngineInspector());
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
-  LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kJSON);
+  std::cout << infer_inspector->getEngineInformation(
+      nvinfer1::LayerInformationFormat::kJSON) << std::endl;
   LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";

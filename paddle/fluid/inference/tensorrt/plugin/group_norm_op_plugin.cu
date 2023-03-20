@@ -119,6 +119,7 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams params) {
   }
 
   // The group that thread works on and the channel in the group (modulus).
+  // gi 指的是这个block内的第几个局部group的意思
   int32_t gi = threadIdx.x * 2 / params.cPerGroup;
   int32_t cj = threadIdx.x * 2 - params.cPerGroup * gi;
 
@@ -159,7 +160,7 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
-  grid.x = params.c / params.cPerBlock;
+  grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
   grid.y = divUp(params.hw, params.hwPerBlock);
   // The number of instances.
@@ -455,6 +456,13 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams params) {
     sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
   }
 
+  if (ni == 0 && ci ==0 && gi == 0 && blockIdx.y == 0) 
+  {
+    printf("%f\n", params.redBuffer[31]);
+    printf("%f\n", params.redBuffer[32 + 31]);
+  }
+
+
   // Load gamma/beta.
   float2 gammaF2, betaF2;
   if (ci < params.c) {
@@ -516,7 +524,7 @@ void groupNormNHWCScale(const GroupNormNHWCParams &params,
   dim3 grid;
 
   // The number of blocks to compute all the channels.
-  grid.x = params.c / params.cPerBlock;
+  grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
   grid.y = divUp(params.hw, params.hwPerBlock);
   // The number of instances.
@@ -827,6 +835,36 @@ int GroupNormPluginDynamic::enqueue(
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+
+
+  // if (name_ >= 22 && name_ <= 57){
+  // FILE* f = fopen("/zhoukangkang/Paddle/A.txt", "a+");
+  // int num = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+  // float *tmp = new float[num];
+  // cudaMemcpy(tmp,
+  //             inputs[0],
+  //             num * sizeof(float),
+  //             cudaMemcpyDeviceToHost);
+  // fprintf(f,"第 %d 个\n",name_);
+  // float max_float = -1.f;
+  // float vs_float = 60000;
+  // int bad_num = 0;
+  // for(int i = 0; i < num; i += 1) {
+  //   if (std::abs(tmp[i]) > max_float) {
+  //     max_float = tmp[i];
+  //   }
+  //   if (std::abs(tmp[i]) > vs_float)
+  //   {
+  //     bad_num ++;
+  //   }
+  // }
+  // fprintf(f,"\t最大的数字是%f\n",max_float);
+  // fprintf(f,"\t大的数字占比%f\n",bad_num / (float)num);
+  // delete [] tmp;
+  // fclose(f);
+  // }
+
+
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
@@ -843,7 +881,72 @@ int GroupNormPluginDynamic::enqueue(
                mean_d,
                variance_d,
                DataLayout::kNCHW);
+
+
+
+  // if (name_ >= 22 && name_ <= 57){
+  // FILE* f = fopen("/zhoukangkang/Paddle/A.txt", "a+");
+  // int num = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+  // float *tmp = new float[num];
+  // cudaMemcpy(tmp,
+  //             output,
+  //             num * sizeof(float),
+  //             cudaMemcpyDeviceToHost);
+  // fprintf(f,"第 %d 个\n",name_);
+  // float max_float = -1.f;
+  // float vs_float = 60000;
+  // int bad_num = 0;
+  // for(int i = 0; i < num; i += 1) {
+  //   if (std::abs(tmp[i]) > max_float) {
+  //     max_float = tmp[i];
+  //   }
+  //   if (std::abs(tmp[i]) > vs_float)
+  //   {
+  //     bad_num ++;
+  //   }
+  // }
+  // fprintf(f,"\t最大的数字是%f\n",max_float);
+  // fprintf(f,"\t大的数字占比%f\n",bad_num / (float)num);
+  // delete [] tmp;
+  // fclose(f);
+  // }
+
+
+
   } else if (input_type == nvinfer1::DataType::kHALF) {
+
+
+
+  // if (name_ >= 22 && name_ <= 57){
+  // FILE* f = fopen("/zhoukangkang/Paddle/A.txt", "a+");
+  // int num = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+  // half *tmp = new half[num];
+  // cudaMemcpy(tmp,
+  //             inputs[0],
+  //             num * sizeof(half),
+  //             cudaMemcpyDeviceToHost);
+  // fprintf(f,"第 %d 个\n",name_);
+  // float max_float = -1.23456f;
+  // float vs_float = 60000;
+  // int bad_num = 0;
+  // for(int i = 0; i < num; i += 1) {
+  //   if (std::abs((float)tmp[i]) > max_float) {
+  //     max_float = std::abs((float)tmp[i]);
+  //   }
+  //   if (std::abs((float)tmp[i]) > vs_float)
+  //   {
+  //     bad_num ++;
+  //   }
+  // }
+  // fprintf(f,"\t最大的数字是%f\n",max_float);
+  // fprintf(f,"\t大的数字占比%f\n",bad_num / (float)num);
+  // delete [] tmp;
+  // fclose(f);
+  // }
+
+
+
+
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
@@ -864,6 +967,7 @@ int GroupNormPluginDynamic::enqueue(
     } else if (input_desc[0].format == nvinfer1::PluginFormat::kHWC8) {
       int32_t cPerBlock = 320;
       int32_t maxBlocksPerHW = 1024;
+      // vae中是1024，512，256
       switch (input_desc[0].dims.d[1]) {
         case 960:
         case 1920:
@@ -871,7 +975,9 @@ int GroupNormPluginDynamic::enqueue(
           break;
         case 512:
         case 256:
+        //case 1024:
           cPerBlock = 256;
+          //cPerBlock = 128;
           break;
         case 128:
           cPerBlock = 128;
@@ -896,6 +1002,7 @@ int GroupNormPluginDynamic::enqueue(
       params_.groups = groups_;
       params_.hw = params_.h * params_.w;
       const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
+      printf("%d\n", blocksPerHW);
       params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
@@ -910,6 +1017,36 @@ int GroupNormPluginDynamic::enqueue(
                       stream);
       groupNormNHWCSum(params_, stream);
       groupNormNHWCScale(params_, stream);
+
+  // if (name_ >= 22 && name_ <= 57){
+  // FILE* f = fopen("/zhoukangkang/Paddle/A.txt", "a+");
+  // int num = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+  // half *tmp = new half[num];
+  // cudaMemcpy(tmp,
+  //             output,
+  //             num * sizeof(half),
+  //             cudaMemcpyDeviceToHost);
+  // fprintf(f,"第 %d 个\n",name_);
+  // float max_float = -1.f;
+  // float vs_float = 60000;
+  // int bad_num = 0;
+  // for(int i = 0; i < num; i += 1) {
+  //   if (std::abs((float)tmp[i]) > max_float) {
+  //     max_float = (float)tmp[i];
+  //   }
+  //   if (std::abs((float)tmp[i]) > vs_float)
+  //   {
+  //     bad_num ++;
+  //   }
+  // }
+  // fprintf(f,"\t最大的数字是%f\n",max_float);
+  // fprintf(f,"\t大的数字占比%f\n",bad_num / (float)num);
+  // delete [] tmp;
+  // fclose(f);
+  // }
+
+
+
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));

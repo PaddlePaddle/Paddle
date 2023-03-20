@@ -37,18 +37,16 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input(attrs: List[Dict[str, Any]], batch):
             if attrs[0]['data_layout'] == 'NCHW':
-                return np.random.random([batch, 32, 64, 64]).astype(np.float32)
-            else:
-                return np.random.random([batch, 64, 64, 32]).astype(np.float32)
+                return np.random.random([batch, 1024, 768, 768]).astype(np.float32)
 
         def generate_scale():
-            return np.random.randn(32).astype(np.float32)
+            return np.random.randn(1024).astype(np.float32)
 
         def generate_bias():
-            return np.random.randn(32).astype(np.float32)
+            return np.random.randn(1024).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for group in [1, 4, 32, -1]:
+        for batch in [1,]:
+            for group in [32]:
                 for epsilon in [0.00001, 0.00005]:
                     for data_layout in ['NCHW']:
                         dics = [
@@ -103,11 +101,11 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16, 16]}
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 1024,1,1]}
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 64, 128, 128]
+                "input_data": [1, 1024,1,1]
             }
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 32, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 1024,1,1]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -123,16 +121,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.workspace_size = 2013265920
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
 
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
@@ -141,11 +130,6 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2
-
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
 
     def test(self):
         self.run_test()

@@ -300,6 +300,30 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "conv2d op.";
           return false;
         }
+        const auto x_shape = filter_var_desc->GetShape();
+        std::cout << "哈哈" << x_shape[1] << std::endl;
+  return true;
+  
+        if(desc.Input("Filter")[0] == "conv2d_61.w_0")
+        {
+          return true;
+        }
+        if(desc.Input("Filter")[0] == "conv2d_62.w_0")
+        {
+        return true;
+        }
+        if(desc.Input("Filter")[0] == "conv2d_63.w_0")
+        {
+          return false;
+        }
+  return true;
+        if (x_shape[1] == 512 && x_shape[0] == 512) {
+         return true;
+        }
+
+        if (x_shape[1] < 1024 && x_shape[1] > 4) {
+         return false;
+        }
       }
     }
 
@@ -2100,6 +2124,14 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
+
+      auto outs = desc.Outputs();
+      for (auto iter : outs) {
+        for (auto var_name : iter.second) {
+          if(var_name == "reshape2_131.tmp_0") return true;
+        }
+      }
+
       if (!desc.HasAttr("shape")) {
         return false;
       }

@@ -70,6 +70,20 @@ class GroupNormOpConverter : public OpConverter {
     bool with_int8 = engine_->WithInt8();
     // when int8 is on, allow fall back to fp16
     if (with_int8) with_fp16 = true;
+    //with_fp16 = true;
+    // 1024的时候先让他跑fp32把！
+    // 512让他跑fp32吧！
+    // 256让他跑fp32吧！
+    std::string tmp = bias_name.substr(11,2);
+    int name_id = atoi(tmp.c_str());
+    // if ( bias_weights.get().count == 256 || bias_weights.get().count == 512) {
+    //   with_fp16 = false;
+    // }
+
+    if (name_id > 56) {
+      //with_fp16 = false;
+    }
+    
     if (engine_->with_dynamic_shape()) {
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
@@ -86,9 +100,18 @@ class GroupNormOpConverter : public OpConverter {
               variance_shape,
               with_silu,
               with_fp16,
-              with_int8);
+              with_int8, name_id);
+
+
+  auto* clamp_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Activation, *input_itensor, nvinfer1::ActivationType::kCLIP);
+  
+  clamp_layer->setAlpha(-60000.f);
+  clamp_layer->setBeta(60000.f);
+  auto clamp_out = clamp_layer->getOutput(0);
+
       nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
+          engine_->AddDynamicPlugin(&clamp_out, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];
       RreplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);

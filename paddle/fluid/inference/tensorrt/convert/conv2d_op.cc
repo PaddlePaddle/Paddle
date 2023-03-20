@@ -164,6 +164,13 @@ void ConvertConv2d(TensorRTEngine* engine,
   // set dilations
   fset_dilation(layer, nv_dilations);
 
+  
+  // auto* clamp_layer = TRT_ENGINE_ADD_LAYER(
+  //       engine, Activation, *layer->getOutput(0), nvinfer1::ActivationType::kCLIP);
+  
+  // clamp_layer->setAlpha(-50000.f);
+  // clamp_layer->setBeta(50000.f);
+
   auto output_name = op_desc.Output("Output").front();
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
@@ -172,6 +179,17 @@ void ConvertConv2d(TensorRTEngine* engine,
   if (test_mode) {
     engine->DeclareOutput(output_name);
   }
+
+  // layer->resetPrecision();
+  // layer->setPrecision(nvinfer1::DataType::kFLOAT);
+  // 让4,1024,512的卷积进入fp16，结果正确，但是显存没有下降！真怪事啊！
+
+  // if (n_input == 256) {
+  //   layer->resetPrecision();
+  //   layer->setPrecision(nvinfer1::DataType::kFLOAT);
+  // }
+
+
 }
 
 class Conv2dOpConverter : public OpConverter {
