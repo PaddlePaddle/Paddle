@@ -117,7 +117,7 @@ class TestSumOp1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
@@ -134,7 +134,7 @@ class TestSumOp2(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': -1, 'reverse': True}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {
@@ -155,7 +155,7 @@ class TestSumOp3(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 1}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
@@ -172,7 +172,7 @@ class TestSumOp4(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 0}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
@@ -181,7 +181,7 @@ class TestSumOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp5(OpTest):
@@ -189,7 +189,7 @@ class TestSumOp5(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.inputs = {'X': np.random.random((5, 20)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
@@ -197,21 +197,24 @@ class TestSumOp5(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp6(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.cumsum
         self.attrs = {'axis': -1, 'flatten': True}
         self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum()}
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp7(OpTest):
@@ -219,7 +222,7 @@ class TestSumOp7(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.inputs = {'X': np.random.random((100)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
@@ -227,7 +230,7 @@ class TestSumOp7(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCumsumFP16(unittest.TestCase):
@@ -260,7 +263,7 @@ class TestSumOpExclusive1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
@@ -286,7 +289,7 @@ class TestSumOpExclusive2(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
@@ -312,7 +315,7 @@ class TestSumOpExclusive3(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
@@ -338,7 +341,7 @@ class TestSumOpExclusive4(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
@@ -364,7 +367,7 @@ class TestSumOpExclusive5(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 40)).astype("float64")
         self.inputs = {'X': a}
@@ -391,13 +394,13 @@ class TestSumOpExclusiveFP16(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.attrs = {'axis': 2, "exclusive": True, "dtype": "float16"}
-        a = np.random.random((4, 5, 20)).astype("float64")
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float16")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((4, 5, 1), dtype=np.float64),
+                    np.zeros((4, 5, 1), dtype=np.float16),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
@@ -416,7 +419,7 @@ class TestSumOpReverseExclusive(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
         a = np.random.random((4, 5, 6)).astype("float64")
         self.inputs = {'X': a}
@@ -440,13 +443,16 @@ class TestSumOpReverseExclusive(OpTest):
 
 class BadInputTest(unittest.TestCase):
     def test_error(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
                 data = [1, 2, 4]
                 result = paddle.cumsum(data, axis=0)
 
-            self.assertRaises(TypeError, test_bad_x)
+            with self.assertRaises(TypeError):
+                test_bad_x()
+        paddle.disable_static()
 
 
 class TestTensorAxis(unittest.TestCase):
@@ -516,6 +522,7 @@ class TestTensorAxis(unittest.TestCase):
 
 class TestCumSumOpFp16(unittest.TestCase):
     def test_fp16(self):
+        paddle.enable_static()
         x_np = np.random.random((100, 100)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[100, 100], name='x', dtype='float16')
@@ -528,6 +535,7 @@ class TestCumSumOpFp16(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

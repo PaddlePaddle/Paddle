@@ -21,7 +21,6 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.jit.translated_layer import TranslatedLayer
 
 from . import logging_utils
@@ -47,7 +46,7 @@ class FunctionSpec:
             self._flat_input_spec = None
         else:
             self._input_spec = self._verify_input_spec(input_spec)
-            self._flat_input_spec = flatten(self._input_spec)
+            self._flat_input_spec = paddle.utils.flatten(self._input_spec)
 
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
@@ -171,7 +170,7 @@ class FunctionSpec:
             input_with_spec(tuple): input arguments by replacing argument with InputSpec.
             main_program(Program): main program for inserting feed layer.
         """
-        flat_input_spec = flatten(input_with_spec)
+        flat_input_spec = paddle.utils.flatten(input_with_spec)
 
         inputs = []
         block = main_program.global_block()
@@ -191,7 +190,7 @@ class FunctionSpec:
                 feed_layer = var_spec
             inputs.append(feed_layer)
 
-        return pack_sequence_as(input_with_spec, inputs)
+        return paddle.utils.pack_sequence_as(input_with_spec, inputs)
 
     def _verify_input_spec(self, input_spec):
         """
@@ -283,7 +282,7 @@ def get_buffers(layer_instance, include_sublayer=True):
 
 def _replace_value_with_input_spec(args):
     args_with_spec = []
-    for idx, input_var in enumerate(flatten(args)):
+    for idx, input_var in enumerate(paddle.utils.flatten(args)):
         if isinstance(input_var, np.ndarray):
             input_var = paddle.static.InputSpec.from_numpy(input_var)
             input_var.stop_gradient = True
@@ -299,7 +298,7 @@ def _replace_value_with_input_spec(args):
             input_var.stop_gradient = stop_gradient
 
         args_with_spec.append(input_var)
-    args_with_spec = pack_sequence_as(args, args_with_spec)
+    args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
     return args_with_spec
 
 
@@ -374,7 +373,14 @@ def convert_to_input_spec(inputs, input_spec):
             )
         real_spec.name = input_spec.name
         if spec_greater(input_spec, real_spec):
-            return input_spec
+            # change shape but keep the others (stop_gradient / dtype) .
+            real_spec.shape = input_spec.shape
+        else:
+            logging_utils.warn(
+                "input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} ".format(
+                    input_spec=input_spec, real_spec=real_spec
+                )
+            )
         return real_spec
     else:
         # NOTE(Aurelius84): Support non-Tensor type as input spec info
@@ -450,12 +456,12 @@ def _hash_spec_names(args_specs, kwargs_specs):
     """
     spec_names = [
         spec.name
-        for spec in flatten(args_specs)
+        for spec in paddle.utils.flatten(args_specs)
         if isinstance(spec, paddle.static.InputSpec)
     ]
     spec_names += [
         spec.name
-        for spec in flatten(kwargs_specs)
+        for spec in paddle.utils.flatten(kwargs_specs)
         if isinstance(spec, paddle.static.InputSpec)
     ]
     i, name_ids = 0, {}
@@ -481,8 +487,4 @@ def spec_greater(first, other):
                 return False
         return True
 
-    return (
-        other.stop_gradient == first.stop_gradient
-        and other.dtype == first.dtype
-        and _shape_greater(first.shape, other.shape)
-    )
+    return _shape_greater(first.shape, other.shape)
