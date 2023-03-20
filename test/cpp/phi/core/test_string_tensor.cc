@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/tests/core/allocator.h"
+#include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
 namespace tests {
