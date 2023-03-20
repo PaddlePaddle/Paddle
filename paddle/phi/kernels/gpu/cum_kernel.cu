@@ -275,7 +275,7 @@ static
                        bool reverse,
                        bool exclusive) {}
 
-template <typename T, typename Context, typename Op>
+template <typename T, typename Context, template <typename>, typename Op>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
