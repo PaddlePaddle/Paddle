@@ -341,7 +341,6 @@ class MPScale(PyLayer):
 
 
 class RowParallelLinear(paddle.nn.Layer):
-
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
 
