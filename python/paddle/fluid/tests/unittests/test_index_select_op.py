@@ -95,6 +95,9 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
 
 
 # no scatter op (the backward op of index_select/gather) for bf16
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "paddle is not compiled with cuda"
+)
 class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select

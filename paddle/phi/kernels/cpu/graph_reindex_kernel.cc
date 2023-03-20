@@ -42,6 +42,10 @@ void GraphReindexKernel(const Context& dev_ctx,
   std::unordered_map<T, T> node_map;
   std::vector<T> unique_nodes;
   int reindex_id = 0;
+  PADDLE_ENFORCE_NE(
+      0,
+      bs,
+      errors::InvalidArgument("The first of dims should not be equal to 0."));
   for (int i = 0; i < bs; i++) {
     T node = x_data[i];
     unique_nodes.emplace_back(node);

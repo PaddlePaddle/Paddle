@@ -126,8 +126,8 @@ class TestRandintAPI(unittest.TestCase):
                 low=-100, high=100, shape=(32, 32, 3), dtype='int64'
             )
             # shape is a tensorlist and dtype is 'float32'
-            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 32)
-            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 32)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 50)
             out4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32'
             )

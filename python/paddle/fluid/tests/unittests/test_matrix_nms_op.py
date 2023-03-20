@@ -270,7 +270,11 @@ class TestMatrixNMSOp(OpTest):
         )
 
         empty = len(det_outs) == 0
-        det_outs = np.array([], dtype=np.float32) if empty else det_outs
+        det_outs = (
+            np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
+            if empty
+            else det_outs
+        )
         index_outs = np.array([], dtype=np.float32) if empty else index_outs
         nmsed_outs = det_outs.astype('float32')
 

@@ -23,7 +23,8 @@ from .control_flow import *
 from . import math_op_patch
 from .math_op_patch import *
 from .learning_rate_scheduler import *
-from .collective import *
+from ..layer_helper import LayerHelper
+
 
 __all__ = []
 __all__ += nn.__all__
