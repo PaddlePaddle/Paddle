@@ -35,7 +35,7 @@ except ImportError:
 VOCAB_SIZE = 30522
 
 
-class Stack(object):
+class Stack:
     def __init__(self, axis=0, dtype=None):
         self._axis = axis
         self._dtype = dtype

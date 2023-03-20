@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import platform
 import unittest
 
 import paddle
@@ -95,78 +94,48 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.reset_env_flag()
         os.environ["FLAGS_prim_all"] = "True"
         self.flag = "cinn_prim_all"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=True)
-        else:
-            pass
+        _ = self.train(use_cinn=True)
 
     def test_prim_all(self):
         """prim forward + prim backward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_all"] = "True"
         self.flag = "prim_all"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=False)
-        else:
-            pass
+        _ = self.train(use_cinn=False)
 
     def test_cinn_prim_forward(self):
         """cinn + prim forward"""
-
         self.reset_env_flag()
-
         os.environ["FLAGS_prim_forward"] = "True"
         self.flag = "cinn_prim_forward"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=True)
-        else:
-            pass
+        _ = self.train(use_cinn=True)
 
     def test_prim_forward(self):
         """only prim forward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_forward"] = "True"
         self.flag = "prim_forward"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=False)
-        else:
-            pass
+        _ = self.train(use_cinn=False)
 
     def test_cinn_prim_backward(self):
         """cinn + prim_backward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_backward"] = "True"
         self.flag = "cinn_prim_backward"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=True)
-        else:
-            pass
+        _ = self.train(use_cinn=True)
 
     def test_prim_backward(self):
         """only prim backward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_backward"] = "True"
         self.flag = "prim_backward"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=False)
-        else:
-            pass
+        _ = self.train(use_cinn=False)
 
     def test_cinn(self):
         """only cinn"""
         self.reset_env_flag()
         self.flag = "cinn"
-        plat = platform.system()
-        if plat == "Linux":
-            _ = self.train(use_cinn=True)
-        else:
-            pass
+        _ = self.train(use_cinn=True)
 
 
 if __name__ == '__main__':

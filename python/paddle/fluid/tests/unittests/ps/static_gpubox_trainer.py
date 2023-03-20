@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import logging
 import os
@@ -52,7 +51,7 @@ def get_dataset(inputs, config):
     return dataset
 
 
-class Main(object):
+class Main:
     def __init__(self):
         self.metrics = {}
         self.input_data = None

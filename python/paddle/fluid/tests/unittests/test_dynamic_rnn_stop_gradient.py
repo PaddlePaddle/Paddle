@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -33,10 +32,10 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         np.random.rand(batch_size, beam_size, 32).astype("float32")
     )
     indices = fluid.data(shape=[None, beam_size], dtype="int64", name="indices")
-    step_idx = layers.fill_constant(
+    step_idx = paddle.tensor.fill_constant(
         shape=[1], dtype="int64", value=0, force_cpu=True
     )
-    max_len = layers.fill_constant(
+    max_len = paddle.tensor.fill_constant(
         shape=[1], dtype="int64", value=10, force_cpu=True
     )
     cond = paddle.less_than(x=step_idx, y=max_len)

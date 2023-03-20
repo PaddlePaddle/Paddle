@@ -18,7 +18,6 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
@@ -503,7 +502,7 @@ def interpolate(
 
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
-                        out_shape[i] = dim.numpy().item()
+                        out_shape[i] = dim.item()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -529,7 +528,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
+                        paddle.tensor.fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
                         new_size_tensor.append(temp_out)
@@ -1693,7 +1692,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy().tolist()
+            pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
@@ -1996,7 +1995,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
-    .. hint::
+    Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 
