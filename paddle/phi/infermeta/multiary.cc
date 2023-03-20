@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
-DECLARE_bool(fuse_bias_grad);
-
 namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(

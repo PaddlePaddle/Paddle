@@ -22,8 +22,6 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #endif
 
-DECLARE_bool(fuse_bias_grad);
-
 namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
@@ -41,8 +39,8 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
                                  DenseTensor *dbias_out) {
   constexpr bool kIsMultiPrecision = !std::is_same<T, MT>::value;
 
-  const bool fuse_bias_grad =
-      FLAGS_fuse_bias_grad && kIsMultiPrecision && dweight_out;
+  // const bool fuse_bias_grad = kIsMultiPrecision && dweight_out;
+  const bool fuse_bias_grad = false;
   if (dweight_out) {
     paddle::operators::ComputeFusedGemmEpilogueBackward<T, T, MT>(
         ctx,

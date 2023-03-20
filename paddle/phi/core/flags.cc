@@ -1222,7 +1222,3 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
 PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
                               "eager",
                               "Tensor operants mode");
-
-PADDLE_DEFINE_EXPORTED_bool(fuse_bias_grad,
-                            false,
-                            "Whether to fuse bias gradient.");
