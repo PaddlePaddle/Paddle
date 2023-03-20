@@ -109,7 +109,7 @@ __global__ void batch_transpose_kernel_fp16(
   int local_row_start = tid_in_block / blockN;
   int row_step = blockM;
   int local_col = tid_in_block % blockN;
-
+#pragma unroll
   for (int ri = local_row_start; ri < tileM; ri += row_step) {
     int g_row_i = g_row_0 + ri;
     int g_col_i = g_col_0 + local_col * AccessSize;
@@ -117,7 +117,8 @@ __global__ void batch_transpose_kernel_fp16(
     if (g_row_i < M && g_col_i < N) {
       half tmp[AccessSize];
       *reinterpret_cast<accessType*>(tmp) =
-          *reinterpret_cast<accessType*>(input + input_offset);
+          *reinterpret_cast<const accessType*>(input + input_offset);
+#pragma unroll
       for (int i = 0; i < AccessSize; i++) {
         aTile[ri][local_col * AccessSize + i] = tmp[i];
       }
@@ -125,7 +126,7 @@ __global__ void batch_transpose_kernel_fp16(
   }
 
   __syncthreads();
-
+#pragma unroll
   for (int i = 0; i < AccessSize * (tileM / blockM); i++) {
     int new_idx = (tid_in_block + i * blockM * blockN) % tileM;
     int new_idy = (tid_in_block + i * blockM * blockN) / tileM;
@@ -219,8 +220,8 @@ void BatchTransposeFp16(
 template <typename T>
 void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
   if (std::is_same<T, phi::dtype::float16>::value) {
-    BatchTransposeFp16(reinterpret_cast<half*> output,
-                       reinterpret_cast<half*> input,
+    BatchTransposeFp16(reinterpret_cast<half*>(output),
+                       reinterpret_cast<const half*>(input),
                        batch,
                        m,
                        n);
