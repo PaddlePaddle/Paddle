@@ -32,6 +32,7 @@ class TestTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
@@ -123,6 +124,7 @@ class TestCase10(TestTransposeOp):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
@@ -145,6 +147,7 @@ class TestCase_ZeroDim(TestTransposeOp):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
@@ -167,6 +170,7 @@ class TestAutoTuneTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
@@ -203,6 +207,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.initTestCase()
         self.dtype = np.uint16
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
         self.enable_cinn = False
         x = np.random.random(self.shape).astype("float32")
@@ -245,6 +250,7 @@ class TestTransposeBF16Op(OpTest):
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
 
         self.inputs = {'X': convert_float_to_uint16(x)}

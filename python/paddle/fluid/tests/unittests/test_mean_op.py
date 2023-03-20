@@ -150,6 +150,7 @@ class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
         self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
@@ -204,6 +205,7 @@ class TestReduceMeanBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
         self.prim_op_type = "comp"
         self.dtype = np.uint16
         self.shape = [2, 3, 4, 5]
@@ -244,6 +246,7 @@ class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
         self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
