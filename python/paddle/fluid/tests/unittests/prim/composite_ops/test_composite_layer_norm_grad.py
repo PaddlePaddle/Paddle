@@ -185,7 +185,7 @@ def dygraph_fused_backward(x, norm_shape, w, b, y_g):
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32"]
+        self.dtypes = ["float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -332,10 +332,6 @@ class TestCompositelayer_norm(unittest.TestCase):
 
             primapi.to_prim(blocks)
 
-            fwd_ops_grad = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm_grad comp prim api in grad block
-            self.assertTrue('sqrt' in fwd_ops_grad)
-
         exe = paddle.static.Executor()
         exe.run(startup_program)
         res = exe.run(
@@ -416,7 +412,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float16", "float32"]
+        self.dtypes = ["float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]

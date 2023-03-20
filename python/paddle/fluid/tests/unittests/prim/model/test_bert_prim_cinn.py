@@ -117,7 +117,7 @@ class TestBert(unittest.TestCase):
 
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=2e-1)
+        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-1)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
@@ -130,10 +130,11 @@ class TestBert(unittest.TestCase):
         not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
     )
     def test_prim_cinn(self):
+        core._add_skip_comp_ops("layer_norm")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-        np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=2e-1)
+        np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
 
 
 if __name__ == '__main__':
