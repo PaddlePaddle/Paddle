@@ -500,7 +500,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestArgsortOpFp16(OpTest):
+class TestArgsortFP16OP(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = "float16"
@@ -508,12 +508,14 @@ class TestArgsortOpFp16(OpTest):
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
 
     def test_check_output(self):
+        paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(place)
 
     def test_check_grad(self):
+        paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -521,12 +523,12 @@ class TestArgsortOpFp16(OpTest):
                     place,
                     ['X'],
                     'Out',
-                    max_relative_error=0.01,
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
                 )
 
     def test_fp16(self):
+        paddle.enable_static()
         x_np = np.random.random((2, 8)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
@@ -539,7 +541,7 @@ class TestArgsortOpFp16(OpTest):
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
-class TestArgsortOpBF16(OpTest):
+class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = "uint16"
@@ -547,12 +549,14 @@ class TestArgsortOpBF16(OpTest):
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
 
     def test_check_output(self):
+        paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(place)
 
     def test_check_grad(self):
+        paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -560,12 +564,12 @@ class TestArgsortOpBF16(OpTest):
                     place,
                     ['X'],
                     'Out',
-                    max_relative_error=0.01,
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
                 )
 
     def test_check_grad_ingore_order(self):
+        paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -573,11 +577,9 @@ class TestArgsortOpBF16(OpTest):
                     place,
                     ['X'],
                     'Out',
-                    max_relative_error=0.01,
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
                     no_grad_set=set(),
-                    grad_check_mode=2,
                 )
 
 
