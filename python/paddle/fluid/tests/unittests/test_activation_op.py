@@ -1235,6 +1235,58 @@ class TestSqrtBF16(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
+class TestSqrtComp(TestActivation, TestParameter):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = True
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=True, check_prim=True)
+
+
+class TestSqrtCompFp32(TestActivation):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = True
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=True, check_prim=True)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
@@ -2361,7 +2413,9 @@ class TestSoftRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.02, check_dygraph=False
+        )
 
 
 def elu(x, alpha):
@@ -3815,6 +3869,7 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)

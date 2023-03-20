@@ -108,25 +108,28 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
+      "layernorm_shift_partition_fuse_pass",          //
+      "merge_layernorm_fuse_pass",                    //
+#if !defined _WIN32
+      "split_layernorm_to_math_ops_pass",  //
+#endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "layernorm_shift_partition_fuse_pass",  //
-      "merge_layernorm_fuse_pass",            //
-      "preln_residual_bias_fuse_pass",        //
-      "preln_layernorm_x_fuse_pass",          //
-      "reverse_roll_fuse_pass",               //
-      "conv_bn_fuse_pass",                    //
-      "unsqueeze2_eltwise_fuse_pass",         //
-      "trt_squeeze2_matmul_fuse_pass",        //
-      "trt_flatten2_matmul_fuse_pass",        //
-      "trt_map_matmul_v2_to_mul_pass",        //
-      "trt_map_matmul_v2_to_matmul_pass",     //
-      "trt_map_matmul_to_mul_pass",           //
-      "fc_fuse_pass",                         //
-      "conv_elementwise_add_fuse_pass",       //
+      "preln_residual_bias_fuse_pass",     //
+      "preln_layernorm_x_fuse_pass",       //
+      "reverse_roll_fuse_pass",            //
+      "conv_bn_fuse_pass",                 //
+      "unsqueeze2_eltwise_fuse_pass",      //
+      "trt_squeeze2_matmul_fuse_pass",     //
+      "trt_flatten2_matmul_fuse_pass",     //
+      "trt_map_matmul_v2_to_mul_pass",     //
+      "trt_map_matmul_v2_to_matmul_pass",  //
+      "trt_map_matmul_to_mul_pass",        //
+      "fc_fuse_pass",                      //
+      "conv_elementwise_add_fuse_pass",    //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trans_layernorm_fuse_pass",             //
