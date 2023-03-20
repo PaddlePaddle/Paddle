@@ -26,6 +26,7 @@ from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
+from .creation import fill_constant  # noqa: F401
 from .creation import ones  # noqa: F401
 from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
@@ -39,6 +40,7 @@ from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
+from .creation import polar  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -529,6 +531,7 @@ tensor_method_func = [  # noqa
     'bucketize',
     'sgn',
     'frexp',
+    'polar',
     'sigmoid',
     'sigmoid_',
 ]

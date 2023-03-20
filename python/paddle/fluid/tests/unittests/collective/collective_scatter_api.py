@@ -16,7 +16,6 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -32,7 +31,7 @@ class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
                 shape=[10, 1000],
                 dtype='float32',
             )
-            toutdata = layers.fill_constant(
+            toutdata = paddle.tensor.fill_constant(
                 shape=[5, 1000], dtype='float32', value=1.0
             )
             tensor_list = None

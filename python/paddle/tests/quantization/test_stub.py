@@ -28,7 +28,7 @@ quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
 
 class Model(paddle.nn.Layer):
     def __init__(self, num_classes=10):
-        super(Model, self).__init__()
+        super().__init__()
         self.quant_in = Stub()
         self.conv = Conv2D(3, 6, 3, stride=1, padding=1)
         self.quant = Stub(quanter)

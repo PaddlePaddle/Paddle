@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/cache.h"
@@ -53,7 +52,7 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
         memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
     int64_t reserved =
         memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = paddle::platform::GpuAvailableMemToAlloc();
+    int64_t availble = phi::backends::gpu::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)
             << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
