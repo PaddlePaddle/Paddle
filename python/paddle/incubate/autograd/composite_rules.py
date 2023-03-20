@@ -119,16 +119,19 @@ def composite_batchnorm(
     if is_amp:
         y = cast(y, "float16")
 
+    # As the same with op kernel, indeed return inverse std
+    inv_std = 1.0 / sqrt(batch_var + epsilon)
+
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = assign(reshape(batch_var, run_var.shape))
+    inv_std_ = assign(reshape(inv_std, run_var.shape))
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
 
-    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+    return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
@@ -396,6 +399,15 @@ def hard_swish_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('index_select')
+def index_select_composite(x, index, axis):
+    """define composite rule of op index_select."""
+    if axis < 0:
+        axis = len(x.shape) + axis
+    res = gather(x, index, axis=axis)
+    return res
+
+
 @REGISTER_COMPOSITE('sigmoid')
 def sigmoid_composite(x):
     """
@@ -425,6 +437,17 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """arg place is not used, add it here to keep same as python api."""
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('sqrt')
+def sqrt_composite(x):
+    """
+    define composite rule of op sqrt
+    res = pow(x, 0.5)
+    """
+    y = full(x.shape, 0.5, x.dtype)
+    res = pow(x, y)
+    return res
 
 
 @REGISTER_COMPOSITE('pow')

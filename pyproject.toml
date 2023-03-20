@@ -36,6 +36,7 @@ select = [
     "UP001",
     "UP003",
     "UP007",
+    "UP010",
     "UP011",
     "UP013",
     "UP014",
@@ -54,6 +55,10 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
+
+    # Bugbear
+    "B009",
+    "B010",
 ]
 unfixable = [
     "NPY001"

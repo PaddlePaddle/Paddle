@@ -576,7 +576,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
-        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func = module.__i_m_p_l__
         callable_func.__name__ = func_name
     elif hasattr(module, func_name):
         callable_func = getattr(module, func_name)
@@ -1120,11 +1120,11 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _reset_name_scope(self, node):
         # always reset the node as empty namescope.
-        setattr(node, "pd_scope", NameScope())
+        node.pd_scope = NameScope()
 
     def _get_name_scope(self, node):
         if not hasattr(node, "pd_scope"):
-            setattr(node, "pd_scope", NameScope())
+            node.pd_scope = NameScope()
         return node.pd_scope
 
     def _current_name_scope(self):
@@ -1224,11 +1224,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             )
 
         def pre_func():
-            setattr(
-                node,
-                "before_created",
-                self._nearest_function_scope().existed_vars(),
-            )
+            node.before_created = self._nearest_function_scope().existed_vars()
 
         self._visit_scope_node(node, pre_func, post_func)
 
