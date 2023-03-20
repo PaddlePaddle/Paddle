@@ -22,7 +22,6 @@ from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
     delete_last_underline,
-    find_first_selected_rows_param,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -66,7 +65,6 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
-env.filters["find_first_selected_rows_param"] = find_first_selected_rows_param
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
