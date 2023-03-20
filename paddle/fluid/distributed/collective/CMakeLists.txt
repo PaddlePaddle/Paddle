@@ -61,5 +61,7 @@ if(WITH_CUSTOM_DEVICE)
          place
          enforce
          collective_helper
-         device_context)
+         device_context
+         comm_static_check
+         dense_tensor)
 endif()

@@ -23,9 +23,6 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memory.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -98,12 +95,12 @@ void TriangularSolveKernel(const Context& dev_ctx,
         cpu_ptrs.size() * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         tmp_gpu_ptrs_data->ptr(),
-                         paddle::platform::CPUPlace(),
-                         static_cast<void*>(cpu_ptrs.data()),
-                         cpu_ptrs.size() * sizeof(T*),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_gpu_ptrs_data->ptr(),
+                       phi::CPUPlace(),
+                       static_cast<void*>(cpu_ptrs.data()),
+                       cpu_ptrs.size() * sizeof(T*),
+                       dev_ctx.stream());
 
     const T** gpu_a_ptrs =
         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr());

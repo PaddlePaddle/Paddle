@@ -18,7 +18,6 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
@@ -529,7 +528,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
+                        paddle.tensor.fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
                         new_size_tensor.append(temp_out)
@@ -982,7 +981,7 @@ def dropout(
     dropout probability.
 
     Args:
-        x (Tensor): The input tensor. The data type is float32 or float64.
+        x (Tensor): The input tensor. The data type is float16, float32 or float64.
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
@@ -1201,7 +1200,9 @@ def dropout(
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
-            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+            )
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
@@ -1269,7 +1270,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
-                     The data type is float32 or float64.
+                     The data type is float16, float32 or float64.
         p (float, optional): Probability of setting units to zero. Default: 0.5.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
         data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW` .
@@ -1384,7 +1385,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
 
     Args:
-        x (Tensor): The input tensor. The data type is float32 or float64.
+        x (Tensor): The input tensor. The data type is float16, float32 or float64.
         p (float | int): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1416,7 +1417,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:
@@ -1728,7 +1729,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         data_format(str, optional): An string from: "NHWC", "NCHW". Specify the data format of
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
-            to set this property.
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, padded with 0 according to pad and data type is same as input.
@@ -1737,12 +1738,11 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
-
-            x_shape = (1, 1, 2, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x_shape = paddle.to_tensor([1, 1, 2, 3])
+            x = paddle.arange(paddle.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.zeropad2d(x, [1, 2, 1, 1])
+            print(y)
             # [[[[0. 0. 0. 0. 0. 0.]
             #    [0. 1. 2. 3. 0. 0.]
             #    [0. 4. 5. 6. 0. 0.]
@@ -1922,7 +1922,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         label(Tensor): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float16" "float32" and "float64".
         prior_dist(Tensor, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -1964,7 +1964,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
+        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
     )
 
     helper = LayerHelper("label_smooth", **locals())
@@ -1995,7 +1995,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
-    .. hint::
+    Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 

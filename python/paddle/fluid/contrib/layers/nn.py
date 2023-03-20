@@ -22,7 +22,6 @@ import inspect
 import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,

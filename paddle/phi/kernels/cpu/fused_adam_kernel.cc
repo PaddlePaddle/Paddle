@@ -158,4 +158,10 @@ void FusedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {}
+    fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
+}

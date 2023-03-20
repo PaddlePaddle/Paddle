@@ -42,6 +42,29 @@ class TestUnbind(unittest.TestCase):
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
 
+    def test_unbind_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([2, 3]).astype("float16")
+
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float16")
+                y = paddle.unbind(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0], input[0, :])
+                assert np.array_equal(res[1], input[1, :])
+
     def test_unbind_dygraph(self):
         with fluid.dygraph.guard():
             np_x = np.random.random([2, 3]).astype("float32")

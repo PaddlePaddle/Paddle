@@ -31,6 +31,10 @@ namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
 Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
+}  // namespace experimental
+
+// TODO(chenweihang): Remove this namespace using-directives later
+using namespace experimental;  // NOLINT
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
@@ -207,5 +211,4 @@ Tensor Tensor::to_dense() const {
   return experimental::sparse::to_dense(*this);
 }
 
-}  // namespace experimental
 }  // namespace paddle

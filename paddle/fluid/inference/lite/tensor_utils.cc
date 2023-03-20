@@ -40,8 +40,8 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
     dst->emplace_back(v);
   }
 }
-template void SetLoD<framework::LoD, paddle::lite::LoD>(
-    framework::LoD* dst, const paddle::lite::LoD& src);
+template void SetLoD<framework::LoD, paddle::lite_api::lod_t>(
+    framework::LoD* dst, const paddle::lite_api::lod_t& src);
 
 platform::Place GetNativePlace(const TargetType& type, int id = 0) {
   switch (type) {
@@ -197,7 +197,7 @@ void InitDstTensor(paddle::lite_api::Tensor* dst, const phi::DenseTensor& src) {
       GetLiteTargetType(src.place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src.lod());
   dst->SetLoD(lite_lod);
 }
@@ -259,7 +259,7 @@ void TensorDataShare(paddle::lite_api::Tensor* dst, phi::DenseTensor* src) {
       src->data(), src->memory_size(), GetLiteTargetType(src->place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src->dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src->lod());
   dst->SetLoD(lite_lod);
 }

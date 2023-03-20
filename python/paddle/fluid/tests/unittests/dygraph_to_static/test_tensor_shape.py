@@ -109,11 +109,11 @@ def dyfunc_with_if_1(x):
         # `res.shape[0]` is transformed into
         #   `paddle.jit.dy2static.convert_var_shape(res)[0]`
         if res.shape[0] > 1:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=2, shape=x.shape, dtype="int32"
             )
         else:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=3, shape=x.shape, dtype="int32"
             )
     return res
@@ -125,14 +125,14 @@ def dyfunc_with_if_2(x):
     if len(x.shape) < 1:
         res = x
     else:
-        res = fluid.layers.fill_constant(value=8, shape=x.shape, dtype="int32")
+        res = paddle.tensor.fill_constant(value=8, shape=x.shape, dtype="int32")
 
     return res
 
 
 def dyfunc_with_for_1(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     for i in range(x.shape[0]):
         res += 1
@@ -142,7 +142,7 @@ def dyfunc_with_for_1(x):
 def dyfunc_with_for_2(x):
     x = fluid.dygraph.to_variable(x)
     x_shape_0 = x.shape[0]
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
 
     # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     for i in range(x_shape_0):
@@ -152,7 +152,7 @@ def dyfunc_with_for_2(x):
 
 def dyfunc_with_for_3(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `len(x.shape)` is not transformed.
     for i in range(len(x.shape)):
         res += 1
@@ -162,7 +162,7 @@ def dyfunc_with_for_3(x):
 
 def dyfunc_with_while_1(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     i = 1
     while i < x.shape[0]:
@@ -174,7 +174,7 @@ def dyfunc_with_while_1(x):
 def dyfunc_with_while_2(x):
     x = fluid.dygraph.to_variable(x)
     x_shape_0 = x.shape[0]
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
     # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     while i < x_shape_0:
@@ -186,7 +186,7 @@ def dyfunc_with_while_2(x):
 def dyfunc_with_while_3(x):
     x = fluid.dygraph.to_variable(x)
     x_shape = x.shape
-    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
 
     # `len(x.shape)` is not transformed.
@@ -601,7 +601,7 @@ def dyfunc_with_static_convert_var_shape(x):
     else:
         # Test for correctly to find `batch_size__static_convert_var_shape_suffix_0` in
         # deeply nested scope.
-        res = fluid.layers.fill_constant(
+        res = paddle.tensor.fill_constant(
             value=8, shape=[batch_size], dtype="int32"
         )
 

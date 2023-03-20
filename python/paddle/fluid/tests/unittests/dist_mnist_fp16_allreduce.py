@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from dist_mnist import cnn_model
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
+import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers import (
     FP16AllReduceOptimizer as FP16AllReduce,
@@ -30,7 +31,7 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = paddle.static.data(
             name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
@@ -55,7 +56,14 @@ class TestDistMnist2x2(TestDistRunnerBase):
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9
         )
+
         opt = FP16AllReduce(opt)
+
+        if not single_device:
+            fleet.init()
+            _insert_comm_op(opt, avg_cost)
+        else:
+            opt.minimize(avg_cost)
 
         # Reader
         train_reader = paddle.batch(
@@ -64,7 +72,6 @@ class TestDistMnist2x2(TestDistRunnerBase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-        opt.minimize(avg_cost)
         return (
             inference_program,
             avg_cost,

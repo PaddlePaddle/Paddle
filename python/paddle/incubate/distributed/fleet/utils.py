@@ -22,6 +22,7 @@ from google.protobuf import text_format
 
 import paddle
 import paddle.fluid as fluid
+import paddle.framework.io_utils as io_utils
 from paddle.fluid import core, debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
@@ -92,7 +93,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
     pruned_vars = [
         (v.name, v)
         for v in pruned_prog.list_vars()
-        if fluid.io.is_persistable(v)
+        if io_utils.is_persistable(v)
     ]
     pruned_vars = OrderedDict(pruned_vars)
     pruned_vars_name = [name for name in pruned_vars]
@@ -451,7 +452,7 @@ def check_saved_vars_try_dump(
         os.path.join(dump_dir, dump_prog_fn), is_text_dump_program
     )
     saved_params = [
-        v for v in dump_prog.list_vars() if fluid.io.is_persistable(v)
+        v for v in dump_prog.list_vars() if io_utils.is_persistable(v)
     ]
     logger.info(
         "persistable vars in dump program: {}".format(
@@ -477,7 +478,7 @@ def parse_program(program, output_dir):
     # persistable vars
     output = {}
     persistable_vars = [
-        v for v in program.list_vars() if fluid.io.is_persistable(v)
+        v for v in program.list_vars() if io_utils.is_persistable(v)
     ]
     output["persistable_vars"] = [
         {

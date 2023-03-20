@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -47,16 +47,28 @@ class TestCrossOp(OpTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestCrossOpCase1(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
         self.dtype = np.float32
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossFP16Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.float16
 
     def init_output(self):
         z_list = []

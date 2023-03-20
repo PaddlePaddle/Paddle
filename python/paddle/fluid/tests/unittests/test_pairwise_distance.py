@@ -286,6 +286,15 @@ class TestPairwiseDistance(unittest.TestCase):
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
 
+    def test_pairwise_distance_fp16(self):
+        shape = [100, 100]
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        x_np = np.random.random(shape).astype('float16')
+        y_np = np.random.random(shape).astype('float16')
+        static_ret = test_static(place, x_np, y_np)
+
 
 if __name__ == "__main__":
     unittest.main()

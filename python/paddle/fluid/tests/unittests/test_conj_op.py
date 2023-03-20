@@ -20,8 +20,8 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
+from eager_op_test import OpTest
 from numpy.random import random as rand
-from op_test import OpTest
 
 import paddle.fluid.dygraph as dg
 import paddle.static as static
@@ -56,7 +56,7 @@ class TestConjOp(OpTest):
         self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -64,7 +64,6 @@ class TestConjOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_in],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
@@ -131,6 +130,21 @@ class TestComplexConjOp(unittest.TestCase):
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
                     np.testing.assert_array_equal(result, target)
+
+
+class Testfp16ConjOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (
+            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+        ).astype('float16')
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[12, 14], dtype='float16')
+            out = paddle.conj(x)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":

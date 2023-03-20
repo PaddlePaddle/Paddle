@@ -16,8 +16,8 @@ __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.utils import convert_to_list
 from paddle.nn.functional.conv import _update_padding_nd
+from paddle.utils import convert_to_list
 
 from ...binary import add
 

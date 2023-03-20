@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -83,6 +83,30 @@ class TestShapeWithSelectedRows(unittest.TestCase):
     def test_check_output(self):
         for place in self.get_places():
             self.check_with_place(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
+    "core is not compiled with CUDA or place do not support bfloat16",
+)
+class TestShapeOpBf16(OpTest):
+    def setUp(self):
+        self.op_type = "shape"
+        self.dtype = 'bfloat16'
+        self.python_api = paddle.shape
+        self.config()
+        self.shape = [2, 3]
+        input = np.zeros(self.shape)
+        input = convert_float_to_uint16(input.astype('float32'))
+        self.inputs = {'Input': input}
+        self.outputs = {'Out': np.array(self.shape)}
+
+    def config(self):
+        self.shape = [2, 3]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 if __name__ == '__main__':

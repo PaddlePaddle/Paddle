@@ -335,12 +335,6 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 16605440 6836917
 fi
 
-UNNECESSARY_FUTURE_IMPORT=`echo "$ALL_ADDED_LINES" | grep -E '\+\s*from __future__ import .+(nested_scopes|generators|division|absolute_import|with_statement|print_function|unicode_literals|generator_stop)' || true`
-if [ "${UNNECESSARY_FUTURE_IMPORT}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="This feature is already mandatory in the Python3.7+, no need to import it from __future__.\nPlease modify the code below. If anything is unclear, please read the Python __future__ module docs [ https://docs.python.org/3/library/__future__.html ]. If it is a mismatch, please request luotao1 (Recommend) or jzhang533 review and approve.\nThe code that do not meet the specification are as follows:\n${UNNECESSARY_FUTURE_IMPORT}\n"
-    check_approval 1 luotao1 jzhang533
-fi
-
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
@@ -463,7 +457,7 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, qili93, QingshuChen) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
-        check_approval 1 26615455 6836917 43953930 16605440
+        check_approval 1 26615455 6836917 43953930 16605440 2002279
     fi
 fi
 
