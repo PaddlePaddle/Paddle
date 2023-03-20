@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
-    in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
 
@@ -49,6 +48,17 @@ from white_list import (
     op_accuracy_white_list,
     op_threshold_white_list,
 )
+
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+
+@signature_safe_contextmanager
+def paddle_static_guard():
+    try:
+        paddle.enable_static()
+        yield
+    finally:
+        paddle.disable_static()
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -66,37 +76,39 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    paddle.enable_static()
-    for i, expect_dtype in enumerate(expect_dtypes):
-        with paddle.static.program_guard(paddle.static.Program()):
-            input_t = []
-            for index, spec in enumerate(in_specs):
-                if len(spec) == 1:
-                    shape = spec[0]
-                    dtype = expect_dtype if target_index == index else 'float32'
-                elif len(spec) == 2:
-                    shape, dtype = spec
-                else:
-                    raise ValueError(
-                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                            index
+    with paddle_static_guard():
+        for i, expect_dtype in enumerate(expect_dtypes):
+            with paddle.static.program_guard(paddle.static.Program()):
+                input_t = []
+                for index, spec in enumerate(in_specs):
+                    if len(spec) == 1:
+                        shape = spec[0]
+                        dtype = (
+                            expect_dtype if target_index == index else 'float32'
+                        )
+                    elif len(spec) == 2:
+                        shape, dtype = spec
+                    else:
+                        raise ValueError(
+                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
+                                index
+                            )
+                        )
+                    input_t.append(
+                        paddle.static.data(
+                            name='data_%s' % index, shape=shape, dtype=dtype
                         )
                     )
-                input_t.append(
-                    paddle.static.data(
-                        name='data_%s' % index, shape=shape, dtype=dtype
-                    )
-                )
 
-            out = api_fn(*input_t, **configs)
-            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+                out = api_fn(*input_t, **configs)
+                out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
 
-            if out_dtype != expect_dtype:
-                raise ValueError(
-                    "Expected out.dtype is {}, but got {} from {}.".format(
-                        expect_dtype, out_dtype, api_fn.__name__
+                if out_dtype != expect_dtype:
+                    raise ValueError(
+                        "Expected out.dtype is {}, but got {} from {}.".format(
+                            expect_dtype, out_dtype, api_fn.__name__
+                        )
                     )
-                )
 
 
 def _set_use_system_allocator(value=None):
@@ -437,7 +449,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -457,7 +469,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "float16"
+                and self.mkldnn_data_type == "float16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -723,11 +735,9 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
-
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if hasattr(v, "retain_grads"):
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
@@ -887,6 +897,8 @@ class OpTest(unittest.TestCase):
             )
             if not kernel_sig:
                 return None
+            if not hasattr(self, "python_api"):
+                print(kernel_sig)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
@@ -901,7 +913,14 @@ class OpTest(unittest.TestCase):
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
-    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+    def _calc_dygraph_output(
+        self,
+        place,
+        parallel=False,
+        no_check_set=None,
+        egr_inps=None,
+        egr_oups=None,
+    ):
         self.__class__.op_type = (
             self.op_type
         )  # for ci check, please not delete it for now
@@ -911,12 +930,20 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
             # prepare input variable
-            inputs = self.append_input_output_for_dygraph(
-                op_proto, self.inputs, True, False, block
+            inputs = (
+                egr_inps
+                if egr_inps
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.inputs, True, False, block
+                )
             )
             # prepare output variable
-            outputs = self.append_input_output_for_dygraph(
-                op_proto, self.outputs, False, False, block
+            outputs = (
+                egr_oups
+                if egr_oups
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.outputs, False, False, block
+                )
             )
 
             # prepare attributes
@@ -1686,7 +1713,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1701,14 +1728,18 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
 
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -2048,7 +2079,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
             if only_check_prim:
                 return
@@ -2158,7 +2189,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2168,10 +2199,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,
@@ -2256,33 +2292,40 @@ class OpTest(unittest.TestCase):
                 dygraph_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
-            # if outputs is None, kernel sig is empty or other error is happens.
-            if not check_dygraph or dygraph_outputs is None:
-                block.append_op(
-                    type=self.op_type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs_outputs if hasattr(self, "attrs") else None,
-                )
-            else:
-                outputs = dygraph_outputs
+                if dygraph_outputs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    dygraph_outputs = self._calc_dygraph_output(
+                        place, egr_inps=inputs, egr_oups=outputs
+                    )
+
+            outputs = dygraph_outputs
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(
                     outputs, output_names[0]
                 )
-                cast_outputs = block.create_var(
-                    dtype="float32", shape=cast_inputs[0].shape
-                )
-                cast_op = block.append_op(
-                    inputs={"X": cast_inputs},
-                    outputs={"Out": cast_outputs},
-                    type="cast",
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.BF16,
-                        "out_dtype": core.VarDesc.VarType.FP32,
-                    },
-                )
+                if isinstance(cast_inputs, paddle.Tensor):
+                    cast_outputs = paddle.cast(
+                        cast_inputs, core.VarDesc.VarType.FP32
+                    )
+                elif isinstance(cast_inputs, list):
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(cast_input, paddle.Tensor):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input, core.VarDesc.VarType.FP32
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
+                else:
+                    raise TypeError(
+                        "Unsupported test data type %s." % type(cast_inputs)
+                    )
                 outputs = {output_names[0]: cast_outputs}
 
             outputs_valid = {}
@@ -2293,61 +2336,16 @@ class OpTest(unittest.TestCase):
 
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
                     for outputs_valid_key in outputs_valid:
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[outputs_valid_key]},
-                            outputs={"Out": [loss]},
-                            attrs=None,
-                        )
+                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:
-                        cur_avg_loss = block.create_var(
-                            dtype=self.dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False,
-                        )
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[cur_loss]},
-                            outputs={"Out": [cur_avg_loss]},
-                            attrs=None,
-                        )
+                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
                         avg_sum.append(cur_avg_loss)
-                    loss_sum = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='sum',
-                        inputs={"X": avg_sum},
-                        outputs={"Out": loss_sum},
-                        attrs=None,
-                    )
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='scale',
-                        inputs={"X": loss_sum},
-                        outputs={"Out": loss},
-                        attrs={'scale': 1.0 / float(len(avg_sum))},
+                    loss_sum = paddle.add_n(avg_sum)
+                    loss = paddle.scale(
+                        loss_sum, scale=1.0 / float(len(avg_sum))
                     )
                 loss.backward()
 
@@ -2367,24 +2365,12 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del inputs[no_grad_val]
 
-                if in_dygraph_mode():
-                    core.eager.run_backward(
-                        paddle.utils.flatten(outputs),
-                        grad_outputs,
-                        False,
-                    )
-                    grad_inputs = []
-                    for inputs_list in inputs.values():
-                        for inp in inputs_list:
-                            grad_inputs.append(inp.grad.numpy())
-                    return grad_inputs
-                else:
-                    grad_inputs = paddle.grad(
-                        outputs=paddle.utils.flatten(outputs),
-                        inputs=paddle.utils.flatten(inputs),
-                        grad_outputs=grad_outputs,
-                    )
-                    return [grad.numpy() for grad in grad_inputs]
+                grad_inputs = paddle.grad(
+                    outputs=paddle.utils.flatten(outputs),
+                    inputs=paddle.utils.flatten(inputs),
+                    grad_outputs=grad_outputs,
+                )
+                return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

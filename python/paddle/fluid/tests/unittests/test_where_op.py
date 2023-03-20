@@ -139,6 +139,7 @@ class TestWhereAPI(unittest.TestCase):
                     y.stop_gradient = y_stop_gradient
                     y.desc.set_need_check_feed(False)
                     result = paddle.where(cond, x, y)
+                    result.stop_gradient = False
                     append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
                         if use_cuda and (

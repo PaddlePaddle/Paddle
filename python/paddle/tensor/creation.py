@@ -1734,7 +1734,7 @@ def empty(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dytpe is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1787,7 +1787,16 @@ def empty(shape, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'empty',
         )
         check_type(shape, 'shape', (Variable, list, tuple), 'empty')
@@ -2371,3 +2380,41 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             attrs={'row': row, 'col': col, 'offset': offset, 'dtype': dtype},
         )
     return out
+
+
+def polar(abs, angle, name=None):
+    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+
+    Args:
+        abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
+        angle (Tensor): The anglee component. The data type should be the same as ``abs``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
+
+    Note:
+        ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
+            angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
+            out = paddle.polar(abs, angle)
+            print(out)
+            # Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+            #       [ (6.123233995736766e-17+1j) ,
+            #       (-1.4142135623730954-1.414213562373095j)])
+    """
+    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
+    check_variable_and_dtype(
+        angle, 'angle', ['float32', 'float64'], 'paddle.polar'
+    )
+
+    return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))

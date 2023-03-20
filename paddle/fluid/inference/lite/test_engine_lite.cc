@@ -72,17 +72,8 @@ void make_fake_model(std::string* model, std::string* param) {
   *block_->add_ops() = *fetch->Proto();
 
   framework::Scope scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace place;
-  phi::GPUContext ctx(place);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(place, ctx.stream())
-                       .get());
-  ctx.PartialInitWithAllocator();
-#else
   platform::CPUPlace place;
   phi::CPUContext ctx(place);
-#endif
   // Prepare variables.
   std::vector<std::string> repetitive_params{"x", "y"};
   CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}));
@@ -104,32 +95,33 @@ TEST(EngineManager, engine) {
   const std::string unique_key("engine_0");
   config.model_from_memory = true;
   config.valid_places = {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
-#endif
+#if defined(PADDLE_WITH_ARM)
+    paddle::lite_api::Place({TARGET(kARM), PRECISION(kFloat)}),
+#else
     paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+#endif
     paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
 
   LOG(INFO) << "Create EngineManager";
   // TODO(wilber): The ut is out of date, we need to a new lite subgraph test.
-  // inference::Singleton<inference::lite::EngineManager>::Global().Create(
-  //     unique_key, config);
-  // LOG(INFO) << "Create EngineManager done";
-  // ASSERT_EQ(
-  //     inference::Singleton<inference::lite::EngineManager>::Global().Empty(),
-  //     false);
-  // ASSERT_EQ(inference::Singleton<inference::lite::EngineManager>::Global().Has(
-  //               unique_key),
-  //           true);
-  // paddle::lite_api::PaddlePredictor* engine_0 =
-  //     inference::Singleton<inference::lite::EngineManager>::Global().Get(
-  //         unique_key);
-  // CHECK_NOTNULL(engine_0);
-  // inference::Singleton<inference::lite::EngineManager>::Global().DeleteAll();
-  // CHECK(inference::Singleton<inference::lite::EngineManager>::Global().Get(
-  //           unique_key) == nullptr)
-  //     << "the engine_0 should be nullptr";
+  inference::Singleton<inference::lite::EngineManager>::Global().Create(
+      unique_key, config);
+  LOG(INFO) << "Create EngineManager done";
+  ASSERT_EQ(
+      inference::Singleton<inference::lite::EngineManager>::Global().Empty(),
+      false);
+  ASSERT_EQ(inference::Singleton<inference::lite::EngineManager>::Global().Has(
+                unique_key),
+            true);
+  paddle::lite_api::PaddlePredictor* engine_0 =
+      inference::Singleton<inference::lite::EngineManager>::Global().Get(
+          unique_key);
+  CHECK_NOTNULL(engine_0);
+  inference::Singleton<inference::lite::EngineManager>::Global().DeleteAll();
+  CHECK(inference::Singleton<inference::lite::EngineManager>::Global().Get(
+            unique_key) == nullptr)
+      << "the engine_0 should be nullptr";
 }
 
 }  // namespace lite

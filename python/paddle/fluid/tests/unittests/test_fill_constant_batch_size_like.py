@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
@@ -67,7 +67,7 @@ class TestFillConstatnBatchSizeLike1(OpTest):
         self.force_cpu = False
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 if __name__ == "__main__":
