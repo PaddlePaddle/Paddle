@@ -369,11 +369,6 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
   out->set_dims(output_dim);
 }
 
-void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dtype(x.dtype());
-  out->set_dims(x.dims());
-}
-
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(out_dtype);
@@ -771,6 +766,16 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
                         alpha_dim.size()));
   out->set_dims(alpha_dim);
   out->set_dtype(alpha.dtype());
+}
+
+void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
+void DistBroadcastInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
 }
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
@@ -4876,11 +4881,6 @@ void UnStackInferMeta(const MetaTensor& x,
     outs[i]->set_dims(phi::make_ddim(vec));
     outs[i]->set_dtype(x.dtype());
   }
-}
-
-void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dtype(x.dtype());
-  out->set_dims(x.dims());
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,

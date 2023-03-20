@@ -55,8 +55,8 @@ def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
         )
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={'ring_id': ring_id, 'reduce_type': int(reduce_type)},
     )
 

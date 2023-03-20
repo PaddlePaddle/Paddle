@@ -48,8 +48,8 @@ def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
         raise ValueError("The type of 'reduce_type' for reduce should be int.")
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'ring_id': ring_id,
             'root_id': dst,

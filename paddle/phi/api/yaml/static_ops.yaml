@@ -6,6 +6,36 @@
   kernel :
     func : all
 
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
+
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+
+- op : broadcast
+  args : (Tensor x, int ring_id = 0, int root = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistBroadcastInferMeta
+    param: [x]
+  kernel :
+    func : broadcast
+    param: [x, root]
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
   output: Tensor
@@ -127,14 +157,14 @@
     force_backend : force_cpu
 
 - op : reduce
-  args : (Tensor X, int ring_id = 0, int root_id = 0, int reduce_type = 0)
-  output : Tensor(Out)
+  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(out)
   infer_meta :
     func : DistReduceInferMeta
-    param: [X]
+    param: [x]
   kernel :
     func : reduce
-    param: [X, root_id, reduce_type]
+    param: [x, root_id, reduce_type]
 
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})

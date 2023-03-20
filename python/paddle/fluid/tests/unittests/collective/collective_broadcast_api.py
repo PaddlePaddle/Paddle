@@ -45,8 +45,8 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
 
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'root': src,
             'ring_id': ring_id,
