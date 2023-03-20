@@ -140,7 +140,7 @@ def static(
     return out_hidden, out_pred, loss
 
 
-class DygraphLayer(fluid.dygraph.Layer):
+class DygraphLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.fc_1 = paddle.nn.Linear(

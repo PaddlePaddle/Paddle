@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 
 
-class LeNetDygraph(fluid.dygraph.Layer):
+class LeNetDygraph(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super().__init__()
         self.num_classes = num_classes

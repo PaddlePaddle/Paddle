@@ -55,7 +55,7 @@ def optimizer_setting(parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -86,7 +86,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
         super().__init__()
 
@@ -140,7 +140,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
