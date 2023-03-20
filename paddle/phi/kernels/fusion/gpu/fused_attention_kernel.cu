@@ -12,72 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-
+#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 namespace phi {
 namespace fusion {
 
-template <typename T>
-static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
-                      const int ring_id,
-                      const phi::GPUContext &dev_ctx) {
-  if (ring_id == -1) return;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
-
-  if (map->has(ring_id)) {
-    paddle::distributed::ProcessGroup *pg = map->get(ring_id);
-    auto pg_nccl = static_cast<paddle::distributed::ProcessGroupNCCL *>(pg);
-    paddle::distributed::AllreduceOptions opts;
-    opts.reduce_op = paddle::distributed::ReduceOp::SUM;
-    auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
-    task->Wait();
-  } else {
-    auto dtype = phi::ToNCCLDataType(tensor.dtype());
-    int64_t numel = tensor.numel();
-    const void *sendbuff = tensor.data<T>();
-    auto place = dev_ctx.GetPlace();
-    void *recvbuff =
-        dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
-    auto comm =
-        paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
-    auto stream = dev_ctx.stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
-  }
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
-      "parallel op."));
-#endif
-}
-
 template <typename T, typename Context>
 void FusedAttentionKernel(const Context &dev_ctx,
                           const DenseTensor &x,
-                          const DenseTensor &ln_scale,
-                          const DenseTensor &ln_bias,
+                          const paddle::optional<DenseTensor> &ln_scale,
+                          const paddle::optional<DenseTensor> &ln_bias,
                           const DenseTensor &qkv_weight,
-                          const DenseTensor &qkv_bias,
-                          const DenseTensor &cache_kv,
-                          const DenseTensor &src_mask,
+                          const paddle::optional<DenseTensor> &qkv_bias,
+                          const paddle::optional<DenseTensor> &cache_kv,
+                          const paddle::optional<DenseTensor> &src_mask,
                           const DenseTensor &out_linear_weight,
-                          const DenseTensor &out_linear_bias,
-                          const DenseTensor &ln_scale_2,
-                          const DenseTensor &ln_bias_2,
+                          const paddle::optional<DenseTensor> &out_linear_bias,
+                          const paddle::optional<DenseTensor> &ln_scale_2,
+                          const paddle::optional<DenseTensor> &ln_bias_2,
                           int num_heads,
                           bool transpose_qkv_wb,
                           bool pre_layer_norm,
@@ -137,17 +98,17 @@ void FusedAttentionKernel(const Context &dev_ctx,
   phi::DenseTensor *seed_1 = nullptr;
 
   auto *x_p = const_cast<phi::DenseTensor *>(&x);
-  auto *ln_scale_p = const_cast<phi::DenseTensor *>(&ln_scale);
-  auto *ln_bias_p = const_cast<phi::DenseTensor *>(&ln_bias);
+  auto *ln_scale_p = ln_scale.get_ptr();
+  auto *ln_bias_p = ln_bias.get_ptr();
   auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
-  auto *qkv_bias_p = const_cast<phi::DenseTensor *>(&qkv_bias);
-  auto *cache_kv_p = const_cast<phi::DenseTensor *>(&cache_kv);
-  auto *src_mask_p = const_cast<phi::DenseTensor *>(&src_mask);
+  auto *qkv_bias_p = qkv_bias.get_ptr();
+  auto *cache_kv_p = cache_kv.get_ptr();
+  auto *src_mask_p = src_mask.get_ptr();
   auto *out_linear_weight_p =
       const_cast<phi::DenseTensor *>(&out_linear_weight);
-  auto *out_linear_bias_p = const_cast<phi::DenseTensor *>(&out_linear_bias);
-  auto *ln_scale_2_p = const_cast<phi::DenseTensor *>(&ln_scale_2);
-  auto *ln_bias_2_p = const_cast<phi::DenseTensor *>(&ln_bias_2);
+  auto *out_linear_bias_p = out_linear_bias.get_ptr();
+  auto *ln_scale_2_p = ln_scale_2.get_ptr();
+  auto *ln_bias_2_p = ln_bias_2.get_ptr();
 
   // get data ptr for qkv part.
   const auto input_x_dims = x_p->dims();
@@ -341,7 +302,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   out_linear_compute.ComputeForward(
       out_linear_weight_p, fmha_out, nullptr, out_linear_out, nullptr);
   // tensor model parallel
-  AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
+  phi::fusion::AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
 
   const T *residual_ptr = add_residual ? x_data : nullptr;
   if (pre_layer_norm) {
