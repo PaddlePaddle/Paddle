@@ -2147,6 +2147,7 @@ static void LayerNormBackward(
             reinterpret_cast<uint64_t>(d_y) | reinterpret_cast<uint64_t>(x);
         int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
         bool is_vec_read = (vec_size == VPT) && (feature_size % VPT == 0);
+
         if (is_vec_read) {
           LayerNormBackwardPartGradGammaBeta<T, U, BDIMX, BDIMY1, VPT, true>
               <<<blocks2, threads2, 0, stream>>>(d_y,
