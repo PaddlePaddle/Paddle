@@ -16,8 +16,8 @@ from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 
 from ...fluid.dygraph.base import param_guard
+from ...fluid.dygraph.layers import Layer
 from ...fluid.framework import Parameter
-from .. import Layer
 
 __all__ = []
 
