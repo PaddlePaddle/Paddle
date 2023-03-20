@@ -236,7 +236,7 @@ class Optimizer:
                     None, name='global_step', dtype='int32'
                 )
 
-                tensor.fill_constant(
+                paddle.tensor.fill_constant(
                     [1], "int32", self._learning_rate.step_num, out=var_temp
                 )
 
@@ -7393,11 +7393,11 @@ class LookaheadOptimizer:
             paddle.increment(x=step, value=1.0)
 
             # lookahead
-            zero_var = layers.fill_constant(
+            zero_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0
             )
 
-            one_var = layers.fill_constant(
+            one_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.0
             )
 
@@ -7747,7 +7747,7 @@ class GradientMergeOptimizer:
 
             # clear gradient_merge_vars
             for param, new_grad in new_params_grads:
-                layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=new_grad.shape,
                     dtype=new_grad.dtype,
                     value=0.0,
