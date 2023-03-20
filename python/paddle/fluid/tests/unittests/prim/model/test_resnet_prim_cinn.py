@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import time
 import unittest
 
@@ -63,9 +62,7 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(
-        enable_prim and platform.system() == 'Linux'
-    )
+    fluid.core._set_prim_all_enabled(enable_prim)
 
     train_reader = paddle.batch(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),

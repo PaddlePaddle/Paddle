@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.dygraph import layers
@@ -455,8 +456,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -474,8 +473,6 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._train_amp_program
         elif _in_pure_fp16_guard():
@@ -485,8 +482,6 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -496,8 +491,6 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -511,8 +504,6 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -708,8 +699,6 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
-        from paddle.amp.auto_cast import _in_pure_fp16_guard
-
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name

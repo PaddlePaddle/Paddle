@@ -211,7 +211,7 @@ OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
   attrs_ = std::forward<std::vector<std::string>>(attrs);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::Inplace(
+OpMetaInfo& OpMetaInfo::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   inplace_map_ =
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
@@ -297,7 +297,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::Inplace(
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   const std::vector<std::string>& inputs =
       OpMetaInfoHelper::GetInputs(*info_ptr_);
@@ -320,7 +320,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Inplace(
                        "are inside `Outputs`",
                        name_));
   }
-  info_ptr_->Inplace(
+  info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));
   return *this;
 }
