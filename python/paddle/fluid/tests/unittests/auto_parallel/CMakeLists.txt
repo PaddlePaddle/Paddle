@@ -63,6 +63,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+
   py_test_modules(test_parallel_tuner MODULES test_parallel_tuner ENVS
                   ${dist_ENVS})
   set_tests_properties(test_parallel_tuner PROPERTIES TIMEOUT 120)

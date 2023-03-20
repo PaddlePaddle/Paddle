@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -79,6 +81,32 @@ __global__ void CEmbeddingGrad(T *table,
       auto real_idx = id - start_idx;
       paddle::platform::CudaAtomicAdd(&table[real_idx * columns + col],
                                       output[i]);
+    }
+  }
+}
+
+template <typename T, typename IndexT>
+__global__ void CEmbeddingGradSerial(T *table,
+                                     const T *output,
+                                     const IndexT *ids,
+                                     const int rows,
+                                     const int columns,
+                                     const int64_t N,
+                                     const int64_t start_idx,
+                                     const int64_t end_idx,
+                                     const int64_t limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
+    if (i == 0) {
+      for (int j = 0; j < limit; j++) {
+        size_t row = j / columns;
+        size_t col = j % columns;
+        auto id = ids[row];
+        if (id >= start_idx && id < end_idx) {
+          auto real_idx = id - start_idx;
+          paddle::platform::CudaAtomicAdd(&table[real_idx * columns + col],
+                                          output[i]);
+        }
+      }
     }
   }
 }
@@ -163,28 +191,56 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
-    if (index_type == framework::proto::VarType::INT32) {
-      CEmbeddingGrad<T, int32_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int32_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      CEmbeddingGrad<T, int64_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int64_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
+    if (FLAGS_cudnn_deterministic) {
+      VLOG(2) << "Run grad kernel of embedding with single thread.";
+      blocks = 1;
+      if (index_type == framework::proto::VarType::INT32) {
+        CEmbeddingGradSerial<T, int32_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int32_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        CEmbeddingGradSerial<T, int64_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int64_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+      }
+    } else {
+      if (index_type == framework::proto::VarType::INT32) {
+        CEmbeddingGrad<T, int32_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int32_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        CEmbeddingGrad<T, int64_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int64_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+      }
     }
   }
 };
