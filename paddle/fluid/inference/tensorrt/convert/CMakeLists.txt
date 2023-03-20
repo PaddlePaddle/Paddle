@@ -16,6 +16,7 @@ list(
   concat_op.cc
   dropout_op.cc
   group_norm_op.cc
+  pad3d_op.cc
   pad_op.cc
   split_op.cc
   square_op.cc
