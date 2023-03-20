@@ -31,7 +31,7 @@ void NamedAttribute::SetName(StrAttribute name) { name_ = name; }
 void NamedAttribute::SetValue(Attribute value) { value_ = value; }
 
 bool NamedAttribute::operator<(const NamedAttribute &right) const {
-  return name().compare(right.name()) < 0;
+  return name() < right.name();
 }
 
 bool NamedAttribute::operator==(const NamedAttribute &right) const {
@@ -43,20 +43,7 @@ bool NamedAttribute::operator!=(const NamedAttribute &right) const {
 }
 
 Attribute DictionaryAttribute::GetValue(const StrAttribute &name) {
-  size_t left = 0;
-  size_t right = storage()->size() - 1;
-  size_t mid = 0;
-  while (left <= right) {
-    mid = (left + right) / 2;
-    if (storage()->data()[mid].name().compare(name) < 0) {
-      left = mid + 1;
-    } else if (storage()->data()[mid].name().compare(name) > 0) {
-      right = mid - 1;
-    } else {
-      return storage()->data()[mid].value();
-    }
-  }
-  return nullptr;
+  return storage()->GetValue(name);
 }
 
 uint32_t DictionaryAttribute::size() const { return storage()->size(); }

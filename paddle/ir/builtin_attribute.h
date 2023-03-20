@@ -35,7 +35,9 @@ class StrAttribute : public ir::Attribute {
     return storage()->GetAsKey().compare(right.storage()->GetAsKey());
   }
 
-  bool operator<(const StrAttribute &right) const { return compare(right) < 0; }
+  bool operator<(const StrAttribute &right) const {
+    return storage() < right.storage();
+  }
 
   std::string data() const;
 
@@ -89,12 +91,8 @@ static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
 template <>
 struct hash<ir::NamedAttribute> {
   std::size_t operator()(const ir::NamedAttribute &obj) const {
-    std::size_t hash_value = 0;
-    hash_value =
-        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.name_));
-    hash_value =
-        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.value_));
-    return hash_value;
+    return hash_combine(std::hash<ir::Attribute>()(obj.name_),
+                        std::hash<ir::Attribute>()(obj.value_));
   }
 };
 }  // namespace std

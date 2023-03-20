@@ -29,16 +29,6 @@ DictionaryAttributeStorage::DictionaryAttributeStorage(const ParamKey &key) {
   }
 }
 
-DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
-    const {
-  ParamKey rtn;
-  for (size_t idx = 0; idx < size_; idx++) {
-    rtn.insert(std::pair<StrAttribute, Attribute>(data_[idx].name(),
-                                                  data_[idx].value()));
-  }
-  return rtn;
-}
-
 std::size_t DictionaryAttributeStorage::HashValue(const ParamKey &key) {
   std::size_t hash_value = key.size();
   for (auto iter = key.begin(); iter != key.end(); ++iter) {
@@ -60,6 +50,35 @@ bool DictionaryAttributeStorage::operator==(const ParamKey &key) const {
     idx++;
   }
   return true;
+}
+
+DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
+    const {
+  ParamKey rtn;
+  for (size_t idx = 0; idx < size_; idx++) {
+    rtn.insert(std::pair<StrAttribute, Attribute>(data_[idx].name(),
+                                                  data_[idx].value()));
+  }
+  return rtn;
+}
+
+Attribute DictionaryAttributeStorage::GetValue(const StrAttribute &name) {
+  if (size_ > 0) {
+    size_t left = 0;
+    size_t right = size_ - 1;
+    size_t mid = 0;
+    while (left <= right) {
+      mid = (left + right) / 2;
+      if (data_[mid].name() == name) {
+        return data_[mid].value();
+      } else if (data_[mid].name() < name) {
+        left = mid + 1;
+      } else {
+        right = mid - 1;
+      }
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace ir
