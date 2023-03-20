@@ -54,6 +54,8 @@ class StrAttribute : public ir::Attribute {
     return storage()->size_ < right.storage()->size_ ? -1 : 1;
   }
 
+  bool operator<(const StrAttribute &right) const { return compare(right) < 0; }
+
   std::string data() const;
 
   const uint32_t &size() const;
@@ -65,13 +67,6 @@ class DictionaryAttribute : public ir::Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DictionaryAttribute,
                                     DictionaryAttributeStorage);
-  static DictionaryAttribute get(ir::IrContext *ctx,
-                                 const std::vector<NamedAttribute> &attr) {
-    uint32_t size = attr.size();
-    NamedAttribute *data = const_cast<NamedAttribute *>(attr.data());
-    return ir::AttributeManager::template get<DictionaryAttribute>(
-        ctx, data, size);
-  }
 
   Attribute GetValue(const StrAttribute &name);
 

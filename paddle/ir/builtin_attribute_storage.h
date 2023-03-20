@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
 #include <type_traits>
 
 #include "paddle/ir/attribute.h"
@@ -75,52 +76,21 @@ struct StrAttributeStorage : public ir::AttributeStorage {
 /// \brief Define Parameteric AttributeStorage for DictionaryAttributeStorage.
 ///
 struct DictionaryAttributeStorage : public AttributeStorage {
-  using ParamKey = std::tuple<NamedAttribute *, uint32_t>;
+  using ParamKey = std::map<StrAttribute, Attribute>;
 
-  DictionaryAttributeStorage(NamedAttribute *data, uint32_t size)
-      : data_(data), size_(size) {
-    data_ = reinterpret_cast<NamedAttribute *>(
-        malloc(sizeof(NamedAttribute) * size));
-    memcpy(data_, data, sizeof(NamedAttribute) * size);
-    size_ = size;
-  }
+  explicit DictionaryAttributeStorage(const ParamKey &key);
 
   ~DictionaryAttributeStorage() { free(data_); }
 
   static DictionaryAttributeStorage *Construct(ParamKey key) {
-    auto value = std::get<0>(key);
-    uint32_t size = std::get<1>(key);
-    std::sort(value, value + size);
-    return new DictionaryAttributeStorage(std::get<0>(key), std::get<1>(key));
+    return new DictionaryAttributeStorage(key);
   }
 
-  static std::size_t HashValue(const ParamKey &key) {
-    auto value = std::get<0>(key);
-    uint32_t size = std::get<1>(key);
-    std::sort(value, value + size);
-    std::size_t hash_value = 0;
-    hash_value = hash_combine(hash_value, std::hash<uint32_t>()(size));
-    for (size_t i = 0; i < size; i++) {
-      hash_value =
-          hash_combine(hash_value, std::hash<NamedAttribute>()(value[i]));
-    }
-    return hash_value;
-  }
+  static std::size_t HashValue(const ParamKey &key);
 
-  bool operator==(const ParamKey &key) const {
-    uint32_t size = std::get<1>(key);
-    if (size_ != size) return false;
-    auto value = std::get<0>(key);
-    std::sort(value, value + size);
-    for (size_t i = 0; i < size_; i++) {
-      if (data_[i] != value[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool operator==(const ParamKey &key) const;
 
-  ParamKey GetAsKey() const { return ParamKey(data_, size_); }
+  ParamKey GetAsKey() const;
 
   NamedAttribute *data_;
 
