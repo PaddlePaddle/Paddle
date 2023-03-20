@@ -267,11 +267,16 @@ class TestChannelShuffleError(unittest.TestCase):
 
         self.assertRaises(ValueError, error_data_format_layer)
 
+
 class TestChannelShuffleFP16OP(OpTest):
     def setUp(self):
         self.__class__.op_type = "channel_shuffle"
         self.dtype = "float16"
-        self.place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.inputs = {'X': np.random.randn(2, 16, 32, 32).astype(self.dtype)}
         self.attrs = {'group': 2}
         self.outputs = {'Out': np.zeros((2, 16, 32, 32)).astype(self.dtype)}
@@ -279,26 +284,34 @@ class TestChannelShuffleFP16OP(OpTest):
     def check_output(self):
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = fluid.layers.data(name='X', shape=[2, 16, 32, 32], dtype=self.dtype)
+            x = fluid.layers.data(
+                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
+            )
             out = fluid.layers.channel_shuffle(x=x, group=2)
             exe = fluid.Executor(self.place)
             exe.run(fluid.default_startup_program())
 
             feed_dict = {'X': self.inputs['X']}
-            out_ref = np.transpose(self.inputs['X'].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2))
+            out_ref = np.transpose(
+                self.inputs['X'].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2)
+            )
             out_ref = out_ref.reshape((2, 16, 32, 32))
             outs = exe.run(program, feed=feed_dict, fetch_list=[out])
 
             self.assertTrue(np.allclose(outs[0], out_ref, atol=1e-3, rtol=1e-3))
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda() and core.is_float16_supported(self.place):
+        if core.is_compiled_with_cuda() and core.is_float16_supported(
+            self.place
+        ):
             self.check_output()
 
     def check_grad(self, inputs, outputs):
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = fluid.layers.data(name='X', shape=[2, 16, 32, 32], dtype=self.dtype)
+            x = fluid.layers.data(
+                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
+            )
             out = fluid.layers.channel_shuffle(x=x, group=2)
             loss = fluid.layers.reduce_mean(out)
             fluid.backward.append_backward(loss)
@@ -308,21 +321,30 @@ class TestChannelShuffleFP16OP(OpTest):
             feed_dict = {'X': inputs['X']}
             outs = exe.run(program, feed=feed_dict, fetch_list=[out, 'X@GRAD'])
             out_grad = np.zeros((2, 16, 32, 32)).astype(self.dtype)
-            out_grad_ref = np.transpose(outs[1].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2))
+            out_grad_ref = np.transpose(
+                outs[1].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2)
+            )
             out_grad_ref = out_grad_ref.reshape((2, 16, 32, 32))
-            self.assertTrue(np.allclose(out_grad, out_grad_ref, atol=1e-3, rtol=1e-3))
+            self.assertTrue(
+                np.allclose(out_grad, out_grad_ref, atol=1e-3, rtol=1e-3)
+            )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda() and core.is_float16_supported(self.place):
+        if core.is_compiled_with_cuda() and core.is_float16_supported(
+            self.place
+        ):
             self.check_grad(self.inputs, self.outputs)
 
     def check_grad_ignore_order(self, inputs, outputs):
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = fluid.layers.data(name='X', shape=[2, 16, 32, 32], dtype=self.dtype)
+            x = fluid.layers.data(
+                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
+            )
             out = fluid.layers.channel_shuffle(x=x, group=2)
             loss = fluid.layers.reduce_mean(out)
             fluid.backward.append_backward(loss)
+
 
 class TestChannelShuffleBF16OP(OpTest):
     def setUp(self):
@@ -332,7 +354,9 @@ class TestChannelShuffleBF16OP(OpTest):
         self.input_shape = (2, 4, 3, 3)
         self.groups = 2
 
-        self.inputs = {'X': np.random.randn(*self.input_shape).astype(self.dtype)}
+        self.inputs = {
+            'X': np.random.randn(*self.input_shape).astype(self.dtype)
+        }
         self.attrs = {'group': self.groups}
         self.outputs = {'Out': np.zeros_like(self.inputs['X'])}
 
@@ -366,6 +390,7 @@ class TestChannelShuffleBF16OP(OpTest):
                     user_defined_grad_outputs=[self.outputs['Out']],
                     no_grad_set=set(),
                 )
+
 
 if __name__ == '__main__':
     unittest.main()
