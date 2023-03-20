@@ -30,7 +30,7 @@ from paddle.fluid import Program, program_guard
 
 
 def cast_wrapper(x, out_dtype=None):
-    return paddle.tensor.cast(x, paddle.dtype(out_dtype))
+    return paddle.cast(x, paddle.dtype(out_dtype))
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -45,6 +45,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.op_type = 'cast'
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output()
@@ -65,6 +66,7 @@ class TestCastOpFp16ToFp32(OpTest):
         self.op_type = 'cast'
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -85,6 +87,7 @@ class TestCastOpFp32ToFp16(OpTest):
         self.op_type = 'cast'
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -105,6 +108,7 @@ class TestCastOpBf16ToFp32(OpTest):
         self.op_type = 'cast'
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
         self.enable_cinn = False
 
     def test_check_output(self):
@@ -126,6 +130,7 @@ class TestCastOpFp32ToBf16(OpTest):
         self.op_type = 'cast'
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
         self.enable_cinn = False
 
     def test_check_output(self):
