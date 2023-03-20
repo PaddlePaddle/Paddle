@@ -222,7 +222,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimNet(paddle.nn.Layer):
     def __init__(self, python_api):
-        super(PrimNet, self).__init__()
+        super().__init__()
         self.python_api = python_api
 
     def forward(self, args):

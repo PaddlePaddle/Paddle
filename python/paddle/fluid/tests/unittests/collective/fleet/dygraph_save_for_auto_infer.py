@@ -77,7 +77,7 @@ class MLP_pipe(PipelineLayer):
             ),
             LayerDesc(Linear, in_features=linear_size, out_features=10),
         ]
-        super(MLP_pipe, self).__init__(
+        super().__init__(
             desc,
             num_stages=2,
             loss_fn=paddle.nn.CrossEntropyLoss(),
@@ -93,7 +93,7 @@ class MLP_Hybrid(paddle.nn.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(MLP_Hybrid, self).__init__()
+        super().__init__()
         self.embedding = VocabParallelEmbedding(embedding_size, linear_size)
         self._linear1 = RowParallelLinear(
             linear_size, linear_size, has_bias=True, input_is_parallel=True
@@ -128,7 +128,7 @@ class MLP(paddle.nn.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(MLP, self).__init__()
+        super().__init__()
         self.embedding = paddle.nn.Embedding(embedding_size, linear_size)
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
