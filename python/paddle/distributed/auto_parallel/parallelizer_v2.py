@@ -220,27 +220,26 @@ class Parallelizer:
                 self._dist_context.serial_feed_vars["inputs"]
                 + self._dist_context.serial_feed_vars["labels"]
             )
-            if config["enable_bf16"]:
-                auto_parallel_bf16_pass = new_pass("auto_parallel_bf16", config)
-                auto_parallel_bf16_pass.apply(
+            self._logger.info(
+                "Applying AMP-{}-{} ...".format(
+                    config["dtype"], config['level']
+                ),
+            )
+            if config['level'] == "o1":
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
-                loss = auto_parallel_bf16_pass.get_loss()
-
-            elif config["use_pure_fp16"]:
+                loss = auto_parallel_amp_pass.get_loss()
+            elif config['level'] in ['o2', 'o3']:
                 config["base_opt"] = optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
                 loss = auto_parallel_fp16_pass.get_loss()
-
             else:
-                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-                auto_parallel_amp_pass.apply(
-                    [main_program], [startup_program], self._pass_context
-                )
-                loss = auto_parallel_amp_pass.get_loss()
+                raise ValueError("AMP level should be one of o1, o2, o3")
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'

@@ -1,23 +1,36 @@
-add_subdirectory(utils)
-
 if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -290,6 +303,10 @@ cc_library(
   context_pool
   SRCS context_pool.cc
   DEPS phi_backends phi_enforce place init phi_device_context)
+cc_library(
+  api_tensor_utils
+  SRCS tensor_utils.cc
+  DEPS phi_tensor_raw)
 
 cc_library(
   kernel_dispatch
@@ -323,8 +340,8 @@ cc_library(
        api_gen_utils
        phi_data_transform
        api_custom_impl
-       phi_profiler
-       from_blob)
+       api_tensor_utils
+       phi_profiler)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -391,10 +408,6 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
-cc_library(
-  from_blob
-  SRCS from_blob.cc
-  DEPS phi_tensor_raw)
 
 cc_library(
   phi_tensor_operants

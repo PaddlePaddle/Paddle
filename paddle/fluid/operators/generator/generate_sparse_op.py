@@ -33,7 +33,7 @@ from filters import (
 from generate_op import add_fluid_name, process_invoke_op
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
-from tests import (
+from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
