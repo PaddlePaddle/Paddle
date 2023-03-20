@@ -85,11 +85,7 @@ struct MaskFunctor {
 // 0 ~ kCount - 1 is dst, kCount ~ 2 * kCount - 1 is mask
 #pragma unroll
     for (int i = 0; i < kCount; i++) {
-      if (rand[i] < retain_prob_) {
-        dst[i] = static_cast<T>(1);
-      } else {
-        dst[i] = static_cast<T>(0);
-      }
+      dst[i] = rand[i] < retain_prob_ ? static_cast<T>(1) : static_cast<T>(0);
     }
   }
 };
@@ -269,11 +265,11 @@ __global__ void DropOutNdForwardKernel(
   }
   // Broadcast mask data and do elementwise operaiton with DstFunctor
   CUDA_KERNEL_LOOP(i, N) {
-#pragma unroll
     uint32_t offset = 0u;
     uint32_t idx = i;
     // Use (j < phi::DDim::kMaxRank) conditiion rather than
     // (j < broadcast_config.rank) for (#pragma unroll)
+#pragma unroll
     for (int j = 0; j < phi::DDim::kMaxRank; ++j) {
       if (j == broadcast_config.rank) break;
       auto fast_divmoder = broadcast_config.divmoders[j].Divmod(idx);
