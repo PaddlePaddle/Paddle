@@ -73,10 +73,6 @@ if(WITH_GPU)
     SRCS test_gpu_timer.cu
     DEPS gtest)
   nv_test(
-    test_WIP
-    SRCS test_WIP.cu
-    DEPS gtest phi phi_backends)
-  nv_test(
     test_auto_tune
     SRCS test_auto_tune.cu
     DEPS gtest)
