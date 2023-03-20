@@ -496,40 +496,6 @@ __global__ void LayerNormForward(
   }
 }
 
-template <typename T, typename U, int VPT>
-__inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
-                                                  const int thr_load_row_off,
-                                                  const int thr_load_col_off,
-                                                  const int i2_off,
-                                                  const int row_stride,
-                                                  U *warp_buf1,
-                                                  U *warp_buf2,
-                                                  const T *__restrict__ input,
-                                                  const T *__restrict__ dout,
-                                                  const int64_t i1_end,
-                                                  const int64_t n2,
-                                                  const U *__restrict__ mean,
-                                                  const U *__restrict__ var,
-                                                  const float epsilon) {
-  const int64_t i1 = i1_block + thr_load_row_off;
-  if (i1 >= i1_end) return;
-  U curr_mean = mean[i1];
-  U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
-#pragma unroll
-  for (int k = 0; k < VPT; ++k) {
-    const int i2 = i2_off + k;
-    const int64_t load_idx = i1 * n2 + i2;
-    const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
-    if (i2 < n2) {
-      U curr_input = static_cast<U>(input[load_idx]);
-      U curr_dout = static_cast<U>(dout[load_idx]);
-      warp_buf1[write_idx] += curr_dout;
-      warp_buf2[write_idx] +=
-          curr_dout * (curr_input - curr_mean) * curr_invvar;
-    }
-  }
-}
-
 #ifdef PADDLE_WITH_CUDA
 template <bool IsFusedDropoutResidualLn,
           bool NeedDDropoutSrcPtr,
@@ -1139,7 +1105,94 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 }
 #endif
 
-template <typename T, typename U, int BDIMX, int BDIMY, int VPTX>
+template <typename T, typename U, int BDIMX, int VPTX, bool IsVecRead>
+struct StridedInputsLoader {
+  __device__ __forceinline__ void operator()(const int64_t i1_block,
+                                             const int thr_load_row_off,
+                                             const int thr_load_col_off,
+                                             const int i2_off,
+                                             U *warp_buf1,
+                                             U *warp_buf2,
+                                             const T *__restrict__ input,
+                                             const T *__restrict__ dout,
+                                             const int64_t n1,
+                                             const int64_t n2,
+                                             const U *__restrict__ mean,
+                                             const U *__restrict__ var,
+                                             const float epsilon) {
+    const int64_t i1 = i1_block + thr_load_row_off;
+    if (i1 >= n1) return;
+    constexpr int RowStride = BDIMX + 1;
+    U curr_mean = mean[i1];
+    U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
+
+#pragma unroll
+    for (int k = 0; k < VPTX; ++k) {
+      const int i2 = i2_off + k;
+      const int64_t load_idx = i1 * n2 + i2;
+      const int write_idx = thr_load_row_off * RowStride + thr_load_col_off + k;
+      if (i2 < n2) {
+        U curr_input = static_cast<U>(input[load_idx]);
+        U curr_dout = static_cast<U>(dout[load_idx]);
+        warp_buf1[write_idx] += curr_dout;
+        warp_buf2[write_idx] +=
+            curr_dout * (curr_input - curr_mean) * curr_invvar;
+      }
+    }
+  }
+};
+
+template <typename T, typename U, int BDIMX, int VPTX>
+struct StridedInputsLoader<T, U, BDIMX, VPTX, true> {
+  __device__ __forceinline__ void operator()(const int64_t i1_block,
+                                             const int thr_load_row_off,
+                                             const int thr_load_col_off,
+                                             const int i2_off,
+                                             U *warp_buf1,
+                                             U *warp_buf2,
+                                             const T *__restrict__ input,
+                                             const T *__restrict__ dout,
+                                             const int64_t n1,
+                                             const int64_t n2,
+                                             const U *__restrict__ mean,
+                                             const U *__restrict__ var,
+                                             const float epsilon) {
+    const int64_t i1 = i1_block + thr_load_row_off;
+    if (i1 >= n1) return;
+
+    constexpr int RowStride = BDIMX + 1;
+    if (i2_off < n2) {
+      const int64_t load_idx = (i1 * n2 + i2_off) / VPTX;
+      using VecT = phi::AlignedVector<T, VPTX>;
+      const VecT *__restrict__ v_input =
+          reinterpret_cast<const VecT *__restrict__>(input);
+      const VecT *__restrict__ v_dout =
+          reinterpret_cast<const VecT *__restrict__>(dout);
+      VecT v_tmp_input = v_input[load_idx];
+      VecT v_tmp_dout = v_dout[load_idx];
+
+      U curr_mean = mean[i1];
+      U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
+#pragma unroll
+      for (int k = 0; k < VPTX; ++k) {
+        const int write_idx =
+            thr_load_row_off * RowStride + thr_load_col_off + k;
+        U curr_input = static_cast<U>(v_tmp_input[k]);
+        U curr_dout = static_cast<U>(v_tmp_dout[k]);
+        warp_buf1[write_idx] += curr_dout;
+        warp_buf2[write_idx] +=
+            curr_dout * (curr_input - curr_mean) * curr_invvar;
+      }
+    }
+  }
+};
+
+template <typename T,
+          typename U,
+          int BDIMX,
+          int BDIMY,
+          int VPTX,
+          bool IsVecRead>
 __global__ void LayerNormBackwardPartGradGammaBeta(const T *__restrict__ dout,
                                                    const T *__restrict__ input,
                                                    const int64_t n1,
@@ -1153,43 +1206,41 @@ __global__ void LayerNormBackwardPartGradGammaBeta(const T *__restrict__ dout,
   // BDIMY -> blockDim.y, template for compile time optimizations.
   constexpr int RowStride = BDIMX + 1;
   constexpr int BLOCK_SIZE = BDIMX * BDIMY;
-  constexpr int VPTX_MUL_BDIMY = VPTX * BDIMY;
-  constexpr int SharedSize = (BLOCK_SIZE > 2 * VPTX_MUL_BDIMY * RowStride)
+  constexpr int RowsPerBlk = VPTX * BDIMY;
+  constexpr int SharedSize = (BLOCK_SIZE > 2 * RowsPerBlk * RowStride)
                                  ? BLOCK_SIZE
-                                 : 2 * VPTX_MUL_BDIMY * RowStride;
+                                 : 2 * RowsPerBlk * RowStride;
+  __shared__ U buf[SharedSize];
+  U *warp_buf1 = reinterpret_cast<U *>(buf);
+  U *warp_buf2 = warp_buf1 + RowsPerBlk * RowStride;
+
+  for (int idx = threadIdx.y * BDIMX + threadIdx.x;
+       idx < 2 * RowsPerBlk * RowStride;
+       idx += BLOCK_SIZE) {
+    buf[idx] = U(0);
+  }
+  __syncthreads();
 
   const int thr_load_col_off = (threadIdx.x * VPTX) & (BDIMX - 1);
   const int thr_load_row_off =
       (threadIdx.x * VPTX) / BDIMX + threadIdx.y * BDIMY;
   const int i2_off = blockIdx.x * BDIMX + thr_load_col_off;
 
-  __shared__ U buf[SharedSize];
-  U *warp_buf1 = reinterpret_cast<U *>(buf);
-  U *warp_buf2 = warp_buf1 + VPTX_MUL_BDIMY * RowStride;
-
-  for (int idx = threadIdx.y * BDIMX + threadIdx.x;
-       idx < 2 * VPTX_MUL_BDIMY * RowStride;
-       idx += BLOCK_SIZE) {
-    buf[idx] = U(0);
-  }
-  __syncthreads();
-
-  for (int64_t i1_block = blockIdx.y * BDIMY * VPTX; i1_block < n1;
-       i1_block += VPTX_MUL_BDIMY * gridDim.y) {
-    cuLoadAddStridedInputs<T, U, VPTX>(i1_block,
-                                       thr_load_row_off,
-                                       thr_load_col_off,
-                                       i2_off,
-                                       RowStride,
-                                       warp_buf1,
-                                       warp_buf2,
-                                       input,
-                                       dout,
-                                       n1,
-                                       n2,
-                                       mean,
-                                       var,
-                                       epsilon);
+  for (int64_t i1_block = blockIdx.y * RowsPerBlk; i1_block < n1;
+       i1_block += RowsPerBlk * gridDim.y) {
+    StridedInputsLoader<T, U, BDIMX, VPTX, IsVecRead>()(i1_block,
+                                                        thr_load_row_off,
+                                                        thr_load_col_off,
+                                                        i2_off,
+                                                        warp_buf1,
+                                                        warp_buf2,
+                                                        input,
+                                                        dout,
+                                                        n1,
+                                                        n2,
+                                                        mean,
+                                                        var,
+                                                        epsilon);
   }
   __syncthreads();
 
@@ -2078,7 +2129,6 @@ static void LayerNormBackward(
 #endif
         using ScaleT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
         constexpr int BDIMX = 32;
-
         constexpr int VPT = 4;
         constexpr int BDIMY1 = 4;
         constexpr int PartSize = BDIMY1 * VPT;
@@ -2090,20 +2140,37 @@ static void LayerNormBackward(
             dev_ctx.GetPlace(),
             param_num * sizeof(U) * 2,  // for both gamma and beta
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-
         U *part_grad_gamma = reinterpret_cast<U *>(part_grad_param_ptr->ptr());
         U *part_grad_beta = reinterpret_cast<U *>(part_grad_gamma + param_num);
 
-        LayerNormBackwardPartGradGammaBeta<T, U, BDIMX, BDIMY1, VPT>
-            <<<blocks2, threads2, 0, stream>>>(d_y,
-                                               x,
-                                               batch_size,
-                                               feature_size,
-                                               mean,
-                                               var,
-                                               epsilon,
-                                               part_grad_gamma,
-                                               part_grad_beta);
+        uint64_t addr =
+            reinterpret_cast<uint64_t>(d_y) | reinterpret_cast<uint64_t>(x);
+        int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+        bool is_vec_read = (vec_size == VPT) && (feature_size % VPT == 0);
+
+        if (is_vec_read) {
+          LayerNormBackwardPartGradGammaBeta<T, U, BDIMX, BDIMY1, VPT, true>
+              <<<blocks2, threads2, 0, stream>>>(d_y,
+                                                 x,
+                                                 batch_size,
+                                                 feature_size,
+                                                 mean,
+                                                 var,
+                                                 epsilon,
+                                                 part_grad_gamma,
+                                                 part_grad_beta);
+        } else {
+          LayerNormBackwardPartGradGammaBeta<T, U, BDIMX, BDIMY1, VPT, false>
+              <<<blocks2, threads2, 0, stream>>>(d_y,
+                                                 x,
+                                                 batch_size,
+                                                 feature_size,
+                                                 mean,
+                                                 var,
+                                                 epsilon,
+                                                 part_grad_gamma,
+                                                 part_grad_beta);
+        }
 
         constexpr int BDIMY2 = 8;
         dim3 threads3(BDIMX, BDIMY2, 1);
@@ -2117,10 +2184,8 @@ static void LayerNormBackward(
                                                d_scale,
                                                d_bias);
 
-        uint64_t addr = reinterpret_cast<uint64_t>(d_y) |
-                        reinterpret_cast<uint64_t>(x) |
-                        reinterpret_cast<uint64_t>(d_x);
-        int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+        addr = addr | reinterpret_cast<uint64_t>(d_x);
+        vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
         int real_vec = VecSizeJudgeForeGradInput(feature_size, vec_size);
 
         if (feature_size <= 2048) {
