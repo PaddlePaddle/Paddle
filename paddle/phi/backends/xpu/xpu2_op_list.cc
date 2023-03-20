@@ -331,6 +331,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
+      {"fused_multi_transformer_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"unfold",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"unfold_grad",
