@@ -31,9 +31,10 @@ limitations under the License. */
 #endif
 
 DECLARE_bool(enable_exit_when_partial_worker);
-PADDLE_DEFINE_EXPORTED_bool(gpugraph_force_device_batch_num_equal,
-                            false,
-                            "enable force_device_batch_num_equal, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_force_device_batch_num_equal,
+    false,
+    "enable force_device_batch_num_equal, default false");
 namespace paddle {
 namespace framework {
 
@@ -51,22 +52,64 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   thread_barrier_ = desc.thread_barrier();
 
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
-    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+    std::string name = param_.stat_var_names(i);
+    stat_var_name_map_[name] = 1;
+    skip_vars_.push_back(name);
   }
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
   auto &block = program.Block(0);
   op_names_.clear();
-  for (auto &op_desc : block.AllOps()) {
-    std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
+  auto all_desc = block.AllOps();
+  for (auto &op_desc : all_desc) {
+    // skip feed fetch op
+    if (op_desc->Type() == "feed" || op_desc->Type() == "fetch") {
+      for (auto &o : op_desc->Inputs()) {
+        skip_vars_.insert(skip_vars_.end(), o.second.begin(), o.second.end());
+      }
+      for (auto &o : op_desc->Outputs()) {
+        skip_vars_.insert(skip_vars_.end(), o.second.begin(), o.second.end());
+      }
+    }
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op_desc->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (need_skip) {
+      continue;
+    }
     op_names_.push_back(op_desc->Type());
-    OperatorBase *local_op_ptr = local_op.release();
-    ops_.push_back(local_op_ptr);
-    continue;
+    ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
   operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
       program, 0, ops_);
+  // not need gc
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size < 0) {
+    return;
+  }
+  // skip dump fields
+  if (need_dump_field_ && dump_fields_ != nullptr) {
+    skip_vars_.insert(
+        skip_vars_.end(), dump_fields_->begin(), dump_fields_->end());
+  }
+  int fetch_var_num = fetch_config_.fetch_var_names_size();
+  if (fetch_var_num > 0) {
+    for (int i = 0; i < fetch_var_num; ++i) {
+      std::string name = fetch_config_.fetch_var_names(i);
+      skip_vars_.push_back(name);
+    }
+  }
+  unused_vars_ = GetUnusedVars(block, ops_, skip_vars_);
+  // debug
+  VLOG(1) << "total op count=" << all_desc.size()
+          << ", create op count=" << ops_.size()
+          << ", skip vars count=" << skip_vars_.size()
+          << ", unused vars op count=" << unused_vars_.size();
 }
 
 void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
@@ -150,12 +193,12 @@ bool HogwildWorker::CheckBatchNum(int flag) {
   } else if (flag < 0) {
     flag = 0;
   }
-//  g_barrier.wait();
+  //  g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
   auto comm =
       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-//  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-//  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+  //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   auto stream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
                                                               &stat_ptr[2],
@@ -183,12 +226,12 @@ bool HogwildWorker::GetPassEnd(int flag) {
   } else if (flag < 0) {
     flag = 0;
   }
-//  g_barrier.wait();
+  //  g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
   auto comm =
-       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-//  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-//  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+      platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
+  //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   auto stream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
                                                               &stat_ptr[2],
@@ -218,10 +261,6 @@ void HogwildWorker::TrainFilesWithProfiler() {
 #endif
   device_reader_->Start();
   std::vector<double> op_total_time;
-  std::vector<std::string> op_name;
-  for (auto &op : ops_) {
-    op_name.push_back(op->Type());
-  }
   op_total_time.resize(ops_.size());
   for (size_t i = 0; i < op_total_time.size(); ++i) {
     op_total_time[i] = 0.0;
@@ -249,13 +288,22 @@ void HogwildWorker::TrainFilesWithProfiler() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
+
+  std::unique_ptr<GarbageCollector> gc = nullptr;
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    gc = CreateGarbageCollector(place_, max_memory_size);
+  }
+
   while (1) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
-    if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
+    if (train_mode &&
+        (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
       int pass_end = device_reader_->get_pass_end();
       bool res = GetPassEnd(pass_end);
-      VLOG(2) << "reader pass end: " << pass_end << ", hogwild worker pass end: " << res;
+      VLOG(2) << "reader pass end: " << pass_end
+              << ", hogwild worker pass end: " << res;
       if (res) {
         device_reader_->reset_pass_end();
         VLOG(1) << "get all pass end, train pass will exit";
@@ -281,25 +329,20 @@ void HogwildWorker::TrainFilesWithProfiler() {
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
     for (size_t i = 0; i < ops_.size(); ++i) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (ops_[i]->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
-        }
-      }
       timeline.Start();
-      VLOG(3) << "Going to run op " << op_name[i];
-      if (!need_skip) {
-        ops_[i]->Run(*thread_scope_, place_);
+      VLOG(3) << "Going to run op " << op_names_[i];
+      ops_[i]->Run(*thread_scope_, place_);
 #ifdef PADDLE_WITH_HETERPS
-        dev_ctx_->Wait();
+      dev_ctx_->Wait();
 #endif
-      }
-      VLOG(3) << "Op " << op_name[i] << " Finished";
+      VLOG(3) << "Op " << op_names_[i] << " Finished";
       timeline.Pause();
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
+      if (gc) {
+        DeleteUnusedTensors(
+            *thread_scope_, ops_[i].get(), unused_vars_, gc.get());
+      }
     }
 
     if (need_dump_field_) {
@@ -314,8 +357,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
     PrintFetchVars();
 #ifdef PADDLE_WITH_HETERPS
     dev_ctx_->Wait();
-    for (size_t i = 0; i < op_name.size(); ++i) {
-      VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+    for (size_t i = 0; i < op_names_.size(); ++i) {
+      VLOG(1) << "card:" << thread_id_ << ", op: " << op_names_[i]
               << ", mean time: " << op_total_time[i] / total_inst
               << "s, totol time:" << op_total_time[i] << "sec";
     }
@@ -326,7 +369,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
           fprintf(stderr,
                   "op_name:[%zu][%s], op_mean_time:[%fs]\n",
                   i,
-                  op_name[i].c_str(),
+                  op_names_[i].c_str(),
                   op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
@@ -335,7 +378,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
       }
     }
 #endif
-    thread_scope_->DropKids();
+    if (gc) {
+      gc->DirectClearCallback([this]() { thread_scope_->DropKids(); });
+    } else {
+      thread_scope_->DropKids();
+    }
     timeline.Start();
   }
   VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
@@ -389,13 +436,21 @@ void HogwildWorker::TrainFiles() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
+
+  std::unique_ptr<GarbageCollector> gc = nullptr;
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    gc = CreateGarbageCollector(place_, max_memory_size);
+  }
   while (1) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
-    if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
+    if (train_mode &&
+        (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
       int pass_end = device_reader_->get_pass_end();
       bool res = GetPassEnd(pass_end);
-      VLOG(2) << "reader pass end: " << pass_end << ", hogwild worker pass end: " << res;
+      VLOG(2) << "reader pass end: " << pass_end
+              << ", hogwild worker pass end: " << res;
       if (res) {
         device_reader_->reset_pass_end();
         VLOG(1) << "get all pass end, train pass will exit";
@@ -417,15 +472,9 @@ void HogwildWorker::TrainFiles() {
       break;
     }
     for (auto &op : ops_) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
-        }
-      }
-      if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+      op->Run(*thread_scope_, place_);
+      if (gc) {
+        DeleteUnusedTensors(*thread_scope_, op.get(), unused_vars_, gc.get());
       }
     }
 
@@ -439,11 +488,15 @@ void HogwildWorker::TrainFiles() {
     total_batch_num += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
-    thread_scope_->DropKids();
-#ifdef PADDLE_WITH_HETERPS
-    dev_ctx_->Wait();
-#endif
+    if (gc) {
+      gc->DirectClearCallback([this]() { thread_scope_->DropKids(); });
+    } else {
+      thread_scope_->DropKids();
+    }
   }
+#ifdef PADDLE_WITH_HETERPS
+  dev_ctx_->Wait();
+#endif
   timeline.Pause();
   VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, batch_num: " << total_batch_num;

@@ -265,12 +265,7 @@ class CPUWorkerBase : public DeviceWorker {
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
-  virtual ~HogwildWorker() {
-    for (OperatorBase* op : ops_) {
-      delete op;
-    }
-    std::vector<OperatorBase*>().swap(ops_);
-  }
+  virtual ~HogwildWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
@@ -290,7 +285,7 @@ class HogwildWorker : public CPUWorkerBase {
   bool GetPassEnd(int flag);
 
   std::vector<std::string> op_names_;
-  std::vector<OperatorBase*> ops_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
   bool thread_barrier_;
   // Scope* thread_scope_;
   HogwildWorkerParameter param_;
@@ -298,6 +293,10 @@ class HogwildWorker : public CPUWorkerBase {
   std::map<std::string, int> stat_var_name_map_;
   static std::atomic<bool> quit_flag_;
   phi::DenseTensor sync_stat_;
+  // skip vars
+  std::vector<std::string> skip_vars_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
 };
 
 class DownpourWorker : public HogwildWorker {
