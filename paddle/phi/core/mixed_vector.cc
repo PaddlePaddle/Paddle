@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"

@@ -24,7 +24,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import unique_name
-from paddle.fluid.layers.utils import flatten
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
@@ -455,14 +454,14 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         )
 
         net = LinearNetWithNestOut(8, 8)
-        dy_outs = flatten(net(x))
+        dy_outs = paddle.utils.flatten(net(x))
         net = to_static(net, input_spec=[InputSpec([None, 8], name='x')])
 
         model_path = os.path.join(self.temp_dir.name, "net_with_nest_out/model")
         paddle.jit.save(net, model_path)
 
         load_net = paddle.jit.load(model_path)
-        load_outs = flatten(load_net(x))
+        load_outs = paddle.utils.flatten(load_net(x))
 
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):

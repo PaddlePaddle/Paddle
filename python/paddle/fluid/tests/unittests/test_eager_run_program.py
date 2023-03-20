@@ -25,7 +25,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers.utils import _hash_with_id
 
 
 def _append_backward_desc(main_program, outs):
@@ -134,7 +133,7 @@ class TestRunProgram(unittest.TestCase):
             'is_test',
             False,
             'program_id',
-            _hash_with_id(program),
+            paddle.utils._hash_with_id(program),
             'param_grad_names',
             ['Fake_var@GRAD'],
             'out_grad_names',

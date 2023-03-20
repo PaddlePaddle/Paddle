@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/transform.h"
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/hostdevice.h"
 
@@ -36,10 +36,10 @@ class Multiply {
   HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
 
-using paddle::platform::CPUPlace;
-using paddle::platform::CUDAPlace;
 using phi::CPUContext;
+using phi::CPUPlace;
 using phi::GPUContext;
+using phi::GPUPlace;
 
 using phi::Transform;
 
@@ -54,7 +54,7 @@ TEST(Transform, CPUUnary) {
 }
 
 TEST(Transform, GPUUnary) {
-  CUDAPlace gpu0(0);
+  GPUPlace gpu0(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -85,7 +85,7 @@ TEST(Transform, CPUBinary) {
 
 TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
-  CUDAPlace gpu0(0);
+  GPUPlace gpu0(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 

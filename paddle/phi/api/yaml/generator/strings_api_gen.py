@@ -127,7 +127,7 @@ class StringsAPI(ForwardAPI):
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
-        kernel_args_type_list = ['const platform::DeviceContext&']
+        kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -334,17 +334,10 @@ def source_include(header_file_path):
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"
 #include "paddle/phi/infermeta/strings/unary.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 DECLARE_int32(low_precision_op_list);
-"""
-
-
-def api_register():
-    return """
-PD_REGISTER_API(StringsApi);
 """
 
 
@@ -389,8 +382,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    # source_file.write(api_register())
 
     header_file.close()
     source_file.close()

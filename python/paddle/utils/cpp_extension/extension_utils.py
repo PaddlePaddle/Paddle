@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import textwrap
 import threading
 import warnings
@@ -289,7 +290,7 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        from paddle.fluid.layers.utils import flatten
+        from paddle.utils import flatten
 
         md5 = hashlib.md5()
         for field in version_field._fields:
@@ -543,6 +544,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
+    include_dirs.extend(find_python_includes())
 
     kwargs['include_dirs'] = include_dirs
 
@@ -783,6 +785,22 @@ def find_paddle_includes(use_cuda=False):
             include_dirs.append(std_v1_includes)
 
     return include_dirs
+
+
+def find_python_includes():
+    """
+    Return necessary include dir path of Python.h.
+    """
+    # sysconfig.get_path('include') gives us the location of Python.h
+    # Explicitly specify 'posix_prefix' scheme on non-Windows platforms to workaround error on some MacOS
+    # installations where default `get_path` points to non-existing `/Library/Python/M.m/include` folder
+    python_include_path = sysconfig.get_path(
+        'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
+    )
+    if python_include_path is not None:
+        assert isinstance(python_include_path, str)
+        return [python_include_path]
+    return []
 
 
 def find_clang_cpp_include(compiler='clang'):
