@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ class Pad3dOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(8200)
-    VLOG(3) << "convert a transpose op to tensorrt tranpose layer";
+    VLOG(3) << "convert a pad3d op to tensorrt pad3d layer";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -35,9 +35,8 @@ class Pad3dOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     nvinfer1::ITensor* paddings;
-    if (op_desc.HasInput("Paddings")) {
+    if (op_desc.HasInput("Paddings") && op_desc.Input("Paddings").size() > 0) {
       paddings = engine_->GetITensor(op_desc.Input("Paddings")[0]);
-
     } else {
       std::vector<int> paddings_v =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
