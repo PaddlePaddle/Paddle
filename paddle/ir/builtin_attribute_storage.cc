@@ -54,12 +54,13 @@ bool DictionaryAttributeStorage::operator==(const ParamKey &key) const {
 
 DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
     const {
-  ParamKey rtn;
-  for (size_t idx = 0; idx < size_; idx++) {
-    rtn.insert(std::pair<StrAttribute, Attribute>(data_[idx].name(),
-                                                  data_[idx].value()));
-  }
-  return rtn;
+  // ParamKey rtn;
+  // for (size_t idx = 0; idx < size_; idx++) {
+  //   rtn.insert(std::pair<StrAttribute, Attribute>(data_[idx].name(),
+  //                                                 data_[idx].value()));
+  // }
+  // return rtn;
+  return ParamKey(data_, data_ + size_);
 }
 
 Attribute DictionaryAttributeStorage::GetValue(const StrAttribute &name) {

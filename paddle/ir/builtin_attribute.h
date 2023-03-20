@@ -60,6 +60,10 @@ class NamedAttribute {
 
   friend struct std::hash<NamedAttribute>;
 
+  operator std::pair<const StrAttribute, Attribute>() const {
+    return std::make_pair(name_, value_);
+  }
+
  private:
   StrAttribute name_;
   Attribute value_;
