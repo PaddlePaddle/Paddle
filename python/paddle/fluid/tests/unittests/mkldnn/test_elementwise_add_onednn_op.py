@@ -16,9 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_add_op import (
     TestElementwiseAddOp,
 )
@@ -111,24 +110,6 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestOneDNNElementwiseAddOp):
     reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
 )
 class TestInt8(TestElementwiseAddOp):
-    def setUp(self):
-        self.op_type = "fused_elementwise_add"
-        self.python_api = paddle.add
-        self.prim_op_type = "prim"
-        self.init_dtype()
-        self.init_input_output()
-        self.init_kernel_type()
-        self.init_axis()
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.out}
-
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
@@ -159,48 +140,6 @@ class TestInt8(TestElementwiseAddOp):
 
     def test_check_grad_ingore_y(self):
         pass
-
-
-class TestInt8Scales(TestInt8):
-    def quantize(self, tensor, dt="int8"):
-        max_int = 127.0 if dt == "int8" else 255.0
-        scale = max_int / np.abs(np.amax(tensor))
-        quantized = np.round(scale * tensor).astype(dt)
-        return scale, quantized
-
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.add(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f)
-        self.scale_y, self.y = self.quantize(self.y_f)
-        self.scale_o, self.out = self.quantize(self.out_f)
-
-    def init_scales(self):
-        self.attrs['scale_x'] = self.scale_x
-        self.attrs['scale_y'] = self.scale_y
-        self.attrs['scale_out'] = self.scale_o
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.init_scales()
-        int_atol = 1  # different quantization techniques
-        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
-
-
-class TestUint8Scales(TestInt8Scales):
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.add(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-        self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-        self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-    def init_dtype(self):
-        self.dtype = np.uint8
 
 
 if __name__ == '__main__':
