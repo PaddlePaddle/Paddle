@@ -36,7 +36,7 @@ if fluid.is_compiled_with_cuda():
 SEED = 2020
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -83,7 +83,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class DepthwiseSeparable(fluid.dygraph.Layer):
+class DepthwiseSeparable(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -120,7 +120,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV1(fluid.dygraph.Layer):
+class MobileNetV1(paddle.nn.Layer):
     def __init__(self, scale=1.0, class_dim=1000):
         super().__init__()
         self.scale = scale
@@ -276,7 +276,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         return y
 
 
-class InvertedResidualUnit(fluid.dygraph.Layer):
+class InvertedResidualUnit(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -329,7 +329,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         return y
 
 
-class InvresiBlocks(fluid.dygraph.Layer):
+class InvresiBlocks(paddle.nn.Layer):
     def __init__(self, in_c, t, c, n, s):
         super().__init__()
 
@@ -366,7 +366,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV2(fluid.dygraph.Layer):
+class MobileNetV2(paddle.nn.Layer):
     def __init__(self, class_dim=1000, scale=1.0):
         super().__init__()
         self.scale = scale

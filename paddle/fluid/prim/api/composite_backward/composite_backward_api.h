@@ -31,6 +31,18 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition,
+                        out_grad,
+                        full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void softmax_grad(const Tensor& out,
                   const Tensor& out_grad,
                   int axis,
@@ -489,6 +501,13 @@ template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     set_output<T>(out_grad * out, x_grad);
+  }
+}
+
+template <typename T>
+void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    set_output<T>(out_grad * (out * (1 - out)), x_grad);
   }
 }
 
@@ -962,7 +981,6 @@ void layer_norm_grad(const Tensor& x,
 
     auto x_grad_tmp = (sqrt_var_1 / shape_2) * inner;
     x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
-
     if (x.dtype() == phi::DataType::FLOAT16) {
       x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
     }
