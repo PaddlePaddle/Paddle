@@ -87,7 +87,7 @@ class IntermediateLayerGetter(nn.LayerDict):
             if not return_layers:
                 break
 
-        super(IntermediateLayerGetter, self).__init__(layers)
+        super().__init__(layers)
         self.return_layers = orig_return_layers
 
     def forward(self, x):
