@@ -126,6 +126,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           from paddle.jit.api import dygraph_to_static_func
@@ -139,7 +140,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())

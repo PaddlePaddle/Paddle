@@ -42,8 +42,8 @@ class TestRandOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-                dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+                dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+                dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
                 rand(shape=[dim_1, dim_2], dtype='int32')
 
             self.assertRaises(TypeError, test_dtype)
@@ -64,8 +64,8 @@ class TestRandOp(unittest.TestCase):
             result_0 = rand([3, 4])
             result_1 = rand([3, 4], 'float64')
 
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             result_2 = rand(shape=[dim_1, dim_2])
 
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
@@ -104,8 +104,8 @@ class TestRandOpForDygraph(unittest.TestCase):
 
             rand([3, 4], 'float64')
 
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             rand(shape=[dim_1, dim_2])
 
             var_shape = fluid.dygraph.to_variable(np.array([3, 4]))
