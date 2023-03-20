@@ -837,17 +837,16 @@ def get_default_cluster(json_config=None):
         if "cluster" not in json_config:
             return False
         else:
-            if "path" not in json_config:
-                if "num_nodes" not in json_config:
+            if "path" not in json_config["cluster"]:
+                if "num_nodes" not in json_config["cluster"]:
                     return False
-                if "num_gpus" not in json_config:
+                if "num_gpus" not in json_config["cluster"]:
                     return False
-                if "gpu_model" not in json_config:
+                if "gpu_model" not in json_config["cluster"]:
                     return False
-                if "gpu_memory" not in json_config:
+                if "gpu_memory" not in json_config["cluster"]:
                     return False
-                if json_config["enable_tune_run"] != 1:
-                    return False
+                return True
             else:
                 return True
 
@@ -858,10 +857,10 @@ def get_default_cluster(json_config=None):
             cluster.build_from_file(json_config["cluster"]["path"])
             return cluster
         else:
-            node_count = json_config["num_nodes"]
-            local_device_count = json_config["num_gpus"]
-            gpu_model = json_config["gpu_model"]
-            memory = json_config["gpu_memory"]
+            node_count = json_config["cluster"]["num_nodes"]
+            local_device_count = json_config["cluster"]["num_gpus"]
+            gpu_model = json_config["cluster"]["gpu_model"]
+            memory = json_config["cluster"]["gpu_memory"]
     else:
         # Get GPU info by get_device_properties
         local_device_count = os.getenv("PADDLE_LOCAL_SIZE")
