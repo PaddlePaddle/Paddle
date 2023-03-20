@@ -102,7 +102,7 @@ class CutlassTeller {
     }
     return true;
   }
-
+  // Return the supported activation set by cutlass conv + bias + act pattern
   std::unordered_set<std::string> CbaAct(int device_id) {
     int sm_version = platform::GetGPUComputeCapability(device_id);
     if (cutlass_sm.count(sm_version)) {
