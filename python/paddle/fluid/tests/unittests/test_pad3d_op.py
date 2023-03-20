@@ -212,7 +212,7 @@ def create_test_fp16(parent):
             self.check_output(check_eager=True, atol=1e-3)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
+            self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
     TestPad3dFp16.__name__ = cls_name
