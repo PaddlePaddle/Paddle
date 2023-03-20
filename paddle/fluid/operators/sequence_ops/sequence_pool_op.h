@@ -73,8 +73,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     bool is_test =
         context.HasAttr("is_test") ? context.Attr<bool>("is_test") : false;
 
-    // Do not create index buffer for inference (is_test) mode
-    // TODO(jczaja): Skip index buffer creation for other devices eg. GPU
+    // Do not create index buffer for inference mode
     if (pooltype == "MAX" &&
         (is_test == false ||
          platform::is_cpu_place(context.GetPlace()) == false)) {

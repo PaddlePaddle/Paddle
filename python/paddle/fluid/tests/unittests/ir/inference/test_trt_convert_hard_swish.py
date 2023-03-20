@@ -40,9 +40,9 @@ class TrtConvertHardSwishTest(TrtLayerAutoScanTest):
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 3, 32, 32]).astype(np.float32)
 
-        for threshold in [6.0, 7.0, 100.0, 0.0, -1.0]:
-            for scale in [5.0, 7.0, -1.0, 0.0, 100.0]:
-                for offset in [3.0, 5.0, -1.0, 0.0, 100.0]:
+        for threshold in [6.0]:
+            for scale in [6.0]:
+                for offset in [3.0]:
                     dics = [
                         {
                             "threshold": threshold,

@@ -119,6 +119,18 @@ class TestSumGradComp(unittest.TestCase):
             atol=0,
         )
 
+    def test_sum_grad_comp_6(self):
+        self.primal = np.random.rand(3, 2, 5)
+        self.cotangent = np.random.rand(3, 1, 1)
+        paddle.enable_static()
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal, self.cotangent, [-2, -1], True),
+            desired=desired(self.primal, self.cotangent, [-2, -1], True),
+            rtol=1e-6,
+            atol=0,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

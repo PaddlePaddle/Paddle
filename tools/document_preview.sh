@@ -47,7 +47,7 @@ function get_docs_pr_num_from_paddle_pr_info(){
 # Attention:
 # 1. /FluidDoc will be used as the workspace of PaddlePaddle/docs. 
 # 2. And /docs is used as the output of doc-build process.
-# 3. If conflicted with yours, please modify the defination of FLUIDDOCDIR and
+# 3. If conflicted with yours, please modify the definition of FLUIDDOCDIR and
 #    OUTPUTDIR in the subsequent codes.
 # 4. The doc-build process is controlled under EnvVar BUILD_DOC and UPLOAD_DOC.
 #    All the Chinese and English docs will be generated, and then uploaded.

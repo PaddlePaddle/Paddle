@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -827,6 +826,7 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int16',
                 'int32',
                 'int64',
+                'uint16',
             ],
             'full_like',
         )
@@ -841,6 +841,7 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int16',
                 'int32',
                 'int64',
+                'uint16',
             ],
             'full_like/zeros_like/ones_like',
         )
@@ -1232,7 +1233,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16', 'uint16'],
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
@@ -1498,7 +1499,7 @@ def diagflat(x, offset=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. It can be any shape. Its data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1577,7 +1578,10 @@ def diagflat(x, offset=0, name=None):
         padding_value = 0
         check_type(x, 'x', (Variable), 'diagflat')
         check_dtype(
-            x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'], 'diagflat'
+            x.dtype,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'diagflat',
         )
         check_type(offset, 'offset', (int), 'diagflat')
 
@@ -1627,7 +1631,7 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1694,7 +1698,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
@@ -1730,7 +1734,7 @@ def empty(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dytpe is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1770,7 +1774,7 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -1783,7 +1787,16 @@ def empty(shape, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'empty',
         )
         check_type(shape, 'shape', (Variable, list, tuple), 'empty')
@@ -1792,7 +1805,7 @@ def empty(shape, dtype=None, name=None):
             check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
         attrs = {}
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
         )
 
@@ -1869,7 +1882,7 @@ def empty_like(x, dtype=None, name=None):
         attrs = {}
         attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
         shape = paddle.shape(x)
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
         )
 
@@ -2367,3 +2380,41 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             attrs={'row': row, 'col': col, 'offset': offset, 'dtype': dtype},
         )
     return out
+
+
+def polar(abs, angle, name=None):
+    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+
+    Args:
+        abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
+        angle (Tensor): The anglee component. The data type should be the same as ``abs``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
+
+    Note:
+        ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
+            angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
+            out = paddle.polar(abs, angle)
+            print(out)
+            # Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+            #       [ (6.123233995736766e-17+1j) ,
+            #       (-1.4142135623730954-1.414213562373095j)])
+    """
+    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
+    check_variable_and_dtype(
+        angle, 'angle', ['float32', 'float64'], 'paddle.polar'
+    )
+
+    return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))

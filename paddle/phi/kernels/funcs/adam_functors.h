@@ -22,8 +22,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #endif
 
 namespace phi {
@@ -45,13 +44,13 @@ static int ConvertDataByType(
 
   T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
 
-  paddle::memory::Copy(
+  memory_utils::Copy(
       CPUPlace(), cpu_data, dev_ctx.GetPlace(), x, len * sizeof(T1));
 
   T2* cpu_real_data = reinterpret_cast<T2*>(malloc(sizeof(T2) * len));
   for (int i = 0; i < len; i++) cpu_real_data[i] = static_cast<T2>(cpu_data[i]);
 
-  paddle::memory::Copy(
+  memory_utils::Copy(
       dev_ctx.GetPlace(), *y, CPUPlace(), cpu_real_data, len * sizeof(T2));
 
   free(cpu_data);

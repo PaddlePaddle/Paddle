@@ -328,6 +328,32 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
+    def test_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([3, 3, 112, 112]).astype("float16")
+
+                x = paddle.static.data(
+                    name="x", shape=[3, 3, 112, 112], dtype="float16"
+                )
+
+                m = paddle.nn.LocalResponseNorm(size=5)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0].shape, input.shape)
+
 
 if __name__ == "__main__":
     unittest.main()

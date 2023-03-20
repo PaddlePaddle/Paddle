@@ -293,7 +293,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
-def write_distributed_training_mode_py(filename='paddle/incubate/fleet/parameter_server/version.py'):
+def write_distributed_training_mode_py(filename='paddle/incubate/distributed/fleet/parameter_server/version.py'):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -320,7 +320,7 @@ def is_transpiler():
             'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
         })
 
-write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/fleet/parameter_server/version.py')
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
 
 
 packages=['paddle',
@@ -400,11 +400,9 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.layers',
-          'paddle.fluid.transpiler',
           'paddle.fluid.incubate',
           'paddle.incubate.distributed.fleet',
           'paddle.fluid.incubate.checkpoint',
-          'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -432,10 +430,10 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
-          'paddle.incubate.fleet.parameter_server',
-          'paddle.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.incubate.fleet.parameter_server.pslib',
-          'paddle.incubate.fleet.parameter_server.ir',
+          'paddle.incubate.distributed.fleet.parameter_server',
+          'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+          'paddle.incubate.distributed.fleet.parameter_server.pslib',
+          'paddle.incubate.distributed.fleet.parameter_server.ir',
           'paddle.quantization',
           'paddle.quantization.quanters',
           'paddle.quantization.observers',
@@ -547,6 +545,10 @@ if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
+if len('${FLASHATTN_LIBRARIES}') > 1:
+    package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
+    shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
@@ -591,9 +593,11 @@ if '${WITH_CINN}' == 'ON':
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
+    shutil.copy('${JVM_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/')
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
+    package_data['paddle.libs'] += ['libjvm' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
@@ -643,6 +647,10 @@ if '${WITH_XPU}' == 'ON':
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
+
+if '${WITH_XPU_XFT}' == 'ON':
+    shutil.copy('${XPU_XFT_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_XFT_LIB_NAME}']
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -722,6 +730,9 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
+if '${WITH_XDNN_API}' == 'ON':
+    headers += list(find_files('*.h', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xdnn api headers
+
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 
 class InstallCommand(InstallCommandBase):
@@ -770,7 +781,7 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include']
+            patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include', 'third_party/xpu/src/extern_xpu/xpu/include/']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
