@@ -24,7 +24,6 @@ from typing import Any, List
 import numpy
 
 from paddle.fluid.dygraph.layers import Layer
-from paddle.nn import Sequential
 
 from .convert_operators import (
     convert_enumerate,
@@ -133,6 +132,8 @@ def is_unsupported(func):
     # NOTE: should be placed before `is_paddle_func`
     # The api(s) should be considered as plain function and convert
     # them into static layer code.
+    from paddle.nn import Sequential
+
     PADDLE_NEED_CONVERT_APIS = [Sequential]
     if type(func) in PADDLE_NEED_CONVERT_APIS:
         return False
