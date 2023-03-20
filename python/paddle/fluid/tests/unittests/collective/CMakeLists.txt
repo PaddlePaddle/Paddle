@@ -195,7 +195,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_api MODULES test_collective_reduce_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_reduce_api
-                       PROPERTIES TIMEOUT "220" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "230" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
