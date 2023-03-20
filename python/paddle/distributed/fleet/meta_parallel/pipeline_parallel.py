@@ -415,9 +415,9 @@ class PipelineParallel(MetaParallelBase):
             ), "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
             is_fp32 = (
-                paddle.to_tensor(1)
+                paddle.full([], 1, 'int64')
                 if loss.dtype == paddle.float32
-                else paddle.to_tensor(0)
+                else paddle.full([], 0, 'int64')
             )
             paddle.distributed.broadcast(
                 is_fp32, src=self.global_rank, sync_op=True, group=self.pp_group
@@ -426,7 +426,7 @@ class PipelineParallel(MetaParallelBase):
                 loss, src=self.global_rank, sync_op=True, group=self.pp_group
             )
         else:
-            is_fp32 = paddle.to_tensor(1)
+            is_fp32 = paddle.full([], 1, 'int64')
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
@@ -435,7 +435,7 @@ class PipelineParallel(MetaParallelBase):
             )
             loss = (
                 paddle.zeros(shape=[1], dtype="float32")
-                if is_fp32.numpy()[0]
+                if is_fp32.item()
                 else paddle.zeros(shape=[1], dtype="float16")
             )
             paddle.distributed.broadcast(

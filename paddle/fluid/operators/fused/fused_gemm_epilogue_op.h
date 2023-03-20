@@ -509,6 +509,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
       platform::dynload::cublasLtMatrixLayoutDestroy(out_desc));
 }
 
+
 enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
 
 template <bool TransX, bool TransY>
@@ -572,12 +573,12 @@ static constexpr auto BoolToCuBlasEnum(bool transpose) {
 
 static cublasLtEpilogue_t GetEpilogueGradType(
     const std::string& activation_grad) {
-  if (activation_grad == "relu_grad") {
+  if (activation_grad == "none") {
+    return CUBLASLT_EPILOGUE_DEFAULT;
+  } else if (activation_grad == "relu_grad") {
     return CUBLASLT_EPILOGUE_DRELU;
   } else if (activation_grad == "gelu_grad") {
     return CUBLASLT_EPILOGUE_DGELU;
-  } else if (activation_grad == "none") {
-    return CUBLASLT_EPILOGUE_DEFAULT;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "

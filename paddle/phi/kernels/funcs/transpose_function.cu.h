@@ -197,7 +197,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   if (x < out_effective_thread_num) {
     int x_i = x / TileX;
-    int x_j = x % TileX;
+    int x_j = x - x_i * TileX;
     IndexType output_ind =
         output_origin_block_flat_index + x_i * output_dims[2] + x_j;
     IndexType output_inc = BlockWriteRows * output_dims[2];

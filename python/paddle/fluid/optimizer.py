@@ -2432,12 +2432,12 @@ class AdamOptimizer(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
             master_weight = None
             _, _, _, _, _, _ = _legacy_C_ops.adam(
