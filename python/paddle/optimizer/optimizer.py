@@ -441,7 +441,7 @@ class Optimizer:
                     self._learning_rate._var_name = lr_name
                     lr_var = self.helper.create_global_variable(
                         name=lr_name,
-                        shape=[],
+                        shape=[1],
                         persistable=True,
                         stop_gradient=True,
                         dtype=_lr_dtype,
