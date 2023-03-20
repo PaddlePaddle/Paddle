@@ -464,6 +464,7 @@ class OpTest(unittest.TestCase):
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
         return (
             self.dtype == np.float16
+            or self.dtype == "float16"
             or (
                 hasattr(self, 'output_dtype')
                 and self.output_dtype == np.float16
@@ -783,7 +784,7 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                if is_calc_ref and np_value_temp.dtype == np.float16:
+                if self.is_calc_ref and np_value_temp.dtype == np.float16:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
                     )
@@ -799,7 +800,7 @@ class OpTest(unittest.TestCase):
                         lod_temp
                     )
             else:
-                if is_calc_ref and np_value_temp.dtype == np.float16:
+                if self.is_calc_ref and np_value_temp.dtype == np.float16:
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
@@ -1643,6 +1644,7 @@ class OpTest(unittest.TestCase):
 
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
+                # expect_np = expect[0] if isinstance(expect, tuple) else expect
                 if self.op_test.is_fp16_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
