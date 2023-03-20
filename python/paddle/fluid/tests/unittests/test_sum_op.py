@@ -362,10 +362,10 @@ class TestSumBF16Op(OpTest):
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
+            input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
-            input1 = fluid.layers.fill_constant(
+            input1 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=3
             )
             expected_result = np.empty((2, 3))

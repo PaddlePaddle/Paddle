@@ -3045,7 +3045,7 @@ class TestPow_factor_tensor(TestActivation):
             )
 
             factor_1 = 2.0
-            factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
+            factor_2 = paddle.tensor.fill_constant([1], "float32", 3.0)
             out_1 = paddle.pow(x, factor_1)
             out_2 = paddle.pow(x, factor_2)
             out_4 = paddle.pow(x, factor_1, name='pow_res')

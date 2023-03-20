@@ -349,8 +349,8 @@ class TestConcatAPI(unittest.TestCase):
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
         x_2 = paddle.static.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
         x_3 = paddle.static.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
         out_1 = paddle.concat([x_2, x_3], axis=1)
         out_2 = paddle.concat([x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat([x_2, x_3], axis=positive_1_int64)
@@ -376,9 +376,9 @@ class TestConcatAPI(unittest.TestCase):
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
         x_2 = paddle.static.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
         x_3 = paddle.static.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = paddle.fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = paddle.fluid.layers.fill_constant([1], "int64", 1)
-        negative_int64 = paddle.fluid.layers.fill_constant([1], "int64", -3)
+        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+        negative_int64 = paddle.tensor.fill_constant([1], "int64", -3)
         out_1 = paddle.concat(x=[x_2, x_3], axis=1)
         out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
@@ -466,7 +466,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             with fluid.program_guard(self.program):
                 input = paddle.assign(self.x)
                 tensor_array = paddle.tensor.create_array(dtype='float32')
-                zero = fluid.layers.fill_constant(
+                zero = paddle.tensor.fill_constant(
                     shape=[1], value=0, dtype="int64"
                 )
 

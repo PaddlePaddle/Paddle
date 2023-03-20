@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -250,8 +249,8 @@ class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([3, 2, 5]).astype("float64")
         x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
-        positive_3_int32 = fluid.layers.fill_constant([1], "int32", 3)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        positive_3_int32 = paddle.tensor.fill_constant([1], "int32", 3)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
         axes_tensor_int32 = paddle.static.data(
             name='axes_tensor_int32', shape=[3], dtype="int32"
         )

@@ -80,7 +80,7 @@ class TestRetainGraph(unittest.TestCase):
             fake_AB = paddle.concat((real_data.detach(), interpolatesv), 1)
             disc_interpolates = netD(fake_AB)
 
-            outs = paddle.fluid.layers.fill_constant(
+            outs = paddle.tensor.fill_constant(
                 disc_interpolates.shape, disc_interpolates.dtype, 1.0
             )
             gradients = paddle.grad(
@@ -125,7 +125,7 @@ class TestRetainGraph(unittest.TestCase):
         fake_AB = paddle.concat((realA, fakeB), 1)
         G_pred_fake = d(fake_AB.detach())
 
-        false_target = paddle.fluid.layers.fill_constant(
+        false_target = paddle.tensor.fill_constant(
             G_pred_fake.shape, 'float32', 0.0
         )
 
@@ -140,7 +140,7 @@ class TestRetainGraph(unittest.TestCase):
         optim_g.clear_gradients()
         fake_AB = paddle.concat((realA, fakeB), 1)
         G_pred_fake = d(fake_AB)
-        true_target = paddle.fluid.layers.fill_constant(
+        true_target = paddle.tensor.fill_constant(
             G_pred_fake.shape, 'float32', 1.0
         )
         loss_g = l1_criterion(fakeB, realB) + gan_criterion(
