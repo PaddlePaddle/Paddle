@@ -269,6 +269,33 @@ class TestLbfgs(unittest.TestCase):
             [0.1, 0.5],
         )
 
+    def test_error3(self):
+        # test parameter shape size <= 0
+        def error_func3():
+            extream_point = np.array([-1, 2]).astype('float32')
+            extream_point = paddle.to_tensor(extream_point)
+
+            def func(w, x):
+                return w * x
+
+            net = Net(extream_point, func)
+            net.w = paddle.create_parameter(
+                shape=[-1, 2],
+                dtype=net.w.dtype,
+            )
+            opt = LBFGS(
+                lr=1,
+                max_iter=10,
+                max_eval=None,
+                tolerance_grad=1e-07,
+                tolerance_change=1e-09,
+                history_size=5,
+                line_search_fn='strong_wolfe',
+                parameters=net.parameters(),
+            )
+
+        self.assertRaises(AssertionError, error_func3)
+
 
 if __name__ == '__main__':
     unittest.main()
