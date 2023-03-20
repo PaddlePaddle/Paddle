@@ -135,7 +135,7 @@ class TestMKLDNNGelu_ZeroDim(TestActivation_ZeroDim):
         self.python_api = F.gelu
         self.dtype = np.float32
 
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, []).astype(self.dtype)
         out = gelu(x, False)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -489,7 +489,7 @@ class TestMKLDNNMish_ZeroDim(TestActivation_ZeroDim):
         self.python_api = F.mish
         self.dtype = np.float32
 
-        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = x * np.tanh(np.log(1 + np.exp(x)))
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -513,7 +513,7 @@ class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "round"
         self.python_api = paddle.round
-        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(np.float32)
+        x = np.random.uniform(0.1, 1, []).astype(np.float32)
         out = np.round(x)
 
         self.inputs = {'X': x}
@@ -557,7 +557,7 @@ class TestMKLDNNEluDefaultAlpha_ZeroDim(TestActivation_ZeroDim):
         self.python_api = F.elu
         self.set_alpha()
 
-        x = np.random.random((5, 5, 4)).astype("float32")
+        x = np.random.random(()).astype("float32")
 
         self.inputs = {'X': x}
         self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
@@ -590,7 +590,7 @@ class TestMKLDNNExpOp_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "exp"
         self.python_api = paddle.exp
-        x = np.random.random((5, 5, 4)).astype("float32")
+        x = np.random.random(()).astype("float32")
 
         self.inputs = {'X': x}
         self.attrs = {'use_mkldnn': True}
