@@ -453,3 +453,93 @@ PD_BUILD_OP(custom_logical_not)
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(NotForward));
+
+// out = (x < y)
+std::vector<paddle::Tensor> LessThanForward(const paddle::Tensor& x,
+                                            const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x < y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_less_than)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LessThanForward));
+
+// out = (x <= y)
+std::vector<paddle::Tensor> LessEqualForward(const paddle::Tensor& x,
+                                             const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x <= y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_less_equal)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LessEqualForward));
+
+// out = (x == y)
+std::vector<paddle::Tensor> EqualForward(const paddle::Tensor& x,
+                                         const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x == y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_equal)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(EqualForward));
+
+// out = (x != y)
+std::vector<paddle::Tensor> NotEqualForward(const paddle::Tensor& x,
+                                            const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x != y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_not_equal)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(NotEqualForward));
+
+// out = (x > y)
+std::vector<paddle::Tensor> GreaterThanForward(const paddle::Tensor& x,
+                                               const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x > y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_greater_than)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(GreaterThanForward));
+
+// out = (x >= y)
+std::vector<paddle::Tensor> GreaterEqualForward(const paddle::Tensor& x,
+                                                const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x >= y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_greater_equal)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(GreaterEqualForward));

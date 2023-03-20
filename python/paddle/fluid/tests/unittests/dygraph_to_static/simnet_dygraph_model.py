@@ -15,7 +15,6 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 from paddle.common_ops_import import Variable
 from paddle.fluid.dygraph import Layer
@@ -214,7 +213,7 @@ class ConstantLayer:
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = fluid.layers.fill_constant(shape, dtype, value)
+        constant = paddle.tensor.fill_constant(shape, dtype, value)
         return constant
 
 
