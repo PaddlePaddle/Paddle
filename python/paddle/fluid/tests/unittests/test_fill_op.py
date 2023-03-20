@@ -24,6 +24,7 @@ from paddle.fluid.op import Operator
 class TestFillOp1(OpTest):
     def setUp(self):
         self.op_type = "fill"
+        self.init_dtype()
         val = np.random.random(size=[100, 200])
         self.inputs = {}
         self.attrs = {
@@ -33,6 +34,9 @@ class TestFillOp1(OpTest):
             'force_cpu': False,
         }
         self.outputs = {'Out': val.astype('float64')}
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -89,29 +93,9 @@ class TestFillOp3(unittest.TestCase):
             self.check_with_place(place, False)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestFillFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "fill"
+class TestFillFP16OP(TestFillOp1):
+    def init_dtype(self):
         self.dtype = np.float16
-        self.__class__.op_type = self.op_type
-        val = np.random.random(size=[100, 200]).astype(self.dtype)
-        self.inputs = {}
-        self.attrs = {
-            'value': val.flatten().tolist(),
-            'shape': [100, 200],
-            'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': False,
-        }
-        self.outputs = {'Out': val}
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
 
 
 @unittest.skipIf(
@@ -119,12 +103,11 @@ class TestFillFP16OP(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestFillBF16(OpTest):
+class TestFillBF16OP(OpTest):
     def setUp(self):
         self.op_type = "fill"
         self.dtype = np.uint16
-        self.__class__.op_type = self.op_type
-        val = np.random.random(size=[100, 200]).astype(np.float32)
+        val = np.random.random(size=[100, 200])
         self.inputs = {}
         self.attrs = {
             'value': val.flatten().tolist(),
@@ -136,7 +119,7 @@ class TestFillBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place)
 
 
 if __name__ == '__main__':

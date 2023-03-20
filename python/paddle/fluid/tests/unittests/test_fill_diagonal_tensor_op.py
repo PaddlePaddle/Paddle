@@ -149,40 +149,9 @@ class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TensorFillDiagTensorFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "fill_diagonal_tensor"
-        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
-        self.__class__.op_type = self.op_type
-        self.init_kernel_type()
-        x = np.random.random((10, 10)).astype(np.float32)
-        y = np.random.random((10,)).astype(np.float32)
-        dim1 = 0
-        dim2 = 1
-        offset = 0
-        out = fill_gt(x, y, offset, dim1, dim2)
-
-        self.inputs = {"X": x.astype(self.dtype), "Y": y.astype(self.dtype)}
-        self.outputs = {'Out': out}
-        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
-
+class TensorFillDiagTensorFP16OP(TensorFillDiagTensor_Test):
     def init_kernel_type(self):
         self.dtype = np.float16
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=True)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=True
-        )
 
 
 @unittest.skipIf(
@@ -194,34 +163,41 @@ class TensorFillDiagTensorBF16(OpTest):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
-        self.__class__.op_type = self.op_type
         self.init_kernel_type()
-        x = np.random.random((10, 10)).astype(np.float32)
-        y = np.random.random((10,)).astype(np.float32)
-        dim1 = 0
-        dim2 = 1
-        offset = 0
-        out = fill_gt(x, y, offset, dim1, dim2)
-
-        self.inputs = {
-            "X": convert_float_to_uint16(x),
-            "Y": convert_float_to_uint16(y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
+        self.init_config()
+        self.init_input_output()
 
     def init_kernel_type(self):
         self.dtype = np.uint16
 
+    def init_config(self):
+        self.x = np.random.random((10, 10)).astype(np.float32)
+        self.y = np.random.random((10,)).astype(np.float32)
+        self.dim1 = 0
+        self.dim2 = 1
+        self.offset = 0
+
+    def init_input_output(self):
+        out = fill_gt(self.x, self.y, self.offset, self.dim1, self.dim2)
+
+        self.inputs = {
+            "X": convert_float_to_uint16(self.x),
+            "Y": convert_float_to_uint16(self.y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            "offset": self.offset,
+            "dim1": self.dim1,
+            "dim2": self.dim2,
+        }
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=True
-        )
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':

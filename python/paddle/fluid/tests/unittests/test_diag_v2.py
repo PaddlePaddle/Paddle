@@ -27,18 +27,28 @@ class TestDiagV2Op(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
         self.python_api = paddle.diag
-        self.x = np.random.rand(10, 10)
+
+        self.init_dtype()
+        self.init_attrs()
+        self.init_input_output()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_attrs(self):
         self.offset = 0
         self.padding_value = 0.0
-        self.out = np.diag(self.x, self.offset)
 
-        self.init_config()
-        self.inputs = {'X': self.x}
+    def init_input_output(self):
+        x = np.random.rand(10, 10).astype(self.dtype)
+        out = np.diag(x, self.offset)
+
         self.attrs = {
             'offset': self.offset,
             'padding_value': self.padding_value,
         }
-        self.outputs = {'Out': self.out}
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         paddle.enable_static()
@@ -47,9 +57,6 @@ class TestDiagV2Op(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(['X'], 'Out')
-
-    def init_config(self):
-        pass
 
 
 class TestDiagV2OpCase1(TestDiagV2Op):
@@ -299,44 +306,9 @@ class TestDiagV2API(unittest.TestCase):
             self.run_static(use_gpu=True)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestDiagV2FP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "diag_v2"
-        self.python_api = paddle.diag
+class TestDiagV2FP16OP(TestDiagV2Op):
+    def init_dtype(self):
         self.dtype = np.float16
-        self.__class__.op_type = self.op_type
-        x = np.random.rand(10, 10).astype(np.float32)
-        offset = 0
-        padding_value = 0.0
-        out = np.diag(x, offset)
-
-        self.init_config()
-        self.inputs = {'X': x.astype(self.dtype)}
-        self.attrs = {
-            'offset': offset,
-            'padding_value': padding_value,
-        }
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=False)
-
-    def test_check_grad(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=False
-        )
-
-    def init_config(self):
-        pass
 
 
 @unittest.skipIf(
@@ -344,18 +316,16 @@ class TestDiagV2FP16OP(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestDiagV2BF16(OpTest):
+class TestDiagV2BF16OP(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
         self.python_api = paddle.diag
         self.dtype = np.uint16
-        self.__class__.op_type = self.op_type
         x = np.random.rand(10, 10).astype(np.float32)
         offset = 0
         padding_value = 0.0
         out = np.diag(x, offset)
 
-        self.init_config()
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'offset': offset,
@@ -366,17 +336,12 @@ class TestDiagV2BF16(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=False)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=False
-        )
-
-    def init_config(self):
-        pass
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
