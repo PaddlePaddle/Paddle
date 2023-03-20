@@ -4662,7 +4662,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         axis = 0
     dtype = x.dtype
     axes = [axis]
-    infer_flags = list(1 for i in range(len(axes)))
+    infer_flags = [1 for i in range(len(axes))]
     if in_dygraph_mode():
         has_pend = False
         input_list = []

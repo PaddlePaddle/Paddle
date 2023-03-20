@@ -209,11 +209,11 @@ class RecomputeFunction(PyLayer):
                     if isinstance(inp, (core.VarBase, core.eager.Tensor))
                 )
             else:
-                grads = list(
+                grads = [
                     inp._grad_ivar()
                     for inp in detached_inputs
                     if isinstance(inp, (core.VarBase, core.eager.Tensor))
-                )
+                ]
             return grads
 
 
