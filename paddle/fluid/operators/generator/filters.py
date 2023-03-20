@@ -14,6 +14,7 @@
 
 import itertools
 import re
+import sys
 from typing import Dict, List, Sequence
 
 from type_mapping import (
@@ -65,11 +66,12 @@ def to_dense_input_type(s, optional=False):
         return dense_optional_input_types_map[s]
 
 
-def assert_dense_or_sr(input_type):
-    return (
-        "ctx.IsSelectedRowsInput"
-        if input_type == "selected_rows"
-        else "ctx.IsDenseTensorInput"
+def find_first_selected_rows_param(inputs, kernel):
+    for index, input in enumerate(inputs):
+        if input == "selected_rows":
+            return index
+    sys.stderr(
+        "Inputs of kernel {} don't have 'selected_rows' param!".format(kernel)
     )
 
 
