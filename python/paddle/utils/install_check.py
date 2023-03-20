@@ -186,7 +186,7 @@ def train_for_run_parallel():
         """
 
         def __init__(self):
-            super(LinearNet, self).__init__()
+            super().__init__()
             self._linear1 = paddle.nn.Linear(10, 10)
             self._linear2 = paddle.nn.Linear(10, 1)
 

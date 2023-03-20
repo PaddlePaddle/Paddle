@@ -34,7 +34,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = Linear(10, 20)

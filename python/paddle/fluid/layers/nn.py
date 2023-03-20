@@ -41,7 +41,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import fill_constant, zeros
+from .tensor import zeros
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
@@ -698,10 +698,10 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)

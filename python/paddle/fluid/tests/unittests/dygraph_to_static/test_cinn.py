@@ -21,7 +21,7 @@ import paddle
 
 class Net(paddle.nn.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.relu = paddle.nn.functional.relu
         self.fc = paddle.nn.Linear(4, 4)
 
