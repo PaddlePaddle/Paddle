@@ -114,3 +114,16 @@ PD_REGISTER_GENERAL_KERNEL(reshape_infer,
 PD_REGISTER_GENERAL_KERNEL(
     reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_GENERAL_KERNEL(reshape_infer,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeInferKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
+#endif
