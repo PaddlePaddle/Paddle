@@ -521,13 +521,29 @@ def greater_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "uint16",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+            ],
             "greater_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "uint16",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+            ],
             "greater_equal",
         )
         helper = LayerHelper("greater_equal", **locals())

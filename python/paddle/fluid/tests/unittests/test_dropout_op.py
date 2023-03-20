@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+import parameterized as param
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
@@ -45,10 +46,30 @@ def dropout_wapper(
     )
 
 
+def prim_dropout_wrapper(
+    x,
+    Seed=None,
+    dropout_prob=0.5,
+    is_test=False,
+    dropout_implementation='upscale_in_train',
+    seed=None,
+    fix_seed=None,
+):
+    return paddle.nn.functional.dropout(
+        x,
+        p=dropout_prob,
+        axis=None,
+        training=not is_test,
+        mode=dropout_implementation,
+    )
+
+
 class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.prim_op_type = "comp"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -57,16 +78,18 @@ class TestDropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -75,16 +98,18 @@ class TestDropoutOpInput1d(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -97,6 +122,8 @@ class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -110,6 +137,8 @@ class TestDropoutOp4(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
         self.outputs = {
@@ -117,7 +146,7 @@ class TestDropoutOp4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -125,6 +154,8 @@ class TestDropoutOp5(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
         self.attrs = {'dropout_prob': 0.75, 'is_test': True}
         self.outputs = {
@@ -132,13 +163,15 @@ class TestDropoutOp5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {
             'dropout_prob': 1.0,
@@ -156,6 +189,8 @@ class TestDropoutOp7(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.0,
@@ -174,6 +209,8 @@ class TestDropoutOp8(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.35,
@@ -184,7 +221,7 @@ class TestDropoutOp8(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -192,6 +229,8 @@ class TestDropoutOp9(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.75,
@@ -201,13 +240,15 @@ class TestDropoutOp9(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
 class TestDropoutOpWithSeed(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.inputs = {
             "X": np.random.random((32, 64)).astype("float32"),
             "Seed": np.asarray([125], dtype="int32"),
@@ -221,10 +262,10 @@ class TestDropoutOpWithSeed(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=True)
 
 
 @unittest.skipIf(
@@ -236,6 +277,8 @@ class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.init_test_case()
 
         x = np.random.random(self.input_size).astype("float16")
@@ -247,6 +290,7 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True,
         }
         self.outputs = {'Out': out}
+        self.enable_cinn = False
 
     def init_test_case(self):
         self.input_size = [32, 64]
@@ -254,7 +298,9 @@ class TestFP16DropoutOp(OpTest):
         self.fix_seed = True
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+        self.check_output_with_place(
+            core.CUDAPlace(0), atol=1e-3, check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -273,7 +319,10 @@ class TestBF16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
         self.dtype = np.uint16
+        self.enable_cinn = False
 
         x = np.random.random((32, 64)).astype("float32")
         self.inputs = {'X': convert_float_to_uint16(x)}
@@ -290,6 +339,18 @@ class TestBF16DropoutOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
+
+    def test_check_output_for_prim(self):
+        # greater_equal does't support bfloat16 in cpu
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad_for_prim(self):
+        # greater_equal does't support bfloat16 in cpu
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X'], 'Out', only_check_prim=True
+            )
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
@@ -369,6 +430,7 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
 class TestDropoutOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
+            paddle.enable_static()
 
             def test_Variable():
                 # the input of dropout must be Variable.
@@ -398,6 +460,7 @@ class TestDropoutFAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[-1, -1], dtype="float32")
             res1 = paddle.nn.functional.dropout(x=input, p=0.0, training=False)
@@ -609,6 +672,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
 class TestDropoutFAPIError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_Variable():
@@ -716,6 +780,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
@@ -765,6 +830,7 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 class TestDropout2DFAPIError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_xdim():
@@ -805,6 +871,7 @@ class TestDropout2DCAPI(unittest.TestCase):
     def test_static_fp16_with_gpu(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
+            paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -834,6 +901,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
@@ -883,6 +951,7 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 class TestDropout3DFAPIError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_xdim():
@@ -1199,7 +1268,7 @@ class TestDropOutWithProbTensor(unittest.TestCase):
     def run_static(self, x):
         paddle.seed(2022)
         main_program = Program()
-
+        paddle.enable_static()
         with program_guard(main_program):
             input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
             out = self.api_case(input)
@@ -1302,6 +1371,294 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_allclose(out[0, 100, 500:510], expect, rtol=1e-05)
 
         paddle.enable_static()
+
+
+places = [paddle.CPUPlace()]
+if paddle.is_compiled_with_cuda():
+    places.append(paddle.CUDAPlace(0))
+
+
+class PrimNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(
+        self,
+        x,
+        p=0.5,
+        axis=None,
+        training=True,
+        mode="upscale_in_train",
+    ):
+        out = paddle.nn.functional.dropout(
+            x=x, p=p, axis=axis, training=training, mode=mode
+        )
+        return out
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+@param.parameterized_class(
+    ('name', 'x', 'p', 'is_test', 'mode', 'seed', 'dtype', 'places'),
+    (
+        (
+            'fp32',
+            np.random.rand(100000),
+            0.3,
+            False,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'fp64',
+            np.random.rand(100000),
+            0.7,
+            False,
+            'upscale_in_train',
+            9999,
+            'float64',
+            places,
+        ),
+        (
+            'is_test=True',
+            np.random.rand(100000),
+            0.5,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=1.0',
+            np.random.rand(100000),
+            1.0,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=1.0,test=False',
+            np.random.rand(100000),
+            1.0,
+            False,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=0.0',
+            np.random.rand(100000),
+            1.0,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'downgrade_train',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'fp32_cpu',
+            np.random.rand(100000),
+            0.6,
+            False,
+            'upscale_in_train',
+            9899,
+            'float64',
+            [paddle.CPUPlace()],
+        ),
+        (
+            'fp64_cpu',
+            np.random.rand(100000),
+            0.6,
+            False,
+            'upscale_in_train',
+            9899,
+            'float64',
+            [paddle.CPUPlace()],
+        ),
+        (
+            'downgrade_train_cpu',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'float32',
+            [paddle.CPUPlace()],
+        ),
+    ),
+)
+class TestCompositeDropout(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.x = cls.x.astype(cls.dtype)
+        core._set_prim_all_enabled(True)
+
+    @classmethod
+    def tearDownClass(cls):
+        core._set_prim_all_enabled(False)
+
+    def setUp(self):
+        paddle.seed(self.seed)
+        self.fwd_desire = []
+        self.rev_desire = []
+        for place in self.places:
+            fwd_desire, rev_desire = self.get_eager_desire(place)
+            self.fwd_desire.append(fwd_desire.numpy())
+            self.rev_desire.append(rev_desire.numpy())
+
+    def get_eager_desire(self, place):
+        paddle.disable_static()
+        paddle.seed(self.seed)
+        if isinstance(place, fluid.CPUPlace):
+            paddle.set_device("cpu")
+        if isinstance(place, fluid.CUDAPlace):
+            paddle.set_device("gpu")
+        core.set_prim_eager_enabled(False)
+        input_ = paddle.to_tensor(
+            data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        output = paddle.nn.functional.dropout(
+            input_, self.p, training=(not self.is_test), mode=self.mode
+        )
+        grad = paddle.grad(output, input_)
+        return output, grad[0]
+
+    def test_static_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        mps = []
+        with paddle.fluid.framework._static_guard():
+            for place in self.places:
+                paddle.seed(self.seed)
+                mp, sp = paddle.static.Program(), paddle.static.Program()
+                with paddle.static.program_guard(mp, sp):
+                    input_ = paddle.static.data(
+                        'x', shape=self.x.shape, dtype=self.x.dtype
+                    )
+                    input_.stop_gradient = False
+                    output = paddle.nn.functional.dropout(
+                        input_,
+                        self.p,
+                        training=(not self.is_test),
+                        mode=self.mode,
+                    )
+                    if core._is_fwd_prim_enabled():
+                        paddle.incubate.autograd.to_prim(mp.blocks)
+                    grad = paddle.static.gradients(output, input_)[0]
+                exe = paddle.static.Executor(place)
+                exe.run(sp)
+                fwd, rev = exe.run(
+                    mp, feed={input_.name: self.x}, fetch_list=[output, grad]
+                )
+                fwd_actual.append(fwd)
+                rev_actual.append(rev)
+                mps.append(mp)
+        for i in range(len(self.places)):
+            self.assertTrue(
+                'dropout' not in [op.type for op in mps[i].block(0).ops]
+            )
+            np.testing.assert_allclose(
+                self.fwd_desire[i].sum(),
+                fwd_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i].sum(),
+                rev_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+
+    def test_jit_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        paddle.disable_static()
+        for place in self.places:
+            if isinstance(place, fluid.CPUPlace):
+                paddle.set_device("cpu")
+            if isinstance(place, fluid.CUDAPlace):
+                paddle.set_device("gpu")
+            paddle.seed(self.seed)
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            net = PrimNet()
+            net = apply_to_static(net, False)
+            output = net(
+                input_, self.p, training=(not self.is_test), mode=self.mode
+            )
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+        for i in range(len(self.places)):
+            np.testing.assert_allclose(
+                self.fwd_desire[i].sum(),
+                fwd_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i].sum(),
+                rev_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+
+    def test_jit_comp_with_cinn(self):
+        fwd_actual = []
+        rev_actual = []
+        paddle.disable_static()
+        for place in self.places:
+            if isinstance(place, fluid.CPUPlace):
+                paddle.set_device("cpu")
+            if isinstance(place, fluid.CUDAPlace):
+                paddle.set_device("gpu")
+            paddle.seed(self.seed)
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            net = PrimNet()
+            net = apply_to_static(net, False)
+            output = net(
+                input_, self.p, training=(not self.is_test), mode=self.mode
+            )
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+        for i in range(len(self.places)):
+            np.testing.assert_allclose(
+                self.fwd_desire[i].sum(),
+                fwd_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i].sum(),
+                rev_actual[i].sum(),
+                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
 
 
 if __name__ == '__main__':
