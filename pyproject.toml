@@ -35,7 +35,9 @@ select = [
     # Pyupgrade
     "UP001",
     "UP003",
+    "UP004",
     "UP007",
+    "UP008",
     "UP010",
     "UP011",
     "UP013",

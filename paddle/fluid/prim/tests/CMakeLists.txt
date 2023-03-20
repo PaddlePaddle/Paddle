@@ -38,7 +38,8 @@ cc_test_old(
   static_global_utils
   static_tensor_operants
   tensor_api
-  operants_manager)
+  operants_manager
+  generated_static_op)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(

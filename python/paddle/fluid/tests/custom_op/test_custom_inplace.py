@@ -147,6 +147,105 @@ def inplace_static_relu(func, device, dtype, np_x, np_y, np_z):
     return x_v, y_v, out_v, x_grad_v, y_grad_v
 
 
+def dynamic_multi_inplace(phi_func, device, dtype, np_x, np_y, np_a, np_b):
+    paddle.set_device(device)
+    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=True)
+    y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
+    a = paddle.to_tensor(np_a, dtype=dtype, stop_gradient=True)
+    b = paddle.to_tensor(np_b, dtype=dtype, stop_gradient=False)
+    if phi_func:
+        out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
+    else:
+        out_xy = x.add_(y)
+        out_ab = a.add_(b)
+    out = out_xy + out_ab
+
+    out.backward()
+    return (
+        x.numpy(),
+        y.numpy(),
+        out_xy.numpy(),
+        x.grad.numpy(),
+        y.grad.numpy(),
+        a.numpy(),
+        b.numpy(),
+        out_ab.numpy(),
+        a.grad.numpy(),
+        b.grad.numpy(),
+    )
+
+
+def static_multi_inplace(phi_func, device, dtype, np_x, np_y, np_a, np_b):
+    paddle.enable_static()
+    paddle.set_device(device)
+    with static.scope_guard(static.Scope()):
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+            a = static.data(name="a", shape=[None, np_x.shape[1]], dtype=dtype)
+            b = static.data(name="b", shape=[None, np_y.shape[1]], dtype=dtype)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            a.stop_gradient = False
+            b.stop_gradient = False
+            if phi_func:
+                out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
+            else:
+                out_xy = paddle.add(x, y)
+                out_ab = paddle.add(a, b)
+            mean_out = paddle.mean(paddle.add(out_xy, out_ab))
+            static.append_backward(mean_out)
+
+            exe = static.Executor()
+            exe.run(static.default_startup_program())
+
+            (
+                x_v,
+                out_xy_v,
+                x_grad_v,
+                y_grad_v,
+                out_xy_grad_v,
+                a_v,
+                out_ab_v,
+                a_grad_v,
+                b_grad_v,
+                out_ab_grad_v,
+            ) = exe.run(
+                static.default_main_program(),
+                feed={
+                    "x": np_x.astype(dtype),
+                    "y": np_y.astype(dtype),
+                    "a": np_a.astype(dtype),
+                    "b": np_b.astype(dtype),
+                },
+                fetch_list=[
+                    x.name,
+                    out_xy.name,
+                    x.name + "@GRAD",
+                    y.name + "@GRAD",
+                    out_xy.name + "@GRAD",
+                    a.name,
+                    out_ab.name,
+                    a.name + "@GRAD",
+                    b.name + "@GRAD",
+                    out_ab.name + "@GRAD",
+                ],
+            )
+    paddle.disable_static()
+    return (
+        x_v,
+        out_xy_v,
+        x_grad_v,
+        y_grad_v,
+        out_xy_grad_v,
+        a_v,
+        out_ab_v,
+        a_grad_v,
+        b_grad_v,
+        out_ab_grad_v,
+    )
+
+
 class TestCustomInplaceJit(unittest.TestCase):
     def setUp(self):
         self.dtypes = ['float32', 'float64']
@@ -154,6 +253,8 @@ class TestCustomInplaceJit(unittest.TestCase):
         self.np_x = np.random.random((3, 2)).astype("float32")
         self.np_y = np.random.random((3, 2)).astype("float32")
         self.np_z = np.random.random((3, 2)).astype("float32")
+        self.np_a = np.random.random((3, 2)).astype("float32")
+        self.np_b = np.random.random((3, 2)).astype("float32")
 
     def check_output(self, out, pd_out, name):
         np.testing.assert_array_equal(
@@ -327,6 +428,127 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output(phi_out, pd_out, "out")
                 self.check_output(phi_x_grad, pd_x_grad, "x_grad")
                 self.check_output(phi_y_grad, pd_y_grad, "y_grad")
+
+    def test_static_multi_inplace(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                (
+                    pd_x,
+                    pd_out_xy,
+                    pd_x_grad,
+                    pd_y_grad,
+                    pd_out_xy_grad,
+                    pd_a,
+                    pd_out_ab,
+                    pd_a_grad,
+                    pd_b_grad,
+                    pd_out_ab_grad,
+                ) = static_multi_inplace(
+                    False,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                )
+                (
+                    phi_x,
+                    phi_out_xy,
+                    phi_x_grad,
+                    phi_y_grad,
+                    phi_out_xy_grad,
+                    phi_a,
+                    phi_out_ab,
+                    phi_a_grad,
+                    phi_b_grad,
+                    phi_out_ab_grad,
+                ) = static_multi_inplace(
+                    True,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                )
+                self.check_output(phi_x, pd_out_xy, "inplace_phi_x")
+                self.check_output(
+                    phi_x_grad, phi_out_xy_grad, "inplace_phi_x_grad"
+                )
+                self.check_output(phi_a, pd_out_ab, "inplace_phi_a")
+                self.check_output(
+                    phi_a_grad, phi_out_ab_grad, "inplace_phi_a_grad"
+                )
+
+                self.check_output(phi_out_xy, pd_out_xy, "outxy")
+                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(phi_y_grad, pd_y_grad, "y_grad")
+                self.check_output(phi_out_xy_grad, pd_out_xy_grad, "outxy_grad")
+                self.check_output(phi_out_ab, pd_out_ab, "outab")
+                self.check_output(phi_a_grad, pd_a_grad, "a_grad")
+                self.check_output(phi_b_grad, pd_b_grad, "b_grad")
+                self.check_output(phi_out_ab_grad, pd_out_ab_grad, "outab_grad")
+
+    def test_dynamic_multi_inplace(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                (
+                    pd_x,
+                    pd_y,
+                    pd_out_xy,
+                    pd_x_grad,
+                    pd_y_grad,
+                    pd_a,
+                    pd_b,
+                    pd_out_ab,
+                    pd_a_grad,
+                    pd_b_grad,
+                ) = dynamic_multi_inplace(
+                    False,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                )
+                (
+                    phi_x,
+                    phi_y,
+                    phi_out_xy,
+                    phi_x_grad,
+                    phi_y_grad,
+                    phi_a,
+                    phi_b,
+                    phi_out_ab,
+                    phi_a_grad,
+                    phi_b_grad,
+                ) = dynamic_multi_inplace(
+                    True,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                )
+
+                self.check_output(phi_x, phi_out_xy, "inplace_phi_x")
+                self.check_output(pd_x, pd_out_xy, "inplace_pd_x")
+                self.check_output(phi_a, phi_out_ab, "inplace_phi_a")
+                self.check_output(pd_a, pd_out_ab, "inplace_pd_a")
+
+                self.check_output(phi_x, pd_x, "x")
+                self.check_output(phi_y, pd_y, "y")
+                self.check_output(phi_out_xy, pd_out_xy, "outxy")
+                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(phi_y_grad, pd_y_grad, "y_grad")
+                self.check_output(phi_a, pd_a, "a")
+                self.check_output(phi_b, pd_b, "b")
+                self.check_output(phi_out_ab, pd_out_ab, "outab")
+                self.check_output(phi_a_grad, pd_a_grad, "a_grad")
+                self.check_output(phi_b_grad, pd_b_grad, "b_grad")
 
 
 if __name__ == "__main__":

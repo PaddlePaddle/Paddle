@@ -123,15 +123,29 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (py_rank == 0) {
-    // 0D Tensor hack process to 1D numpy, will remove in future
-    VLOG(0) << "Warning:: 0D Tensor cannot be used as Tensor.numpy()[0], Now "
-               "0D will be changed to 1D numpy to avoid this problem, but it's "
-               "not correct and will be removed in future. Please change "
-               "'Tensor.numpy()[0]' to 'float(Tensor)' or "
-               "'Tensor.numpy().item()' as soon as possible.";
-    py_rank = 1;
-    py_dims[0] = 1;
-    py_strides[0] = sizeof_dtype * numel;
+    Py_ssize_t args_num = PyTuple_Size(args);
+    bool set_to_1d = true;
+    if (args_num == (Py_ssize_t)1) {
+      PyObject* obj = PyTuple_GET_ITEM(args, 0);
+      if (obj == Py_False) {
+        set_to_1d = false;
+      }
+    }
+    if (set_to_1d) {
+      // 0D Tensor hack process to 1D numpy, will remove in future
+      VLOG(0)
+          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
+             "order to avoid this problem, "
+             "0D Tensor will be changed to 1D numpy currently, but it's not "
+             "correct and will be "
+             "removed in future. Please modify "
+             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
+             "possible, "
+             "otherwise 'Tensor.numpy()[0]' will raise error";
+      py_rank = 1;
+      py_dims[0] = 1;
+      py_strides[0] = sizeof_dtype * numel;
+    }
   } else {
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -143,7 +157,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      tensor_dims.size(),
+      py_rank,
       py_dims,
       py_strides,
       nullptr,
