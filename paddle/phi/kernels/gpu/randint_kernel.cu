@@ -17,11 +17,9 @@
 #include <random>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 

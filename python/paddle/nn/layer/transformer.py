@@ -25,10 +25,10 @@ from paddle.fluid.data_feeder import convert_dtype
 from ... import tensor
 from ...fluid import layers
 from ...framework import ParamAttr
-from .. import Layer
 from .. import functional as F
 from .common import Dropout, Linear
 from .container import LayerList
+from .layers import Layer
 from .norm import LayerNorm
 
 __all__ = []

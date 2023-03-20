@@ -34,7 +34,7 @@ class ObserveWrapper(Layer):
         observed: Layer,
         observe_input=True,
     ):
-        super(ObserveWrapper, self).__init__()
+        super().__init__()
         self._observer = observer
         self._observed = observed
         self._observe_input = observe_input

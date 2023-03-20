@@ -87,7 +87,7 @@ void MasterDaemon::_notify_waiting_sockets(const std::string& key) {
   if (_waiting_sockets.find(key) != _waiting_sockets.end()) {
     for (auto waiting_socket : _waiting_sockets.at(key)) {
       auto reply = ReplyType::STOP_WAIT;
-      VLOG(3) << "TCPStore: nofify the socket: " << GetSockName(waiting_socket)
+      VLOG(3) << "TCPStore: notify the socket: " << GetSockName(waiting_socket)
               << " that key: " << key << " is ready.";
       tcputils::send_value<ReplyType>(waiting_socket, reply);
     }
