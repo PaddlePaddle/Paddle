@@ -40,7 +40,6 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
-                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy);
 

@@ -269,86 +269,6 @@ class TestElementwiseMaxBF16Op_Vector(TestElementwiseBF16Op):
         )
 
 
-class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
-        y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-            )
-        }
-
-
-class TestElementwiseMaxFP16Op_broadcast_0(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
-        y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-            )
-        }
-
-
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
-        y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-            )
-        }
-
-
-class TestElementwiseMaxFP16Op_broadcast_1(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
-        y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-            )
-        }
-
-
 class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
@@ -383,46 +303,6 @@ class TestElementwiseMaxFP16Op_broadcast_2(TestElementwiseOp):
         self.outputs = {
             'Out': np.maximum(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
-            )
-        }
-
-
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float64)
-        y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1)
-            )
-        }
-
-
-class TestElementwiseMaxFP16Op_broadcast_3(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.prim_op_type = "prim"
-        x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float16)
-        y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.maximum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1)
             )
         }
 

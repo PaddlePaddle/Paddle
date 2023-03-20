@@ -342,7 +342,6 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                     "elementwise_div",
                     "elementwise_pow",
                     "elementwise_min",
-                    "elementwise_max",
                     "elementwise_floordiv",
                     "elementwise_mod",
                 ]:
@@ -484,7 +483,6 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                 "elementwise_div",
                 "elementwise_pow",
                 "elementwise_min",
-                "elementwise_max",
                 "elementwise_floordiv",
                 "elementwise_mod",
             ]:
@@ -685,7 +683,6 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                     "elementwise_div",
                     "elementwise_pow",
                     "elementwise_min",
-                    "elementwise_max",
                     "elementwise_floordiv",
                     "elementwise_mod",
                 ]:
@@ -834,7 +831,6 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                     "elementwise_div",
                     "elementwise_pow",
                     "elementwise_min",
-                    "elementwise_max",
                     "elementwise_floordiv",
                     "elementwise_mod",
                 ]:

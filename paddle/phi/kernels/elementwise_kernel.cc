@@ -24,15 +24,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaximumKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   DenseTensor* out) {
-  int axis = -1;
-  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
-template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
@@ -105,15 +96,6 @@ void SubtractKernel(const Context& dev_ctx,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(maximum,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MaximumKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(minimum,
                    CPU,
                    ALL_LAYOUT,
@@ -193,16 +175,6 @@ PD_REGISTER_KERNEL(divide,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-PD_REGISTER_KERNEL(maximum,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::MaximumKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(minimum,
                    KPS,
                    ALL_LAYOUT,
@@ -329,8 +301,6 @@ PD_REGISTER_KERNEL(floor_divide,
                    phi::FloorDivideKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    maximum, XPU, ALL_LAYOUT, phi::MaximumKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     minimum, XPU, ALL_LAYOUT, phi::MinimumKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(remainder,

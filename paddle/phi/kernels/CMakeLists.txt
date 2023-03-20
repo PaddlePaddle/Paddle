@@ -110,6 +110,7 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "elementwise_raw_kernels/kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
@@ -134,6 +135,8 @@ if(WITH_MKLDNN)
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "elementwise_raw_kernels/*.cc"
+    "elementwise_raw_kernels/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -150,6 +153,8 @@ else()
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "elementwise_raw_kernels/*.cc"
+    "elementwise_raw_kernels/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -160,7 +165,8 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+file(GLOB kernel_xpu "xpu/*.cc" "elementwise_raw_kernels/xpu/*.cc"
+     "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
@@ -190,6 +196,8 @@ endif()
 if(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/elementwise_raw_kernels/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})

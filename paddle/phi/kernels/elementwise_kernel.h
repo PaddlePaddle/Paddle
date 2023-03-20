@@ -32,13 +32,6 @@ void FMinKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out);
-
-template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,

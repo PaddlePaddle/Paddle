@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
       dev_ctx, x, y, axis, funcs::MaximumFunctor<T>(), out);
 }
@@ -127,10 +127,10 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(maximum_raw,
+PD_REGISTER_KERNEL(maximum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::MaximumRawKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
                    int,
