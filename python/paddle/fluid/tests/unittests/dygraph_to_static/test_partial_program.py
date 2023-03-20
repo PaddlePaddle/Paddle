@@ -173,7 +173,7 @@ class TestWithNoGrad(unittest.TestCase):
                 )
 
 
-class GPT2LMHeadModel(fluid.dygraph.Layer):
+class GPT2LMHeadModel(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.embedding0 = paddle.nn.Embedding(20, 16)

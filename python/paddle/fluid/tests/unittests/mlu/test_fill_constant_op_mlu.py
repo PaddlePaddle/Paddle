@@ -268,8 +268,8 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
 
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
 
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
@@ -278,41 +278,41 @@ class TestFillConstantAPI(unittest.TestCase):
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 
-        out_1 = fluid.layers.fill_constant(
+        out_1 = paddle.tensor.fill_constant(
             shape=[1, 2], dtype="float32", value=1.1
         )
 
-        out_2 = fluid.layers.fill_constant(
+        out_2 = paddle.tensor.fill_constant(
             shape=[1, positive_2_int32], dtype="float32", value=1.1
         )
 
-        out_3 = fluid.layers.fill_constant(
+        out_3 = paddle.tensor.fill_constant(
             shape=[1, positive_2_int64], dtype="float32", value=1.1
         )
 
-        out_4 = fluid.layers.fill_constant(
+        out_4 = paddle.tensor.fill_constant(
             shape=shape_tensor_int32, dtype="float32", value=1.1
         )
 
-        out_5 = fluid.layers.fill_constant(
+        out_5 = paddle.tensor.fill_constant(
             shape=shape_tensor_int64, dtype="float32", value=1.1
         )
 
-        out_6 = fluid.layers.fill_constant(
+        out_6 = paddle.tensor.fill_constant(
             shape=shape_tensor_int64, dtype=np.float32, value=1.1
         )
 
-        val1 = fluid.layers.fill_constant(
+        val1 = paddle.tensor.fill_constant(
             shape=[1], dtype=np.float32, value=1.1
         )
-        val2 = fluid.layers.fill_constant(
+        val2 = paddle.tensor.fill_constant(
             shape=[1], dtype=np.float64, value=1.1
         )
-        out_7 = fluid.layers.fill_constant(
+        out_7 = paddle.tensor.fill_constant(
             shape=shape_tensor_int64, dtype=np.float32, value=val1
         )
 
-        out_8 = fluid.layers.fill_constant(
+        out_8 = paddle.tensor.fill_constant(
             shape=shape_tensor_int64, dtype=np.float32, value=val2
         )
 
@@ -345,16 +345,16 @@ class TestFillConstantImperative(unittest.TestCase):
             shape = fluid.dygraph.to_variable(data1)
             val = fluid.dygraph.to_variable(data2)
             value = fluid.dygraph.to_variable(data3)
-            res1 = fluid.layers.fill_constant(
+            res1 = paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='float32', value=1.1
             )
-            res2 = fluid.layers.fill_constant(
+            res2 = paddle.tensor.fill_constant(
                 shape=shape, dtype='float32', value=1.1
             )
-            res3 = fluid.layers.fill_constant(
+            res3 = paddle.tensor.fill_constant(
                 shape=shape, dtype='float32', value=val
             )
-            res4 = fluid.layers.fill_constant(
+            res4 = paddle.tensor.fill_constant(
                 shape=shape, dtype='int32', value=value
             )
             assert np.array_equal(
@@ -372,17 +372,17 @@ class TestFillConstantImperative(unittest.TestCase):
 
     def test_nan(self):
         with fluid.dygraph.guard():
-            res = fluid.layers.fill_constant([1], 'float32', np.nan)
+            res = paddle.tensor.fill_constant([1], 'float32', np.nan)
             self.assertTrue(np.isnan(res.numpy().item(0)))
 
     def test_inf(self):
         with fluid.dygraph.guard():
-            res = fluid.layers.fill_constant([1], 'float32', np.inf)
+            res = paddle.tensor.fill_constant([1], 'float32', np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
 
     def test_ninf(self):
         with fluid.dygraph.guard():
-            res = fluid.layers.fill_constant([1], 'float32', np.NINF)
+            res = paddle.tensor.fill_constant([1], 'float32', np.NINF)
             self.assertTrue(np.isinf(res.numpy().item(0)))
             self.assertEqual(np.NINF, res.numpy().item(0))
 
@@ -434,13 +434,13 @@ class TestFillConstantOpError(unittest.TestCase):
 
             # The argument shape's type of fill_constant_op must be list, tuple or Variable.
             def test_shape_type():
-                fluid.layers.fill_constant(shape=1, dtype="float32", value=1)
+                paddle.tensor.fill_constant(shape=1, dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_type)
 
             # The argument shape's size of fill_constant_op must not be 0.
             def test_shape_size():
-                fluid.layers.fill_constant(shape=[], dtype="float32", value=1)
+                paddle.tensor.fill_constant(shape=[], dtype="float32", value=1)
 
             self.assertRaises(AssertionError, test_shape_size)
 
@@ -449,7 +449,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 shape = fluid.data(
                     name="shape_tensor", shape=[2], dtype="float32"
                 )
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=shape, dtype="float32", value=1
                 )
 
@@ -459,7 +459,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 shape = fluid.data(
                     name="shape_tensor_list", shape=[1], dtype="bool"
                 )
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[shape, 2], dtype="float32", value=1
                 )
 
