@@ -49,7 +49,7 @@ static void Sort(const XPUContext& dev_ctx,
     return scores_slice_cpu_data[i] < scores_slice_cpu_data[j];
   };
 
-  std::sort(index, index + value.numel(), compare);
+  std::stable_sort(index, index + value.numel(), compare);
   index_out->Resize({index_t.numel()});
   int* idx_out = dev_ctx.template Alloc<int>(index_out);
   paddle::memory::Copy(
