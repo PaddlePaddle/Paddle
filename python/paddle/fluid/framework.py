@@ -442,7 +442,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
         return wrapper
 
-    from .dygraph.layers import Layer
+    from paddle.nn import Layer
 
     if not isinstance(call_func, Layer):
         if callable(call_func):

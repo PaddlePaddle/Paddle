@@ -25,7 +25,7 @@ PLACE = (
 )
 
 
-class SubNetWithDict(fluid.dygraph.Layer):
+class SubNetWithDict(paddle.nn.Layer):
     def __init__(self, hidden_size=16, output_size=16):
         super().__init__()
 
@@ -72,7 +72,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
         return out
 
 
-class MainNetWithDict(fluid.dygraph.Layer):
+class MainNetWithDict(paddle.nn.Layer):
     def __init__(self, batch_size=64, hidden_size=16, output_size=16):
         super().__init__()
         self.batch_size = batch_size

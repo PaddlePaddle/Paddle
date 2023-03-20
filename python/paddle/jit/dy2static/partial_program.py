@@ -21,9 +21,9 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
+from paddle.nn.layer import layers
 
 from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names

@@ -67,7 +67,7 @@ def func_decorated_by_other_2():
     return 1
 
 
-class LayerErrorInCompiletime(fluid.dygraph.Layer):
+class LayerErrorInCompiletime(paddle.nn.Layer):
     def __init__(self, fc_size=20):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
@@ -82,7 +82,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
         return out
 
 
-class LayerErrorInCompiletime2(fluid.dygraph.Layer):
+class LayerErrorInCompiletime2(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
