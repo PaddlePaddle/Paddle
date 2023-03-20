@@ -57,14 +57,6 @@ class TestAccuracyOp(OpTest):
         self.check_output()
 
 
-class TestAccuracyOpFp32(TestAccuracyOp):
-    def init_dtype(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output()
-
-
 class TestAccuracyOpFp16(TestAccuracyOp):
     def init_dtype(self):
         self.dtype = np.float16
