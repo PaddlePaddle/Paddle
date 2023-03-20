@@ -75,6 +75,10 @@ class SetValueConverter : public OpConverter {
       axes = input_dims.nbDims - 1;
     }
 
+    if (ends == -1 || ends > input_dims.d[input_dims.nbDims - 1]) {
+      ends = input_dims.d[input_dims.nbDims - 1];
+    }
+
     if (axes >= input_dims.nbDims) {
       platform::errors::InvalidArgument(
           "The axes %d is larger than total axes %d", axes, input_dims.nbDims);
