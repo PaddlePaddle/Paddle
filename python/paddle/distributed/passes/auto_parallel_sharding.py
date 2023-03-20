@@ -1787,7 +1787,7 @@ def group_param(sharding_info, fuse_size):
     return group_to_param_map, param_to_group_map
 
 
-class ShardingInfo(object):
+class ShardingInfo:
     def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
         self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
@@ -1869,7 +1869,7 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-class VarGroup(object):
+class VarGroup:
     def __init__(self, max_size):
         self.max_siez = max_size
         self.dtype = None

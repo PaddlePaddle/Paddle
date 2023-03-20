@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 from paddle.nn import Linear
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 

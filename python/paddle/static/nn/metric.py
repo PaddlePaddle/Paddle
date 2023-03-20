@@ -14,12 +14,11 @@
 """
 All layers just related to metric.
 """
-
+import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, _varbase_creator
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import tensor
 from paddle.nn.initializer import ConstantInitializer
 
 __all__ = []
@@ -226,7 +225,7 @@ def auc(
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant(
+        ins_tag_weight = paddle.tensor.fill_constant(
             shape=[1, 1], dtype="float32", value=1.0
         )
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')

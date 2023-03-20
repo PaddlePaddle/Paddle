@@ -952,7 +952,15 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_numpy(self):
         x = paddle.full([], 0.5)
-        np.testing.assert_array_equal(x.numpy(), np.array(0.5))
+        # 0D Tensor hack to 1D Numpy defaut, will remove in future
+        x_np = x.numpy()
+        np.testing.assert_array_equal(x_np.shape, (1,))
+        np.testing.assert_array_equal(x_np, np.array([0.5]))
+
+        # return origin correct numpy
+        x_np = x.numpy(False)
+        np.testing.assert_array_equal(x_np.shape, ())
+        np.testing.assert_array_equal(x_np, np.array(0.5))
 
     def test_numel(self):
         out = paddle.numel(self.x)
@@ -1546,7 +1554,19 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.numpy(), 0)
 
     def test_lerp(self):
-        # 0D + 0D
+        # 0D + 0D, weight is float scalar
+        x = paddle.rand([])
+        y = paddle.rand([])
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.lerp(x, y, 0.5)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(y.grad.shape, [])
+
+        # 0D + 0D, weigh is 0D
         x0 = paddle.rand([])
         y0 = paddle.rand([])
         w0 = paddle.rand([])
@@ -2896,11 +2916,15 @@ class TestSundryAPIStatic(unittest.TestCase):
             [(), (), (), ()],
             [(), (64, 64), (), (64, 64)],
             [(64, 64), (), (), (64, 64)],
+            [(64, 64), (), 0.5, (64, 64)],
         ]
         for shape in shapes:
             x = paddle.rand(shape[0])
             y = paddle.rand(shape[1])
-            w = paddle.rand(shape[2])
+            if isinstance(shape[2], float):
+                w = shape[2]
+            else:
+                w = paddle.rand(shape[2])
 
             x.stop_gradient = False
             y.stop_gradient = False
@@ -3063,8 +3087,8 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
-        out1 = paddle.unsqueeze(x1, axis=0)
         x1.stop_gradient = False
+        out1 = paddle.unsqueeze(x1, axis=0)
         paddle.static.append_backward(out1.sum())
 
         x2 = paddle.full([], 3)

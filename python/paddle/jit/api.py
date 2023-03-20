@@ -34,7 +34,6 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
@@ -56,7 +55,7 @@ from paddle.jit.translated_layer import (
     INFER_PARAMS_INFO_SUFFIX,
     INFER_PROPERTY_SUFFIX,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
@@ -127,6 +126,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           from paddle.jit.api import dygraph_to_static_func
@@ -140,7 +140,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -509,7 +509,9 @@ def _get_input_var_names(inputs, input_spec):
     )
     result_list = []
     input_var_names = [
-        var.name for var in flatten(inputs) if isinstance(var, Variable)
+        var.name
+        for var in paddle.utils.flatten(inputs)
+        if isinstance(var, Variable)
     ]
     if input_spec is None:
         # no prune
@@ -562,7 +564,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         )
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in flatten(outputs):
+    for var in paddle.utils.flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
@@ -970,7 +972,7 @@ def save(layer, path, input_spec=None, **configs):
                 % type(input_spec)
             )
         inner_input_spec = []
-        for var in flatten(input_spec):
+        for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
@@ -1034,7 +1036,7 @@ def save(layer, path, input_spec=None, **configs):
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
@@ -1067,7 +1069,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
             else:
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
@@ -1616,7 +1618,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
