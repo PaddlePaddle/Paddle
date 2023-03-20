@@ -89,7 +89,7 @@ def train_lenet(lenet, reader, optimizer):
         lenet.clear_gradients()
 
         if batch_id % 100 == 0:
-            loss_list.append(avg_loss.numpy()[0])
+            loss_list.append(float(avg_loss))
             _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
     return loss_list
