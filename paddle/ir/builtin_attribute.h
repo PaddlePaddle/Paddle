@@ -27,34 +27,44 @@ class StrAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
 
+  friend class StrAttributeStorage;
+
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
 
-  static StrAttribute get(ir::IrContext *ctx, const std::string &data) {
-    return ir::AttributeManager::template get<StrAttribute>(
-        ctx, const_cast<char *>(data.c_str()), data.size());
-  }
-
-  static int CompareMemory(const char *left, const char *right, size_t length) {
-    if (length == 0) return 0;
-    return memcmp(left, right, length);
-  }
-
   int compare(const StrAttribute &right) const {
-    if (*this == right) return 0;
-    if (int compare =
-            CompareMemory(storage()->data_,
-                          right.storage()->data_,
-                          std::min(storage()->size_, right.storage()->size_)))
-      return compare < 0 ? -1 : 1;
-    if (storage()->size_ == right.storage()->size_) return 0;
-    return storage()->size_ < right.storage()->size_ ? -1 : 1;
+    return storage()->GetAsKey().compare(right.storage()->GetAsKey());
   }
 
   bool operator<(const StrAttribute &right) const { return compare(right) < 0; }
 
   std::string data() const;
 
-  const uint32_t &size() const;
+  uint32_t size() const;
+};
+
+class NamedAttribute {
+ public:
+  NamedAttribute(StrAttribute name, Attribute value);
+
+  StrAttribute name() const;
+
+  Attribute value() const;
+
+  void SetName(StrAttribute name);
+
+  void SetValue(Attribute value);
+
+  bool operator<(const NamedAttribute &right) const;
+
+  bool operator==(const NamedAttribute &right) const;
+
+  bool operator!=(const NamedAttribute &right) const;
+
+  friend struct std::hash<NamedAttribute>;
+
+ private:
+  StrAttribute name_;
+  Attribute value_;
 };
 
 class DictionaryAttribute : public ir::Attribute {
@@ -66,7 +76,25 @@ class DictionaryAttribute : public ir::Attribute {
 
   Attribute GetValue(const StrAttribute &name);
 
-  const uint32_t &size() const;
+  uint32_t size() const;
 };
 
 }  // namespace ir
+
+namespace std {
+static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+}
+
+template <>
+struct hash<ir::NamedAttribute> {
+  std::size_t operator()(const ir::NamedAttribute &obj) const {
+    std::size_t hash_value = 0;
+    hash_value =
+        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.name_));
+    hash_value =
+        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.value_));
+    return hash_value;
+  }
+};
+}  // namespace std

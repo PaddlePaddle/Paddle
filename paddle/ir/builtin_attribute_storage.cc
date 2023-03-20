@@ -40,8 +40,7 @@ DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
 }
 
 std::size_t DictionaryAttributeStorage::HashValue(const ParamKey &key) {
-  std::size_t hash_value = 0;
-  hash_value = hash_combine(hash_value, std::hash<uint32_t>()(key.size()));
+  std::size_t hash_value = key.size();
   for (auto iter = key.begin(); iter != key.end(); ++iter) {
     hash_value = hash_combine(
         hash_value,

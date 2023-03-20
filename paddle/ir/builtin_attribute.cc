@@ -15,26 +15,49 @@
 #include "paddle/ir/builtin_attribute.h"
 
 namespace ir {
-std::string StrAttribute::data() const { return storage()->data_; }
+std::string StrAttribute::data() const { return storage()->GetAsKey(); }
 
-const uint32_t& StrAttribute::size() const { return storage()->size_; }
+uint32_t StrAttribute::size() const { return storage()->GetAsKey().size(); }
 
-Attribute DictionaryAttribute::GetValue(const StrAttribute& name) {
+NamedAttribute::NamedAttribute(StrAttribute name, Attribute value)
+    : name_(name), value_(value) {}
+
+StrAttribute NamedAttribute::name() const { return name_; }
+
+Attribute NamedAttribute::value() const { return value_; }
+
+void NamedAttribute::SetName(StrAttribute name) { name_ = name; }
+
+void NamedAttribute::SetValue(Attribute value) { value_ = value; }
+
+bool NamedAttribute::operator<(const NamedAttribute &right) const {
+  return name().compare(right.name()) < 0;
+}
+
+bool NamedAttribute::operator==(const NamedAttribute &right) const {
+  return name() == right.name() && value() == right.value();
+}
+
+bool NamedAttribute::operator!=(const NamedAttribute &right) const {
+  return !(*this == right);
+}
+
+Attribute DictionaryAttribute::GetValue(const StrAttribute &name) {
   size_t left = 0;
-  size_t right = storage()->size_ - 1;
+  size_t right = storage()->size() - 1;
   size_t mid = 0;
   while (left <= right) {
     mid = (left + right) / 2;
-    if (storage()->data_[mid].name().compare(name) < 0) {
+    if (storage()->data()[mid].name().compare(name) < 0) {
       left = mid + 1;
-    } else if (storage()->data_[mid].name().compare(name) > 0) {
+    } else if (storage()->data()[mid].name().compare(name) > 0) {
       right = mid - 1;
     } else {
-      return storage()->data_[mid].value();
+      return storage()->data()[mid].value();
     }
   }
   return nullptr;
 }
 
-const uint32_t& DictionaryAttribute::size() const { return storage()->size_; }
+uint32_t DictionaryAttribute::size() const { return storage()->size(); }
 }  // namespace ir

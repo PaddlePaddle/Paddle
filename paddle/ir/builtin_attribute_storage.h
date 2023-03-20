@@ -25,44 +25,40 @@ namespace ir {
 /// \brief Define Parameteric AttributeStorage for StrAttribute.
 ///
 struct StrAttributeStorage : public ir::AttributeStorage {
-  using ParamKey = std::tuple<char *, uint32_t>;
+  using ParamKey = std::string;
 
-  StrAttributeStorage(char *data, uint32_t size) {
-    data_ = reinterpret_cast<char *>(malloc(size));
-    memcpy(data_, data, size);
-    size_ = size;
+  explicit StrAttributeStorage(const ParamKey &key) {
+    data_ = reinterpret_cast<char *>(malloc(key.size()));
+    memcpy(data_, const_cast<char *>(key.c_str()), key.size());
+    size_ = key.size();
   }
 
   ~StrAttributeStorage() { free(data_); }
 
   static StrAttributeStorage *Construct(ParamKey key) {
-    return new StrAttributeStorage(std::get<0>(key), std::get<1>(key));
+    return new StrAttributeStorage(key);
   }
 
   static std::size_t HashValue(const ParamKey &key) {
-    return hash_combine(0,
-                        std::hash<std::string>()(
-                            std::string(std::get<0>(key), std::get<1>(key))));
+    return std::hash<std::string>()(key);
   }
 
   bool operator==(const ParamKey &key) const {
-    return std::equal(data_, data_ + size_, std::get<0>(key));
+    return std::equal(data_, data_ + size_, const_cast<char *>(key.c_str()));
   }
 
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
 
+ private:
   char *data_;
   uint32_t size_;
-
- private:
-  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  }
 };
 
 ///
 /// \brief Define Parameteric AttributeStorage for DictionaryAttributeStorage.
 ///
+class StrAttribute;
+class NamedAttribute;
 struct DictionaryAttributeStorage : public AttributeStorage {
   using ParamKey = std::map<StrAttribute, Attribute>;
 
@@ -80,12 +76,16 @@ struct DictionaryAttributeStorage : public AttributeStorage {
 
   ParamKey GetAsKey() const;
 
-  NamedAttribute *data_;
-  uint32_t size_;
+  const NamedAttribute *data() const { return data_; }
+
+  const uint32_t size() const { return size_; }
 
  private:
   static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
     return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
   }
+
+  NamedAttribute *data_;
+  uint32_t size_;
 };
 }  // namespace ir

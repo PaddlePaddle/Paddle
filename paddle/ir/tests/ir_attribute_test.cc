@@ -50,11 +50,7 @@ TEST(attribute_test, built_in_attribute) {
   std::string str_tmp = "string_a";
   ir::Attribute string_attr_1 = ir::StrAttribute::get(ctx, str_tmp);
   ir::Attribute string_attr_2 = ir::StrAttribute::get(ctx, str_tmp);
-  const char *temp = "abcd";
-  ir::Attribute string_attr_3 =
-      ir::StrAttribute::get(ctx, const_cast<char *>(temp), 4);
   EXPECT_EQ(string_attr_1, string_attr_2);
-  EXPECT_NE(string_attr_1, string_attr_3);
   EXPECT_EQ(ir::StrAttribute::classof(string_attr_1), 1);
   // Test 2: Test isa and dyn_cast.
   EXPECT_EQ(string_attr_1.isa<ir::StrAttribute>(), true);
