@@ -44,7 +44,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   int found_fc_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "Fuse FC with " << act_type << " activation.";
+    VLOG(4) << "Fuse fc with activation op.";
     GET_IR_NODE_FROM_SUBGRAPH(fc, preceding_op, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, preceding_op_out, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
@@ -63,7 +63,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       found_fc_act_count > 0)
     PrettyLogDetail(
-        "---    fused %d FC with %s activation", found_fc_act_count, act_type);
+        "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
 
 }  // namespace ir
@@ -75,7 +75,7 @@ REGISTER_PASS(fc_act_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fc", 0)
+            .LE("fc", 0)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

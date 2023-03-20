@@ -1047,18 +1047,18 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
 
 def _PartitionParam(param):
     if not hasattr(param, "fw_storage"):
-        setattr(param, "fw_storage", None)
-        setattr(param, "bw_storage", None)
-        setattr(param, "master_weight", None)
-        setattr(param, "status", "all")
-        setattr(param, "use_count", 0)
+        param.fw_storage = None
+        param.bw_storage = None
+        param.master_weight = None
+        param.status = "all"
+        param.use_count = 0
     return param
 
 
 def _UnsliceParam(param):
     if not hasattr(param, "unslice"):
-        setattr(param, "unslice", True)
-        setattr(param, "master_weight", None)
+        param.unslice = True
+        param.master_weight = None
     return param
 
 
@@ -1078,11 +1078,11 @@ def _VarBaseWrapper(param):
 
 def _OptimizerWrapper(optimizer, offload, group, update_params_slice):
     if not hasattr(optimizer, "_optim"):
-        setattr(optimizer, "_optim", optimizer)
-        setattr(optimizer, "offload", offload)
-        setattr(optimizer, "_group", group)
-        setattr(optimizer, "update_scaler", None)
-        setattr(optimizer, "update_slice", update_params_slice)
+        optimizer._optim = optimizer
+        optimizer.offload = offload
+        optimizer._group = group
+        optimizer.update_scaler = None
+        optimizer.update_slice = update_params_slice
     return optimizer
 
 

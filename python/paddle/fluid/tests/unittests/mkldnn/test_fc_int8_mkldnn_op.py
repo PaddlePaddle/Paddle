@@ -16,10 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle import enable_static
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
-
-enable_static()
 
 
 @OpTestTool.skip_if_not_cpu()
@@ -96,4 +93,7 @@ class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
 
 
 if __name__ == "__main__":
+    import paddle
+
+    paddle.enable_static()
     unittest.main()

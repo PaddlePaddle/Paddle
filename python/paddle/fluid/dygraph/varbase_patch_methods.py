@@ -764,7 +764,7 @@ def monkey_patch_varbase():
                 print(type(x_array))      #<class 'numpy.ndarray'>
                 print(x_array.shape)      #(2, 2)
         """
-        array = self.numpy()
+        array = self.numpy(False)
         if dtype:
             array = array.astype(dtype)
         return array

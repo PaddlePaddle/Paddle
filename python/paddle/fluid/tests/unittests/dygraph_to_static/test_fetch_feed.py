@@ -23,7 +23,7 @@ from paddle.jit.api import to_static
 SEED = 2020
 
 
-class Pool2D(fluid.dygraph.Layer):
+class Pool2D(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
@@ -38,7 +38,7 @@ class Pool2D(fluid.dygraph.Layer):
         return pre
 
 
-class Linear(fluid.dygraph.Layer):
+class Linear(paddle.nn.Layer):
     def __init__(self, input_dim=10, output_dim=5):
         super().__init__()
         self.fc = paddle.nn.Linear(

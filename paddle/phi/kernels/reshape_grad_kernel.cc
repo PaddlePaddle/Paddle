@@ -97,3 +97,16 @@ PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            phi::ReshapeDoubleGradKernel<phi::XPUContext>,
                            ALL_DTYPE) {}
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_GENERAL_KERNEL(reshape_grad,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeGradKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeDoubleGradKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
+#endif
