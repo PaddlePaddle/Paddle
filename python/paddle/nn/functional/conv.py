@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, reshape
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
@@ -262,7 +261,7 @@ def _conv_nd(
                     y_shape
                 ), 'The length of pre_bias must greater than the length of bias'
                 padding = len(x_shape) - len(y_shape) - channel_dim
-                bias = paddle.reshape(
+                bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
                 )
 
@@ -1369,7 +1368,7 @@ def conv2d_transpose(
                     y_shape
                 ), 'The length of pre_bias must greater than the length of bias'
                 padding = len(x_shape) - len(y_shape) - channel_dim
-                bias = paddle.reshape(
+                bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
                 )
                 helper.append_op(
