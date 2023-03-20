@@ -1682,7 +1682,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @_non_static_only_
+    @non_static_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
