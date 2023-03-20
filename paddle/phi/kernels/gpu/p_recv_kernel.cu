@@ -52,7 +52,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   // copy the shape size tensor to cpu
   phi::DenseTensor* cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_size_tensor->Resize({1});
-  cpu_shape_size_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
+  dev_ctx.HostAlloc(cpu_shape_size_tensor, shape_dtype);
 
   memory_utils::Copy(phi::CPUPlace(),
                      cpu_shape_size_tensor->data(),
@@ -75,7 +75,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   // copy the shape tensor to cpu
   phi::DenseTensor* cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_tensor->Resize({shape_size});
-  cpu_shape_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
+  dev_ctx.HostAlloc(cpu_shape_tensor, shape_dtype);
 
   memory_utils::Copy(phi::CPUPlace(),
                      cpu_shape_tensor->data(),

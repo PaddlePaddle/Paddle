@@ -48,7 +48,7 @@ void send_shape_info(const Context& dev_ctx,
   // step1: send the shape size
   phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
-  cpu_shape_size_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
+  dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
@@ -70,7 +70,7 @@ void send_shape_info(const Context& dev_ctx,
   // step2: send the shape
   phi::DenseTensor cpu_shape_tensor(shape_dtype);
   cpu_shape_tensor.Resize({shape_size});
-  cpu_shape_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
+  dev_ctx.HostAlloc(&cpu_shape_tensor, shape_dtype);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
   for (int i = 0; i < shape_size; ++i) {
     cpu_shape_data[i] = dims[i];
