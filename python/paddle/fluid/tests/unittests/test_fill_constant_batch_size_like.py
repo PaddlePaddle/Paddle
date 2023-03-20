@@ -83,7 +83,7 @@ class TestFillConstatnBatchSizeLikeFP16(TestFillConstatnBatchSizeLike1):
         self.force_cpu = False
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 @unittest.skipIf(
