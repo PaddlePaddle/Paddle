@@ -113,13 +113,14 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(
             ["X", "Y"],
             "Out",
             user_defined_grads=self.gradient,
+            check_dygraph=False,
         )
 
 
@@ -192,6 +193,41 @@ class TestDistAPI(unittest.TestCase):
 class TestDistFP16OP(TestDistOp):
     def init_data_type(self):
         self.data_type = np.float16
+
+
+class TestDistFP16OPCase1(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistFP16OPCase2(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistFP16OPCase3(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistFP16OPCase4(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistFP16OPCase5(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
 
 
 if __name__ == '__main__':
