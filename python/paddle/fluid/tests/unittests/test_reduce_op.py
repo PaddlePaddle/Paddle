@@ -750,9 +750,14 @@ class Test3DReduce3(Test1DReduce):
         }
 
 
+def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
+    return paddle._C_ops.sum(x, axis, dtype, keepdim)
+
+
 class Test8DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper2
         self.attrs = {'dim': (4, 2, 3)}
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
@@ -782,9 +787,26 @@ class TestKeepDimReduce(Test1DReduce):
         }
 
 
+class TestKeepDimReduceForEager(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper2
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
+        }
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestKeepDim8DReduce(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper2
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
         }
@@ -862,6 +884,25 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestKeepDimReduceSumMultiAxisesForEager(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper2
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.attrs = {'dim': [-2, -1], 'keep_dim': True}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(
+                axis=tuple(self.attrs['dim']), keepdims=True
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestReduceSumWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -881,6 +922,26 @@ class TestReduceSumWithDimOne(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestReduceSumWithDimOneForEager(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper2
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
+        self.attrs = {'dim': [1, 2], 'keep_dim': True}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(
+                axis=tuple(self.attrs['dim']), keepdims=True
+            )
+        }
+        self.enable_cinn = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestReduceSumWithNumelOne(OpTest):
