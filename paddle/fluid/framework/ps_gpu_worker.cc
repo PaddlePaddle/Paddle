@@ -392,9 +392,7 @@ void PSGPUWorker::TrainFiles() {
     total_ins_num += cur_batch;
 
     if (shape_check_flag_.load()) {
-      VLOG(1) << "Begin OpRunAndShapeCheck, " << shape_check_count_.load();
       if (scope_num_ == 1 || shape_check_count_.fetch_sub(1) <= 0) {
-        VLOG(1) << "End OpRunAndShapeCheck." << shape_check_count_.load();
         shape_check_flag_ = false;
       }
     }
