@@ -404,12 +404,6 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    // auto* ew_bias_add_y_t =
-    //     scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
-    // // Get batch norm bias
-    // auto* bn_bias_tensor =
-    //     scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-
     // recompute bias and weight for conv_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
@@ -424,7 +418,8 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* fusion_bias_node = graph->CreateVarNode(&fusion_bias_desc);
     auto* fusion_bias_t =
         scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
-    if (with_bn || with_conv_bias) {
+    bool has_bias = with_bn || with_conv_bias;
+    if (has_bias) {
       fusion_bias_t->Resize(filter_dims[0]);
       float* fusion_bias_ptr =
           fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
@@ -493,11 +488,6 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
         memcpy(fusion_bias_ptr, bn_bias_ptr, mean_len * sizeof(float));
       }
     }
-    // output var of conv_xpu op
-
-    std::string xpu_out_max_name = xpu_out_name + "_max";
-    VarDesc xpu_out_max_desc(xpu_out_max_name);
-    Node* xpu_out_max = graph->CreateVarNode(&xpu_out_max_desc);
     // quant weight
     Node* filter_int16 = nullptr;
     Node* filter_max = nullptr;
@@ -511,7 +501,13 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv_xpu_op_desc.SetInput("Input", {input->Name()});
     conv_xpu_op_desc.SetInput("Filter", {filter_int16->Name()});
     conv_xpu_op_desc.SetInput("FilterMax", {filter_max->Name()});
-    conv_xpu_op_desc.SetInput("Bias", {fusion_bias_name});
+    Node* bias_fp32 = nullptr;
+    if (has_bias) {
+      conv_xpu_op_desc.SetAttr("has_bias", has_bias);
+      conv_xpu_op_desc.SetInput("Bias", {fusion_bias_name});
+      // PrepareBias(graph, scope, block, bias, &bias_fp32);
+      // conv_xpu_op_desc.SetInput("Bias", {bias_fp32->Name()});
+    }
     if (with_branch) {
       auto* branch_t = scope->FindVar(ew_branch_add_in->Name())
                            ->GetMutable<phi::DenseTensor>();
@@ -525,7 +521,7 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
                             branch_dims.size()));
       conv_xpu_op_desc.SetInput("Branch", {ew_branch_add_in->Name()});
     }
-    // act op
+    // act && output 
     std::string xpu_out_name;
     float act_param_ = 0.0f;
     if (!act_type.empty()) {
@@ -544,6 +540,9 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     } else {
       xpu_out_name = conv_out->Name();
     }
+    std::string xpu_out_max_name = xpu_out_name + "_max";
+    VarDesc xpu_out_max_desc(xpu_out_max_name);
+    Node* xpu_out_max = graph->CreateVarNode(&xpu_out_max_desc);
     conv_xpu_op_desc.SetOutput("Output", {xpu_out_name});
     conv_xpu_op_desc.SetOutput("OutputMax", {xpu_out_max_name});
     // set attrs

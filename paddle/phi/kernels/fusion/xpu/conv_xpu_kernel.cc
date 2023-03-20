@@ -24,13 +24,14 @@ void ConvXPUKernel(const Context& ctx,
                    const paddle::optional<DenseTensor>& InputMax,
                    const DenseTensor& Filter,
                    const DenseTensor& FilterMax,
-                   const DenseTensor& Bias,
+                   const paddle::optional<DenseTensor>& Bias,
                    const paddle::optional<DenseTensor>& Branch,
                    const std::vector<int>& paddings,
                    const std::vector<int>& dilations,
                    const std::vector<int>& strides,
                    const std::vector<int>& groups,
                    const std::string& padding_algorithm,
+                   bool has_bias,
                    bool has_branch,
                    int act_type,
                    float act_param,
@@ -56,7 +57,9 @@ void ConvXPUKernel(const Context& ctx,
   const float* branch_data = Branch.get_ptr() == nullptr
                                     ? nullptr
                                     : Branch.get_ptr()->data<float>();
-  auto* bias_data = reinterpret_cast<const XPUType*>(Bias.data<T>());
+  const float* bias_data = Bias.get_ptr() == nullptr
+                                    ? nullptr
+                                    : Bias.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(Output));
 
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
