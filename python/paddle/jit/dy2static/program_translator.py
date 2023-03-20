@@ -30,6 +30,7 @@ from paddle.fluid.dygraph.base import (
 )
 from paddle.utils import flatten, gast
 
+from ...static.input import InputSpec
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
@@ -336,8 +337,6 @@ class StaticFunction:
         if input_spec is not None and prim_or_cinn_is_enabled(
             kwargs.get("build_strategy", None)
         ):
-            from paddle.static import InputSpec
-
             for spec in flatten(input_spec):
                 if isinstance(spec, InputSpec) and -1 in spec.shape:
                     input_spec = None
