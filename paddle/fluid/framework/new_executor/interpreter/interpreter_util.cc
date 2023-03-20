@@ -65,6 +65,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "less_equal",
     "less_than",
     "merged_adam",
+    "momentum",
     "multiclass_nms3",
     "nanmedian",
     "sync_batch_norm_grad",
