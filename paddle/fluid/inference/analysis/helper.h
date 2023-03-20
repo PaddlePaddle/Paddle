@@ -173,7 +173,7 @@ static bool PathExists(const std::string &path) {
 }
 
 static inline bool PathRWAccess(const std::string &path) {
-  return RW_ACCESS(path.c_str()) == 0;
+  return RW_ACCESS(path.c_str()) != -1;
 }
 
 static std::string GetDirRoot(const std::string &path) {
