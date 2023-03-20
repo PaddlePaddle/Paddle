@@ -160,7 +160,6 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
 
   // The number of blocks to compute all the channels.
   grid.x = divUp(params.c, params.cPerBlock);
-  lock;
   // The number of blocks to compute all the activations in a given instance.
   grid.y = divUp(params.hw, params.hwPerBlock);
   // The number of instances.
@@ -288,7 +287,6 @@ void groupNormNCHW32SumQDQ(const GroupNormNHWCParams &params,
 
   // The number of blocks to compute all the channels.
   grid.x = divUp(params.c, params.cPerBlock);
-  lock;
   // The number of blocks to compute all the activations in a given instance.
   grid.y = divUp(params.hw, params.hwPerBlock);
   // The number of instances.
