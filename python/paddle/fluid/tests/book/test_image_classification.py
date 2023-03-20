@@ -23,8 +23,7 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-
-from ..unittests.nets import img_conv_group
+from paddle.fluid.tests.unittests.nets import img_conv_group
 
 paddle.enable_static()
 

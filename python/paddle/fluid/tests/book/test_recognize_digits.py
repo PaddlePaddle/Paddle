@@ -22,8 +22,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-
-from ..unittests.nets import simple_img_conv_pool
+from paddle.fluid.tests.unittests.nets import simple_img_conv_pool
 
 paddle.enable_static()
 

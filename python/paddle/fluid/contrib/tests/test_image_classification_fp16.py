@@ -24,7 +24,7 @@ import copy
 import numpy as np
 import tempfile
 from paddle.static.amp import decorate
-from ...tests.unittests.nets import img_conv_group
+from paddle.fluid.tests.unittests.nets import img_conv_group
 
 paddle.enable_static()
 
