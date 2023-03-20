@@ -96,7 +96,9 @@ def init_communicator(
 
     with fluid.program_guard(main_program):
         op_type = "c_allreduce_sum"
-        data = fluid.layers.fill_constant(shape=[1], dtype='float32', value=2.5)
+        data = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=2.5
+        )
         helper = LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,

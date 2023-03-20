@@ -18,9 +18,9 @@ import os
 import paddle
 from paddle.fluid import compiler
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.ir import apply_build_strategy
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.framework import _global_flags
+from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
 from .base.distributed_strategy import DistributedStrategy
