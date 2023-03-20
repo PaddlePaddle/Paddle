@@ -97,6 +97,7 @@ class TestInstanceNormOp(OpTest):
         self.op_type = "instance_norm"
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
+        self.public_python_api = paddle.static.nn.instance_norm
         self.python_out_sig = ['Y']
         self.rev_comp_rtol = 1e-04
         self.rev_comp_atol = 1e-04
