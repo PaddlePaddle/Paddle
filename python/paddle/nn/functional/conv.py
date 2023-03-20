@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, reshape
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
@@ -20,6 +20,7 @@ from paddle.device import (
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
+from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
 from ...common_ops_import import Variable
