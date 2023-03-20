@@ -296,6 +296,7 @@ void sum_fidseq_add_grad(
     GradType* out_fidseq_grad_compress_ptr);
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeyType,
             typename T,
             typename StreamType,
@@ -310,7 +311,6 @@ void sum_fidseq_add_grad(
                               const StreamType& stream,
                               const GPUAccessor& gpu_accessor);
 
-#if defined(PADDLE_WITH_CUDA)
   template <typename KeyType, typename StreamType, typename GPUAccessor>
   void merge_gradient(const KeyType* d_shard_keys,
                       const uint32_t* offset,
@@ -324,7 +324,7 @@ void sum_fidseq_add_grad(
                       const DynamicGradMerger& merger,
                       const StreamType& stream,
                       const GPUAccessor& gpu_accessor);
-#endif
+
 
   template <typename T, typename StreamType>
   void dy_mf_fill_dvals(float* d_shard_vals,
@@ -446,6 +446,7 @@ void sum_fidseq_add_grad(
                          const size_t& embedx_dim,
                          const float& max_bound,
                          const StreamType& stream);
+#endif
 
  private:
   int block_size_{256};

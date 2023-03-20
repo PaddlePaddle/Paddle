@@ -49,6 +49,7 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "xpu/refactor/table.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -63,7 +64,7 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"            // NOLINT
-#include "downpour_accessor.h"  // NOLINT
+#include "table/downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 #include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
@@ -263,6 +264,7 @@ class PSGPUWrapper {
   void FilterPull(std::shared_ptr<HeterContext> gpu_task,
                   const int shard_id,
                   const int dim_id);
+  #if defined(PADDLE_WITH_CUDA)
   // set mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
@@ -271,6 +273,7 @@ class PSGPUWrapper {
     }
     VLOG(0) << "set infer mode=" << infer_mode;
   }
+  #endif
   void dump_cache_array();
 
   void Finalize() {
@@ -283,9 +286,11 @@ class PSGPUWrapper {
       this->EndPass();
     }
 #endif
+#ifdef PADDLE_WITH_CUDA
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
     }
+#endif
     data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     buildpull_ready_channel_->Close();
@@ -694,10 +699,11 @@ class PSGPUWrapper {
     }
     config["sparse_shard_num"] = sparse_table.shard_num();
 
+#if defined(PADDLE_WITH_CUDA)
     GlobalAccessorFactory::GetInstance().Init(accessor_class_);
-
     GlobalAccessorFactory::GetInstance().GetAccessorWrapper()->Configure(
         config);
+#endif
 
     InitializeGPUServer(config);
   }

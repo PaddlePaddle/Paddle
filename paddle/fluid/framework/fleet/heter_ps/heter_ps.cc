@@ -131,7 +131,7 @@ void HeterPs::pull_sparse(int num, FidKey* d_keys, FeatureValue* d_vals,
 
 void HeterPs::build_ps(int num,
                       FidKey* h_keys,
-                      FeatureValue* h_vals
+                      FeatureValue* h_vals,
                       size_t len,
                       size_t chunk_size,
                       int stream_num) {

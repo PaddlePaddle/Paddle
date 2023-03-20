@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#include "xpu/refactor/table.h"
 
 namespace paddle {
 namespace framework {

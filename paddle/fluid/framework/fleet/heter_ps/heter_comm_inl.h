@@ -19,7 +19,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
@@ -62,7 +64,6 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
 #if defined(PADDLE_WITH_CUDA)
   rdma_checker_ = GpuRDMAChecker::get(device_num_);
   topo_aware_ = rdma_checker_->topo_aware();
-#endif
   enable_gpu_direct_access_ =
       (topo_aware_) ? false : FLAGS_gpugraph_enable_gpu_direct_access;
   VLOG(0) << "device_num = " << device_num_ << ", multi_node = " << multi_node_
@@ -70,7 +71,9 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
           << ", topo_aware = " << topo_aware_
           << ", enable_gpu_direct_access = " << enable_gpu_direct_access_
           << ", load_factor = " << load_factor_;
+#endif
   if (multi_mf_dim_) {
+#if defined(PADDLE_WITH_CUDA)
     max_mf_dim_ = resource_->max_mf_dim();
     auto accessor_wrapper_ptr =
         GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
@@ -81,6 +84,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
             << ", max feature_value_size:" << val_type_size_
             << ", feature_value_push_size:" << grad_type_size_
             << ", feature_pull_type_size:" << pull_type_size_;
+#endif
   } else {
     val_type_size_ = sizeof(ValType);
     pull_type_size_ = sizeof(ValType);
@@ -113,9 +117,11 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
         tables_.push_back(table);
       }
     } else {
+#if defined(PADDLE_WITH_CUDA)
       auto ptr_table = new PtrTable(capacity / load_factor_);
       ptr_table->set_feature_value_size(pull_type_size_, grad_type_size_);
       ptr_tables_.push_back(ptr_table);
+#endif
     }
     if (multi_node_) {
       storage_[i].init(device_num_,
@@ -133,6 +139,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
 #endif
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -204,6 +211,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
   heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
 }
+#endif
 
 template <typename KeyType,
           typename ValType,
@@ -565,6 +573,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_dest(
   }
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -632,6 +641,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_dest(
     }
   }
 }
+#endif
 
 template <typename KeyType,
           typename ValType,
@@ -717,7 +727,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_src(
   }
 }
 
-
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -780,6 +790,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_src(
     }
   }
 }
+#endif
 
 template <typename KeyType,
           typename ValType,
@@ -1662,6 +1673,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_keys(
 #endif
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -1954,6 +1966,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
     }
   }
 }
+#endif
 
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
@@ -2852,6 +2865,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::end_pass() {
     }
   }
 }
+
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -4673,6 +4688,8 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   }
   return total_send_recv;
 }
+#endif
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif

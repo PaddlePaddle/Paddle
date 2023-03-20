@@ -38,6 +38,7 @@ class XPUContext : public DeviceContext,
   virtual ~XPUContext();
 
   const Place& GetPlace() const override;
+  const Place& GetL3Place() const;
 
   backends::xpu::XPUVersion xpu_version() const;
 
