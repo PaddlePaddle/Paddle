@@ -202,7 +202,7 @@ class LBFGS(Optimizer):
     def _add_grad(self, alpha, direction):
         offset = 0
         for p in self._params:
-            numel = p.numel().item()
+            numel = reduce(lambda x, y: x * y, p.shape)
             p = paddle.assign(
                 p.add(
                     direction[offset : offset + numel].reshape(p.shape) * alpha
@@ -234,7 +234,6 @@ class LBFGS(Optimizer):
         """
 
         with paddle.no_grad():
-
             # Make sure the closure is always called with grad enabled
             closure = paddle.enable_grad()(closure)
 
