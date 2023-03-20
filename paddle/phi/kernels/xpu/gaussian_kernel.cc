@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/gaussian_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -29,7 +29,7 @@ void GaussianKernel(const Context& ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  std::normal_distribution<T> dist(mean, std);
+  std::normal_distribution<float> dist(mean, std);
   int64_t size = out->numel();
   ctx.template Alloc<T>(out);
   auto* data = out->data();
@@ -48,13 +48,18 @@ void GaussianKernel(const Context& ctx,
   for (int64_t i = 0; i < size; ++i) {
     data_cpu[i] = dist(*engine);
   }
-  paddle::memory::Copy(ctx.GetPlace(),
-                       data,
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(data_cpu.get()),
-                       size * sizeof(T));
+  memory_utils::Copy(ctx.GetPlace(),
+                     data,
+                     phi::CPUPlace(),
+                     reinterpret_cast<void*>(data_cpu.get()),
+                     size * sizeof(T));
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gaussian, XPU, ALL_LAYOUT, phi::GaussianKernel, float) {}
+PD_REGISTER_KERNEL(gaussian,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GaussianKernel,
+                   float,
+                   phi::dtype::float16) {}

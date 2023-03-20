@@ -15,16 +15,16 @@
 #include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
-#include "paddle/phi/core/operants_manager.h"
+#include "paddle/phi/api/include/operants_manager.h"
 
 namespace paddle {
 namespace prim {
 
 void InitTensorOperants() {
-  paddle::operants::OperantsManager::Instance().eager_operants.reset(
-      new paddle::operants::EagerTensorOperants());
-  paddle::operants::OperantsManager::Instance().static_operants.reset(
-      new paddle::operants::StaticTensorOperants());
+  paddle::OperantsManager::Instance().eager_operants.reset(
+      new paddle::prim::EagerTensorOperants());
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
 }
 
 }  // namespace prim

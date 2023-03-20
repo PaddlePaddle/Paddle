@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -140,11 +139,6 @@ void ConvGradKernel(const Context& dev_ctx,
                                                     diff_weights_memory_p);
 
             {
-              paddle::platform::RecordEvent record_reorder(
-                  "int_reorder",
-                  paddle::platform::TracerEventType::UserDefined,
-                  1,
-                  paddle::platform::EventRole::kUniqueOp);
               reorder_p->execute(
                   astream, *diff_weights_memory_p, *reorder_dst_memory_p);
               astream.wait();

@@ -196,11 +196,13 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 class TestSGDOpWithLargeInput(unittest.TestCase):
     def runTest(self):
         paddle.enable_static()
-        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
-        label = fluid.layers.fill_constant(
+        data = paddle.tensor.fill_constant(shape=[1], value=128, dtype='int64')
+        label = paddle.tensor.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
-        emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
+        emb = paddle.static.nn.embedding(
+            input=data, size=(10000000, 150), dtype='float32'
+        )
         out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)

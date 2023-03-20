@@ -37,7 +37,7 @@ void ProcessHostEvents(const HostEventSection<CommonEvent>& host_events,
                        TraceEventCollector* collector) {
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
-    if (thr_sec.thread_name != kDefaultThreadName) {
+    if (thr_sec.thread_name != phi::kDefaultThreadName) {
       collector->AddThreadName(tid, thr_sec.thread_name);
     }
     for (const auto& evt : thr_sec.events) {
@@ -58,7 +58,7 @@ void ProcessHostMemEvents(
     TraceEventCollector* collector) {
   for (const auto& thr_sec : host_mem_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
-    if (thr_sec.thread_name != kDefaultThreadName) {
+    if (thr_sec.thread_name != phi::kDefaultThreadName) {
       collector->AddThreadName(tid, thr_sec.thread_name);
     }
     for (const auto& evt : thr_sec.events) {
@@ -84,7 +84,7 @@ void ProcessOperatorSupplementEvents(
     TraceEventCollector* collector) {
   for (const auto& thr_sec : op_supplement_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
-    if (thr_sec.thread_name != kDefaultThreadName) {
+    if (thr_sec.thread_name != phi::kDefaultThreadName) {
       collector->AddThreadName(tid, thr_sec.thread_name);
     }
     for (const auto& evt : thr_sec.events) {

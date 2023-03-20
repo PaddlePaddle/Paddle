@@ -55,11 +55,11 @@ def fake_simnet_reader():
 
 def get_acc(cos_q_nt, cos_q_pt, batch_size):
     cond = paddle.less_than(cos_q_nt, cos_q_pt)
-    cond = fluid.layers.cast(cond, dtype='float64')
+    cond = paddle.cast(cond, dtype='float64')
     cond_3 = paddle.sum(cond)
     acc = paddle.divide(
         cond_3,
-        fluid.layers.fill_constant(
+        paddle.tensor.fill_constant(
             shape=[1], value=batch_size * 1.0, dtype='float64'
         ),
         name="simnet_acc",
@@ -119,7 +119,7 @@ def train_network(
         )
 
     # embedding
-    q_emb = fluid.embedding(
+    q_emb = paddle.static.nn.embedding(
         input=q,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -147,7 +147,7 @@ def train_network(
     )
 
     # embedding
-    pt_emb = fluid.embedding(
+    pt_emb = paddle.static.nn.embedding(
         input=pt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -176,7 +176,7 @@ def train_network(
     )
 
     # embedding
-    nt_emb = fluid.embedding(
+    nt_emb = paddle.static.nn.embedding(
         input=nt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],

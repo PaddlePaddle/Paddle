@@ -40,7 +40,7 @@ input_specs = [
 ]
 
 
-class DynamicGRU(fluid.dygraph.Layer):
+class DynamicGRU(paddle.nn.Layer):
     def __init__(
         self,
         size,
@@ -86,11 +86,11 @@ class DynamicGRU(fluid.dygraph.Layer):
 
         if self.is_reverse:
             res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
+        res = paddle.concat(res, axis=1)
         return res
 
 
-class BiGRU(fluid.dygraph.Layer):
+class BiGRU(paddle.nn.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super().__init__()
 
@@ -154,11 +154,11 @@ class BiGRU(fluid.dygraph.Layer):
         res_pre_gru_r = self.pre_gru_r(input_feature)
         res_gru_r = self.gru_r(res_pre_gru_r)
 
-        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+        bi_merge = paddle.concat([res_gru, res_gru_r], axis=-1)
         return bi_merge
 
 
-class LinearChainCRF(fluid.dygraph.Layer):
+class LinearChainCRF(paddle.nn.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
         super().__init__()
 
@@ -222,7 +222,7 @@ class LinearChainCRF(fluid.dygraph.Layer):
         return log_likelihood
 
 
-class CRFDecoding(fluid.dygraph.Layer):
+class CRFDecoding(paddle.nn.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
         super().__init__()
 
@@ -271,7 +271,7 @@ class CRFDecoding(fluid.dygraph.Layer):
         return viterbi_path
 
 
-class ChunkEval(fluid.dygraph.Layer):
+class ChunkEval(paddle.nn.Layer):
     def __init__(
         self, num_chunk_types, chunk_scheme, excluded_chunk_types=None
     ):
@@ -344,7 +344,7 @@ class ChunkEval(fluid.dygraph.Layer):
         )
 
 
-class LexNet(fluid.dygraph.Layer):
+class LexNet(paddle.nn.Layer):
     def __init__(self, args, length=None):
         super().__init__()
         """

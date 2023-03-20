@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import time
 import unittest
 
@@ -63,9 +62,7 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(
-        enable_prim and platform.system() == 'Linux'
-    )
+    fluid.core._set_prim_all_enabled(enable_prim)
 
     train_reader = paddle.batch(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -142,6 +139,7 @@ class TestResnet(unittest.TestCase):
     def test_prim(self):
         # todo: to be removed after adjust of rtol
         core._set_prim_forward_blacklist("batch_norm")
+        core._add_skip_comp_ops("batch_norm")
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
         # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
         np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
@@ -159,6 +157,7 @@ class TestResnet(unittest.TestCase):
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
     )
     def test_prim_cinn(self):
+        core._set_prim_forward_blacklist("flatten_contiguous_range")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

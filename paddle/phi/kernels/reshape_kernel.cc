@@ -32,6 +32,10 @@ void ReshapeInferKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
+  // Zero-Size Tensor
+  if (x.numel() == 0) {
+    return;
+  }
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     return;
@@ -109,4 +113,17 @@ PD_REGISTER_GENERAL_KERNEL(reshape_infer,
                            ALL_DTYPE) {}
 PD_REGISTER_GENERAL_KERNEL(
     reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_GENERAL_KERNEL(reshape_infer,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeInferKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape,
+                           Custom,
+                           ALL_LAYOUT,
+                           phi::ReshapeKernel<phi::CustomContext>,
+                           ALL_DTYPE) {}
 #endif

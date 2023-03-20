@@ -353,8 +353,11 @@ def amp_guard(
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
-    if not (dtype in ['float16', 'bfloat16']):
-        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+    if enable:
+        if not (dtype in ['float16', 'bfloat16']):
+            raise ValueError(
+                "If enable amp, dtype should be 'float16' or 'bfloat16'."
+            )
 
     # check tracer
     tracer = _dygraph_tracer()
@@ -700,7 +703,7 @@ def auto_cast(
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # paddle.float32
+            print(conv.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
@@ -714,11 +717,11 @@ def auto_cast(
         b = paddle.rand([2,3])
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
-            print(c.dtype) # paddle.float32
+            print(c.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
-            print(d.dtype) # paddle.float32
+            print(d.dtype) # paddle.float16
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)

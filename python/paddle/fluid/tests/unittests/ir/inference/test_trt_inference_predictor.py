@@ -127,7 +127,7 @@ class BackendPaddle:
                         "shape"
                     ][self.args.test_num][0]
                 config.enable_tensorrt_engine(
-                    workspace_size=1 << 33,
+                    workspace_size=1 << 25,
                     precision_mode=precision_mode,
                     max_batch_size=max_batch_size,
                     min_subgraph_size=self.args.subgraph_size,

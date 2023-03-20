@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
@@ -120,7 +120,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const phi::DenseTensor* in = &x;
 
     const U* ln1_scale_ptr =
@@ -238,7 +238,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
 
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     dev_ctx.Alloc<uint8_t>(dropout1_mask,
                            dropout1_mask->numel() * sizeof(uint8_t));
@@ -369,7 +369,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const U* ln1_gamma_ptr =
         ln1_gamma == nullptr ? nullptr : ln1_gamma->data<U>();
     const U* ln1_beta_ptr = ln1_beta == nullptr ? nullptr : ln1_beta->data<U>();
@@ -485,7 +485,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
     auto d_out =
         *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));

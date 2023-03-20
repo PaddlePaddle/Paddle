@@ -434,8 +434,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           }
         } else {  // scalar is in the input
           auto& ins_vector = ins.at(attr_names[i]);
-          kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
+          kernel_ctx->EmplaceBackAttr(
+              std::move(framework::MakePhiScalarFromVar(ins_vector[0]->Var())));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
@@ -468,7 +468,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           auto& ins_vector = ins.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
             kernel_ctx->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
+                framework::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
           } else {  // ShapeTensorList
             std::vector<framework::Variable*> variables;
             variables.reserve(ins_vector.size());
@@ -476,7 +476,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               variables.push_back(var_base->MutableVar());
             }
             kernel_ctx->EmplaceBackAttr(
-                std::move(experimental::MakePhiIntArrayFromVarList(variables)));
+                std::move(framework::MakePhiIntArrayFromVarList(variables)));
           }
         }
         break;

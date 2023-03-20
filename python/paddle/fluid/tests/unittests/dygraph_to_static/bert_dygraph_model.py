@@ -16,9 +16,8 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Layer
 from paddle.jit.api import to_static
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -384,7 +383,7 @@ class PretrainModelLayer(Layer):
         mask_pos,
         labels,
     ):
-        mask_pos = fluid.layers.cast(x=mask_pos, dtype='int32')
+        mask_pos = paddle.cast(x=mask_pos, dtype='int32')
 
         enc_output, next_sent_feat = self.bert_layer(
             src_ids, position_ids, sentence_ids, input_mask

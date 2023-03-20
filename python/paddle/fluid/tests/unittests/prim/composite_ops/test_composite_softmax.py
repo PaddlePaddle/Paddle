@@ -19,7 +19,8 @@ from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.fluid import core, framework
+from paddle.incubate.autograd import primapi
 
 
 def generate_data(shape, dtype="float32"):
@@ -68,7 +69,7 @@ def expect_forward(inputs):
 class TestCompositeSoftmax(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
     def cal_composite(self, inputs):
@@ -87,7 +88,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             # Ensure that softmax in original block
             self.assertTrue('softmax' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that softmax is splitted into small ops
@@ -101,6 +102,9 @@ class TestCompositeSoftmax(unittest.TestCase):
         return res
 
     def compare_forward(self):
+        if not attrs.shape and attrs.axis not in [-1, 0]:
+            # op softmax does not support both case
+            return
         np_data = generate_data(attrs.shape)
         tensor_data = paddle.to_tensor(np_data)
 
@@ -123,6 +127,79 @@ class TestCompositeSoftmax(unittest.TestCase):
                     attrs.set_dtype(j)
                     attrs.set_shape(t)
                     self.compare_forward()
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(PrimeNet, self).__init__()
+        self.sf = F.softmax
+
+    def forward(self, x, current_axis):
+        out = self.sf(x, axis=current_axis)
+        return out
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.shapes = [[], [2, 3, 4], [2, 3]]
+        self.axes = [-1, 0, 1]
+
+    def train(self, use_prim):
+        self.x = paddle.randn(attrs.shape, dtype="float32")
+        self.x.stop_gradient = False
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = PrimeNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+
+        net = paddle.amp.decorate(models=net, level='O2')
+
+        net = apply_to_static(net, False)
+        with paddle.amp.auto_cast(level='O2'):
+            out = net(self.x, attrs.axis)
+            loss = paddle.mean(out)
+            grad = paddle.grad(loss, self.x)
+            return loss, grad
+
+    def compare_forward(self):
+        if not attrs.shape and attrs.axis not in [-1, 0]:
+            # op softmax does not support both case
+            return
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected[0],
+                actual[0],
+                rtol=1e-3,
+                atol=1e-3,
+            )
+            np.testing.assert_allclose(
+                expected[1],
+                actual[1],
+                rtol=1e-3,
+                atol=1e-3,
+            )
+
+    def test_forward(self):
+        for i in self.axes:
+            for t in self.shapes:
+                attrs.set_axis(i)
+                attrs.set_shape(t)
+                self.compare_forward()
 
 
 if __name__ == '__main__':

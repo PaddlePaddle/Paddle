@@ -261,7 +261,7 @@ class AscendOptimizer(Optimizer):
         from paddle.distributed import fleet
 
         if auto_dp and fleet.world_size() > 1:
-            from paddle.fluid.transpiler import ascend_transpiler
+            from paddle.distributed.transpiler import ascend_transpiler
 
             t = ascend_transpiler.AscendTranspiler(
                 startup_program, loss.block.program

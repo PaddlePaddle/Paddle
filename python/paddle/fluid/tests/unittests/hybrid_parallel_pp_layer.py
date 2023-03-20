@@ -20,8 +20,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-from paddle.fluid.dygraph.layers import Layer
-from paddle.nn import Sequential
+from paddle.nn import Layer, Sequential
 
 
 class ReshapeHelp(Layer):

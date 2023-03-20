@@ -22,8 +22,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
@@ -273,7 +273,7 @@ def _get_comm_group(processes, shape, axis, rank):
     Given a rank and the processes mesh the rank belongs to,
     compute the communication peers of the rank based on the give axis in the mesh.
 
-    Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
+    Example: 16 processes managed in a 4-Dimensional mesh with shape of [2, 2, 2, 2].
     the rank communication peers of rank 0 (included) are following:
     in axis 0: [0, 1]
     in axis 1: [0, 2]
@@ -347,7 +347,7 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     # that the processes in mesh are
     #    1. starts from 0
     #    2. continuous
-    # it will be wrong if ths above condition doesnot meet,
+    # it will be wrong if ths above condition does not meet,
     # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
     # if you want a more general mapping, you should use cartesian product
 
@@ -594,7 +594,7 @@ def save_distributed_checkpoint(
     dist_context=None,
 ):
     """
-    Save model parameter state, optimzer state, distributed attribute and
+    Save model parameter state, optimizer state, distributed attribute and
     additional information of each rank.
 
     Args:
@@ -1263,6 +1263,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu_grad",
                 "exp_grad",
                 "sigmoid_grad",
+                "unsqueeze2_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1283,6 +1284,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu",
                 "exp",
                 "sigmoid",
+                "unsqueeze2",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1424,9 +1426,6 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
 def naive_set_dist_op_attr_for_program_by_mesh(
     new_op, process_mesh, ctx, is_recompute=False
 ):
-    # hack to skip coalesce var for dist attr
-    if not is_recompute:
-        return
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistAttr()
@@ -2312,15 +2311,31 @@ def insert_dependencies_for_vars(
             },
             outputs={"Out": post_vars},
         )
-
-    # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
-    # depend_op.desc.set_input("Dep", [first_var.name])
-    # self.desc.set_output(out_proto.name, out_arg_names)
 
-    naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, process_mesh, dist_context, is_recompute
-    )
+    # TODO: condition can be removed when add correct dist_attr for coalesce vars and ops in sharding_pass
+    if is_recompute or process_mesh != [-1]:
+        depend_op_dist_attr = OperatorDistAttr()
+        depend_op_dist_attr.impl_idx = 0
+        depend_op_dist_attr.impl_type = "default"
+        depend_op_dist_attr.process_mesh = process_mesh
+        depend_op_dist_attr.is_recompute = is_recompute
+        for input_varname in depend_op.desc.input_arg_names():
+            var = block.var(input_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+        for output_varname in depend_op.desc.output_arg_names():
+            var = block.var(output_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+        dist_context.set_op_dist_attr_for_program(
+            depend_op, depend_op_dist_attr
+        )
+
     if op_namescope is not None:
         depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 

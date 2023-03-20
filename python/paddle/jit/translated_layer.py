@@ -20,18 +20,17 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
 )
+from paddle.nn.layer import layers
 
 from .dy2static.utils import _out_grad_names, _param_grad_names
 
@@ -563,6 +562,11 @@ class _ProgramHolder:
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
                     continue
 
+                # There are some situations that users will add backward op in Forward
+                # function of Layer. And because backward op doesn't have proto. So, we
+                # should skip it when we meet it.
+                if not OpProtoHolder.instance().has_op_proto(op.type):
+                    continue
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
                 for output_proto in proto.outputs:
@@ -1020,7 +1024,7 @@ def _run_dygraph(instance, input, program_holder):
         'is_test',
         instance._is_test,
         'program_id',
-        _hash_with_id(trace_program, instance),
+        paddle.utils._hash_with_id(trace_program, instance),
     ]
     if not instance._is_test:
         attrs.extend(

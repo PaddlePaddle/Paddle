@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 
 // only can include the headers in paddle/phi/api dirs
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 

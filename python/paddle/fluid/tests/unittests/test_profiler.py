@@ -45,7 +45,7 @@ class TestProfiler(unittest.TestCase):
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
             )
-            until = layers.fill_constant([1], dtype='int64', value=10)
+            until = paddle.tensor.fill_constant([1], dtype='int64', value=10)
             data_arr = paddle.tensor.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -80,13 +80,7 @@ class TestProfiler(unittest.TestCase):
         if compile_program:
             # TODO(luotao): profiler tool may have bug with multi-thread parallel executor.
             # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.num_threads = 1
-            train_program = fluid.compiler.CompiledProgram(
-                main_program
-            ).with_data_parallel(
-                loss_name=avg_cost.name, exec_strategy=exec_strategy
-            )
+            train_program = fluid.compiler.CompiledProgram(main_program)
         else:
             train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc

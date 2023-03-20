@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class ConvBNLayer(fluid.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -97,9 +97,7 @@ class TestInplaceAddto(unittest.TestCase):
 
             strategy = fluid.BuildStrategy()
             strategy.enable_addto = enable_addto
-            compiled = fluid.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name, build_strategy=strategy
-            )
+            compiled = fluid.CompiledProgram(main, build_strategy=strategy)
 
             exe.run(startup)
             img = np.random.uniform(-128, 128, [8, 3, 224, 224]).astype(

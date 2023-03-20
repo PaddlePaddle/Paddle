@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def generate_proposal_labels_in_python(
@@ -339,7 +339,8 @@ class TestGenerateProposalLabelsOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = 'generate_proposal_labels'

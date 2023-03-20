@@ -151,8 +151,8 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
     AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
-    AddAttr<std::vector<int>>("ring_id",
-                              "The ring id of the NCCL communicator.")
+    AddAttr<std::vector<int>>("ring_ids",
+                              "The ring ids of the NCCL communicator.")
         .SetDefault({0});
     AddAttr<bool>("use_hierarchical_allreduce",
                   "Whether to use hierarchical allreduce")

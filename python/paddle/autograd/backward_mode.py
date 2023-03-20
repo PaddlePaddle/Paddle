@@ -34,7 +34,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
         retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-            :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
 
     Returns:
@@ -79,7 +79,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         assert in_out_list is not None, "{} should not be None".format(name)
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} connot be empyt".format(name)
+            assert len(in_out_list) > 0, "{} connot be empty".format(name)
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, (paddle.Tensor, core.eager.Tensor)

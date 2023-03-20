@@ -47,12 +47,14 @@ void Conv2dFusionKernel(const Context& ctx,
   CHECK_EQ(filter_dims.size() == 4UL, true);
   CHECK_EQ(strides.size() == 2UL, true);
   CHECK_EQ(dilations.size() == 2UL, true);
-  CHECK_EQ(groups == 1, true);
+
   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
   const int batch = in_dims[0];
   const int ic = in_dims[3];
   const int ih = in_dims[1];
   const int iw = in_dims[2];
+  CHECK_EQ(groups == 1, true);
+  CHECK_EQ(ic == groups * filter_dims[3], true);
   int pad_h0 = 0;
   int pad_h1 = 0;
   int pad_w0 = 0;
@@ -68,7 +70,7 @@ void Conv2dFusionKernel(const Context& ctx,
     pad_w0 = paddings[2];
     pad_w1 = paddings[3];
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Attr paddins in conv2d_fusion must have 2 or 4 elements, but now have "
         "%u elements.",
         paddings.size()));
@@ -108,6 +110,7 @@ void Conv2dFusionKernel(const Context& ctx,
                           dilation_w,
                           oh,
                           ow,
+                          groups,
                           &ctx};
 
   if (residual) {
@@ -115,7 +118,7 @@ void Conv2dFusionKernel(const Context& ctx,
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
       Conv2dBiasAddRelu(params);
     } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
