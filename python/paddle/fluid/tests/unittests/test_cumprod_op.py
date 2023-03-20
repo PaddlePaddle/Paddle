@@ -122,7 +122,7 @@ class TestCumprod(OpTest):
                     or self.dtype == np.float16
                     or self.dtype == np.uint16
                 ):
-                    self.check_grad(['X'], 'Out', check_eager=True)
+                    self.check_grad(['X'], 'Out')
                 else:
                     self.check_grad(
                         ['X'],
