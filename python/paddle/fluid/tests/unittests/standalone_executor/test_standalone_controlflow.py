@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.layers as layers
 from paddle.fluid import core, framework
 from paddle.fluid.framework import Program, program_guard
 
@@ -42,20 +41,26 @@ class TestCompatibility(unittest.TestCase):
 
     def build_program(self):
         def true_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
-            ), layers.fill_constant(shape=[2, 3], dtype='bool', value=True)
+            ), paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='bool', value=True
+            )
 
         def false_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3
-            ), layers.fill_constant(shape=[4, 5], dtype='int64', value=2)
+            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
             pred = paddle.less_than(x, y)
             out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is a tuple containing 2 tensors

@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 from paddle import in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
-from .. import Layer
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
