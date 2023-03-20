@@ -413,9 +413,10 @@ class Fleet:
         }
 
         order = self.hybrid_configs["order"]
-        assert (
-            order[:].sort() == list(d_hybrid_degree.keys())[:].sort()
-        ), "The order setting is incorrect"
+        if not order:
+            order = ['dp', 'pp', 'sharding', 'mp']
+        if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
+            assert False, "The order of hybrid_config setting is incorrect."
 
         hybrid_group_names = []
         dims = []
