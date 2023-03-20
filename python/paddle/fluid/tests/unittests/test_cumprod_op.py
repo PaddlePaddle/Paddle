@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -117,7 +117,11 @@ class TestCumprod(OpTest):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
-                if self.dtype == np.float64:
+                if (
+                    self.dtype == np.float64
+                    or self.dtype == np.float16
+                    or self.dtype == np.uint16
+                ):
                     self.check_grad(['X'], 'Out', check_eager=True)
                 else:
                     self.check_grad(
@@ -132,47 +136,17 @@ class TestCumprod(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestCumprodFP16Op(OpTest):
+class TestCumprodBF16Op(TestCumprod):
     def init_dtype(self):
-        self.dtype = np.float16
-
-    def prepare_inputs_outputs_attrs(self, dim, zero_num):
-        self.x = np.random.random(self.shape).astype(np.float32) + 0.5
-        if zero_num > 0:
-            zero_num = min(zero_num, self.x.size)
-            shape = self.x.shape
-            self.x = self.x.flatten()
-            indices = random.sample(range(self.x.size), zero_num)
-            for i in indices:
-                self.x[i] = 0
-            self.x = np.reshape(self.x, self.shape)
-        self.out = np.cumprod(self.x, axis=dim).astype('float64')
-        self.inputs = {'X': self.x.astype(self.dtype)}
-        self.outputs = {'Out': self.out}
-        self.attrs = {'dim': dim}
+        self.dtype = np.uint16
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestCumprodBF16Op(OpTest):
+class TestCumprodFP16Op(TestCumprod):
     def init_dtype(self):
-        self.dtype = np.uint16
-
-    def prepare_inputs_outputs_attrs(self, dim, zero_num):
-        self.x = np.random.random(self.shape).astype(np.float32) + 0.5
-        if zero_num > 0:
-            zero_num = min(zero_num, self.x.size)
-            shape = self.x.shape
-            self.x = self.x.flatten()
-            indices = random.sample(range(self.x.size), zero_num)
-            for i in indices:
-                self.x[i] = 0
-            self.x = np.reshape(self.x, self.shape)
-        self.out = np.cumprod(self.x, axis=dim)
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.attrs = {'dim': dim}
+        self.dtype = np.float16
 
 
 # test float32 case.
