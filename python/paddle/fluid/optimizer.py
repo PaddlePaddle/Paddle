@@ -596,19 +596,19 @@ class Optimizer:
         """
         current_lr = self._global_learning_rate()
         if isinstance(current_lr, framework.Variable):
-            return self._global_learning_rate().numpy()[0]
+            return float(current_lr)
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
         elif isinstance(self._learning_rate, _LearningRateEpochDecay):
             step_lr = self._learning_rate()
-            return step_lr.numpy()[0]
+            return float(step_lr)
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
                 return step_lr
             else:
-                return step_lr.numpy()[0]
+                return float(step_lr)
 
     def _global_learning_rate(self, program=None):
         """
@@ -970,11 +970,18 @@ class Optimizer:
         self._create_global_learning_rate()
 
         if in_dygraph_mode():
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                if param_and_grad[0].trainable is True:
-                    self._append_optimize_op(target_block, param_and_grad)
+            found_inf = self._get_auxiliary_var('found_inf')
+            if found_inf:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', True)
+            else:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', False)
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].trainable is True:
+                        self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -2802,7 +2809,7 @@ class AdamaxOptimizer(Optimizer):
             with param.block.program._optimized_guard(
                 [param, grad]
             ), name_scope('adamx'):
-                beta1_pow_acc = self._get_accumulator(
+                beta1_pow_acc = self._get_accumulator_master(
                     self._beta1_pow_acc_str, param
                 )
                 if in_dygraph_mode():
