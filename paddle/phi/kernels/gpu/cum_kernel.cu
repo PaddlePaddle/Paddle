@@ -216,17 +216,16 @@ __global__ void BlockScanKernel(T* d_out,
   }
 }
 
-template <typename Context, typename T, template <typename>>
-static
-    typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value &&
-                                !std::is_same<T, phi::dtype::bfloat16>::value,
-                            void>::type
-    ThrustCumsumKernel(const Context& dev_ctx,
-                       const T* in_data,
-                       T* out_data,
-                       int64_t size,
-                       bool reverse,
-                       bool exclusive) {
+template <typename Context, typename T>
+std::enable_if<!std::is_same<T, phi::dtype::float16>::value &&
+                   !std::is_same<T, phi::dtype::bfloat16>::value,
+               void>::type
+ThrustCumsumKernel(const Context& dev_ctx,
+                   const T* in_data,
+                   T* out_data,
+                   int64_t size,
+                   bool reverse,
+                   bool exclusive) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
@@ -255,27 +254,25 @@ static
   return;
 }
 
-template <typename Context, typename T, template <typename>>
-static
-    typename std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
-    ThrustCumsumKernel(const Context& dev_ctx,
-                       const phi::dtype::float16* in_data,
-                       phi::dtype::float16* out_data,
-                       int64_t size,
-                       bool reverse,
-                       bool exclusive) {}
+template <typename Context, typename T>
+std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
+ThrustCumsumKernel(const Context& dev_ctx,
+                   const phi::dtype::float16* in_data,
+                   phi::dtype::float16* out_data,
+                   int64_t size,
+                   bool reverse,
+                   bool exclusive) {}
 
-template <typename Context, typename T, template <typename>>
-static
-    typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
-    ThrustCumsumKernel(const Context& dev_ctx,
-                       const phi::dtype::bfloat16* in_data,
-                       phi::dtype::bfloat16* out_data,
-                       int64_t size,
-                       bool reverse,
-                       bool exclusive) {}
+template <typename Context, typename T>
+std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
+ThrustCumsumKernel(const Context& dev_ctx,
+                   const phi::dtype::bfloat16* in_data,
+                   phi::dtype::bfloat16* out_data,
+                   int64_t size,
+                   bool reverse,
+                   bool exclusive) {}
 
-template <typename T, typename Context, template <typename>, typename Op>
+template <typename T, typename Context, typename Op>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
