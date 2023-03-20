@@ -574,17 +574,6 @@
   kernel :
     func : huber_loss_grad
 
-- backward_op : index_add_grad
-  forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
-  args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
-  output : Tensor(x_grad), Tensor(add_value_grad)
-  infer_meta :
-    func : IndexAddGradInferMeta
-  kernel :
-    func : index_add_grad
-    data_type : out_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : instance_norm_double_grad
   forward : instance_norm_grad(Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)

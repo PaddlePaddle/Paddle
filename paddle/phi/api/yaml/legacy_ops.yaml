@@ -839,17 +839,6 @@
     func : increment
   inplace : (x -> out)
 
-- op : index_add
-  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : IndexAddInferMeta
-  kernel :
-    func : index_add
-    data_type : x
-  inplace : (x -> out)
-  backward : index_add_grad
-
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
