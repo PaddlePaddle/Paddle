@@ -81,6 +81,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 class TestAccuracyOpBf16(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
+        self.python_api = accuracy_wrapper
         self.init_dtype()
         n = 8192
         infer = np.random.random((n, 1)).astype(np.float32)
