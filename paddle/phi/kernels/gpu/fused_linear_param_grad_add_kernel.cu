@@ -16,11 +16,11 @@
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
+#endif
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#endif
 
 namespace phi {
 
