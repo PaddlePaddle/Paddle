@@ -19,8 +19,7 @@
 
 namespace ir {
 ///
-/// \brief This macro is used to get a list of all built-in attributes in this
-/// file. The built-in Dialect will use this macro to quickly register all
+/// \brief The built-in Dialect will use this macro to quickly register all
 /// built-in attributes.
 ///
 #define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute, ir::DictionaryAttribute

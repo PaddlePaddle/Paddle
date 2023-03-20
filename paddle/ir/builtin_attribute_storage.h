@@ -29,19 +29,19 @@ struct StrAttributeStorage : public ir::AttributeStorage {
   ///
   using ParamKey = std::tuple<char *, uint32_t>;
 
-  StrAttributeStorage(char *data, uint32_t size) : data_(data), size_(size) {}
+  StrAttributeStorage(char *data, uint32_t size) {
+    data_ = reinterpret_cast<char *>(malloc(size));
+    memcpy(data_, data, size);
+    size_ = size;
+  }
 
   ~StrAttributeStorage() { free(data_); }
 
   ///
-  /// \brief Define a Construc method, which StorageManager uses to construct a
-  /// derived AttributeStorage.
+  /// \brief Construct a derived AttributeStorage.
   ///
   static StrAttributeStorage *Construct(ParamKey key) {
-    uint32_t size = std::get<1>(key);
-    char *data = reinterpret_cast<char *>(malloc(size));
-    memcpy(data, std::get<0>(key), size);
-    return new StrAttributeStorage(data, size);
+    return new StrAttributeStorage(std::get<0>(key), std::get<1>(key));
   }
 
   ///
@@ -78,7 +78,12 @@ struct DictionaryAttributeStorage : public AttributeStorage {
   using ParamKey = std::tuple<NamedAttribute *, uint32_t>;
 
   DictionaryAttributeStorage(NamedAttribute *data, uint32_t size)
-      : data_(data), size_(size) {}
+      : data_(data), size_(size) {
+    data_ = reinterpret_cast<NamedAttribute *>(
+        malloc(sizeof(NamedAttribute) * size));
+    memcpy(data_, data, sizeof(NamedAttribute) * size);
+    size_ = size;
+  }
 
   ~DictionaryAttributeStorage() { free(data_); }
 
@@ -86,10 +91,7 @@ struct DictionaryAttributeStorage : public AttributeStorage {
     auto value = std::get<0>(key);
     uint32_t size = std::get<1>(key);
     std::sort(value, value + size);
-    NamedAttribute *data = reinterpret_cast<NamedAttribute *>(
-        malloc(sizeof(NamedAttribute) * size));
-    memcpy(data, value, sizeof(NamedAttribute) * size);
-    return new DictionaryAttributeStorage(data, size);
+    return new DictionaryAttributeStorage(std::get<0>(key), std::get<1>(key));
   }
 
   static std::size_t HashValue(const ParamKey &key) {
