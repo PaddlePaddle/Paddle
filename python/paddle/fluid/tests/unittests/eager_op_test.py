@@ -591,13 +591,7 @@ class OpTest(unittest.TestCase):
                                     np_value[1].astype(np.float32)
                                 )
                         else:
-                            if (
-                                self.is_calc_ref
-                                and np_value.dtype == np.float16
-                            ):
-                                tensor.set(np_value.astype(np.float32), place)
-                            else:
-                                tensor.set(np_value, place)
+                            tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
                         if self.is_calc_ref and np_value.dtype == np.float16:
                             tensor.set(np_value.astype(np.float32), place)
