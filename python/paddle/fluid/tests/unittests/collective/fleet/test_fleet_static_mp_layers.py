@@ -17,12 +17,11 @@ import unittest
 
 import paddle
 import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
-class ColumnLinearNet(fluid.dygraph.Layer):
+class ColumnLinearNet(paddle.nn.Layer):
     def __init__(self, input_size, output_size):
         super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
@@ -39,7 +38,7 @@ class ColumnLinearNet(fluid.dygraph.Layer):
         return output
 
 
-class RowLinearNet(fluid.dygraph.Layer):
+class RowLinearNet(paddle.nn.Layer):
     def __init__(self, input_size, output_size):
         super().__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
@@ -55,7 +54,7 @@ class RowLinearNet(fluid.dygraph.Layer):
         return output
 
 
-class EmbeddingNet(fluid.dygraph.Layer):
+class EmbeddingNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size):
         super().__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
