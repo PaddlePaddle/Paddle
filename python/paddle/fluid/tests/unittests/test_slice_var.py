@@ -16,7 +16,7 @@ import random
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import slice_variable
+from paddle.distributed.transpiler.distribute_transpiler import slice_variable
 
 
 class TestSliceVar(unittest.TestCase):

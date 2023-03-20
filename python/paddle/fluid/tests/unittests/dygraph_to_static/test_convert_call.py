@@ -32,7 +32,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -53,7 +53,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -117,7 +117,7 @@ class TestRecursiveCall1(unittest.TestCase):
 lambda_fun = lambda x: x
 
 
-class MyConvLayer(fluid.dygraph.Layer):
+class MyConvLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._conv = paddle.nn.Conv2D(
@@ -145,7 +145,7 @@ class MyConvLayer(fluid.dygraph.Layer):
         return x_v
 
 
-class MyLayer(fluid.dygraph.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -267,6 +267,35 @@ class TestNotToConvert2(TestRecursiveCall2):
     def test_code(self):
         # check 'if statement' is not converted
         self.assertIn("if x.shape[0] > 1", self.dygraph_func.code)
+
+
+# Situation 3 : test to_static for paddle api
+@paddle.jit.not_to_static
+def forward(self, x):
+    if x.shape[0] > 1:
+        x = x + 1
+    return x
+
+
+class TestConvertPaddleAPI(unittest.TestCase):
+    def test_functional_api(self):
+        func = paddle.nn.functional.relu
+        func = paddle.jit.to_static(func)
+        self.assertNotIn("_jst.IfElse", func.code)
+        self.assertIn("if in_dygraph_mode()", func.code)
+
+    def test_class_api(self):
+        bn = paddle.nn.SyncBatchNorm(2)
+        paddle.jit.to_static(bn)
+        self.assertNotIn("_jst.IfElse", bn.forward.code)
+        self.assertIn("if in_dygraph_mode()", bn.forward.code)
+
+    def test_class_patch_api(self):
+        paddle.nn.SyncBatchNorm.forward = forward
+        bn = paddle.nn.SyncBatchNorm(2)
+        paddle.jit.to_static(bn)
+        self.assertNotIn("_jst.IfElse", bn.forward.code)
+        self.assertIn("if x.shape[0] > 1", bn.forward.code)
 
 
 if __name__ == '__main__':

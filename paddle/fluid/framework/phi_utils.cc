@@ -155,8 +155,11 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "For GPU kernel, they must not fallback into CPU kernel."));
+    PADDLE_THROW(
+        phi::errors::NotFound("The kernel (%s) with key %s is not found and "
+                              "GPU kernel cannot fallback to CPU one.",
+                              op.Type(),
+                              kernel_key));
   }
 #endif
 
@@ -309,7 +312,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
-    return paddle::experimental::MakePhiIntArray(tensor);
+    return phi::IntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to IntArray when call pt "

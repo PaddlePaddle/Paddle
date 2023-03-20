@@ -328,7 +328,7 @@ class DistributedOperatorHelper:
         elif isinstance(output, Variable):
             new_output = [output]
         else:
-            raise ValueError("Unrecognized outpout.")
+            raise ValueError("Unrecognized output.")
 
         if self._out_dims_mappings:
             assert len(new_output) == len(

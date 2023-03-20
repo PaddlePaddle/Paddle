@@ -277,11 +277,11 @@ template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
                          DenseTensor* dx) {
   funcs::CudaHardSwishGradFunctor<T> functor;
+  float threshold = 6;
+  float scale = 6;
+  float offset = 3;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
@@ -361,6 +361,8 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(stanh_grad, STanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_double_grad,
+                                   SoftplusDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_double_grad, SqrtDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(rsqrt_grad, RsqrtGradKernel)

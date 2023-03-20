@@ -98,8 +98,7 @@ def monkey_patch_variable():
         return var
 
     def create_scalar(block, value, dtype):
-        # TODO(zhouwei): will change to [] which is 0-D Tensor
-        return create_tensor(block, value, dtype, shape=[1])
+        return create_tensor(block, value, dtype, shape=[])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)

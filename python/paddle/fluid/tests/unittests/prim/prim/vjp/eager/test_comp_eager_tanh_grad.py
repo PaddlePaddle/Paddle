@@ -20,7 +20,7 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
-core._set_prim_backward_enabled(True)
+core.set_prim_eager_enabled(True)
 
 
 @param.parameterized_class(
@@ -40,12 +40,6 @@ class TestTanhGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
-
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
 
     def test_tanh_grad_comp(self):
         def actual(primal):
@@ -74,7 +68,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

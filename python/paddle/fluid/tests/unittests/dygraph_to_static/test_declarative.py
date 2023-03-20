@@ -21,12 +21,13 @@ from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Layer, to_variable
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )
+from paddle.nn import Layer
 from paddle.static import InputSpec
 
 

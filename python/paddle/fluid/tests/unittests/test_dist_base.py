@@ -27,8 +27,10 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
 import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.distributed.fleet.meta_optimizers import (
+    RawProgramOptimizer as RawProgram,
+)
 from paddle.fluid import compiler
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
@@ -52,6 +54,35 @@ def print_to_err(class_name, log_str):
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+
+def _insert_comm_op(opt, loss, build_strategy=None):
+    opt = RawProgram(opt)
+    role = paddle.distributed.fleet.base.role_maker.PaddleCloudRoleMaker(
+        is_collective=True
+    )
+    strategy = paddle.distributed.fleet.DistributedStrategy()
+    if build_strategy is not None:
+        strategy.build_strategy = build_strategy
+    opt._set_basic_info(loss, role, opt, strategy)
+
+    # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
+    opt.endpoints = opt.role_maker._get_trainer_endpoints()
+    opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
+    opt.rank = opt.role_maker._worker_index()
+    opt.nranks = opt.role_maker._worker_num()
+    startup_program = paddle.static.default_startup_program()
+    opt.startup_program = startup_program
+
+    block = loss.block
+    program = block.program
+    opt.main_program = program
+
+    optimize_ops, params_grads = opt.inner_opt.minimize(loss, startup_program)
+
+    opt.main_program = program
+    if opt.nranks > 1:
+        opt._transpile_main_program(loss)
 
 
 class TestDistRunnerBase:
@@ -80,7 +111,7 @@ class TestDistRunnerBase:
         hogwild_mode=False,
     ):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
         config.runtime_split_send_recv = hogwild_mode
@@ -88,7 +119,7 @@ class TestDistRunnerBase:
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,
@@ -400,6 +431,51 @@ class TestDistRunnerBase:
             )
 
     def run_trainer(self, args):
+        from io import StringIO
+
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        build_stra = fluid.BuildStrategy()
+        # FIXME force disable enable_inplace and memory_optimize
+        build_stra.enable_inplace = False
+        build_stra.memory_optimize = False
+
+        if args.fuse_all_reduce is not None:
+            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
+
+        if args.hogwild:
+            build_stra.async_mode = True
+
+        if args.enable_backward_deps:
+            build_stra.enable_backward_optimizer_op_deps = True
+
+        if args.use_reduce:
+            build_stra.reduce_strategy = (
+                fluid.BuildStrategy.ReduceStrategy.Reduce
+            )
+        else:
+            build_stra.reduce_strategy = (
+                fluid.BuildStrategy.ReduceStrategy.AllReduce
+            )
+        pass_builder = None
+        if args.batch_merge_repeat > 1:
+            pass_builder = build_stra._finalize_strategy_and_create_passes()
+            mypass = pass_builder.insert_pass(0, "multi_batch_merge_pass")
+            mypass.set("num_repeats", args.batch_merge_repeat)
+
+        if (
+            args.update_method == "nccl2"
+            or args.update_method == "nccl2_reduce_layer"
+        ):
+            build_stra.num_trainers = len(args.endpoints.split(","))
+            build_stra.trainer_id = args.trainer_id
+        else:
+            # case args.update_method == "nccl2_reduce_layer":
+            build_stra.num_trainers = 1
+            build_stra.trainer_id = 0
+
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
             (
@@ -418,7 +494,11 @@ class TestDistRunnerBase:
                 test_reader,
                 batch_acc,
                 predict,
-            ) = self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
+            ) = self.get_model(
+                batch_size=args.batch_size,
+                use_dgc=args.use_dgc,
+                build_strategy=build_stra,
+            )
         else:
             (
                 test_program,
@@ -454,7 +534,7 @@ class TestDistRunnerBase:
             or args.update_method == "nccl2_reduce_layer"
         ):
             # transpile for nccl2
-            config = fluid.DistributeTranspilerConfig()
+            config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.nccl_comm_num = args.nccl_comm_num
             if args.use_hallreduce:
@@ -466,7 +546,9 @@ class TestDistRunnerBase:
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode",
             )
-            nccl2_t = fluid.DistributeTranspiler(config=config)
+            nccl2_t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             nccl2_t.transpile(
                 args.trainer_id,
                 program=fluid.default_main_program(),
@@ -502,52 +584,9 @@ class TestDistRunnerBase:
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
-        build_stra = fluid.BuildStrategy()
-        # FIXME force disable enable_inplace and memory_optimize
-        build_stra.enable_inplace = False
-        build_stra.memory_optimize = False
-
-        if args.fuse_all_reduce is not None:
-            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
-            build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
-
-        if args.hogwild:
-            build_stra.async_mode = True
-
-        if args.enable_backward_deps:
-            build_stra.enable_backward_optimizer_op_deps = True
-
-        if args.use_reduce:
-            build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.Reduce
-            )
-        else:
-            build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.AllReduce
-            )
-
-        pass_builder = None
-        if args.batch_merge_repeat > 1:
-            pass_builder = build_stra._finalize_strategy_and_create_passes()
-            mypass = pass_builder.insert_pass(0, "multi_batch_merge_pass")
-            mypass.set("num_repeats", args.batch_merge_repeat)
-
-        if (
-            args.update_method == "nccl2"
-            or args.update_method == "nccl2_reduce_layer"
-        ):
-            build_stra.num_trainers = len(args.endpoints.split(","))
-            build_stra.trainer_id = args.trainer_id
-        else:
-            # case args.update_method == "nccl2_reduce_layer":
-            build_stra.num_trainers = 1
-            build_stra.trainer_id = 0
-
         print_to_err(type(self).__name__, "begin to compile with data parallel")
-        binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
-            loss_name=avg_cost.name,
-            build_strategy=build_stra,
-            exec_strategy=exec_strategy,
+        binary = compiler.CompiledProgram(
+            trainer_prog, build_strategy=build_stra
         )
         print_to_err(type(self).__name__, "program compiled with data parallel")
 
@@ -583,8 +622,10 @@ class TestDistRunnerBase:
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-        print_to_err(type(self).__name__, "trainer run finished")
+        print_to_err(type(self).__name__, "trainer run finished\n")
+        # print_to_err(type(self).__name__, "out_losses")
 
+        sys.stdout = old_stdout
         print_to_out(out_losses)
 
 
@@ -669,7 +710,7 @@ class TestParallelDyGraphRunnerBase:
                 or args.update_method == "hccl"
                 or args.update_method == "cncl"
             ):
-                strategy = dygraph.parallel.ParallelStrategy()
+                strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
@@ -680,11 +721,11 @@ class TestParallelDyGraphRunnerBase:
                     "begin to prepare context in dygraph with nccl2",
                 )
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=True
                     )
                 print_to_err(type(self).__name__, "model built in dygraph")
@@ -692,11 +733,11 @@ class TestParallelDyGraphRunnerBase:
             elif args.update_method == "gloo":
                 paddle.distributed.init_parallel_env()
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=True
                     )
 

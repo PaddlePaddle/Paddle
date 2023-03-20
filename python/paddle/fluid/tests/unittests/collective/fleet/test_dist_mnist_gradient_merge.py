@@ -27,6 +27,7 @@ class TestDistMnistGradMerge(TestDistBase):
         self._sync_mode = True
         self._use_reduce = False
         self._nccl2_mode = True
+        self._nccl2_reduce_layer = True
 
     def test_dist_train(self):
         if fluid.core.is_compiled_with_cuda():

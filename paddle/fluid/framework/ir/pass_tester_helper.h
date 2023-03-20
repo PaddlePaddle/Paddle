@@ -571,33 +571,35 @@ struct Layers {
     return out;
   }
 
-  VarDesc* fused_multi_transformer(VarDesc* x,
-                                   VarDesc* cache_kv,
-                                   VarDesc* src_mask,
-                                   VarDesc* qkv_w,
-                                   VarDesc* qkv_bias,
-                                   VarDesc* out_linear_w,
-                                   VarDesc* out_linear_bias,
-                                   VarDesc* ffn1_w,
-                                   VarDesc* ffn1_bias,
-                                   VarDesc* ffn2_w,
-                                   VarDesc* ffn2_bias,
-                                   VarDesc* ln_scale,
-                                   VarDesc* ln_bias,
-                                   VarDesc* ffn_ln_scale,
-                                   VarDesc* ffn_ln_bias,
-                                   float epsilon,
-                                   float dropout_rate,
-                                   VarDesc* time_stamp = nullptr,
-                                   VarDesc* qkv_out_scale = nullptr,
-                                   VarDesc* out_linear_out_scale = nullptr,
-                                   VarDesc* ffn1_out_scale = nullptr,
-                                   VarDesc* ffn2_out_scale = nullptr,
-                                   std::vector<float> qkv_in_scale = {},
-                                   std::vector<float> out_linear_in_scale = {},
-                                   std::vector<float> ffn1_in_scale = {},
-                                   std::vector<float> ffn2_in_scale = {}) {
+  std::vector<VarDesc*> fused_multi_transformer(
+      VarDesc* x,
+      VarDesc* cache_kv,
+      VarDesc* src_mask,
+      VarDesc* qkv_w,
+      VarDesc* qkv_bias,
+      VarDesc* out_linear_w,
+      VarDesc* out_linear_bias,
+      VarDesc* ffn1_w,
+      VarDesc* ffn1_bias,
+      VarDesc* ffn2_w,
+      VarDesc* ffn2_bias,
+      VarDesc* ln_scale,
+      VarDesc* ln_bias,
+      VarDesc* ffn_ln_scale,
+      VarDesc* ffn_ln_bias,
+      float epsilon,
+      float dropout_rate,
+      VarDesc* time_stamp = nullptr,
+      VarDesc* qkv_out_scale = nullptr,
+      VarDesc* out_linear_out_scale = nullptr,
+      VarDesc* ffn1_out_scale = nullptr,
+      VarDesc* ffn2_out_scale = nullptr,
+      std::vector<float> qkv_in_scale = {},
+      std::vector<float> out_linear_in_scale = {},
+      std::vector<float> ffn1_in_scale = {},
+      std::vector<float> ffn2_in_scale = {}) {
     VarDesc* out = lod_tensor(unique_name());
+    VarDesc* cache_kv_out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     std::string op_type = qkv_out_scale ? "fused_multi_transformer_int8"
                                         : "fused_multi_transformer";
@@ -623,6 +625,7 @@ struct Layers {
     op->SetAttr("dropout_rate", dropout_rate);
     op->SetAttr("epsilon", epsilon);
     op->SetOutput("Out", {out->Name()});
+    op->SetOutput("CacheKVOut", {cache_kv_out->Name()});
 
     if (time_stamp) {
       op->SetInput("TimeStep", {time_stamp->Name()});
@@ -638,7 +641,8 @@ struct Layers {
       op->SetAttr("ffn1_in_scale", ffn1_in_scale);
       op->SetAttr("ffn2_in_scale", ffn2_in_scale);
     }
-    return out;
+    std::vector<VarDesc*> outs = {out, cache_kv_out};
+    return outs;
   }
 
   VarDesc* dequantize_linear(VarDesc* x,

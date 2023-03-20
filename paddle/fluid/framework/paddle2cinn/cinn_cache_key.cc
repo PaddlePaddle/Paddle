@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -127,18 +128,33 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
     }
   }
 
-  static std::unordered_set<std::string> ignore_attr = {"op_callstack",
-                                                        "op_device",
-                                                        "op_namescope",
-                                                        "op_role",
-                                                        "op_role_var",
-                                                        "with_quant_attr"};
+  static const std::unordered_set<std::string> ignore_attr = {
+      "op_callstack",
+      "op_device",
+      "op_namescope",
+      "op_role",
+      "op_role_var",
+      "with_quant_attr"};
+
+  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> input_set(compare),
+      output_set(compare);
 
   std::ostringstream hash_str;
   for (ir::Node* op : node_set) {
     hash_str << op->Name() << ":";
-    hash_str << "input_num=" << op->inputs.size() << ",";
-    hash_str << "output_num=" << op->outputs.size() << ",";
+    input_set.clear();
+    input_set.insert(op->inputs.begin(), op->inputs.end());
+    hash_str << "inputs=["
+             << string::join_strings(
+                    input_set, ",", [](ir::Node* n) { return n->Name(); })
+             << "],";
+
+    output_set.clear();
+    output_set.insert(op->outputs.begin(), op->outputs.end());
+    hash_str << "outputs=["
+             << string::join_strings(
+                    output_set, ",", [](ir::Node* n) { return n->Name(); })
+             << "],";
 
     const auto& attrs_unordered_map = op->Op()->GetAttrMap();
     std::map<std::string, Attribute> attrs_map(attrs_unordered_map.begin(),
