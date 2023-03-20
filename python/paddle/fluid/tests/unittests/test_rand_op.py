@@ -108,7 +108,7 @@ class TestRandOpForDygraph(unittest.TestCase):
             dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             rand(shape=[dim_1, dim_2])
 
-            var_shape = fluid.dygraph.to_variable(np.array([3, 4]))
+            var_shape = paddle.to_tensor(np.array([3, 4]))
             rand(var_shape)
 
     def test_run(self):
@@ -123,9 +123,8 @@ class TestRandDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.rand([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.rand([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -137,6 +136,9 @@ class TestRandDtype(unittest.TestCase):
             out = paddle.tensor.random.rand([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
 
