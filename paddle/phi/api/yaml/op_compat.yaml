@@ -887,8 +887,6 @@
     {x : X, index : Index}
   outputs :
     out : Out
-  attrs :
-    axis : axis
 
 - op : index_select
   inputs :

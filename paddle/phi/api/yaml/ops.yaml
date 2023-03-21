@@ -693,7 +693,7 @@
   backward : imag_grad
 
 - op : index_add
-  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
+  args : (Tensor x, Tensor index,  Tensor add_value, int axis = 0)
   output : Tensor(out)
   infer_meta :
     func : IndexAddInferMeta
