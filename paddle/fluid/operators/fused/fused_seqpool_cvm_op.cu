@@ -165,8 +165,9 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
   paddle::framework::GpuPinnedVector *pinned_inputs =
       var_1->GetMutable<paddle::framework::GpuPinnedVector>();
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  pinned_inputs->cpu_to_pinedcpu(reinterpret_cast<void *>(input_data.data()),
-                                 input_data.size() * sizeof(T *));
+  pinned_inputs->cpu_to_pinedcpu(
+      const_cast<void *>(reinterpret_cast<const void *>(input_data.data())),
+      input_data.size() * sizeof(T *));
   platform::GpuMemcpyAsync(gpu_input_values,
                            pinned_inputs->get_cpu_ptr<char *>(),
                            input_data.size() * sizeof(T *),
@@ -183,8 +184,9 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
       var_2->GetMutable<paddle::framework::GpuPinnedVector>();
   T **gpu_output_values =
       reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
-  pinned_outputs->cpu_to_pinedcpu(reinterpret_cast<void *>(output_data.data()),
-                                  output_data.size() * sizeof(T *));
+  pinned_outputs->cpu_to_pinedcpu(
+      const_cast<void *>(reinterpret_cast<const void *>(output_data.data())),
+      output_data.size() * sizeof(T *));
   platform::GpuMemcpyAsync(gpu_output_values,
                            pinned_outputs->get_cpu_ptr<char *>(),
                            output_data.size() * sizeof(T *),
@@ -362,8 +364,9 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
   paddle::framework::GpuPinnedVector *pinned_tmp_1 =
       var_1->GetMutable<paddle::framework::GpuPinnedVector>();
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  pinned_tmp_1->cpu_to_pinedcpu(reinterpret_cast<void *>(out_grads_data.data()),
-                                out_grads_data.size() * sizeof(T *));
+  pinned_tmp_1->cpu_to_pinedcpu(
+      const_cast<void *>(reinterpret_cast<const void *>(out_grads_data.data())),
+      out_grads_data.size() * sizeof(T *));
   platform::GpuMemcpyAsync(gpu_out_grads_values,
                            pinned_tmp_1->get_cpu_ptr<char *>(),
                            out_grads_data.size() * sizeof(T *),
@@ -380,8 +383,9 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
       var_2->GetMutable<paddle::framework::GpuPinnedVector>();
   T **gpu_in_grads_values =
       reinterpret_cast<T **>(&gpu_out_grads_values[out_grads_data.size()]);
-  pinned_tmp_2->cpu_to_pinedcpu(reinterpret_cast<void *>(in_grads_data.data()),
-                                in_grads_data.size() * sizeof(T *));
+  pinned_tmp_2->cpu_to_pinedcpu(
+      const_cast<void *>(reinterpret_cast<const void *>(in_grads_data.data())),
+      in_grads_data.size() * sizeof(T *));
   platform::GpuMemcpyAsync(gpu_in_grads_values,
                            pinned_tmp_2->get_cpu_ptr<char *>(),
                            in_grads_data.size() * sizeof(T *),
@@ -398,8 +402,9 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
       var_3->GetMutable<paddle::framework::GpuPinnedVector>();
   T **gpu_cvm_values =
       reinterpret_cast<T **>(&gpu_in_grads_values[in_grads_data.size()]);
-  pinned_tmp_3->cpu_to_pinedcpu(reinterpret_cast<void *>(cvm_data.data()),
-                                cvm_data.size() * sizeof(T *));
+  pinned_tmp_3->cpu_to_pinedcpu(
+      const_cast<void *>(reinterpret_cast<const void *>(cvm_data.data())),
+      cvm_data.size() * sizeof(T *));
   platform::GpuMemcpyAsync(gpu_cvm_values,
                            pinned_tmp_3->get_cpu_ptr<char *>(),
                            cvm_data.size() * sizeof(T *),
