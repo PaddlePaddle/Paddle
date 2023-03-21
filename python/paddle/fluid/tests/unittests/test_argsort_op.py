@@ -502,8 +502,9 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 class TestArgsortFP16OP(OpTest):
     def setUp(self):
-        self.__class__.op_type = "argsort"
-        self.dtype = "float16"
+        self.op_type = "argsort"
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
         self.inputs = {'X': np.random.randn(2, 8).astype(self.dtype)}
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
 
@@ -519,10 +520,10 @@ class TestArgsortFP16OP(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad(
+                self.check_grad_with_place(
+                    place,
                     ['X'],
                     'Out',
-                    max_relative_error=1e-3,
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
                 )
@@ -543,8 +544,9 @@ class TestArgsortFP16OP(OpTest):
 
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
-        self.__class__.op_type = "argsort"
-        self.dtype = "uint16"
+        self.op_type = "argsort"
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
         self.inputs = {'X': np.random.randn(11, 17).astype(self.dtype)}
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
 
