@@ -271,7 +271,7 @@ class TestChannelShuffleError(unittest.TestCase):
 class TestChannelShuffleFP16OP(OpTest):
     def setUp(self):
         self.__class__.op_type = "channel_shuffle"
-        self.dtype = "float16"
+        self.dtype = np.float16
         self.place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -291,10 +291,12 @@ class TestChannelShuffleFP16OP(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad(['X'],
-                                'Out',
-                                max_relative_error=1e-3,
-                                )
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=1e-3,
+                )
 
     def test_check_grad_ignore_order(self):
         program = fluid.Program()
@@ -310,7 +312,7 @@ class TestChannelShuffleFP16OP(OpTest):
 class TestChannelShuffleBF16OP(OpTest):
     def setUp(self):
         self.__class__.op_type = "channel_shuffle"
-        self.dtype = "uint16"
+        self.dtype = np.uint16
         self.use_mkldnn = False
         self.input_shape = (2, 4, 3, 3)
         self.groups = 2
