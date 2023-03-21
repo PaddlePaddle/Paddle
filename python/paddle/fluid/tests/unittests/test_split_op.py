@@ -25,6 +25,7 @@ from paddle.fluid import Program, core, program_guard
 class TestSplitOp(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -67,6 +68,7 @@ class TestSplitOp(OpTest):
 class TestSplitOp_2(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -190,6 +192,7 @@ class TestSplitOp_SectionsTensor(OpTest):
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"

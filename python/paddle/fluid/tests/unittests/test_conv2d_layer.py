@@ -23,7 +23,7 @@ from paddle import fluid, nn
 
 
 def _reverse_repeat_list(t, n):
-    return list(x for x in reversed(t) for _ in range(n))
+    return [x for x in reversed(t) for _ in range(n)]
 
 
 class Conv2DTestCase(unittest.TestCase):

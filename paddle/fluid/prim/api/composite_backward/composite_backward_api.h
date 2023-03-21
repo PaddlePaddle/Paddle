@@ -1192,7 +1192,7 @@ void batch_norm_grad(const Tensor& x,
     auto eps =
         full<T>(phi::vectorize(run_var.dims()), epsilon, run_var.dtype());
     mean_data = run_mean;
-    rsqrt_var = 1 / (run_var + eps).pow(0.5);
+    rsqrt_var = (run_var + eps).pow(-0.5);
   } else {
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
