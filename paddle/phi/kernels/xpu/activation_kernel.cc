@@ -15,10 +15,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-
-#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -207,11 +206,11 @@ void PowKernel(const Context& dev_ctx,
   T* factor_data = RAII_GUARD.alloc_l3_or_gm<T>(1);
   PADDLE_ENFORCE_NOT_NULL(
       factor_data, errors::External("XPU alloc_l3_or_gm returns nullptr"));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       static_cast<void*>(factor_data),
-                       phi::CPUPlace(),
-                       static_cast<void*>(&pow_factor),
-                       sizeof(T));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     static_cast<void*>(factor_data),
+                     phi::CPUPlace(),
+                     static_cast<void*>(&pow_factor),
+                     sizeof(T));
 
   auto x_dims = vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []
@@ -514,13 +513,13 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                             offset)
 
 template <typename T, typename Context>
-void HardSwishRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        float threshold,
-                        float scale,
-                        float offset,
-                        DenseTensor* out) {
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out) {
   XPUHardSwishFunctor<T> functor;
+  float threshold = 6;
+  float scale = 6;
+  float offset = 3;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
@@ -545,12 +544,14 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)

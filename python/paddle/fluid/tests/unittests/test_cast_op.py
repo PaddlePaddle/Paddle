@@ -17,12 +17,45 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+
+
+def convert_to_dtype_(dtype):
+    if dtype == 5:
+        return core.VarDesc.VarType.FP32
+    elif dtype == 6:
+        return core.VarDesc.VarType.FP64
+    elif dtype == 4:
+        return core.VarDesc.VarType.FP16
+    elif dtype == 2:
+        return core.VarDesc.VarType.INT32
+    elif dtype == 1:
+        return core.VarDesc.VarType.INT16
+    elif dtype == 3:
+        return core.VarDesc.VarType.INT64
+    elif dtype == 0:
+        return core.VarDesc.VarType.BOOL
+    elif dtype == 22:
+        return core.VarDesc.VarType.BF16
+    elif dtype == 20:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == 21:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        raise ValueError("Not supported dtype %s" % dtype)
+
+
+def cast_wrapper(x, out_dtype=None):
+    return paddle.tensor.cast(x, convert_to_dtype_(out_dtype))
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -35,6 +68,7 @@ class TestCastOpFp32ToFp64(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP64),
         }
         self.op_type = 'cast'
+        self.python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output()
@@ -54,6 +88,7 @@ class TestCastOpFp16ToFp32(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -70,6 +105,7 @@ class TestCastOpFp32ToFp16(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -86,6 +122,7 @@ class TestCastOpBf16ToFp32(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output()
@@ -102,6 +139,7 @@ class TestCastOpFp32ToBf16(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output()

@@ -32,18 +32,6 @@ cc_test(
   SRCS os_info_test.cc
   DEPS phi_os_info)
 
-if(WITH_GPU)
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator phi_backends)
-else()
-  cc_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator)
-endif()
-
 cc_library(
   place
   SRCS place.cc
@@ -133,7 +121,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context custom_kernel context_pool)
+  DEPS device_context custom_kernel context_pool memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -159,7 +147,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)
@@ -240,6 +227,10 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+  nv_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -248,10 +239,11 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
-  nv_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
+else()
+  cc_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS device_context allocator)
 endif()
 
 if(WITH_ROCM)
@@ -277,10 +269,6 @@ if(WITH_ROCM)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
-  hip_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 cc_library(timer SRCS timer.cc)
@@ -424,3 +412,13 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+
+cc_library(
+  init_phi
+  SRCS init_phi.cc
+  DEPS init)
+
+cc_test(
+  init_phi_test
+  SRCS init_phi_test.cc
+  DEPS phi_tensor init_phi)

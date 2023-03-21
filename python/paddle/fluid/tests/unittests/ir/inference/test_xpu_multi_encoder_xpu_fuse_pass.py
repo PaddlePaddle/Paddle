@@ -25,7 +25,7 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["multi_encoder_xpu"], (1e-1, 1e-1)
 
-    def sample_program_config(self, draw):
+    def multi_encoder_xpu_program_config(self, draw):
         # q: matmul+add+reshape+transpose
         q_matmul_op = OpConfig(
             "matmul_v2",
@@ -324,6 +324,9 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
             outputs=["ln_2_out"],
         )
         return program_config
+
+    def sample_program_config(self, draw):
+        return self.multi_encoder_xpu_program_config(draw)
 
     def test(self):
         self.run_and_statis(

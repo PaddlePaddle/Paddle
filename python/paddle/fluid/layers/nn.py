@@ -41,8 +41,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import fill_constant, zeros
-from . import utils
+from .tensor import zeros
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
@@ -210,7 +209,7 @@ def embedding(
           data = fluid.data(name='x', shape=[None, 1], dtype='int64')
 
           # example 1
-          emb_1 = fluid.embedding(input=data, size=[128, 64])
+          emb_1 = paddle.static.nn.embedding(input=data, size=[128, 64])
 
           # example 2: load custom or pre-trained word vectors
           weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
@@ -699,10 +698,10 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
@@ -735,8 +734,10 @@ def unsqueeze(input, axes, name=None):
             axes.stop_gradient = True
             inputs["AxesTensor"] = axes
         elif isinstance(axes, (list, tuple)):
-            if utils._contain_var(axes):
-                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            if paddle.utils._contain_var(axes):
+                inputs["AxesTensorList"] = paddle.utils._convert_to_tensor_list(
+                    axes
+                )
             else:
                 attrs["axes"] = axes
 

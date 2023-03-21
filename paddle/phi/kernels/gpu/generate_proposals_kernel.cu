@@ -25,6 +25,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -72,7 +73,7 @@ static void SortDescending(const phi::GPUContext &ctx,
                                                     ctx.stream());
   // Allocate temporary storage
   auto place = ctx.GetPlace();
-  auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -297,7 +298,7 @@ static void NMS(const phi::GPUContext &ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = ctx.GetPlace();
-  auto mask_ptr = paddle::memory::Alloc(
+  auto mask_ptr = phi::memory_utils::Alloc(
       place,
       boxes_num * col_blocks * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -310,12 +311,12 @@ static void NMS(const phi::GPUContext &ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  paddle::memory::Copy(CPUPlace(),
-                       mask_host.data(),
-                       place,
-                       mask_dev,
-                       boxes_num * col_blocks * sizeof(uint64_t),
-                       ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     mask_host.data(),
+                     place,
+                     mask_dev,
+                     boxes_num * col_blocks * sizeof(uint64_t),
+                     ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
@@ -334,12 +335,12 @@ static void NMS(const phi::GPUContext &ctx,
   }
   keep_out->Resize(phi::make_ddim({num_to_keep}));
   int *keep = ctx.template Alloc<int>(keep_out);
-  paddle::memory::Copy(place,
-                       keep,
-                       CPUPlace(),
-                       keep_vec.data(),
-                       sizeof(int) * num_to_keep,
-                       ctx.stream());
+  memory_utils::Copy(place,
+                     keep,
+                     CPUPlace(),
+                     keep_vec.data(),
+                     sizeof(int) * num_to_keep,
+                     ctx.stream());
   ctx.Wait();
 }
 
@@ -400,12 +401,12 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                                               pixel_offset);
   int keep_num;
   const auto gpu_place = ctx.GetPlace();
-  paddle::memory::Copy(CPUPlace(),
-                       &keep_num,
-                       gpu_place,
-                       keep_num_t.data<int>(),
-                       sizeof(int),
-                       ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     &keep_num,
+                     gpu_place,
+                     keep_num_t.data<int>(),
+                     sizeof(int),
+                     ctx.stream());
   ctx.Wait();
   keep_index.Resize(phi::make_ddim({keep_num}));
 
@@ -541,18 +542,18 @@ void GenerateProposalsKernel(const Context &ctx,
     DenseTensor &proposals = box_score_pair.first;
     DenseTensor &nscores = box_score_pair.second;
 
-    paddle::memory::Copy(place,
-                         rpn_rois_data + num_proposals * 4,
-                         place,
-                         proposals.data<T>(),
-                         sizeof(T) * proposals.numel(),
-                         ctx.stream());
-    paddle::memory::Copy(place,
-                         rpn_roi_probs_data + num_proposals,
-                         place,
-                         nscores.data<T>(),
-                         sizeof(T) * nscores.numel(),
-                         ctx.stream());
+    memory_utils::Copy(place,
+                       rpn_rois_data + num_proposals * 4,
+                       place,
+                       proposals.data<T>(),
+                       sizeof(T) * proposals.numel(),
+                       ctx.stream());
+    memory_utils::Copy(place,
+                       rpn_roi_probs_data + num_proposals,
+                       place,
+                       nscores.data<T>(),
+                       sizeof(T) * nscores.numel(),
+                       ctx.stream());
     ctx.Wait();
     num_proposals += proposals.dims()[0];
     offset.emplace_back(num_proposals);
@@ -562,12 +563,12 @@ void GenerateProposalsKernel(const Context &ctx,
     rpn_rois_num->Resize(phi::make_ddim({num}));
     ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
-    paddle::memory::Copy(place,
-                         num_data,
-                         cpu_place,
-                         &tmp_num[0],
-                         sizeof(int) * num,
-                         ctx.stream());
+    memory_utils::Copy(place,
+                       num_data,
+                       cpu_place,
+                       &tmp_num[0],
+                       sizeof(int) * num,
+                       ctx.stream());
     rpn_rois_num->Resize(phi::make_ddim({num}));
   }
   phi::LoD lod;
@@ -579,4 +580,6 @@ void GenerateProposalsKernel(const Context &ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {}
+    generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
@@ -43,7 +42,7 @@ def generate_data(shape, dtype="float32"):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self, approximate):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
         self.approximate = approximate
 
@@ -78,6 +77,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             net = apply_to_static(net, use_prim)
 
         res = []
+        self.x = data
         for _ in range(10):
             out = net(data)
             loss = paddle.mean(out)
@@ -93,36 +93,35 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Please use PartialProgramLayer(second output parameter of get_concrete_program) rather than
+        # main_program here, as main_program is original program before to_prim.
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x)[1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that gelu is splitted into small ops
         self.assertTrue('gelu' not in fwd_ops)
 
     def test_cinn_prim(self):
-        plat = platform.system()
-        if plat == "Linux":
-            for shape in self.shapes:
-                for dtype in self.dtypes:
-                    if (
-                        paddle.device.get_device() == "cpu"
-                        and dtype == "float16"
-                    ):
-                        print("need pass this case")
-                        continue
-                    data = generate_data(shape, dtype)
-                    data_t = paddle.to_tensor(data)
-                    data_t.stop_gradient = False
-                    dy_res = self.train(use_prim=False, data=data_t)
-                    cinn_res = self.train(use_prim=True, data=data_t)
-                    for i in range(len(dy_res)):
-                        np.testing.assert_allclose(
-                            cinn_res[i],
-                            dy_res[i],
-                            rtol=TOLERANCE[dtype]['rtol'],
-                            atol=TOLERANCE[dtype]['atol'],
-                        )
-
-        else:
-            pass
+        for shape in self.shapes:
+            for dtype in self.dtypes:
+                if paddle.device.get_device() == "cpu" and dtype == "float16":
+                    print("need pass this case")
+                    continue
+                data = generate_data(shape, dtype)
+                data_t = paddle.to_tensor(data)
+                data_t.stop_gradient = False
+                dy_res = self.train(use_prim=False, data=data_t)
+                cinn_res = self.train(use_prim=True, data=data_t)
+                for i in range(len(dy_res)):
+                    np.testing.assert_allclose(
+                        cinn_res[i],
+                        dy_res[i],
+                        rtol=TOLERANCE[dtype]['rtol'],
+                        atol=TOLERANCE[dtype]['atol'],
+                    )
 
 
 if __name__ == '__main__':

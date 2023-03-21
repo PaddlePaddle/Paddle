@@ -212,6 +212,38 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
+  if (!argument->use_xpu()) return;
+
+  PADDLE_ENFORCE_EQ(argument->xpu_device_id_valid(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "The xpu_device_id field should be valid"));
+
+  LOG(INFO) << "Sync params from CPU to XPU: "
+            << "xpu_device_id - " << argument->xpu_device_id();
+
+  platform::CPUPlace cpu_place;
+  platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
+  auto *scope = argument->scope_ptr();
+  framework::ir::Graph &graph = argument->main_graph();
+
+  for (auto *node : graph.Nodes()) {
+    if (!node->IsVar() || !node->Var()->Persistable()) continue;
+    auto *var = scope->FindVar(node->Name());
+    if (!var->IsType<phi::DenseTensor>()) continue;
+    auto *tensor = var->GetMutable<phi::DenseTensor>();
+
+    phi::DenseTensor temp_tensor;
+    temp_tensor.Resize(tensor->dims());
+    paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
+    tensor->clear();
+    paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+  }
+}
+#endif
+
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
@@ -230,6 +262,11 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (argument->use_custom_device_valid()) {
     CopyParamsToCustomDevice(argument);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  if (argument->use_xpu_valid()) {
+    CopyParamsToXpu(argument);
   }
 #endif
   paddle::memory::Release(platform::CPUPlace());

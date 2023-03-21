@@ -143,8 +143,8 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         binary = paddle.static.CompiledProgram(
-            main_graph.graph
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            main_graph.graph, build_strategy=build_strategy
+        )
         quantized_test_program = test_graph.to_program()
         iters = 5
         batch_size = 8

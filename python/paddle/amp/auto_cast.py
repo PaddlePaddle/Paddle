@@ -353,8 +353,11 @@ def amp_guard(
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
-    if not (dtype in ['float16', 'bfloat16']):
-        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+    if enable:
+        if not (dtype in ['float16', 'bfloat16']):
+            raise ValueError(
+                "If enable amp, dtype should be 'float16' or 'bfloat16'."
+            )
 
     # check tracer
     tracer = _dygraph_tracer()

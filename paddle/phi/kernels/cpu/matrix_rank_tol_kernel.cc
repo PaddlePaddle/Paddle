@@ -175,4 +175,5 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     matrix_rank_tol, CPU, ALL_LAYOUT, phi::MatrixRankTolKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }

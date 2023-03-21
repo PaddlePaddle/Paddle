@@ -100,7 +100,7 @@ class TestCase4(TestBase):
             'dtype': 'int32',
             'value': 3,
         }
-        y = paddle.fluid.layers.fill_constant(**self.attrs)
+        y = paddle.tensor.fill_constant(**self.attrs)
         out = paddle.expand(x, shape=y)
         self.fetch_list = [out.name]
 

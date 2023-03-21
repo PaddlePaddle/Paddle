@@ -165,6 +165,18 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.inp = np.array([1, 2]).astype("int64")
             self.output = self.xnp[tuple(self.inp.T)]
 
+    class XPUTestGatherNdOpMultiDimIndex1(XPUTestGatherNdBase):
+        def init_data(self):
+            self.xnp = np.random.uniform(0, 100, (10, 10)).astype(self.in_type)
+            self.inp = np.array([2, 2]).astype("int32")
+            self.output = self.xnp[tuple(self.inp.T)]
+
+    class XPUTestGatherNdOpMultiDimIndex2(XPUTestGatherNdBase):
+        def init_data(self):
+            self.xnp = np.random.uniform(0, 100, (10, 10)).astype(self.in_type)
+            self.inp = np.array([2, 2]).astype("int64")
+            self.output = self.xnp[tuple(self.inp.T)]
+
 
 support_types = get_xpu_op_support_types('gather_nd')
 for stype in support_types:

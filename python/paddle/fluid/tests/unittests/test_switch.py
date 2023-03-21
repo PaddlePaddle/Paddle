@@ -24,11 +24,19 @@ from paddle.fluid.framework import default_startup_program
 
 class TestSwitch(unittest.TestCase):
     def check_switch(self, value):
-        x = layers.fill_constant(shape=[1], dtype='float32', value=value)
-        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
-        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
-        two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
-        three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
+        x = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=value)
+        zero_var = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=0.0
+        )
+        one_var = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=1.0
+        )
+        two_var = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=2.0
+        )
+        three_var = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=3.0
+        )
 
         result = paddle.static.create_global_var(
             shape=[1], value=-1.0, dtype='float32', persistable=True
@@ -66,8 +74,10 @@ class TestSwitchCaseError(unittest.TestCase):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
-            cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
-            zero_var = layers.fill_constant(
+            cond = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.0
+            )
+            zero_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0
             )
 

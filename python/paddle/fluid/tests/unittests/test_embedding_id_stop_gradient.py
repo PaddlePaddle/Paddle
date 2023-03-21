@@ -58,7 +58,9 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
 
                 x.stop_gradient = stop_gradient
 
-                emb = fluid.embedding(x, size=[10, 32], dtype='float32')
+                emb = paddle.static.nn.embedding(
+                    x, size=[10, 32], dtype='float32'
+                )
                 avg_cost = paddle.mean(emb, name='mean_loss')
                 optim = fluid.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)

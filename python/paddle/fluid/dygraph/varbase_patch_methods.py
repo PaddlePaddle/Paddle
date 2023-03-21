@@ -34,7 +34,6 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -281,6 +280,8 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
+        from paddle.distributed.parallel import scale_loss
+
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -727,7 +728,8 @@ def monkey_patch_varbase():
         return framework.default_main_program().global_block()
 
     def __nonzero__(self):
-        numel = np.prod(self.shape)
+        # np.prod([]) -> np.float64, so use int
+        numel = int(np.prod(self.shape))
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
@@ -763,7 +765,7 @@ def monkey_patch_varbase():
                 print(type(x_array))      #<class 'numpy.ndarray'>
                 print(x_array.shape)      #(2, 2)
         """
-        array = self.numpy()
+        array = self.numpy(False)
         if dtype:
             array = array.astype(dtype)
         return array

@@ -17,8 +17,10 @@ from utils import gen_data
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.base import role_maker
-from paddle.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.incubate.distributed.fleet import role_maker
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
 
 input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
 input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')

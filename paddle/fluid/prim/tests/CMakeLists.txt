@@ -29,19 +29,24 @@ cc_test_old(
   prim_utils
   operator
   elementwise_mul_op
-  scale_op
+  elementwise_sub_op
+  elementwise_pow_op
+  fill_constant_op
   activation_op
   phi_api
   phi_dygraph_api
   static_global_utils
   static_tensor_operants
-  operants_manager)
+  tensor_api
+  operants_manager
+  generated_static_op)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     init_env_utils
     SRCS init_env_utils.cc
-    DEPS operants_manager eager_tensor_operants static_tensor_operants)
+    DEPS operants_manager tensor_api eager_tensor_operants
+         static_tensor_operants)
 
   cc_test_old(
     test_comp_eager

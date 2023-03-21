@@ -166,13 +166,7 @@ cc_test(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim
-       mixed_vector
-       place
-       tensor
-       framework_proto
-       version
-       serialization)
+  DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(
   lod_tensor_test
@@ -437,13 +431,14 @@ if(WITH_XPU)
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
          xpu_op_list
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 else()
   cc_library(
     phi_utils
@@ -451,12 +446,13 @@ else()
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 endif()
 
 if(WITH_XPU)
@@ -485,7 +481,8 @@ if(WITH_XPU)
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 else()
   cc_library(
     operator
@@ -511,7 +508,8 @@ else()
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 endif()
 
 cc_test(
@@ -585,20 +583,24 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
   #Generate an empty \
   #__init__.py to make framework_py_proto as a valid python module.
-  file(MAKE_DIRECTORY
-       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
-  file(TOUCH
-       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                        touch __init__.py)
+  add_custom_target(fleet_proto_init)
+  add_custom_command(
+    TARGET fleet_proto_init
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND
+      ${CMAKE_COMMAND} -E touch
+      ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
+  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
   add_dependencies(
     framework_py_proto
-    framework_py_proto_init
     trainer_py_proto
     distributed_strategy_py_proto
+    fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    pslib_py_proto)
+    pslib_py_proto
+    ps_py_proto_init)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -1063,7 +1065,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1080,7 +1082,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1109,7 +1111,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization device_context)
+  DEPS selected_rows device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1147,11 +1149,6 @@ cc_test_old(
   proto_desc
   string_helper
   glog)
-
-cc_library(
-  generator
-  SRCS generator.cc
-  DEPS enforce place)
 
 cc_library(
   infershape_utils
@@ -1203,6 +1200,7 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api
+       tensor_api
        phi_tensor_operants
        operants_manager)
 

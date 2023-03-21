@@ -23,7 +23,7 @@ from paddle.nn import Layer
 
 class LinearQuanterDequanter(Layer):
     def __init__(self, quanter, dequanter):
-        super(LinearQuanterDequanter, self).__init__()
+        super().__init__()
         self._quanter = quanter
         self._dequanter = dequanter
 
@@ -37,6 +37,7 @@ class LinearQuanterDequanter(Layer):
 
     @staticmethod
     def from_quanter(quanter):
+        assert quanter is not None
         return LinearQuanterDequanter(
             LinearQuanter.from_quanter(quanter),
             LinearDequanter.from_quanter(quanter),
@@ -45,7 +46,7 @@ class LinearQuanterDequanter(Layer):
 
 class LinearQuanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
-        super(LinearQuanter, self).__init__()
+        super().__init__()
         self._scales = paddle.to_tensor(scales, dtype="float32")
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
@@ -96,7 +97,7 @@ class LinearQuanter(Layer):
 
 class LinearDequanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
-        super(LinearDequanter, self).__init__()
+        super().__init__()
         self._scales = paddle.to_tensor(scales, dtype="float32")
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
@@ -155,7 +156,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
             # Given codes in ./customized_quanter.py
             class CustomizedQuantedLayer(ConvertibleQuantedLayer):
                 def __init__(self):
-                    super(CustomizedQuantedLayer, self).__init__()
+                    super().__init__()
                     self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
                     self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
                     self.quanter_for_weight_a = None
@@ -175,7 +176,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     """
 
     def __init__(self):
-        super(ConvertibleQuantedLayer, self).__init__()
+        super().__init__()
         self.converted = False
 
     @abc.abstractmethod
@@ -208,6 +209,8 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
             self, quanter_name
         ), f"{quanter_name} is not attribute of current layer."
         quanter = getattr(self, quanter_name)
+        if quanter is None:
+            return None
         quanter = LinearQuanterDequanter.from_quanter(quanter)
         setattr(self, quanter_name, quanter)
         self._sub_layers[quanter_name] = quanter
@@ -224,9 +227,10 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         assert not self.converted, "The model should be converted only once."
         for weight_name, quanter_name in self.weights_to_quanters():
             qdq = self._convert_quanter_to_qdq(quanter_name)
-            self._quant_weights(weight_name, qdq._quanter)
-            qdq._quanter = None
-            qdq._sub_layers['_quanter'] = None
+            if qdq is not None:
+                self._quant_weights(weight_name, qdq._quanter)
+                qdq._quanter = None
+                qdq._sub_layers['_quanter'] = None
 
         for quanter_name in self.activation_quanters():
             self._convert_quanter_to_qdq(quanter_name)

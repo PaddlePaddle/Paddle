@@ -42,16 +42,16 @@ def get_compat_kernels_info(register):
                 txt = f.readlines()
                 content = ""
                 registry = False
-                is_macro_defination = False
+                is_macro_definition = False
                 for line in txt:
                     if line.strip().startswith(
                         "#define"
                     ) and line.strip().endswith("\\"):
-                        is_macro_defination = True
+                        is_macro_definition = True
                         continue
-                    if is_macro_defination:
+                    if is_macro_definition:
                         if not line.strip().endswith("\\"):
-                            is_macro_defination = False
+                            is_macro_definition = False
                         continue
 
                     if register in line:

@@ -262,6 +262,7 @@ def GroupShardedScaler(scaler):
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
 
+        self._found_inf = self._temp_found_inf_value_false
         with device_guard(dev_id, device):
             if len(param_grads_bfp16):
                 _legacy_C_ops.check_finite_and_unscale(

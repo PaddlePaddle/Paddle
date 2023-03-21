@@ -36,7 +36,8 @@ static void SaveInfoInTheFirstOp(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
       continue;
 
     op_node->Op()->SetAttr(flag, true);
@@ -57,7 +58,8 @@ static void SaveInfoInTheFirstOp(ir::Graph* graph,
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
       continue;
 
     op_node->Op()->SetAttr(flag, true);
@@ -150,6 +152,27 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
       }
       break;
     }
+  }
+}
+
+inline void ConvertToFusedOp(OpDesc* op) {
+  const std::map<std::string, std::string> fused_ops = {
+      {"conv2d", "fused_conv2d"},
+      {"depthwise_conv2d", "fused_conv2d"},
+      {"matmul", "fused_matmul"},
+      {"matmul_v2", "fused_matmul"},
+      {"softplus", "fused_softplus"}};
+
+  if (op->Type() == "matmul") {
+    op->SetAttr("trans_x", op->GetAttr("transpose_X"));
+    op->SetAttr("trans_y", op->GetAttr("transpose_Y"));
+    op->SetAttr("matmul_alpha", op->GetAttr("alpha"));
+  }
+
+  auto it = fused_ops.find(op->Type());
+  if (it != fused_ops.end()) {
+    op->SetType(it->second);
+    VLOG(3) << "Converted " << it->first << " to " << it->second;
   }
 }
 
