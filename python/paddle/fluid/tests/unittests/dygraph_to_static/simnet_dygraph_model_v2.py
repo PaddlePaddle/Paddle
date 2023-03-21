@@ -317,7 +317,7 @@ class FC(paddle.nn.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self.__w = list()
+        self.__w = []
 
     def _build_once(self, input):
         i = 0
@@ -380,7 +380,7 @@ class FC(paddle.nn.Layer):
         self._b = value
 
     def forward(self, input):
-        mul_results = list()
+        mul_results = []
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
             input, self._param_attr

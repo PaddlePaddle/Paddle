@@ -375,7 +375,7 @@ class PassAutoScanTest(AutoScanTest):
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
-        after_op_list = list()
+        after_op_list = []
         for i in range(main_block.op_size()):
             if main_block.op(i).type() in ["feed", "fetch"]:
                 continue

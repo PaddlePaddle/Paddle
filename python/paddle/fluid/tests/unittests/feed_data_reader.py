@@ -39,7 +39,7 @@ class FeedDataReader:
 
     def _feed_executor(self):
         next_data = next(self._iter)
-        feed_data = dict()
+        feed_data = {}
         assert len(self._feed_list) == len(next_data)
         for key, value in zip(self._feed_list, next_data):
             feed_data[key] = value

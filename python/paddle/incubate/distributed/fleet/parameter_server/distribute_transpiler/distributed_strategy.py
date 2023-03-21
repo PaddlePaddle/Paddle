@@ -186,7 +186,7 @@ class DistributedStrategy:
         self.debug_opt = opt_info
 
     def get_debug_opt(self):
-        opt_info = dict()
+        opt_info = {}
         if self.debug_opt is not None and isinstance(self.debug_opt, dict):
             opt_info["dump_slot"] = bool(self.debug_opt.get("dump_slot", 0))
             opt_info["dump_converter"] = str(

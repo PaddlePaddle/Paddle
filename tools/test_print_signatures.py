@@ -73,7 +73,7 @@ class Test_is_primitive(unittest.TestCase):
 
     def test_collection(self):
         self.assertTrue(is_primitive([]))
-        self.assertTrue(is_primitive(tuple()))
+        self.assertTrue(is_primitive(()))
         self.assertTrue(is_primitive(set()))
         self.assertTrue(is_primitive([1, 2]))
         self.assertTrue(is_primitive((1.1, 2.2)))

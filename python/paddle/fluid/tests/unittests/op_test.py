@@ -665,7 +665,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -2299,9 +2299,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
