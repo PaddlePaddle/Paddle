@@ -59,7 +59,7 @@ class Config:
     DATA_SHAPE = [1, 16, 64]
 
 
-class ConvBNPool(fluid.dygraph.Layer):
+class ConvBNPool(paddle.nn.Layer):
     def __init__(
         self,
         group,
@@ -122,7 +122,7 @@ class ConvBNPool(fluid.dygraph.Layer):
         return bn_1
 
 
-class OCRConv(fluid.dygraph.Layer):
+class OCRConv(paddle.nn.Layer):
     def __init__(self, is_test=False, use_cudnn=True):
         super().__init__()
         self.conv_bn_pool_1 = ConvBNPool(
@@ -152,7 +152,7 @@ class OCRConv(fluid.dygraph.Layer):
         return inputs_4
 
 
-class DynamicGRU(fluid.dygraph.Layer):
+class DynamicGRU(paddle.nn.Layer):
     def __init__(
         self,
         size,
@@ -193,7 +193,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         return res
 
 
-class EncoderNet(fluid.dygraph.Layer):
+class EncoderNet(paddle.nn.Layer):
     def __init__(
         self, rnn_hidden_size=Config.encoder_size, is_test=False, use_cudnn=True
     ):
@@ -277,7 +277,7 @@ class EncoderNet(fluid.dygraph.Layer):
         return gru_backward, encoded_vector, encoded_proj
 
 
-class SimpleAttention(fluid.dygraph.Layer):
+class SimpleAttention(paddle.nn.Layer):
     def __init__(self, decoder_size):
         super().__init__()
 
@@ -312,7 +312,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         return context
 
 
-class GRUDecoderWithAttention(fluid.dygraph.Layer):
+class GRUDecoderWithAttention(paddle.nn.Layer):
     def __init__(self, decoder_size, num_classes):
         super().__init__()
         self.simple_attention = SimpleAttention(decoder_size)
@@ -359,7 +359,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         return res1
 
 
-class OCRAttention(fluid.dygraph.Layer):
+class OCRAttention(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.encoder_net = EncoderNet()

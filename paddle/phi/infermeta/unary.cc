@@ -148,7 +148,11 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
     if (flatten) {
-      vec = {1};
+      if (keepdims) {
+        vec = std::vector<int64_t>(x.dims().size(), -1);
+      } else {
+        vec = {};
+      }
     } else {
       if (keepdims) {
         vec = std::vector<int64_t>(x.dims().size(), -1);
@@ -169,7 +173,6 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
 
   auto x_rank = x.dims().size();
-  auto zero_dim_tensor = x_rank == 0;
   if (x_rank > 0) {
     PADDLE_ENFORCE_GE(int_axis,
                       -x_rank,
@@ -200,7 +203,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
-      if (flatten || zero_dim_tensor) {
+      if (flatten) {
         all_element_num = phi::product(x_dims);
       } else {
         all_element_num = x_dims[int_axis];
@@ -218,11 +221,12 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> vec;
-
-  if (x_rank == 0) {
-    // vec is set to empty
-  } else if (flatten) {
-    vec.emplace_back(static_cast<int64_t>(1));
+  if (flatten) {
+    if (keepdims) {
+      vec = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec = {};
+    }
   } else {
     for (int64_t i = 0; i < int_axis; i++) vec.emplace_back(x_dims[i]);
     if (keepdims) {
@@ -1838,20 +1842,28 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaConfig config) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_LE(axis,
-                    dim_size,
-                    phi::errors::InvalidArgument(
-                        "the axis must be [-%d, %d), but received %d .",
-                        dim_size,
-                        dim_size,
-                        axis));
   if (dim_size > 0) {
+    PADDLE_ENFORCE_LT(axis,
+                      dim_size,
+                      phi::errors::InvalidArgument(
+                          "the axis must be [-%d, %d), but received %d .",
+                          dim_size,
+                          dim_size,
+                          axis));
     PADDLE_ENFORCE_GE(axis,
                       -dim_size,
                       phi::errors::InvalidArgument(
                           "the axis must be [-%d, %d), but received %d .",
                           dim_size,
                           dim_size,
+                          axis));
+  } else if (dim_size == 0) {
+    // 0-dim tensor
+    PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "'axis'(%d) must be 0 or -1 if input tensor is "
+                          "0-dim.",
                           axis));
   }
   if (axis < 0) axis += dim_size;
@@ -2963,24 +2975,32 @@ DDim ReduceInferDim(const MetaTensor& x,
 
   std::vector<int64_t> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
-    PADDLE_ENFORCE_LT(axis[i],
-                      x_rank,
-                      errors::InvalidArgument(
-                          "The reduce dim index %d should be in the "
-                          "range [ -dimension(X), dimension(X) ) "
-                          "which dimesion = %d. But received dim index = %d.",
-                          i,
-                          x_rank,
-                          axis[i]));
-    PADDLE_ENFORCE_GE(axis[i],
-                      -x_rank,
-                      errors::InvalidArgument(
-                          "The reduce dim index %d should be in the "
-                          "range [ -dimension(X), dimension(X) )  "
-                          "which dimesion = %d. But received dim index = %d.",
-                          i,
-                          x_rank,
-                          axis[i]));
+    if (x_rank == 0) {
+      PADDLE_ENFORCE_EQ(
+          axis[i] == 0 || axis[i] == -1,
+          true,
+          phi::errors::InvalidArgument(
+              "When input 0D Tensor, the axis can only be -1, 0, None or []"));
+    } else {
+      PADDLE_ENFORCE_LT(axis[i],
+                        x_rank,
+                        errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) ) "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            x_rank,
+                            axis[i]));
+      PADDLE_ENFORCE_GE(axis[i],
+                        -x_rank,
+                        errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) )  "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            x_rank,
+                            axis[i]));
+    }
 
     if (axis[i] < 0) {
       formated_axis[i] = axis[i] + x_rank;
@@ -3369,12 +3389,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
 
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
-  if (input.dims().size() == 0) {
-    out->set_dims(phi::make_ddim({}));
-  } else {
-    // TODO(zhouwei): will change shape [1] to [] to support zero-dim
-    out->set_dims(phi::make_ddim({1}));
-  }
+  out->set_dims(phi::make_ddim({}));
 }
 
 void SliceRawInferMeta(const MetaTensor& input,
