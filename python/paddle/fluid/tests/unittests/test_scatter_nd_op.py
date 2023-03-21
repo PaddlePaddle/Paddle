@@ -101,12 +101,6 @@ class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
-    def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True, atol=1e-3)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -135,13 +129,13 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True, atol=1e-2)
+            self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True, atol=1e-2
+                place, ['X', 'Updates'], 'Out', check_eager=True
             )
 
 
@@ -185,12 +179,6 @@ class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
-    def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True, atol=1e-3)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -219,13 +207,13 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True, atol=1e-2)
+            self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True, atol=1e-2
+                place, ['X', 'Updates'], 'Out', check_eager=True
             )
 
 
@@ -277,12 +265,6 @@ class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
-    def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True, atol=1e-3)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -315,13 +297,13 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True, atol=1e-2)
+            self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True, atol=1e-2
+                place, ['X', 'Updates'], 'Out', check_eager=True
             )
 
 
