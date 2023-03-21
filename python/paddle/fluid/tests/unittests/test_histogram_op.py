@@ -29,7 +29,9 @@ class TestHistogramOpAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            inputs = fluid.data(name='input', dtype='int64', shape=[2, 3])
+            inputs = paddle.static.data(
+                name='input', dtype='int64', shape=[2, 3]
+            )
             output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -121,7 +123,9 @@ class TestHistogramOpError(unittest.TestCase):
                 TypeError, paddle.histogram, 1, bins=5, min=1, max=5
             )
             # The input type must be 'int32', 'int64', 'float32', 'float64'
-            x_bool = fluid.data(name='x_bool', shape=[4, 3], dtype='bool')
+            x_bool = paddle.static.data(
+                name='x_bool', shape=[4, 3], dtype='bool'
+            )
             self.assertRaises(
                 TypeError, paddle.histogram, x_bool, bins=5, min=1, max=5
             )

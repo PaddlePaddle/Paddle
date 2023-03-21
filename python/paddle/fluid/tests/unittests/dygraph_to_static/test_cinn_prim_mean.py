@@ -45,7 +45,7 @@ class PrimeNet(
     paddle.nn.Layer,
 ):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x):

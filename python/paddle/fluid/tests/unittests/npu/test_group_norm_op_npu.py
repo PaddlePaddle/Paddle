@@ -216,7 +216,7 @@ class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
 class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
-        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+        data = paddle.static.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
             out = paddle.static.nn.group_norm(

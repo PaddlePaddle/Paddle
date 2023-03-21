@@ -33,10 +33,8 @@ limitations under the License. */
  */
 
 namespace paddle {
-namespace framework {
-class PADDLE_API OpMetaInfoHelper;
-}  // namespace framework
 
+class PADDLE_API OpMetaInfoHelper;
 using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
@@ -130,7 +128,7 @@ class PADDLE_API CustomOpKernelContext {
     }
   }
 
-  // handle inplace case
+  // handle inplace map
   void MapPlainOutputs(
       const std::vector<std::string>& inputs,
       const std::vector<std::string>& outputs,
@@ -144,7 +142,7 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<Tensor> inputs_;
   std::vector<Tensor> outputs_;
   std::vector<paddle::any> attrs_;
-  // handle inplace case
+  // handle inplace map
   std::vector<Tensor*> plain_outputs_;
   std::unordered_map<size_t, size_t> inplace_tensor_map_;
 
@@ -589,7 +587,7 @@ class PADDLE_API OpMetaInfo {
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
-  friend class framework::OpMetaInfoHelper;
+  friend class OpMetaInfoHelper;
 
   // 1. desc info
   std::string name_;
@@ -601,6 +599,39 @@ class PADDLE_API OpMetaInfo {
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
+};
+
+//////////////// Op Meta Info Helper /////////////////
+class OpMetaInfoHelper {
+ public:
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
+    return info.name_;
+  }
+  static const std::vector<std::string>& GetInputs(
+      const paddle::OpMetaInfo& info) {
+    return info.inputs_;
+  }
+  static const std::vector<std::string>& GetOutputs(
+      const paddle::OpMetaInfo& info) {
+    return info.outputs_;
+  }
+  static const std::vector<std::string>& GetAttrs(
+      const paddle::OpMetaInfo& info) {
+    return info.attrs_;
+  }
+  static const std::unordered_map<std::string, std::string>& GetInplaceMap(
+      const paddle::OpMetaInfo& info) {
+    return info.inplace_map_;
+  }
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
+    return info.kernel_fn_;
+  }
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_shape_fn_;
+  }
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_dtype_fn_;
+  }
 };
 
 //////////////// Op Meta Info Map /////////////////

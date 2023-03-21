@@ -72,7 +72,7 @@ class TestApiWhileLoop(unittest.TestCase):
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
             )
-            mem = fluid.data(name='mem', shape=[10], dtype='float32')
+            mem = paddle.static.data(name='mem', shape=[10], dtype='float32')
             one = paddle.tensor.fill_constant(
                 shape=[10], dtype='float32', value=1
             )
@@ -205,8 +205,12 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = layers.zeros(shape=[1], dtype='int64')
             j = layers.zeros(shape=[1], dtype='int64')
-            init = fluid.data(name='init', shape=[3, 3], dtype='float32')
-            sums = fluid.data(name='sums', shape=[3, 3], dtype='float32')
+            init = paddle.static.data(
+                name='init', shape=[3, 3], dtype='float32'
+            )
+            sums = paddle.static.data(
+                name='sums', shape=[3, 3], dtype='float32'
+            )
             loop_len1 = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=2
             )
@@ -254,7 +258,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = fluid.data(name='i', shape=[1], dtype='float32')
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
             eleven = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=11
@@ -262,7 +266,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             one = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1
             )
-            x = fluid.data(name='x', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -301,9 +305,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = fluid.data(name='i', shape=[1], dtype='float32')
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
-            x = fluid.data(name='x', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -365,10 +369,10 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            d0 = fluid.data(name='d0', shape=[10], dtype='float32')
-            d1 = fluid.data(name='d1', shape=[10], dtype='float32')
-            d2 = fluid.data(name='d2', shape=[10], dtype='float32')
-            x = fluid.data(name='x', shape=[10], dtype='float32')
+            d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
+            d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
+            d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[10], dtype='float32')
             x.stop_gradient = False
             i = layers.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True

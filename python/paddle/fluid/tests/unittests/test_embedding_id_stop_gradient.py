@@ -49,8 +49,8 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):
             with fluid.scope_guard(scope):
-                x_1 = fluid.data(name='x1', shape=[4, 1], dtype='int64')
-                x_2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
+                x_1 = paddle.static.data(name='x1', shape=[4, 1], dtype='int64')
+                x_2 = paddle.static.data(name='x2', shape=[4, 1], dtype='int64')
                 x = paddle.concat([x_1, x_2], axis=-1)
 
                 for _ in range(self.reshape_times):
