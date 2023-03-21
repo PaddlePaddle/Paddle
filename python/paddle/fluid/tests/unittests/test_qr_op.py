@@ -225,7 +225,7 @@ class TestQrAPI(unittest.TestCase):
                             tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
                             np_q[coord] = tmp_q
                             np_r[coord] = tmp_r
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     if mode == "r":

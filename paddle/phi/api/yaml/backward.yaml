@@ -1,3 +1,6 @@
+# This file is designed for backward C++ operators associated with
+# the operator in ops.yaml.
+
 - backward_op : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -294,6 +297,7 @@
   kernel :
     func : cos_grad
   backward : cos_double_grad
+  composite : cos_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : cos_triple_grad
@@ -1305,6 +1309,7 @@
     func : sigmoid_grad
   backward : sigmoid_double_grad
   inplace : (out_grad -> x_grad)
+  composite : sigmoid_grad(out, out_grad, x_grad)
 
 - backward_op : sigmoid_triple_grad
   forward : sigmoid_double_grad (Tensor out, Tensor fwd_grad_out, Tensor grad_grad_x) -> Tensor(grad_out), Tensor(grad_grad_out)
@@ -1358,6 +1363,7 @@
   kernel :
     func : sin_grad
   backward : sin_double_grad
+  composite : sin_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_triple_grad

@@ -274,26 +274,32 @@ if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/api/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
-    check_approval 1 chenwhql zyfncg
+    echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
+    check_approval 1 chenwhql zyfncg heavyrain-lzy
+fi
+
+HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/api/yaml/ops.yaml|paddle/phi/api/yaml/backward.yaml" || true`
+if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/ops.yaml or paddle/phi/api/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
+    check_approval 1 chenwhql zyfncg heavyrain-lzy
 fi
 
 HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/generator" || true`
 if [ "${HAS_MODIFIED_API_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zyfncg, chenwhql, YuanRisheng, phlrain) approval for file changes in paddle/phi/api/yaml/generator, which manages the generated code for C++ API in paddle/phi/api/lib/api.cc.\n"
-    check_approval 1 zyfncg chenwhql YuanRisheng phlrain
+    echo_line="You must have one RD (zyfncg, chenwhql, YuanRisheng, phlrain, heavyrain-lzy) approval for file changes in paddle/phi/api/yaml/generator, which manages the generated code for C++ API in paddle/phi/api/lib/api.cc.\n"
+    check_approval 1 zyfncg chenwhql YuanRisheng phlrain heavyrain-lzy
 fi
 
 HAS_MODIFIED_EAGER_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/eager/auto_code_generator" || true`
 if [ "${HAS_MODIFIED_EAGER_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (JiabinYang, chenwhql, zyfncg, phlrain) approval for file changes in paddle/fluid/eager/auto_code_generator, which manages the generated code for dygraph functions in paddle/fluid/eager/api/generated.\n"
-    check_approval 1 JiabinYang chenwhql zyfncg phlrain
+    echo_line="You must have one RD (JiabinYang, chenwhql, zyfncg, phlrain, heavyrain-lzy) approval for file changes in paddle/fluid/eager/auto_code_generator, which manages the generated code for dygraph functions in paddle/fluid/eager/api/generated.\n"
+    check_approval 1 JiabinYang chenwhql zyfncg phlrain heavyrain-lzy
 fi
 
 HAS_MODIFIED_OPERATOR_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/operators/generator" || true`
 if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zyfncg, chenwhql, iclementine, phlrain) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
-    check_approval 1 zyfncg chenwhql iclementine phlrain
+    echo_line="You must have one RD (zyfncg, chenwhql, iclementine, phlrain, heavyrain-lzy) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
+    check_approval 1 zyfncg chenwhql iclementine phlrain heavyrain-lzy
 fi
 
 HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep "python/setup.py.in" || true`

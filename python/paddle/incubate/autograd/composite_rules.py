@@ -71,7 +71,11 @@ def composite_batchnorm(
     use_global_stats,
     trainable_statistics,
 ):
-    """define composite rule of op batch_norm"""
+    """
+    define composite rule of op batch_norm
+    As the same with op kernel, the position of savedvariance indeed return inverse std.
+    """
+
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
@@ -94,38 +98,42 @@ def composite_batchnorm(
         1 if i in reduce_axes else s for i, s in enumerate(x.shape)
     )
 
-    batch_mean = zeros(run_mean.shape, run_mean.dtype)
-    batch_var = zeros(run_var.shape, run_var.dtype)
+    half = -0.5
+
     if not use_run_stat:
-
-        batch_mean = mean(x, reduce_axes, keepdim=True)
-        temp = mean(x * x, reduce_axes, keepdim=True)
+        batch_mean = mean(x, reduce_axes)
+        temp = mean(x * x, reduce_axes)
         batch_var = temp - batch_mean * batch_mean
+        inv_std = pow((batch_var + epsilon), half)
+        if data_layout == "NHWC":
+            x_hat = (x - batch_mean) * inv_std
+        else:
+            x_hat = (x - reshape(batch_mean, stats_shape)) * reshape(
+                inv_std, stats_shape
+            )
 
-        x_hat = (x - reshape(batch_mean, stats_shape)) / sqrt(
-            reshape(batch_var, stats_shape) + epsilon
-        )
-
-        run_mean = momentum * run_mean + (1 - momentum) * reshape(
-            batch_mean, run_mean.shape
-        )
-        run_var = momentum * run_var + (1 - momentum) * reshape(
-            batch_var, run_var.shape
-        )
+        run_mean = momentum * run_mean + (1 - momentum) * batch_mean
+        run_var = momentum * run_var + (1 - momentum) * batch_var
     else:
-        x_hat = (x - reshape(run_mean, stats_shape)) / sqrt(
-            reshape(run_var, stats_shape) + epsilon
-        )
-    y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
+        batch_mean = zeros(run_mean.shape, run_mean.dtype)
+        batch_var = zeros(run_var.shape, run_var.dtype)
+        inv_std = pow((batch_var + epsilon), half)
+        if data_layout == "NHWC":
+            x_hat = (x - run_mean) * pow((run_var + epsilon), half)
+        else:
+            x_hat = (x - reshape(run_mean, stats_shape)) * pow(
+                (reshape(run_var, stats_shape) + epsilon), half
+            )
+    if data_layout == "NHWC":
+        y = scale * x_hat + bias
+    else:
+        y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
     if is_amp:
         y = cast(y, "float16")
 
-    # As the same with op kernel, indeed return inverse std
-    inv_std = 1.0 / sqrt(batch_var + epsilon)
-
     # add op assign to detach tensor in void unsafe change outside the rule.
-    batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    inv_std_ = assign(reshape(inv_std, run_var.shape))
+    batch_mean_ = assign(batch_mean)
+    inv_std_ = assign(inv_std)
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
@@ -169,6 +177,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     variance = reshape(variance, [-1])
     if is_amp:
         out = cast(out, "float16")
+
     return out, mean_, variance
 
 
@@ -302,6 +311,8 @@ def stack_composite(x, axis):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
+
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
     CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
@@ -435,6 +446,29 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """arg place is not used, add it here to keep same as python api."""
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('squeeze2')
+def squeeze2_composite(x, axis):
+    """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
+    """
+    rank = len(x.shape)
+    if len(axis) == 0:
+        dims = set(range(rank))
+    else:
+        dims = set([ax % rank for ax in axis])
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = reshape(x, new_shape)
+    return [out, None]
 
 
 @REGISTER_COMPOSITE('sqrt')
