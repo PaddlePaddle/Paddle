@@ -6,6 +6,17 @@
   kernel :
     func : all
 
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  optional : x
+  inplace : (x -> out)
+  backward : assign_grad
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
   output: Tensor

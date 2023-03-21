@@ -122,7 +122,9 @@ PD_REGISTER_GENERAL_KERNEL(assign_array,
                            CPU,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(assign_value,
                    CPU,
                    ALL_LAYOUT,
@@ -146,7 +148,9 @@ PD_REGISTER_GENERAL_KERNEL(assign_array,
                            GPU,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(assign_value,
                    GPU,
                    ALL_LAYOUT,
@@ -171,7 +175,9 @@ PD_REGISTER_GENERAL_KERNEL(assign_array,
                            XPU,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(assign_value,
                    XPU,
                    ALL_LAYOUT,
