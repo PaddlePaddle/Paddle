@@ -43,3 +43,5 @@
 - sin
 - cos
 - where
+- reshape
+- split
