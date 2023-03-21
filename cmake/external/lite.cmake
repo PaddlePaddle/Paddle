@@ -198,12 +198,13 @@ endif()
 function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)
   set_property(TARGET ${alias} PROPERTY IMPORTED_LOCATION ${path})
-  target_link_libraries(${alias} INTERFACE ${GFLAGS_LIBRARIES})
   if(LITE_PROJECT)
     add_dependencies(${alias} ${LITE_PROJECT})
   endif()
 endfunction()
-
+set(LITE_FULL_SHARED
+    ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
+    CACHE FILEPATH "LITE_FULL_SHARED" FORCE)
 external_lite_libs(
   lite_full_shared
   ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
