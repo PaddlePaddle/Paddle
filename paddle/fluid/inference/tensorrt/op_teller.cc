@@ -113,10 +113,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
-        return false;
+      if (!with_dynamic_shape) {
+        if (x_shape.size() == 1) {
+          VLOG(3) << op_type
+                  << " op does not support input's dim is 1 in tensorrt with "
+                     "static shape.";
+          return false;
+        }
       }
 #if !IS_TRT_VERSION_GE(7000)
       if (op_type == "erf") {
@@ -2372,13 +2375,13 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if !IS_TRT_VERSION_GE(8200)
       return false;
 #endif
-      if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
-            desc.HasAttr("steps"))) {
-        VLOG(3) << "the " << op_type
-                << " does not have attr (axes or "
-                   "starts or steps)";
-        return false;
-      }
+      // if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
+      //       desc.HasAttr("steps"))) {
+      //   VLOG(3) << "the " << op_type
+      //           << " does not have attr (axes or "
+      //              "starts or steps)";
+      //   return false;
+      // }
       auto* block = desc.Block();
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
