@@ -255,7 +255,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
     class TestElementwiseDivBroadcast(unittest.TestCase):
         def test_shape_with_batch_sizes(self):
             with fluid.program_guard(fluid.Program()):
-                x_var = fluid.data(
+                x_var = paddle.static.data(
                     name='x', dtype='float32', shape=[None, 3, None, None]
                 )
                 one = 2.0

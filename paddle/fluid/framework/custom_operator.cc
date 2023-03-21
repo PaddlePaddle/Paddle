@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
@@ -285,7 +284,7 @@ static void RunKernelFunc(
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 
-    // handle inplace case
+    // handle inplace map
     kernel_ctx.MapPlainOutputs(inputs, outputs, inplace_map);
     func(&kernel_ctx);
     kernel_ctx.AssignInplaceOutputs();

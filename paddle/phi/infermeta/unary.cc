@@ -148,7 +148,11 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
     if (flatten) {
-      vec = {1};
+      if (keepdims) {
+        vec = std::vector<int64_t>(x.dims().size(), -1);
+      } else {
+        vec = {};
+      }
     } else {
       if (keepdims) {
         vec = std::vector<int64_t>(x.dims().size(), -1);
@@ -169,7 +173,6 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
 
   auto x_rank = x.dims().size();
-  auto zero_dim_tensor = x_rank == 0;
   if (x_rank > 0) {
     PADDLE_ENFORCE_GE(int_axis,
                       -x_rank,
@@ -200,7 +203,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
-      if (flatten || zero_dim_tensor) {
+      if (flatten) {
         all_element_num = phi::product(x_dims);
       } else {
         all_element_num = x_dims[int_axis];
@@ -218,11 +221,12 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> vec;
-
-  if (x_rank == 0) {
-    // vec is set to empty
-  } else if (flatten) {
-    vec.emplace_back(static_cast<int64_t>(1));
+  if (flatten) {
+    if (keepdims) {
+      vec = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec = {};
+    }
   } else {
     for (int64_t i = 0; i < int_axis; i++) vec.emplace_back(x_dims[i]);
     if (keepdims) {
@@ -1838,20 +1842,28 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaConfig config) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_LE(axis,
-                    dim_size,
-                    phi::errors::InvalidArgument(
-                        "the axis must be [-%d, %d), but received %d .",
-                        dim_size,
-                        dim_size,
-                        axis));
   if (dim_size > 0) {
+    PADDLE_ENFORCE_LT(axis,
+                      dim_size,
+                      phi::errors::InvalidArgument(
+                          "the axis must be [-%d, %d), but received %d .",
+                          dim_size,
+                          dim_size,
+                          axis));
     PADDLE_ENFORCE_GE(axis,
                       -dim_size,
                       phi::errors::InvalidArgument(
                           "the axis must be [-%d, %d), but received %d .",
                           dim_size,
                           dim_size,
+                          axis));
+  } else if (dim_size == 0) {
+    // 0-dim tensor
+    PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "'axis'(%d) must be 0 or -1 if input tensor is "
+                          "0-dim.",
                           axis));
   }
   if (axis < 0) axis += dim_size;
@@ -2115,7 +2127,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(paddle::experimental::CppTypeToDataType<int>::Type());
+  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {

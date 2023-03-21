@@ -135,14 +135,14 @@ class TestRaiseSumError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
             paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
             paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
@@ -156,30 +156,38 @@ class TestRaiseSumsError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
             paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
             paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
             out = [10]
             out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
         def test_out_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            out = fluid.data(name="out", shape=[10], dtype="int8")
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
+            out = paddle.static.data(name="out", shape=[10], dtype="int8")
             out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)

@@ -121,8 +121,8 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.run_kl_loss('none')
 
         def test_kl_loss_static_api(self):
-            input = paddle.fluid.data(name='input', shape=[5, 20])
-            label = paddle.fluid.data(name='label', shape=[5, 20])
+            input = paddle.static.data(name='input', shape=[5, 20])
+            label = paddle.static.data(name='label', shape=[5, 20])
 
             paddle.nn.functional.kl_div(input, label)
 
