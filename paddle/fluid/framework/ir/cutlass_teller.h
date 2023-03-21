@@ -94,6 +94,12 @@ class CutlassTeller {
       if (has_residual) {
         return false;
       }
+
+      // Now we only 3x3, 5x5
+      if (!(kh == 3 && kw == 3) || (kh == 5 && kw == 5)) {
+        return false;
+      }
+
       // conv2d_depthwise + bias + act
       if (!cdba_act_set.count(activation)) {
         return false;
