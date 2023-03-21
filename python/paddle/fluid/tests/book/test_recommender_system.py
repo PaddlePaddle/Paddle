@@ -25,7 +25,6 @@ import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.tests.unittests.nets import sequence_conv_pool
 
 paddle.enable_static()
 
@@ -142,7 +141,7 @@ def get_mov_combined_features():
         input=mov_title_id, size=[MOV_TITLE_DICT_SIZE, 32], is_sparse=IS_SPARSE
     )
 
-    mov_title_conv = sequence_conv_pool(
+    mov_title_conv = fluid.tests.unittests.nets.sequence_conv_pool(
         input=mov_title_emb,
         num_filters=32,
         filter_size=3,
