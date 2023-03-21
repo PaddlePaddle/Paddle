@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -48,7 +48,7 @@ class SimpleNet(fluid.Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -57,7 +57,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -65,7 +65,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )

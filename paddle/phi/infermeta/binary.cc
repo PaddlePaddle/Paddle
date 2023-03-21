@@ -85,14 +85,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
-
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() == 0 && y_dims.size() == 0) {
-    out->set_dims(phi::make_ddim({}));
-  } else {
-    out->set_dims(phi::make_ddim({1}));
-  }
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -166,6 +159,8 @@ void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
+  } else {
+    out->set_dtype(x.dtype());
   }
 }
 
@@ -401,12 +396,7 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  if (!x.dims().size() || !y.dims().size()) {
-    out->set_dims(make_ddim({}));
-  } else {
-    out->set_dims(make_ddim({1}));
-  }
-  out->set_dtype(DataType::BOOL);
+  out->set_dims(make_ddim({}));
 }
 
 void ComplexInferMeta(const MetaTensor& x,
@@ -466,6 +456,13 @@ void ConvInferMeta(const MetaTensor& input,
   }
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
+
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_NE(in_dims[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of Op(Conv) inputs should not be 0."));
+  }
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
@@ -1092,7 +1089,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
       x_dims.size(),
       phi::errors::InvalidArgument(
           "The length of axis is expected to be less than or equal to the "
-          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x. But received the length of axis is %d, the "
           "dimension size of x is %d, x's shape is {%s}.",
           axis.size(),
           x_dims.size(),
@@ -1104,7 +1101,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument(
             "The %d-th value of axis is expected to be greater ot "
             "equal to 0 and less than the dimensions of x. But "
-            "recieved axis is {%s}, the dimension size of x is %d.",
+            "received axis is {%s}, the dimension size of x is %d.",
             i,
             phi::make_ddim(axis),
             x_dims.size()));
@@ -1290,6 +1287,138 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+// Used in FusedMatmulInferMeta
+static std::vector<int64_t> GetInputShape(phi::DDim dim,
+                                          std::vector<int> shape,
+                                          std::vector<int> axis) {
+  PADDLE_ENFORCE_GT(dim.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  auto is_input_fused = (!shape.empty() && !axis.empty());
+  if (is_input_fused) {
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return phi::vectorize(dim);
+}
+
+void FusedMatmulInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& residual_data,
+                          bool transpose_x,
+                          bool transpose_y,
+                          const float matmul_alpha,
+                          const std::string& fuse_activation,
+                          const float fuse_lapha,
+                          const float fuse_beat,
+                          const float fused_output_scale,
+                          const std::vector<int>& fused_reshape_X,
+                          const std::vector<int>& fused_transpose_X,
+                          const std::vector<int>& fused_reshape_Y,
+                          const std::vector<int>& fused_transpose_Y,
+                          const std::vector<int>& fused_reshape_Out,
+                          const std::vector<int>& fused_transpose_Out,
+                          const std::string& mkldnn_data_type,
+                          const float scale_x,
+                          const float scale_y,
+                          const float scale_scale_in_eltwise,
+                          const float scale_out,
+                          const bool force_fp32_output,
+                          MetaTensor* out) {
+  std::vector<int64_t> dims_x =
+      GetInputShape(x.dims(), fused_reshape_X, fused_transpose_X);
+  std::vector<int64_t> dims_y =
+      GetInputShape(y.dims(), fused_reshape_Y, fused_transpose_Y);
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  bool x_broadcasted = false;
+  bool y_broadcasted = false;
+
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
+  }
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (transpose_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (transpose_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  auto ddim_out = phi::make_ddim(new_dims);
+
+  std::vector<int> shape = fused_reshape_Out;
+  const std::vector<int>& axis = fused_transpose_Out;
+
+  auto is_output_fused = (!shape.empty() && !axis.empty());
+  if (is_output_fused) {
+    ddim_out = ddim_out.transpose(axis).reshape(shape);
+  }
+  out->set_dims(ddim_out);
+  bool is_int8 = (x.dtype() == DataType::UINT8 || x.dtype() == DataType::INT8);
+  bool is_bfloat16 = (x.dtype() == DataType::BFLOAT16);
+  bool fuse_relu = false;
+  if (fuse_activation == "relu" || fuse_activation == "relu6") {
+    fuse_relu = true;
+  }
+  if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
+    out->set_dtype(DataType::FLOAT32);
+  } else if (is_bfloat16) {
+    out->set_dtype(DataType::BFLOAT16);
+  } else if (fuse_relu) {
+    out->set_dtype(DataType::UINT8);
+  } else {
+    out->set_dtype(DataType::INT8);
+  }
+}
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -1314,6 +1443,27 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) axis_v += input_dim.size();
+
+  PADDLE_ENFORCE_GE(
+      axis_v,
+      (0 - input_dim.size()),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+  PADDLE_ENFORCE_LT(
+      axis_v,
+      input_dim.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
     if (input_dim.size() == 1) {

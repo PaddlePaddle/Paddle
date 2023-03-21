@@ -87,7 +87,20 @@ void HandleLargeDimGrad(const Context& dev_ctx,
                         Functor functor,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
+  const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
+
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
@@ -104,7 +117,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
   DenseTensor dx_tmp;
-  paddle::framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
+  phi::Copy(dev_ctx, *dx, dev_ctx.GetPlace(), false, &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
   phi::funcs::TransposeNormal<Context, T> trans;

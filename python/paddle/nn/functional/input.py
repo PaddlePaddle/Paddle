@@ -14,10 +14,10 @@
 
 from paddle import _C_ops
 
+from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
 
 __all__ = []
 

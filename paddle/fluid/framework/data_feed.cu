@@ -23,11 +23,14 @@ limitations under the License. */
 #include <thrust/shuffle.h>
 #include <sstream>
 #include "cub/cub.cuh"
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
@@ -317,11 +320,8 @@ void SlotRecordInMemoryDataFeed::FillSlotValueOffset(
     const int uint64_slot_size,
     const int *float_offsets,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   FillSlotValueOffsetKernel<<<GET_BLOCKS(used_slot_num),
                               CUDA_NUM_THREADS,
                               0,
@@ -396,12 +396,8 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
     const int *float_offsets,
     const int *float_ins_lens,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
-
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   CopyForTensorKernel<<<GET_BLOCKS(used_slot_num * ins_num),
                         CUDA_NUM_THREADS,
                         0,
@@ -434,6 +430,7 @@ __global__ void CopyDuplicateKeys(int64_t *dist_tensor,
   }
 }
 
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 int GraphDataGenerator::AcquireInstance(BufState *state) {
   if (state->GetNextStep()) {
     DEBUG_STATE(state);
@@ -2620,12 +2617,12 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
 
   if (!sage_mode_) {
     uint64_t h_uniq_node_num = CopyUniqueNodes();
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", h_uniq_node_num:" << h_uniq_node_num
             << ", total_samples:" << total_samples;
   } else {
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", total_samples:" << total_samples;
   }
@@ -2936,6 +2933,43 @@ void GraphDataGenerator::SetConfig(
   if (!gpu_graph_training_) {
     infer_node_type_ = graph_config.infer_node_type();
   }
+}
+#endif
+
+void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
+#ifdef _LINUX
+  PADDLE_ENFORCE_LT(
+      dump_rate,
+      10000000,
+      platform::errors::InvalidArgument(
+          "dump_rate can't be large than 10000000. Please check the dump "
+          "rate[1, 10000000]"));
+  PADDLE_ENFORCE_GT(dump_rate,
+                    1,
+                    platform::errors::InvalidArgument(
+                        "dump_rate can't be less than 1. Please check "
+                        "the dump rate[1, 10000000]"));
+  int err_no = 0;
+  std::shared_ptr<FILE> fp = fs_open_append_write(dump_path, &err_no, "");
+  uint64_t *h_walk = new uint64_t[buf_size_];
+  uint64_t *walk = reinterpret_cast<uint64_t *>(d_walk_->ptr());
+  cudaMemcpy(
+      h_walk, walk, buf_size_ * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+  VLOG(1) << "DumpWalkPath all buf_size_:" << buf_size_;
+  std::string ss = "";
+  size_t write_count = 0;
+  for (int xx = 0; xx < buf_size_ / dump_rate; xx += walk_len_) {
+    ss = "";
+    for (int yy = 0; yy < walk_len_; yy++) {
+      ss += std::to_string(h_walk[xx + yy]) + "-";
+    }
+    write_count = fwrite_unlocked(ss.data(), 1, ss.length(), fp.get());
+    if (write_count != ss.length()) {
+      VLOG(1) << "dump walk path" << ss << " failed";
+    }
+    write_count = fwrite_unlocked("\n", 1, 1, fp.get());
+  }
+#endif
 }
 
 }  // namespace framework

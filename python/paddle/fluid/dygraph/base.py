@@ -343,7 +343,114 @@ def no_grad(func=None):
         return __impl__(func)
 
 
-class no_grad_:
+class _DecoratorContextManager:
+    """Allow a context manager to be used as a decorator"""
+
+    def __call__(self, func):
+        @decorator.decorator
+        def _decorate_function(func, *args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
+            gen = func(*args, **kwargs)
+            with self:
+                for x in gen:
+                    yield x
+
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
+
+    def __enter__(self):
+        raise NotImplementedError
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        raise NotImplementedError
+
+    def clone(self):
+        # override this method if your children class takes __init__ parameters
+        return self.__class__()
+
+
+def is_grad_enabled():
+    """
+    Returns whether current dygraph gradient calculation mode is enabled.
+
+    Returns:
+        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # Dygraph gradient calculation mode is enabled by default.
+            paddle.is_grad_enabled() # True
+
+            with paddle.set_grad_enabled(False):
+                paddle.is_grad_enabled() # False
+
+            paddle.enable_static()
+            paddle.is_grad_enabled() # False
+    """
+    tracer = framework._dygraph_tracer()
+    return tracer._has_grad if tracer else False
+
+
+def _set_grad_enabled(mode):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        tracer._has_grad = mode
+
+
+class set_grad_enabled(_DecoratorContextManager):
+    """
+    Create a context which enables or disables dygraph gradient calculation.
+
+    Args:
+        mode(bool): whether to enable (`True`), or disable (`False`) grad.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([1.], stop_gradient=False)
+            is_train = False
+            with paddle.set_grad_enabled(is_train):
+                y = x * 2
+            assert(y.stop_gradient == True)
+
+            paddle.set_grad_enabled(True)
+            y = x * 2
+            assert(y.stop_gradient == False)
+
+            paddle.set_grad_enabled(False)
+            y = x * 2
+            assert(y.stop_gradient == True)
+    """
+
+    def __init__(self, mode):
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(mode)
+        self.mode = mode
+
+    def __enter__(self):
+        ...
+
+    def __exit__(self, *args):
+        _set_grad_enabled(self.prev)
+
+    def clone(self):
+        return self.__class__(self.mode)
+
+
+class no_grad_(_DecoratorContextManager):
     """
     :api_attr: imperative
 
@@ -389,34 +496,60 @@ class no_grad_:
         test_layer()
     """
 
-    def __call__(self, func):
-        @decorator.decorator
-        def _decorate_function(func, *args, **kwargs):
-            with self:
-                return func(*args, **kwargs)
-
-        @decorator.decorator
-        def _decorate_generator(func, *args, **kwargs):
-            gen = func(*args, **kwargs)
-            with self:
-                for x in gen:
-                    yield x
-
-        if inspect.isgeneratorfunction(func):
-            return _decorate_generator(func)
-        else:
-            return _decorate_function(func)
-
     def __enter__(self):
-        tracer = framework._dygraph_tracer()
-        if tracer:
-            self.orig = tracer._has_grad
-            tracer._has_grad = False
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(False)
 
     def __exit__(self, *args):
-        tracer = framework._dygraph_tracer()
-        if tracer:
-            tracer._has_grad = self.orig
+        _set_grad_enabled(self.prev)
+
+
+class enable_grad(_DecoratorContextManager):
+    """
+    :api_attr: imperative
+
+    Create a context which enable dygraph gradient calculation,
+    if it has been disabled by `no_grad` or `set_grad_enabled`.
+
+    In this mode, the result of every computation will have `stop_gradient` set
+    to `False`.
+
+    Also functions as a decorator. (Make sure to use an instance.)
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        # use as generator
+
+        x = paddle.to_tensor([1.], stop_gradient=False)
+        with paddle.no_grad():
+            with paddle.enable_grad():
+                y = x * 2
+        assert(y.stop_gradient == False)
+        y.backward()
+        assert(x.grad is not None)
+
+        # use as decorator
+
+        @paddle.enable_grad()
+        def double(x):
+            return x * 2
+
+        with paddle.no_grad():
+            z = double(x)
+
+        assert(z.stop_gradient == False)
+    """
+
+    def __enter__(self):
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(True)
+
+    def __exit__(self, *args):
+        _set_grad_enabled(self.prev)
 
 
 @signature_safe_contextmanager

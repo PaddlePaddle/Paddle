@@ -189,7 +189,7 @@ class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.fluid.data(name='x1', shape=[120], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[120], dtype="int32")
             self.assertRaises(TypeError, paddle.logsumexp, x1)
 
 
@@ -206,7 +206,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -236,6 +236,21 @@ class TestLogsumexpAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
+
+
+# Test logsumexp bug
+class TestLogZeroError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [0, 0, 0]), dtype='float32'
+                )
+                paddle.logsumexp(x, axis=1)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

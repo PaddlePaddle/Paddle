@@ -21,12 +21,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
@@ -141,8 +140,22 @@ void HandleLargeDim(const framework::ExecutionContext& context,
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
-  const int64_t reduced = shuffled_input.numel() / unreduced;
+  const int64_t input_numel = shuffled_input.numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      input_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDim, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          input_numel,
+          unreduced,
+          reduced));
+
   shuffled_input.Resize({unreduced, reduced});
+
   DDim output_dim = output->dims();
   output->Resize({unreduced});
   paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
@@ -163,7 +176,20 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
                         Functor functor,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
+  const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
+
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
@@ -554,8 +580,7 @@ class ReduceOp : public framework::OperatorWithKernel {
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
     // native reduce kernels don't support bf16
     // so oneDNN kernel is enforced in that case
-    if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
-        experimental::DataType::BFLOAT16)
+    if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
       return true;
 
     if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
@@ -601,10 +626,11 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_mlu_place(ctx.GetPlace()) ||
+              platform::is_xpu_place(ctx.GetPlace()) ||
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
-              "float16 can only be used on GPU or NPU or MLU place"));
+              "float16 can only be used on GPU or NPU or MLU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -803,8 +829,8 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     } else {
       d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
     }
-    auto pt_d_out = paddle::experimental::MakePhiDenseTensor(new_d_out);
-    auto pt_d_x = paddle::experimental::MakePhiDenseTensor(*d_x);
+    auto pt_d_out = std::make_unique<phi::DenseTensor>(new_d_out);
+    auto pt_d_x = std::make_unique<phi::DenseTensor>(*d_x);
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }

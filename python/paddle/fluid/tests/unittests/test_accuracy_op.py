@@ -15,16 +15,21 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+def accuracy_wrapper(infer, indices, label):
+    return paddle._C_ops.accuracy(infer, indices, label)
+
+
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
+        self.python_api = accuracy_wrapper
         self.dtype = np.float32
         self.init_dtype()
         n = 8192
@@ -60,7 +65,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 
 
 class TestAccuracyOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_type_errors(self):
         with program_guard(Program(), Program()):
             # The input type of accuracy_op must be Variable.
             x1 = fluid.create_lod_tensor(
@@ -75,11 +80,26 @@ class TestAccuracyOpError(unittest.TestCase):
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
             self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
+
             x3 = paddle.static.data(
                 name='input', shape=[-1, 2], dtype="float16"
             )
             paddle.static.accuracy(input=x3, label=label)
             paddle.metric.accuracy(input=x3, label=label)
+
+    def test_value_errors(self):
+        with program_guard(Program(), Program()):
+            paddle.disable_static()
+
+            # The input rank of accuracy_op must be 2.
+            with self.assertRaises(ValueError):
+                x3 = paddle.to_tensor([0.1], dtype='float32')
+                label3 = paddle.to_tensor(
+                    np.reshape([0], [1, 1]), dtype='int32'
+                )
+                paddle.metric.accuracy(x3, label3)
+
+            paddle.enable_static()
 
 
 class TestAccuracyAPI1(unittest.TestCase):

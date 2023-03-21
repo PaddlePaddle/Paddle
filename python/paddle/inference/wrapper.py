@@ -17,6 +17,7 @@ from typing import Set
 
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.core import (
     AnalysisConfig,
@@ -42,7 +43,7 @@ def tensor_copy_from_cpu(self, data):
     if isinstance(data, np.ndarray) or (
         isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
     ):
-        self.copy_from_cpu_bind(data)
+        self._copy_from_cpu_bind(data)
     else:
         raise TypeError(
             "In copy_from_cpu, we only support numpy ndarray and list[str] data type."
@@ -54,10 +55,18 @@ def tensor_share_external_data(self, data):
     Support input type check based on tensor.share_external_data.
     '''
     if isinstance(data, core.LoDTensor):
-        self.share_external_data_bind(data)
+        self._share_external_data_bind(data)
+    elif isinstance(data, paddle.Tensor):
+        self._share_external_data_paddle_tensor_bind(data)
+    elif isinstance(data, paddle.fluid.framework.Variable):
+        raise TypeError(
+            "The interface 'share_external_data' can only be used in dynamic graph mode. "
+            "Maybe you called 'paddle.enable_static()' and you are in static graph mode now. "
+            "Please use 'copy_from_cpu' instead."
+        )
     else:
         raise TypeError(
-            "In share_external_data, we only support LoDTensor data type."
+            "In share_external_data, we only support Tensor and LoDTensor."
         )
 
 

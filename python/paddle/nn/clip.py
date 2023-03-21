@@ -14,12 +14,13 @@
 
 import copy
 import warnings
+from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
-from paddle.fluid import core, framework, layers, unique_name
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
 from paddle.tensor.layer_function_generator import templatedoc
@@ -217,7 +218,9 @@ def _squared_l2_norm(x):
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16'], op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'float16', 'uint16'], op_type
+    )
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -371,7 +374,7 @@ class ClipGradByValue(ClipGradBase):
     Args:
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
-            automatically. In this case, ``max`` must be greater than 0.
+            automatically. In this case, ``max`` must be greater than :math:`0`.
 
     Examples:
         .. code-block:: python
@@ -557,6 +560,20 @@ def _allow_pure_fp16_global_norm_clip(*args):
         return old_value
 
 
+_allow_pure_bf16_global_norm_clip_flag = False
+
+
+def _allow_pure_bf16_global_norm_clip(*args):
+    global _allow_pure_bf16_global_norm_clip_flag
+    if len(args) == 0:
+        return _allow_pure_bf16_global_norm_clip_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _allow_pure_bf16_global_norm_clip_flag
+        _allow_pure_bf16_global_norm_clip_flag = args[0]
+        return old_value
+
+
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
@@ -720,6 +737,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         params_and_grads = []
         sum_square_list = []
         sum_square_list_fp16 = []
+        sum_square_list_bf16 = []
         sum_square_list_fp32 = []
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
@@ -735,15 +753,27 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     sum_square = _squared_l2_norm(merge_grad)
                     if sum_square.dtype == core.VarDesc.VarType.FP16:
                         sum_square_list_fp16.append(sum_square)
+                    elif sum_square.dtype == core.VarDesc.VarType.BF16:
+                        sum_square_list_bf16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
                         sum_square_list.append(sum_square)
 
+            if len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0:
+                raise NotSupportedError(
+                    'FP16 and BF16 are not supported at the same time.'
+                )
+
             # all parameters have been filterd out
             if (
                 len(sum_square_list)
                 + len(sum_square_list_fp16)
+                + len(sum_square_list_fp32)
+                == 0
+            ) and (
+                len(sum_square_list)
+                + len(sum_square_list_bf16)
                 + len(sum_square_list_fp32)
                 == 0
             ):
@@ -754,7 +784,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
+                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -765,8 +795,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                     else:
                         global_norm_var.append(global_norm_var_fp16)
+                if len(sum_square_list_bf16) > 0:
+                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    if (
+                        sum_square_list_fp32
+                        or sum_square_list
+                        or not _allow_pure_bf16_global_norm_clip()
+                    ):
+                        global_norm_var.append(
+                            global_norm_var_bf16.astype(sum_dtype)
+                        )
+                    else:
+                        global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
+                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -775,11 +817,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = layers.sums(sum_square_list)
+                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    layers.sums(global_norm_var)
+                    paddle.add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
@@ -804,12 +846,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (
-                        scale_var.astype('float16')
-                        if new_g.dtype == core.VarDesc.VarType.FP16
+                    if (
+                        new_g.dtype == core.VarDesc.VarType.FP16
                         and scale_var.dtype != core.VarDesc.VarType.FP16
-                        else scale_var
-                    )
+                    ):
+                        scale_input = scale_var.astype('float16')
+                    elif (
+                        new_g.dtype == core.VarDesc.VarType.BF16
+                        and scale_var.dtype != core.VarDesc.VarType.BF16
+                    ):
+                        scale_input = scale_var.astype('bfloat16')
+                    else:
+                        scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
@@ -863,7 +911,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def _create_operators(self, param, grad):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
-            group_norm_var = layers.sums(input=self.context[self.group_name])
+            group_norm_var = paddle.add_n(self.context[self.group_name])
             group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = paddle.divide(
@@ -921,7 +969,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             paddle.enable_static()
 
             def network():
-                image = fluid.data(name='image', shape=[
+                image = paddle.static.data(name='image', shape=[
                                    None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)

@@ -99,7 +99,7 @@ def _get_interp1d_bin_mask(
     return p_mask
 
 
-class Conv1D(fluid.dygraph.Layer):
+class Conv1D(paddle.nn.Layer):
     def __init__(
         self,
         prefix,
@@ -115,11 +115,11 @@ class Conv1D(fluid.dygraph.Layer):
         k = 1.0 / math.sqrt(fan_in)
         param_attr = ParamAttr(
             name=prefix + "_w",
-            initializer=fluid.initializer.Uniform(low=-k, high=k),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
         bias_attr = ParamAttr(
             name=prefix + "_b",
-            initializer=fluid.initializer.Uniform(low=-k, high=k),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
 
         self._conv2d = paddle.nn.Conv2D(
@@ -140,7 +140,7 @@ class Conv1D(fluid.dygraph.Layer):
         return x
 
 
-class BMN(fluid.dygraph.Layer):
+class BMN(paddle.nn.Layer):
     def __init__(self, cfg):
         super().__init__()
 
@@ -310,7 +310,7 @@ def bmn_loss_func(
         self_bm_mask = paddle.static.create_global_var(
             shape=[dscale, tscale], value=0, dtype=DATATYPE, persistable=True
         )
-        fluid.layers.assign(bm_mask, self_bm_mask)
+        paddle.assign(bm_mask, self_bm_mask)
         self_bm_mask.stop_gradient = True
         return self_bm_mask
 
@@ -319,9 +319,9 @@ def bmn_loss_func(
             pred_score = paddle.reshape(x=pred_score, shape=[-1])
             gt_label = paddle.reshape(x=gt_label, shape=[-1])
             gt_label.stop_gradient = True
-            pmask = fluid.layers.cast(x=(gt_label > 0.5), dtype=DATATYPE)
-            num_entries = fluid.layers.cast(paddle.shape(pmask), dtype=DATATYPE)
-            num_positive = fluid.layers.cast(paddle.sum(pmask), dtype=DATATYPE)
+            pmask = paddle.cast(x=(gt_label > 0.5), dtype=DATATYPE)
+            num_entries = paddle.cast(paddle.shape(pmask), dtype=DATATYPE)
+            num_positive = paddle.cast(paddle.sum(pmask), dtype=DATATYPE)
             ratio = num_entries / num_positive
             coef_0 = 0.5 * ratio / (ratio - 1)
             coef_1 = 0.5 * ratio
@@ -345,34 +345,34 @@ def bmn_loss_func(
 
         gt_iou_map = paddle.multiply(gt_iou_map, mask)
 
-        u_hmask = fluid.layers.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
+        u_hmask = paddle.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
         u_mmask = paddle.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
-        u_mmask = fluid.layers.cast(x=u_mmask, dtype=DATATYPE)
+        u_mmask = paddle.cast(x=u_mmask, dtype=DATATYPE)
         u_lmask = paddle.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
-        u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
+        u_lmask = paddle.cast(x=u_lmask, dtype=DATATYPE)
         u_lmask = paddle.multiply(u_lmask, mask)
 
-        num_h = fluid.layers.cast(paddle.sum(u_hmask), dtype=DATATYPE)
-        num_m = fluid.layers.cast(paddle.sum(u_mmask), dtype=DATATYPE)
-        num_l = fluid.layers.cast(paddle.sum(u_lmask), dtype=DATATYPE)
+        num_h = paddle.cast(paddle.sum(u_hmask), dtype=DATATYPE)
+        num_m = paddle.cast(paddle.sum(u_mmask), dtype=DATATYPE)
+        num_l = paddle.cast(paddle.sum(u_lmask), dtype=DATATYPE)
 
         r_m = num_h / num_m
-        u_smmask = fluid.layers.assign(
+        u_smmask = paddle.assign(
             local_random.uniform(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
         u_smmask = paddle.multiply(u_mmask, u_smmask)
-        u_smmask = fluid.layers.cast(x=(u_smmask > (1.0 - r_m)), dtype=DATATYPE)
+        u_smmask = paddle.cast(x=(u_smmask > (1.0 - r_m)), dtype=DATATYPE)
 
         r_l = num_h / num_l
-        u_slmask = fluid.layers.assign(
+        u_slmask = paddle.assign(
             local_random.uniform(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
         u_slmask = paddle.multiply(u_lmask, u_slmask)
-        u_slmask = fluid.layers.cast(x=(u_slmask > (1.0 - r_l)), dtype=DATATYPE)
+        u_slmask = paddle.cast(x=(u_slmask > (1.0 - r_l)), dtype=DATATYPE)
 
         weights = u_hmask + u_smmask + u_slmask
         weights.stop_gradient = True
@@ -385,8 +385,8 @@ def bmn_loss_func(
     def pem_cls_loss_func(pred_score, gt_iou_map, mask):
         gt_iou_map = paddle.multiply(gt_iou_map, mask)
         gt_iou_map.stop_gradient = True
-        pmask = fluid.layers.cast(x=(gt_iou_map > 0.9), dtype=DATATYPE)
-        nmask = fluid.layers.cast(x=(gt_iou_map <= 0.9), dtype=DATATYPE)
+        pmask = paddle.cast(x=(gt_iou_map > 0.9), dtype=DATATYPE)
+        nmask = paddle.cast(x=(gt_iou_map <= 0.9), dtype=DATATYPE)
         nmask = paddle.multiply(nmask, mask)
 
         num_positive = paddle.sum(pmask)
@@ -620,19 +620,19 @@ def val_bmn(model, args):
         avg_loss = paddle.mean(loss)
 
         loss_data += [
-            avg_loss.numpy()[0],
-            tem_loss.numpy()[0],
-            pem_reg_loss.numpy()[0],
-            pem_cls_loss.numpy()[0],
+            float(avg_loss),
+            float(tem_loss),
+            float(pem_reg_loss),
+            float(pem_cls_loss),
         ]
 
         print(
             '[VALID] iter {} '.format(batch_id)
             + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                '%f' % avg_loss.numpy()[0],
-                '%f' % tem_loss.numpy()[0],
-                '%f' % pem_reg_loss.numpy()[0],
-                '%f' % pem_cls_loss.numpy()[0],
+                '%f' % float(avg_loss),
+                '%f' % float(tem_loss),
+                '%f' % float(pem_reg_loss),
+                '%f' % float(pem_cls_loss),
             )
         )
 
@@ -716,10 +716,10 @@ class TestTrain(unittest.TestCase):
                     bmn.clear_gradients()
                     # log loss data to verify correctness
                     loss_data += [
-                        avg_loss.numpy()[0],
-                        tem_loss.numpy()[0],
-                        pem_reg_loss.numpy()[0],
-                        pem_cls_loss.numpy()[0],
+                        float(avg_loss),
+                        float(tem_loss),
+                        float(pem_reg_loss),
+                        float(pem_cls_loss),
                     ]
 
                     if args.log_interval > 0 and (
@@ -728,10 +728,10 @@ class TestTrain(unittest.TestCase):
                         print(
                             '[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
                             + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                                '%f' % avg_loss.numpy()[0],
-                                '%f' % tem_loss.numpy()[0],
-                                '%f' % pem_reg_loss.numpy()[0],
-                                '%f' % pem_cls_loss.numpy()[0],
+                                '%f' % float(avg_loss),
+                                '%f' % float(tem_loss),
+                                '%f' % float(pem_reg_loss),
+                                '%f' % float(pem_cls_loss),
                             )
                         )
 

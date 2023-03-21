@@ -84,7 +84,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.op_type = "lookup_table_v2"
@@ -105,7 +105,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.ids_shape, dtype='int64'
             )
-            self.emb = fluid.input.embedding(
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(

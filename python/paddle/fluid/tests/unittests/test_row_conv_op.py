@@ -193,11 +193,11 @@ class TestRowConvLayer(unittest.TestCase):
         main = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("x", (-1, -1, self.C), "float32")
+                x = paddle.static.data("x", (-1, -1, self.C), "float32")
                 out = paddle.static.nn.row_conv(
                     x,
                     self.context_length,
-                    param_attr=fluid.initializer.NumpyArrayInitializer(self.w),
+                    param_attr=paddle.nn.initializer.Assign(self.w),
                 )
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

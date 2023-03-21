@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Embedding
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -41,7 +41,7 @@ class SimpleNet(fluid.Layer):
             self.hidden_size,
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 )
             ),
@@ -50,7 +50,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -58,7 +58,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )

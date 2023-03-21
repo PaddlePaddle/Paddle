@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -363,6 +364,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
                            stream);
       },
       CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        return bkcl_reduce_scatter(
+            comm,
+            input.data(),
+            output->data(),
+            output->numel(),
+            platform::ToBKCLDataType(
+                framework::TransToProtoVarType(input.type())),
+            ToBKCLRedType(opts.reduce_op),
+            stream);
+      },
+      CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
 }

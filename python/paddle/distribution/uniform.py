@@ -137,8 +137,8 @@ class Uniform(distribution.Distribution):
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
-                self.low = tensor.cast(self.low, dtype=self.dtype)
-                self.high = tensor.cast(self.high, dtype=self.dtype)
+                self.low = paddle.cast(self.low, dtype=self.dtype)
+                self.high = paddle.cast(self.high, dtype=self.dtype)
 
         super().__init__(self.low.shape)
 
@@ -218,8 +218,8 @@ class Uniform(distribution.Distribution):
             name = self.name + '_log_prob'
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
             return paddle.subtract(
                 paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
             )
@@ -245,8 +245,8 @@ class Uniform(distribution.Distribution):
             name = self.name + '_probs'
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
             return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):

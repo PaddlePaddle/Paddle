@@ -146,7 +146,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                 steps_per_epoch = len(self.dataset) // self.batch_size
         except:
             raise ValueError(
-                "Pleace set `steps_per_epoch` or implement `__len__` methond in dataset class."
+                "Please set `steps_per_epoch` or implement `__len__` method in dataset class."
             )
         return steps_per_epoch
 

@@ -73,7 +73,7 @@ def parse_args():
         "--ctx_filename",
         type=str,
         required=True,
-        help="the filename to the profile context file saved by optimizaiton tuner",
+        help="the filename to the profile context file saved by optimization tuner",
     )
 
     args = parser.parse_args()

@@ -15,7 +15,7 @@
 from functools import reduce
 
 import paddle
-from paddle.static import Variable
+from paddle.common_ops_import import Variable
 
 
 class EmbeddingLayer:
@@ -210,7 +210,7 @@ class ConstantLayer:
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = paddle.fluid.layers.fill_constant(shape, dtype, value)
+        constant = paddle.tensor.fill_constant(shape, dtype, value)
         return constant
 
 

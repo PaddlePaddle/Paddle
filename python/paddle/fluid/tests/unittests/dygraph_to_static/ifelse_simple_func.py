@@ -41,7 +41,7 @@ def dyfunc_empty_nonlocal(x):
 
 
 def dyfunc_with_if_else(x_v, label=None):
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -60,8 +60,8 @@ def dyfunc_with_if_else2(x, col=100):
         # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
         #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
         # col = -1
-        col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
-    if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
+        col = paddle.tensor.fill_constant(shape=[1], value=-1, dtype="int64")
+    if paddle.mean(x).numpy() > x.numpy()[row][col]:
         y = paddle.nn.functional.relu(x)
     else:
         x_pow = paddle.pow(x, 2)
@@ -89,14 +89,14 @@ def dyfunc_with_if_else3(x):
         m = x + 2
         n = x + 3
         return q, x, y, z
-    q, x, y, z = paddle.static.nn.cond(paddle.mean(x)[0] < 5, lambda :
+    q, x, y, z = paddle.static.nn.cond(paddle.mean(x) < 5, lambda :
         paddle.jit.dy2static.convert_call(true_fn_0)(q, x, y),
         lambda : paddle.jit.dy2static.convert_call(false_fn_0)(q,
         x, y))
     """
     y = x + 1
     # NOTE: x_v[0] < 5 is True
-    if paddle.mean(x).numpy()[0] < 5:
+    if paddle.mean(x).numpy() < 5:
         x = x + 1
         z = x + 2
         q = x + 3
@@ -149,7 +149,7 @@ def dyfunc_with_if_else_with_list_geneator(x):
 def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]
-    bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
+    bias = paddle.tensor.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
         # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
         #  `x_v.shape[0]` is not Tensor, and `batch_size` is the return value of `true_fn` after transformed.
@@ -160,14 +160,14 @@ def nested_if_else(x_v):
     # if tensor.shape is [1], now support to compare with numpy.
     if paddle.mean(x_v).numpy() < 0:
         y = x_v + bias
-        w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
+        w = paddle.tensor.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:
             tmp = y * w
             y = paddle.nn.functional.relu(tmp)
-            if paddle.mean(y).numpy()[0] < batch_size:
+            if paddle.mean(y).numpy() < batch_size:
                 y = paddle.abs(y)
             else:
-                tmp = fluid.layers.fill_constant(
+                tmp = paddle.tensor.fill_constant(
                     y.shape, dtype='float32', value=-1
                 )
                 y = y - tmp
@@ -185,13 +185,13 @@ def nested_if_else_2(x):
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
         if paddle.shape(y).numpy()[0] < 1:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=2, shape=x.shape, dtype="int32"
             )
             # `z` is a new var here.
             z = y + 1
         else:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=3, shape=x.shape, dtype="int32"
             )
     else:
@@ -218,13 +218,13 @@ def nested_if_else_3(x):
     else:
         y_shape = paddle.shape(y)
         if y_shape.numpy()[0] < 1:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=2, shape=x.shape, dtype="int32"
             )
             # `z` is created in above code block.
             z = y + 1
         else:
-            res = fluid.layers.fill_constant(
+            res = paddle.tensor.fill_constant(
                 value=3, shape=x.shape, dtype="int32"
             )
             # `out` is a new var.
@@ -232,7 +232,7 @@ def nested_if_else_3(x):
     return res
 
 
-class NetWithControlFlowIf(fluid.dygraph.Layer):
+class NetWithControlFlowIf(paddle.nn.Layer):
     def __init__(self, hidden_dim=16):
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -259,14 +259,14 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                 )
             )
 
-        self.constant_vars['bias'] = fluid.layers.fill_constant(
+        self.constant_vars['bias'] = paddle.tensor.fill_constant(
             [5], dtype='float32', value=1
         )
         # Control flow `if` statement
         fc_out = self.fc(input)
-        if paddle.mean(fc_out).numpy()[0] < 0:
+        if paddle.mean(fc_out).numpy() < 0:
             y = fc_out + self.constant_vars['bias']
-            self.constant_vars['w'] = fluid.layers.fill_constant(
+            self.constant_vars['w'] = paddle.tensor.fill_constant(
                 [5], dtype='float32', value=10
             )
             if y.numpy()[0] < self.alpha:
@@ -277,12 +277,12 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                 # Nested `if/else`
                 if y.numpy()[-1] < self.alpha:
                     # Modify variable of class
-                    self.constant_vars['w'] = fluid.layers.fill_constant(
+                    self.constant_vars['w'] = paddle.tensor.fill_constant(
                         [hidden_dim], dtype='float32', value=9
                     )
                     y = paddle.abs(y)
                 else:
-                    tmp = fluid.layers.fill_constant(
+                    tmp = paddle.tensor.fill_constant(
                         y.shape, dtype='float32', value=-1
                     )
                     y = y - tmp
@@ -297,7 +297,7 @@ def if_with_and_or(x_v, label=None):
     batch_size = paddle.shape(x_v)
     if (
         x_v is not None
-        and (paddle.mean(x_v).numpy()[0] > 0 or label is not None)
+        and (paddle.mean(x_v).numpy() > 0 or label is not None)
         and batch_size[0] > 1
         and True
     ):
@@ -338,10 +338,10 @@ def if_with_and_or_3(x, y=None):
         x is not None
         and batch_size[0] > 1
         and y is not None
-        and mean_res.numpy()[0] > 0
+        and mean_res.numpy() > 0
     ):
         x = x + 1
-    if mean_res.numpy()[0] > 0 and (x is not None and batch_size[0] > 1) and y:
+    if mean_res.numpy() > 0 and (x is not None and batch_size[0] > 1) and y:
         x = x - 1
     return x
 
@@ -350,11 +350,11 @@ def if_with_and_or_4(x, y=None):
     batch_size = paddle.shape(x)
     mean_res = paddle.mean(x)
     if (x is not None and batch_size[0] > 1) or (
-        y is not None and mean_res.numpy()[0] > 0
+        y is not None and mean_res.numpy() > 0
     ):
         x = x + 1
     if (x is not None or batch_size[0] > 1) and (
-        y is not None or mean_res.numpy()[0] > 0
+        y is not None or mean_res.numpy() > 0
     ):
         x = x - 1
     return x

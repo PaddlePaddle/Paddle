@@ -130,7 +130,7 @@ cfg.use_gpu = fluid.is_compiled_with_cuda()
 cfg.class_num = 80
 
 
-class YoloDetectionBlock(fluid.dygraph.Layer):
+class YoloDetectionBlock(paddle.nn.Layer):
     def __init__(self, ch_in, channel, is_test=True):
         super().__init__()
 
@@ -197,7 +197,7 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
         return route, tip
 
 
-class Upsample(fluid.dygraph.Layer):
+class Upsample(paddle.nn.Layer):
     def __init__(self, scale=2):
         super().__init__()
         self.scale = scale
@@ -207,7 +207,7 @@ class Upsample(fluid.dygraph.Layer):
         shape_nchw = paddle.shape(inputs)
         shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
-        in_shape = fluid.layers.cast(shape_hw, dtype='int32')
+        in_shape = paddle.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
         out_shape.stop_gradient = True
 
@@ -219,7 +219,7 @@ class Upsample(fluid.dygraph.Layer):
         return out
 
 
-class YOLOv3(fluid.dygraph.Layer):
+class YOLOv3(paddle.nn.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
         super().__init__()
 
@@ -253,10 +253,10 @@ class YOLOv3(fluid.dygraph.Layer):
                     stride=1,
                     padding=0,
                     weight_attr=ParamAttr(
-                        initializer=fluid.initializer.Normal(0.0, 0.02)
+                        initializer=paddle.nn.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0),
+                        initializer=paddle.nn.initializer.Constant(0.0),
                         regularizer=L2Decay(0.0),
                     ),
                 ),
@@ -295,9 +295,7 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(
-                    input=[route, block], axis=1  # noqa: F821
-                )
+                block = paddle.concat([route, block], axis=1)  # noqa: F821
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
@@ -349,8 +347,8 @@ class YOLOv3(fluid.dygraph.Layer):
 
         if not self.is_train:
             # get pred
-            yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
-            yolo_scores = fluid.layers.concat(self.scores, axis=2)
+            yolo_boxes = paddle.concat(self.boxes, axis=1)
+            yolo_scores = paddle.concat(self.scores, axis=2)
 
             pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,

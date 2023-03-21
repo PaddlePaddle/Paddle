@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -100,6 +103,27 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class CumsumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    bool flatten = static_cast<bool>(this->Attr<bool>("flatten"));
+    bool exclusive = static_cast<bool>(this->Attr<bool>("exclusive"));
+    bool reverse = static_cast<bool>(this->Attr<bool>("reverse"));
+    VLOG(6) << "Runing cumsum composite func";
+    prim::cumsum_grad<prim::DescTensor>(
+        x, out_grad, axis, flatten, exclusive, reverse, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 class LogcumsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -182,6 +206,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
 REGISTER_OPERATOR(cumsum,
                   ops::CumOp,
                   ops::CumsumOpMaker,
+                  ops::CumsumCompositeGradOpMaker,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);

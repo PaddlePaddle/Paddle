@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -473,22 +477,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
       .def("_to_dlpack",
            [](phi::DenseTensor &self) {
-             DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
-             auto capsule = py::capsule(
+             DLManagedTensor *dmt = framework::toDLPack(self);
+             auto capsule = pybind11::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (ptr) {
-                     auto dltensor = new DLManagedTensor;
-                     try {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "used_dltensor"));
-                       return;
-                     } catch (...) {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "dltensor"));
-                     }
-                     dltensor->deleter(dltensor);
+                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
+                     return;
                    }
+                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
+                       PyCapsule_GetPointer(ptr, "dltensor"));
+                   dmt->deleter(dmt);
                  });
              return capsule;
            })
@@ -752,7 +749,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              size_t size = t[0].cast<size_t>();
              auto dtype =
-                 static_cast<paddle::experimental::DataType>(t[1].cast<int>());
+                 static_cast<phi::DataType>(t[1].cast<int>());
              auto dims = phi::make_ddim(t[2].cast<std::vector<int>>());
              auto lod_info = t[3].cast<framework::LoD>();
              auto device_id = t[4].cast<int>();
@@ -859,7 +856,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_reader_holder,
-                 static_cast<paddle::experimental::DataType>(t[3].cast<int>()));
+                 static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(phi::make_ddim(t[4].cast<std::vector<int>>()));
              tensor.set_lod(t[5].cast<framework::LoD>());
 
@@ -980,7 +977,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
+                 static_cast<phi::DataType>(t[2].cast<int>()));
              tensor.Resize(phi::make_ddim(t[3].cast<std::vector<int>>()));
              tensor.set_lod(t[4].cast<framework::LoD>());
 
@@ -1068,7 +1065,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             // 4. Rebuild Tensor
             tensor.ResetHolderWithType(
                 shared_reader_holder,
-                static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
+                static_cast<phi::DataType>(t[2].cast<int>()));
             tensor.Resize(phi::make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
@@ -1102,7 +1099,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
-        Vector<int64_t> new_rows(rows);
+        std::vector<int64_t> new_rows(rows);
         self.set_rows(new_rows);
 #endif
            })

@@ -224,9 +224,13 @@ class TestScatterAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 2], dtype="float64")
-            index = fluid.data(name="index", shape=[4], dtype="int64")
-            updates = fluid.data(name="updates", shape=[4, 2], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
             result = self.scatter(input, index, updates, False)
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
@@ -374,6 +378,32 @@ class TestScatterOpFp16(OpTest):
 class TestScatterInplaceAPI(TestScatterAPI):
     def executed_api(self):
         self.scatter = paddle.scatter_
+
+
+@unittest.skipIf(core.is_compiled_with_cuda(), "CUDA will not throw exception")
+class TestScatterError(unittest.TestCase):
+    def test_scatter_index(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+
+        def test_neg_index():
+            index = paddle.to_tensor([2, 1, -1, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_neg_index)
+
+        def test_too_big_index():
+            index = paddle.to_tensor([2, 1, 5, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_too_big_index)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

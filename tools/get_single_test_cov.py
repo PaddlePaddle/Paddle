@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 
 def getFNDAFile(rootPath, test):
@@ -36,7 +37,7 @@ def getFNDAFile(rootPath, test):
     os.system('touch %s' % fn_filename)
     try:
         f = open(filename)
-        print("oepn %s succesfully" % filename)
+        print("oepn %s successfully" % filename)
     except FileNotFoundError:
         print("%s is not found." % filename)
         return
@@ -82,15 +83,20 @@ def analysisFNDAFile(rootPath, test):
     if os.path.isfile(related_ut_map_file) and os.path.isfile(
         notrelated_ut_map_file
     ):
-        print("make related.txt and not_related.txt succesfully")
+        print(
+            "make %s and %s successfully"
+            % (related_ut_map_file, related_ut_map_file)
+        )
     else:
-        print("make related.txt and not_related.txt failed")
+        print(
+            "make %s and %s failed" % (related_ut_map_file, related_ut_map_file)
+        )
         return
 
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     try:
         f = open(fn_filename)
-        print("oepn %s succesfully" % fn_filename)
+        print("oepn %s successfully" % fn_filename)
     except FileNotFoundError:
         print("%s is not found." % fn_filename)
         return
@@ -142,7 +148,7 @@ def getBaseFnda(rootPath, test):
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     try:
         f = open(filename)
-        print("oepn %s succesfully" % filename)
+        print("oepn %s successfully" % filename)
     except FileNotFoundError:
         print("%s is not found." % filename)
     symbol_fnda = {}
@@ -168,25 +174,28 @@ def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     print("start get fluid ===>")
     cmd_fluid = (
-        'cd %s && lcov --capture -d ./paddle/fluid/ -o ./paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'
+        'cd %s && lcov --capture -d paddle/fluid/ -o paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'
         % ut_map_path
     )
     p_fluid = subprocess.Popen(cmd_fluid, shell=True, stdout=subprocess.DEVNULL)
 
     print("start get phi ===>")
     cmd_phi = (
-        'cd %s && lcov --capture -d ./paddle/phi -o ./paddle/phi/coverage_phi.info --rc lcov_branch_coverage=0'
+        'cd %s && lcov --capture -d paddle/phi -o paddle/phi/coverage_phi.info --rc lcov_branch_coverage=0'
         % ut_map_path
     )
-    p_phi = subprocess.Popen(cmd_phi, shell=True, stdout=subprocess.DEVNULL)
+    if os.path.exists("%s/paddle/phi" % ut_map_path):
+        p_phi = subprocess.Popen(cmd_phi, shell=True, stdout=subprocess.DEVNULL)
 
     print("start get utils ===>")
     cmd_utils = (
-        'cd %s && lcov --capture -d ./paddle/utils -o ./paddle/utils/coverage_utils.info --rc lcov_branch_coverage=0'
+        'cd %s && lcov --capture -d paddle/utils -o paddle/utils/coverage_utils.info --rc lcov_branch_coverage=0'
         % ut_map_path
     )
-    p_utils = subprocess.Popen(cmd_utils, shell=True, stdout=subprocess.DEVNULL)
-
+    if os.path.exists("%s/paddle/utils" % ut_map_path):
+        p_utils = subprocess.Popen(
+            cmd_utils, shell=True, stdout=subprocess.DEVNULL
+        )
     print("start wait fluid ===>")
     p_fluid.wait()
     print("start wait phi ===>")
@@ -194,19 +203,34 @@ def getCovinfo(rootPath, test):
     print("start wait utils ===>")
     p_utils.wait()
     print("end wait...")
-    os.system(
-        'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
-        % ut_map_path
+    coverage_utils_info_path = (
+        "%s/paddle/utils/coverage_utils.info" % ut_map_path
     )
+    if (
+        os.path.exists(coverage_utils_info_path)
+        and os.path.getsize(coverage_utils_info_path) > 4
+    ):
+        os.system(
+            'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+            % ut_map_path
+        )
+    else:
+        os.system(
+            'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+            % ut_map_path
+        )
     coverage_info_path = ut_map_path + '/coverage.info'
     file_size = os.path.getsize(coverage_info_path)
     if file_size == 0:
-        print("coverage.info is empty,collect coverage rate failed")
+        print(
+            "coverage.info of %s is empty,collect coverage rate failed"
+            % ut_map_path
+        )
         return
     else:
-        print("get coverage.info succesfully")
+        print("get coverage.info of %s successfully" % ut_map_path)
     os.system(
-        "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path
     )
     coverage_info_tmp = ut_map_path + '/coverage.info.tmp'
@@ -215,19 +239,31 @@ def getCovinfo(rootPath, test):
         print("coverage.info.tmp is empty,collect coverage rate failed")
         return
     else:
-        print("get coverage.info.tmp succesfully")
+        print("get coverage.info.tmp successfully")
 
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
     if test == "simple_precision_test":
         getBaseFnda(rootPath, test)
     else:
+        start_getFNDAFile = time.time()
         getFNDAFile(rootPath, test)
+        end_getFNDAFile = time.time()
+        print("getFNDAFile time:", end_getFNDAFile - start_getFNDAFile)
+        start_analysisFNDAFile = time.time()
         analysisFNDAFile(rootPath, test)
+        end_analysisFNDAFile = time.time()
+        print(
+            "analysisFNDAFile time :",
+            end_analysisFNDAFile - start_analysisFNDAFile,
+        )
     os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)
 
 
 if __name__ == "__main__":
     rootPath = sys.argv[1]
     case = sys.argv[2]
+    start_getCovinfo = time.time()
     getCovinfo(rootPath, case)
+    end_getCovinfo = time.time()
+    print("getConvinfo time :", end_getCovinfo - start_getCovinfo)

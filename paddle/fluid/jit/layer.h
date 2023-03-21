@@ -35,7 +35,7 @@ class CompilationUnit;
 class FunctionInfo;
 
 using DenseTensor = phi::DenseTensor;
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using Variable = paddle::framework::Variable;
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using FunctionInfoMap =
@@ -43,8 +43,8 @@ using FunctionInfoMap =
 
 class Layer {
  public:
-  Layer(const VariableMap& params_map,
-        const VariableMap& attrs_map_,
+  Layer(const std::shared_ptr<VariableMap>& params_map,
+        const std::shared_ptr<VariableMap>& attrs_map_,
         const FunctionInfoMap& info_map,
         const phi::Place& place);
 
@@ -70,8 +70,8 @@ class Layer {
   std::shared_ptr<Layer> Clone(void* stream = nullptr);
 
  private:
-  VariableMap params_map_;
-  VariableMap attrs_map_;
+  std::shared_ptr<VariableMap> params_map_;
+  std::shared_ptr<VariableMap> attrs_map_;
   FunctionInfoMap info_map_;
   phi::Place place_;
   std::shared_ptr<CompilationUnit> unit_;

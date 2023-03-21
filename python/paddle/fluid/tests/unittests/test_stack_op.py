@@ -44,7 +44,9 @@ class TestStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.prim_op_type = "comp"
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -61,10 +63,12 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
+        self.check_grad(
+            self.get_x_names(), 'Y', check_eager=True, check_prim=True
+        )
 
 
 class TestStackOp1(TestStackOpBase):
@@ -100,6 +104,7 @@ class TestStackOp6(TestStackOpBase):
 class TestStackOp_ZeroDim(TestStackOpBase):
     def initParameters(self):
         self.input_dim = ()
+        self.enable_cinn = False
 
 
 class TestStackBF16Op(OpTest):
@@ -122,7 +127,10 @@ class TestStackBF16Op(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -141,9 +149,10 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
+        # concat_grad unspport bfloat16 dtype, skip check_prim
         self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
@@ -167,9 +176,11 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
+            input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+            zero = paddle.tensor.fill_constant(
+                shape=[1], value=0, dtype="int64"
+            )
 
             for i in range(self.iter_num):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
@@ -205,9 +216,11 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
+            input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+            zero = paddle.tensor.fill_constant(
+                shape=[1], value=0, dtype="int64"
+            )
 
             for i in range(self.iter_num):
                 paddle.tensor.array_write(input, zero + i, tensor_array)

@@ -72,15 +72,14 @@ function make_ubuntu_trt7_dockerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
-  sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
-    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libsndfile1 libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
+  sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.gz.bcebos.com/nccl-local-repo-ubuntu1604-2.8.4-cuda10.2_1.0-1_amd64.deb \\
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y --allow-unauthenticated libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
-
 
 function make_centos_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
   sed "s/<baseimg>/11.0-cudnn8-devel-centos7/g" Dockerfile.centos >${dockerfile_name}
-  sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name} 
+  sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.7 install distro" ${dockerfile_name}
@@ -140,7 +139,7 @@ function make_ce_framework_dockcerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh  trt8406#g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
   sed -i 's#28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz#b7/2d/ad02de84a4c9fd3b1958dc9fb72764de1aa2605a9d7e943837be6ad82337/pip-21.0.1.tar.gz#g' ${dockerfile_name}
   sed -i 's#pip-20.0.1#pip-21.0.1#g' ${dockerfile_name}
   sed -i 's#python setup.py install#python3.7 setup.py install#g' ${dockerfile_name}

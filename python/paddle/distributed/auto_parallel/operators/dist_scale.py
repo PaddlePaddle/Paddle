@@ -74,7 +74,13 @@ class DistributedScaleImpl(DistributedOperatorImpl):
                 [x_dims_mapping, out_dims_mapping], [i, i]
             )
             if dim_changed:
+                op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+                op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
                 changed = True
+
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
 
         return changed
 

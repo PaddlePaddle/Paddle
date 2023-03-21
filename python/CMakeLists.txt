@@ -54,7 +54,7 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
 # Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
-# When users define composite rules of some nonbasic op, as for defination of args,
+# When users define composite rules of some nonbasic op, as for definition of args,
 # they are supposed to refer to standard op description. However, there exists
 # some gap of description between current op and standard ones. So special dictionary
 # is needed to record such gap for execution of composite rules.
@@ -99,6 +99,8 @@ if(WIN32)
       COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
         ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
+              ${PADDLE_BINARY_DIR}/test
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -108,6 +110,8 @@ if(WIN32)
       COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
         ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
+              ${PADDLE_BINARY_DIR}/test
       COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
               bdist_wheel
       COMMENT "Packing whl packages------>>>"
@@ -121,6 +125,7 @@ else()
       COMMAND touch stub.cc
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -130,6 +135,7 @@ else()
       COMMAND touch stub.cc
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto

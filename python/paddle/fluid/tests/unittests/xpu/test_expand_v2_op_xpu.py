@@ -68,6 +68,9 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ["X"], "Out")
+
     class TestExpandV2OpRank2_DimExpanding(TestExpandV2XPUOp):
         def init_data(self):
             self.ori_shape = [120]
@@ -189,7 +192,7 @@ class TestExpandV2OpInteger(XPUOpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        pass
+        self.check_grad_with_place(self.place, ["X"], "Out")
 
 
 # Test python API
@@ -203,7 +206,7 @@ class TestExpandV2API(unittest.TestCase):
                 dtype="float32",
             )
 
-            positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
             expand_shape = paddle.static.data(
                 name="expand_shape",
                 shape=[2],

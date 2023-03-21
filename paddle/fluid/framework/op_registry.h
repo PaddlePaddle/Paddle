@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -483,6 +484,37 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
 // clang-format on
+
+template <typename StructureKernel>
+struct StructKernelImpl {
+  static void Compute(phi::KernelContext* ctx) {
+    auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
+    StructureKernel().Compute(*exe_ctx);
+  }
+};
+
+#define PHI_STRUCTURE_KERNEL(...) \
+  ::paddle::framework::StructKernelImpl<__VA_ARGS__>::Compute
+#define PHI_STRUCTURE_VARIADIC_KERNEL(...) nullptr
+#define STRUCTURE_ARG_PARSE_FUNCTOR(...) nullptr
+
+#define STRUCTURE_KERNEL_INSTANTIATION(        \
+    meta_kernel_structure, cpp_dtype, context) \
+  template class meta_kernel_structure<cpp_dtype, context>;
+
+#define PD_REGISTER_STRUCT_KERNEL(                            \
+    kernel_name, backend, layout, meta_kernel_structure, ...) \
+  _PD_REGISTER_KERNEL(::phi::RegType::INNER,                  \
+                      kernel_name,                            \
+                      backend,                                \
+                      ::phi::backend##Context,                \
+                      layout,                                 \
+                      meta_kernel_structure,                  \
+                      STRUCTURE_KERNEL_INSTANTIATION,         \
+                      STRUCTURE_ARG_PARSE_FUNCTOR,            \
+                      PHI_STRUCTURE_KERNEL,                   \
+                      PHI_STRUCTURE_VARIADIC_KERNEL,          \
+                      __VA_ARGS__)
 
 }  // namespace framework
 }  // namespace paddle

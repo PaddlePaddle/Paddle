@@ -94,7 +94,7 @@ void AssignValueKernel(const Context& dev_ctx,
                        DataType dtype,
                        const std::vector<Scalar>& values,
                        DenseTensor* out) {
-  auto template_dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  auto template_dtype = phi::CppTypeToDataType<T>::Type();
   PADDLE_ENFORCE_EQ(
       dtype,
       template_dtype,
@@ -179,5 +179,7 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
-                   int64_t) {}
+                   double,
+                   int64_t,
+                   phi::dtype::float16) {}
 #endif

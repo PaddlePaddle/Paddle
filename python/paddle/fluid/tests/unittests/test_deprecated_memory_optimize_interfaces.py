@@ -16,12 +16,13 @@ import unittest
 
 from simple_nets import simple_fc_net
 
+import paddle.distributed.transpiler as transpiler
 import paddle.fluid as fluid
 
 
 class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
     def setUp(self):
-        self.method = fluid.memory_optimize
+        self.method = transpiler.memory_optimize
 
     def build_network(self, call_interface):
         startup_prog = fluid.Program()
@@ -63,7 +64,7 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
 
 class ReleaseMemoryTest(DeprecatedMemoryOptimizationInterfaceTest):
     def setUp(self):
-        self.method = fluid.release_memory
+        self.method = transpiler.release_memory
 
 
 if __name__ == '__main__':

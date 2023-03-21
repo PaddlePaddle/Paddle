@@ -16,14 +16,13 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 paddle.seed(123)
 np.random.seed(2021)
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self, hidden_size, vocab_size, is_sparse=False):
         super().__init__()
         self.hidden_size = hidden_size
