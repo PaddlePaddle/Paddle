@@ -254,20 +254,20 @@ class AttnMatMul {
       if (support_case_1 || support_case_2) {
         phi::funcs::
             TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+                dev_ctx_,
                 *d_output,
                 d_bias,
                 kps::IdentityFunctor<T>(),
                 {0, 1},
-                dev_ctx_,
                 stream);
       } else if (support_case_3 || support_case_4) {
         phi::funcs::
             TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+                dev_ctx_,
                 *d_output,
                 d_bias,
                 kps::IdentityFunctor<T>(),
                 {0, 1, 2},
-                dev_ctx_,
                 stream);
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(

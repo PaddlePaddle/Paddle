@@ -19,7 +19,9 @@
 
 #include <cublasLt.h>
 
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/memory/memory.h"
+
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -548,6 +550,10 @@ struct FusedGEMMGradTrait<true, true> {
   static constexpr auto kYGradATrans = true;
   static constexpr auto kYGradBTrans = true;
 };
+
+static constexpr auto BoolToCuBlasEnum(bool transpose) {
+  return transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
+}
 
 template <typename T, bool TransX, bool TransY>
 void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,

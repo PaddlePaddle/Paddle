@@ -29,7 +29,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedSoftmaxMaskGradKernel(
+void FusedAttentionGradKernel(
     const Context &dev_ctx,
     const DenseTensor &out_grad,
     const DenseTensor &x,
@@ -295,8 +295,8 @@ void FusedSoftmaxMaskGradKernel(
         d_residual_data,
         d_out_linear_bias_data);
   } else {
-    auto *ln_2_mean_data = ln_mean_2_p->data<U>();
-    auto *ln_2_var_data = ln_var_2_p->data<U>();
+    auto *ln_mean_2_data = ln_mean_2_p->data<U>();
+    auto *ln_var_2_data = ln_var_2_p->data<U>();
     auto *bias_dropout_residual_out_data =
         bias_dropout_residual_out_p->data<T>();
     auto *d_ln_2_scale_data =
@@ -319,8 +319,8 @@ void FusedSoftmaxMaskGradKernel(
         bias_dropout_residual_out_data,
         dropout_mask_out_data,
         ln_2_scale_data,
-        ln_2_mean_data,
-        ln_2_var_data,
+        ln_mean_2_data,
+        ln_var_2_data,
         d_bias_dropout_residual_out_data,
         d_ln_2_scale_data,
         d_ln_bias_2_data,
@@ -465,3 +465,23 @@ void FusedSoftmaxMaskGradKernel(
 
 }  // namespace fusion
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_attention_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedAttentionGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  phi::DataType data_type;
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::FLOAT32) {
+    data_type = phi::DataType::FLOAT32;
+  } else {
+    data_type = phi::DataType::FLOAT64;
+  }
+  kernel->OutputAt(4).SetDataType(data_type);
+  kernel->OutputAt(5).SetDataType(data_type);
+  kernel->OutputAt(6).SetDataType(data_type);
+  kernel->OutputAt(7).SetDataType(data_type);
+}
