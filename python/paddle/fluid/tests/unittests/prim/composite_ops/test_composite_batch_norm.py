@@ -350,13 +350,12 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self, data_layout='NCHW'):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
         self.bn = BatchNorm(4, act="relu", data_layout=data_layout)
 
     def forward(self, x):
         y = self.conv(x)
-        # breakpoint()
         out = self.bn(y)
         res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
         return res
