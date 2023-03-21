@@ -204,11 +204,17 @@ __global__ void DropOutNdForwardKernel(
     uint64_t increment,
     size_t main_offset,
     DstFunctor<T> dst_functor,
+    MaskFunctor<T> mask_functor,
     T* y,
     int64_t N,
-    kps::details::BroadcastConfig broadcast_config) {
+    kps::details::BroadcastConfig broadcast_config,
+    uint64* seed_ptr) {
   // Vectorized Generate Mask
   // kCount is 4 for curand_uniform4 is used
+  if (seed_ptr) {
+    seed = seed_ptr[0];
+  }
+
   constexpr int kCount = phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
@@ -229,8 +235,6 @@ __global__ void DropOutNdForwardKernel(
   int deal_size = BLOCK_NUM_X * kCount;
 
   size_t fix = idx * kCount;
-
-  auto mask_functor = MaskFunctor<T>(1.0f - dropout_prob);
   for (; fix < main_offset; fix += stride) {
     kps::ReadData<T, kCount, 1, false>(&dst_mask[0], src + fix, deal_size);
     kps::ElementwiseRandom<SType, float, kCount, Rand>(
@@ -347,8 +351,6 @@ void DropoutFwGPUKernelDriver(
 
     auto offset =
         ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
-    GetSeedDataAndIncrement(
-        dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
@@ -365,6 +367,11 @@ void DropoutFwGPUKernelDriver(
       kps::details::BroadcastConfig broadcast_config(
           out_dims, in_dims, x.dims().size());
 
+      auto mask_functor = MaskFunctor<T>(1.0f - dropout_prob);
+      bool copy_in_kernel = GetSeedDataAndIncrement(
+            dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment, true);
+      uint64_t* seed_ptr = copy_in_kernel ? seed->data<uint64_t>() : nullptr;
+
       DropOutNdForwardKernel<T>
           <<<grid_size, block_size, 0, stream>>>(size,
                                                  seed_data,
@@ -374,10 +381,15 @@ void DropoutFwGPUKernelDriver(
                                                  increment,
                                                  main_offset,
                                                  dst_functor,
+                                                 mask_functor
                                                  y_data,
                                                  y->numel(),
-                                                 broadcast_config);
+                                                 broadcast_config,
+                                                 seed_ptr);
     } else {
+      bool copy_in_kernel = GetSeedDataAndIncrement(
+            dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
+
 #define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T>
       PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
                                          PD_DROPOUT_KERNEL_NAME,
