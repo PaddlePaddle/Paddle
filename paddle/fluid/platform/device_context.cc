@@ -202,7 +202,7 @@ void EmplaceDevicesContext(
 #endif
   } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    phi::EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+    EmplaceDeviceContext<CUDAPinnedDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -214,7 +214,7 @@ void EmplaceDevicesContext(
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    phi::EmplaceDeviceContext<MLUDeviceContext>(
+    EmplaceDeviceContext<MLUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -226,7 +226,7 @@ void EmplaceDevicesContext(
 #endif
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
-    phi::EmplaceDeviceContext<IPUDeviceContext>(
+    EmplaceDeviceContext<IPUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -238,7 +238,7 @@ void EmplaceDevicesContext(
 #endif
   } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    phi::EmplaceDeviceContext<NPUDeviceContext>(
+    EmplaceDeviceContext<NPUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -250,7 +250,7 @@ void EmplaceDevicesContext(
 #endif
   } else if (platform::is_npu_pinned_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    phi::EmplaceDeviceContext<NPUPinnedDeviceContext>(
+    EmplaceDeviceContext<NPUPinnedDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
