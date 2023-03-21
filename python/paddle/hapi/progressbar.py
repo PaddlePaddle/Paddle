@@ -201,10 +201,10 @@ class ProgressBar:
                         and v.size == 1
                         and v.dtype in [np.float32, np.float64]
                     ):
-                        if abs(v[0]) > 1e-3:
-                            info += ' %.4f' % v[0]
+                        if abs(v.item()) > 1e-3:
+                            info += ' %.4f' % v.item()
                         else:
-                            info += ' %.4e' % v[0]
+                            info += ' %.4e' % v.item()
                     else:
                         info += ' %s' % v
 
