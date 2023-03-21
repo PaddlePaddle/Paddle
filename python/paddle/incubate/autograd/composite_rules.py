@@ -180,12 +180,12 @@ def gelu_composite(x, approximate):
         0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
     )
     M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
-    one = ones(x.shape, x.dtype)
-    half = full(x.shape, 0.5, x.dtype)
+    one = ones([1], x.dtype)
+    half = full([1], 0.5, x.dtype)
     if approximate:
         # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
-        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
-        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        kAlpha = full([1], M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full([1], 0.044715, x.dtype)
         tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
         out = x * half * (one + tanh_out)
         return out
@@ -207,7 +207,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=sum_x.shape,
+        shape=[1],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
@@ -369,7 +369,7 @@ def bernoulli(shape, dtype, p, seed=0):
     return cast(
         greater_equal(
             uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
-            fill_constant(shape, new_dtype, p),
+            fill_constant([1], new_dtype, p),
         ),
         dtype,
     )
@@ -389,13 +389,13 @@ def hard_swish_composite(x):
     res = (
         minimum(
             maximum(
-                x + full(x.shape, offset, dtype=x.dtype),
-                full(x.shape, 0.0, dtype=x.dtype),
+                x + full([1], offset, dtype=x.dtype),
+                full([1], 0.0, dtype=x.dtype),
             ),
-            full(x.shape, threshold, dtype=x.dtype),
+            full([1], threshold, dtype=x.dtype),
         )
         * x
-        / full(x.shape, scale, dtype=x.dtype)
+        / full([1], scale, dtype=x.dtype)
     )
     return res
 
@@ -469,7 +469,7 @@ def sqrt_composite(x):
     define composite rule of op sqrt
     res = pow(x, 0.5)
     """
-    y = full(x.shape, 0.5, x.dtype)
+    y = full([1], 0.5, x.dtype)
     res = pow(x, y)
     return res
 
@@ -490,7 +490,7 @@ def pow_composite(x, y):
 def relu_composite(x):
     """define composite rule of op relu."""
     # relu(x) = max(x, 0)
-    return maximum(x, zeros_like(x))
+    return maximum(x, full([1], 0.0, x.dtype))
 
 
 @REGISTER_COMPOSITE('unsqueeze2')
@@ -517,5 +517,5 @@ def unsqueeze_composite(x, axis):
 def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
-    y = full(x.shape, -0.5, x.dtype)
+    y = full([1], -0.5, x.dtype)
     return pow(x, y)
