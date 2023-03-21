@@ -745,8 +745,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVar(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
 
-      if (x_dtype !=
-          paddle::framework::proto::VarType::Type::VarType_Type_FP32) {
+      if (x_dtype != framework::proto::VarType::FP32) {
         return false;
       }
 
@@ -759,11 +758,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 3;
-      if (axis == 0 || flatten ||
-          (dtype !=
-               paddle::framework::proto::VarType::Type::VarType_Type_INT32 &&
-           dtype != framework::proto::VarType::Type::VarType_Type_INT64))
-        return false;
+      if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
     if (op_type == "affine_channel") {
