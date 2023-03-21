@@ -38,7 +38,6 @@
 - cumsum
 - put_along_axis
 - equal
-- where
 - greater_than
 - less_equal
 - where
