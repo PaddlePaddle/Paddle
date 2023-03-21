@@ -82,7 +82,7 @@ class TestElementwiseDivGradGradWithoutDout
          {"DDY", {"DDY"}},
          {"DX", {"DX"}}},
         {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}},
-        {{"use_mkldnn", false}, {"axis", 0}});
+        {{"use_dnnl", false}, {"axis", 0}});
     return op;
   }
 };

@@ -42,7 +42,7 @@ class TestSqueeze2OneDNNOp(OpTest):
         self.inputs = {"X": self.x}
 
     def init_attrs(self):
-        self.attrs = {"axes": self.axes, 'use_mkldnn': True}
+        self.attrs = {"axes": self.axes, 'use_dnnl': True}
 
     def set_outputs(self):
         self.outputs = {

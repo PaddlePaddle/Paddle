@@ -141,7 +141,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
                 'data_format': random_data_layout,
                 'output_size': random_output_size,
                 'output_padding': random_output_size,
-                'use_mkldnn': random_use_mkldnn,
+                'use_dnnl': random_use_mkldnn,
                 'is_test': True,
             },
         )
@@ -182,7 +182,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
                 'is_test': True,
                 'trainable_statistics': False,
                 'data_layout': random_data_layout,
-                'use_mkldnn': random_use_mkldnn,
+                'use_dnnl': random_use_mkldnn,
             },
         )
 
@@ -221,7 +221,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for mkldnn
         config = self.create_inference_config()
-        if program_config.ops[2].attrs['use_mkldnn']:
+        if program_config.ops[2].attrs['use_dnnl']:
             config.enable_mkldnn()
             yield config, ['conv2d_transpose', 'elementwise_add'], (1e-5, 1e-5)
         # cpu

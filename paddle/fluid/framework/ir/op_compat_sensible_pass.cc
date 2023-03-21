@@ -30,7 +30,7 @@ std::unordered_set<std::string> global_extra_attrs = {
     "op_device",
     "@ENABLE_CACHE_RUNTIME_CONTEXT@",
     "is_test",
-    "use_mkldnn",
+    "use_dnnl",
     "mkldnn_data_type",
     "use_quantizer",
     "use_cudnn",

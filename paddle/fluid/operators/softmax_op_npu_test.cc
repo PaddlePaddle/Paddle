@@ -58,7 +58,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   f::AttributeMap attrs = {
       {"axis", axis},
       {"use_cudnn", false},
-      {"use_mkldnn", false},
+      {"use_dnnl", false},
       {"mkldnn_data_type", std::string("float32")},
       {"is_test", false},
   };
@@ -125,7 +125,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
       {"name", std::string("softmax_grad")},
       {"axis", static_cast<int>(0)},
       {"use_cudnn", false},
-      {"use_mkldnn", false},
+      {"use_dnnl", false},
       {"mkldnn_data_type", std::string("float32")},
       {"is_test", false},
       {"data_format", std::string("AnyLayout")},

@@ -45,11 +45,11 @@ void SetOptimConfig(AnalysisConfig *cfg) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+void profile(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
@@ -78,14 +78,14 @@ TEST(Analyzer_resnet50, fuse_statis) {
 
 TEST(Analyzer_resnet50, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_dnnl */); }
 #endif
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
@@ -100,7 +100,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_resnet50, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 // Compare Deterministic result

@@ -667,12 +667,12 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
+  VLOG(3) << "use_dnnl=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
       if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
-        op->SetAttr("use_mkldnn", true);
+        op->SetAttr("use_dnnl", true);
     }
   }
 #else

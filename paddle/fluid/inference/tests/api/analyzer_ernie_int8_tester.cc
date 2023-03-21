@@ -47,7 +47,7 @@ void SetInt8Config(AnalysisConfig *cfg,
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare_int8(bool use_mkldnn = false) {
+void compare_int8(bool use_dnnl = false) {
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
 
@@ -58,9 +58,7 @@ void compare_int8(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
 
-TEST(Analyzer_ernie, compare_int8_mkldnn) {
-  compare_int8(true /* use_mkldnn */);
-}
+TEST(Analyzer_ernie, compare_int8_mkldnn) { compare_int8(true /* use_dnnl */); }
 #endif
 
 }  // namespace inference

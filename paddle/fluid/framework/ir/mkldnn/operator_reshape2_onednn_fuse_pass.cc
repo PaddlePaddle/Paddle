@@ -57,9 +57,9 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_op, reshape2_op, op_reshape2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_out, reshape2_out, op_reshape2_pattern);
 
-    if (!operator_op->Op()->HasAttr("use_mkldnn") ||
-        (operator_op->Op()->HasAttr("use_mkldnn") &&
-         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))))) {
+    if (!operator_op->Op()->HasAttr("use_dnnl") ||
+        (operator_op->Op()->HasAttr("use_dnnl") &&
+         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_dnnl"))))) {
       VLOG(4) << "Only oneDNN version of " << op_type
               << "can be fused with reshape2.";
       return;

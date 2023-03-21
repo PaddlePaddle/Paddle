@@ -113,7 +113,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 attrs={
                     "epsilon": epsilon,
                     "begin_norm_axis": begin_norm_axis,
-                    "use_mkldnn": True,
+                    "use_dnnl": True,
                     "is_test": with_is_test,
                 },
             )

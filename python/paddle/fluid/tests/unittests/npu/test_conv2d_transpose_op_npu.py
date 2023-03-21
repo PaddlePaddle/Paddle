@@ -60,7 +60,7 @@ class TestConv2DTransposeOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': False,
             'is_test': False,
-            'use_mkldnn': False,
+            'use_dnnl': False,
             'data_format': self.data_format,
         }
         if self.output_size is not None:

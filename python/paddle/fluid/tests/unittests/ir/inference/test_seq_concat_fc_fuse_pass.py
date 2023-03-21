@@ -32,7 +32,7 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         y_col = draw(st.sampled_from([1]))
         axis2 = draw(st.sampled_from([1]))
         use_cudnn = False
-        use_mkldnn = False
+        use_dnnl = False
         act_type = draw(st.sampled_from(["tanh", "sigmoid", "relu"]))
         batch_size = draw(st.integers(min_value=1, max_value=1))
         dim = draw(st.integers(min_value=1, max_value=1000))
@@ -82,7 +82,7 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
             type=act_type,
             inputs={"X": ["elt_out"]},
             outputs={"Out": ["act_out"]},
-            attrs={"use_cudnn": use_cudnn, "use_mkldnn": use_mkldnn},
+            attrs={"use_cudnn": use_cudnn, "use_dnnl": use_dnnl},
         )
 
         model_net = [

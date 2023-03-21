@@ -103,13 +103,13 @@ class FCOp : public framework::OperatorWithKernel {
                             activation_type.c_str()));
     }
 
-    if (ctx->Attrs().Get<bool>("use_mkldnn")) {
+    if (ctx->Attrs().Get<bool>("use_dnnl")) {
       PADDLE_ENFORCE_EQ(
           in_dims.size() >= 2 && in_dims.size() <= 4,
           true,
           platform::errors::Unimplemented(
               "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-              "use_mkldnn is set. But received the number of Input's "
+              "use_dnnl is set. But received the number of Input's "
               "dimensions is %d, Input's shape is %s.",
               in_dims.size(),
               in_dims));
@@ -150,7 +150,7 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("activation_type",
                          "Activation type used in fully connected operator.")
         .SetDefault("");
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<bool>(

@@ -370,7 +370,7 @@ class OpTest(unittest.TestCase):
             return hasattr(cls, "use_xpu") and cls.use_xpu
 
         def is_mkldnn_op_test():
-            return hasattr(cls, "use_mkldnn") and cls.use_mkldnn
+            return hasattr(cls, "use_dnnl") and cls.use_dnnl
 
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
@@ -480,10 +480,10 @@ class OpTest(unittest.TestCase):
         )
 
     def is_mkldnn_op(self):
-        return (hasattr(self, "use_mkldnn") and self.use_mkldnn) or (
+        return (hasattr(self, "use_dnnl") and self.use_dnnl) or (
             hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+            and "use_dnnl" in self.attrs
+            and self.attrs["use_dnnl"]
         )
 
     def is_xpu_op(self):
@@ -630,7 +630,7 @@ class OpTest(unittest.TestCase):
             self.op_type
         )  # for ci check, please not delete it for now
         if self.is_mkldnn_op():
-            self.__class__.use_mkldnn = True
+            self.__class__.use_dnnl = True
 
         if self.is_xpu_op():
             self.__class__.use_xpu = True
@@ -1491,10 +1491,10 @@ class OpTest(unittest.TestCase):
                     )
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
-                # skip op that use_mkldnn currently
+                # skip op that use_dnnl currently
                 flags_use_mkldnn = fluid.core.globals()["FLAGS_use_mkldnn"]
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
-                    self.attrs.get('use_mkldnn', False)
+                    self.attrs.get('use_dnnl', False)
                 )
                 if flags_use_mkldnn or attrs_use_mkldnn:
                     warnings.warn(
@@ -2066,7 +2066,7 @@ class OpTest(unittest.TestCase):
 
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
-            self.__class__.use_mkldnn = True
+            self.__class__.use_dnnl = True
 
         if self.is_xpu_op():
             self.__class__.use_xpu = True
@@ -2322,8 +2322,8 @@ class OpTest(unittest.TestCase):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
-            op_attrs["use_mkldnn"] = False
+        if "use_dnnl" in op_attrs and op_attrs["use_dnnl"]:
+            op_attrs["use_dnnl"] = False
             use_onednn = True
 
         self.op = create_op(
@@ -2336,7 +2336,7 @@ class OpTest(unittest.TestCase):
         )
 
         if use_onednn:
-            op_attrs["use_mkldnn"] = True
+            op_attrs["use_dnnl"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

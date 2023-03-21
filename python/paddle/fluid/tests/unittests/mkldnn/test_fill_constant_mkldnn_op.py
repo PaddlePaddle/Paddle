@@ -57,7 +57,7 @@ class TestFillConstant2DOneDNNOp(OpTest):
         self.inputs = {}
 
     def set_attrs(self):
-        self.attrs = {'shape': (3, 5), 'use_mkldnn': True, 'value': self.value}
+        self.attrs = {'shape': (3, 5), 'use_dnnl': True, 'value': self.value}
 
     def test_check_output(self):
         self.check_output()
@@ -87,7 +87,7 @@ class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
 class TestFillZerosLike2DStringValueInfOneDNNOp(TestFillConstant2DOneDNNOp):
     def set_attrs(self):
         self.str_value = "inf"
-        self.attrs = {'shape': (10, 13), 'use_mkldnn': True, 'str_value': "inf"}
+        self.attrs = {'shape': (10, 13), 'use_dnnl': True, 'str_value': "inf"}
 
 
 class TestFillZerosLike2DStringValueMinusInfOneDNNOp(
@@ -97,7 +97,7 @@ class TestFillZerosLike2DStringValueMinusInfOneDNNOp(
         self.str_value = "-inf"
         self.attrs = {
             'shape': (10, 13),
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'str_value': "-inf",
         }
 
@@ -107,7 +107,7 @@ class TestFillZerosLike2DStringValueFloatOneDNNOp(TestFillConstant2DOneDNNOp):
         self.str_value = "0.123"
         self.attrs = {
             'shape': (10, 13),
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'str_value': "0.123",
         }
 

@@ -43,7 +43,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self._cpu_only = True
         self.weight_type = np.float32
         self.input_type = np.float32
@@ -115,7 +115,7 @@ class TestConv2DBF16Op(TestConv2DOp):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'fuse_residual_connection': self.fuse_residual,

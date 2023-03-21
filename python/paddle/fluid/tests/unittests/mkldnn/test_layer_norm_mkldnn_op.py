@@ -57,7 +57,7 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
 
 class TestLayerNormMKLDNNOp(unittest.TestCase):
     def setUp(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(
@@ -120,7 +120,7 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                 attrs={
                     "epsilon": epsilon,
                     "begin_norm_axis": begin_norm_axis,
-                    "use_mkldnn": True,
+                    "use_dnnl": True,
                     "is_test": with_is_test,
                 },
             )

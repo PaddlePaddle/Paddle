@@ -24,10 +24,10 @@ namespace inference {
 
 using paddle::PaddleTensor;
 
-void profile(bool use_mkldnn = false, bool use_gpu = false) {
+void profile(bool use_dnnl = false, bool use_gpu = false) {
   AnalysisConfig config;
 
-  SetConfig(&config, use_mkldnn, use_gpu);
+  SetConfig(&config, use_dnnl, use_gpu);
   auto pass_builder = config.pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -84,12 +84,12 @@ TEST(Analyzer_Ernie, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
 
   AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn, false);
+  SetConfig(&cfg, use_dnnl, false);
   cfg.DisableMkldnnFcPasses();  // fc passes caused loss in accuracy
   auto pass_builder = cfg.pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
@@ -104,7 +104,7 @@ TEST(Analyzer_ernie, compare) {
   compare();
 }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 // Compare Deterministic result

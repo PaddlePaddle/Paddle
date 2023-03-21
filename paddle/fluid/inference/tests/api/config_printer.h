@@ -77,7 +77,7 @@ std::ostream &operator<<(std::ostream &os, const AnalysisConfig &config) {
      << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
   os << GenSpaces(num_spaces)
      << "use_tensorrt: " << config.tensorrt_engine_enabled() << "\n";
-  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.mkldnn_enabled()
+  os << GenSpaces(num_spaces) << "use_dnnl: " << config.mkldnn_enabled()
      << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";

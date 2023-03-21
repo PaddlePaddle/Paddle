@@ -40,7 +40,7 @@ TEST(op_debug_str, test_unknown_dtype) {
   desc.SetOutput(framework::GradVarName("X"), {framework::GradVarName("X")});
   desc.SetOutput(framework::GradVarName("Y"), {framework::GradVarName("Y")});
   desc.SetAttr("axis", -1);
-  desc.SetAttr("use_mkldnn", false);
+  desc.SetAttr("use_dnnl", false);
 
   auto x_tensor = scope.Var("X")->GetMutable<phi::DenseTensor>();
   x_tensor->Resize(dim);

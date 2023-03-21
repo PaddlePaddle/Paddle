@@ -40,14 +40,14 @@ class TestElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
         self.outputs = {'Out': self.out}
 
     def set_npu(self):
         self.__class__.use_npu = True
 
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)

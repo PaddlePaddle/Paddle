@@ -20,7 +20,7 @@ extra {
     type: STRING
   }
   attrs {
-    name: "use_mkldnn"
+    name: "use_dnnl"
     type: BOOLEAN
   }
   attrs {

@@ -25,7 +25,7 @@ from paddle.fluid.tests.unittests.test_elementwise_add_op import (
 
 class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -132,7 +132,7 @@ class TestMKLDNNElementwiseAddOpZeroDim3(TestMKLDNNElementwiseAddOp):
 )
 class TestInt8(TestElementwiseAddOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self._cpu_only = True
 
     def init_dtype(self):
@@ -151,7 +151,7 @@ class TestInt8(TestElementwiseAddOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
-        self.check_output(check_dygraph=(not self.use_mkldnn))
+        self.check_output(check_dygraph=(not self.use_dnnl))
 
     def test_check_grad_normal(self):
         pass
@@ -188,7 +188,7 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
-        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
+        self.check_output(check_dygraph=(not self.use_dnnl), atol=int_atol)
 
 
 class TestUint8Scales(TestInt8Scales):

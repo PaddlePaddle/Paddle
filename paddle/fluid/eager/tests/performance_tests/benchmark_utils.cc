@@ -230,7 +230,7 @@ void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
   imperative::Tracer tracer;
   framework::AttributeMap attrs;
 
-  attrs["use_mkldnn"] = false;
+  attrs["use_dnnl"] = false;
   attrs["scale"] = 2;
   attrs["bias"] = 3;
   attrs["bias_after_scale"] = true;

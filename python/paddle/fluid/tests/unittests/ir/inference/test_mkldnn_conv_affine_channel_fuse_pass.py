@@ -130,7 +130,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_dnnl=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):

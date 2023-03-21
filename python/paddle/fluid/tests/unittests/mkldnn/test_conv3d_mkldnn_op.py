@@ -28,49 +28,49 @@ from paddle.fluid.tests.unittests.test_conv3d_op import (
 
 class TestMKLDNN(TestConv3DOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestMKLDNNCase1(TestCase1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestMKLDNNGroup1(TestWithGroup1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestMKLDNNGroup2(TestWithGroup2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestMKLDNNWith1x1(TestWith1x1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
 
 class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
@@ -85,7 +85,7 @@ class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
         self.padding_algorithm = "SAME"
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 
@@ -96,7 +96,7 @@ class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
         self.padding_algorithm = "VALID"
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_format = "NCHW"
         self.dtype = np.float32
 

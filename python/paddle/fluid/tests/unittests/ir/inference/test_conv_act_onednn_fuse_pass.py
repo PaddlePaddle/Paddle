@@ -208,7 +208,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=True,
+            use_dnnl=True,
         )
 
         ops = [conv2d_op, act_op]

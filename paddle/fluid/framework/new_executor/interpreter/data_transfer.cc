@@ -351,8 +351,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   AttributeMap attr_map;
   attr_map["in_dtype"] = static_cast<int>(in_dtype);
   attr_map["out_dtype"] = static_cast<int>(out_dtype);
-  // NOTE(Aurelius84): In whice case use_mkldnn = true?
-  attr_map["use_mkldnn"] = false;
+  // NOTE(Aurelius84): In whice case use_dnnl = true?
+  attr_map["use_dnnl"] = false;
 
   // 3. Create transfer_dtype_op
   std::string op_type("transfer_dtype");

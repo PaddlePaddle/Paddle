@@ -377,7 +377,7 @@ class OperatorBase {
   VariableNameMap outputs_;
   AttributeMap attrs_;
   // NOTE: runtime_attrs_ contains the attributes which used for dispatching
-  // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
+  // kernel (use_dnnl, use_cudnn, ...) or passing additional configuration
   // for special heterogeneous kernel (workspace_size_MB, ...).
   // The attributes in runtime_attrs_ are setted by framework (such as PASS),
   // and not in the python api.

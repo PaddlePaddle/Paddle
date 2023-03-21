@@ -290,7 +290,7 @@ class TestPool2D_Op_Mixin:
         self.op_type = "pool2d"
         self.use_cudnn = False
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.init_data_type()
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
@@ -327,7 +327,7 @@ class TestPool2D_Op_Mixin:
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
             'exclusive': self.exclusive,
@@ -345,10 +345,10 @@ class TestPool2D_Op_Mixin:
         if self.has_cudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+                place, atol=1e-5, check_dygraph=(not self.use_dnnl)
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_dygraph=(not self.use_dnnl))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -361,14 +361,14 @@ class TestPool2D_Op_Mixin:
                 set(['X']),
                 'Out',
                 max_relative_error=0.07,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_dnnl),
             )
         elif self.pool_type != "max":
             self.check_grad(
                 set(['X']),
                 'Out',
                 max_relative_error=0.07,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_dnnl),
             )
 
     def init_data_format(self):
@@ -511,7 +511,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     self.check_output_with_place(
                         place,
                         atol=1e-3,
-                        check_dygraph=(not self.use_mkldnn),
+                        check_dygraph=(not self.use_dnnl),
                     )
 
         def test_check_grad(self):
@@ -527,7 +527,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_dnnl),
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
@@ -552,7 +552,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     self.check_output_with_place(
                         place,
                         atol=1e-3,
-                        check_dygraph=(not self.use_mkldnn),
+                        check_dygraph=(not self.use_dnnl),
                     )
 
         def test_check_grad(self):
@@ -568,7 +568,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_dnnl),
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")

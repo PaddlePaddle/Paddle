@@ -42,7 +42,7 @@ class TestSqueeze2Transpose2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axes": [2],
-                "use_mkldnn": True,
+                "use_dnnl": True,
             },
         )
 
@@ -57,7 +57,7 @@ class TestSqueeze2Transpose2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axis": transpose_axis,
-                "use_mkldnn": True,
+                "use_dnnl": True,
             },
         )
 
@@ -78,7 +78,7 @@ class TestSqueeze2Transpose2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 "squeeze2_transpose2_onednn_fuse_pass",
             ],

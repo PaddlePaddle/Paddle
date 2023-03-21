@@ -349,7 +349,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
   if (use_global_stats) {
     PADDLE_ENFORCE_EQ(
-        !ctx->Attrs().Get<bool>("use_mkldnn"),
+        !ctx->Attrs().Get<bool>("use_dnnl"),
         true,
         platform::errors::InvalidArgument(
             "Using global stats during training is not supported "

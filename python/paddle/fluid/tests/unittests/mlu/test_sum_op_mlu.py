@@ -40,7 +40,7 @@ class TestSum1(OpTest):
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
 
-        self.attrs = {'use_mkldnn': False}
+        self.attrs = {'use_dnnl': False}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -78,7 +78,7 @@ class TestSum2(OpTest):
         ).astype(self.dtype)
         self.outputs = {'Out': y}
 
-        self.attrs = {'use_mkldnn': False}
+        self.attrs = {'use_dnnl': False}
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -103,7 +103,7 @@ class TestSum3(OpTest):
         y = x0
         self.outputs = {'Out': y}
 
-        self.attrs = {'use_mkldnn': False}
+        self.attrs = {'use_dnnl': False}
 
     def init_dtype(self):
         self.dtype = np.float16

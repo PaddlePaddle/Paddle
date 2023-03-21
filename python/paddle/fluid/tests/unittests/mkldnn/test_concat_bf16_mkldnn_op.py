@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 class TestConcatBf16Op(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "bfloat16"
         self.init_axis()
         self.init_shape()
@@ -35,7 +35,7 @@ class TestConcatBf16Op(OpTest):
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
         self.attrs = {
             'axis': self.axis,
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
 

@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 class TestReshapeBf16Op(OpTest):
     def setUp(self):
         self.op_type = "reshape2"
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.mkldnn_data_type = "bfloat16"
         self.init_data()
         self.init_input_data()
@@ -35,7 +35,7 @@ class TestReshapeBf16Op(OpTest):
         self.inputs = {'X': self.input_data}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
         self.outputs = {

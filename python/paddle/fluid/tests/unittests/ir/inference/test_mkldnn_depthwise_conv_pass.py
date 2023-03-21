@@ -99,7 +99,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
                 'paddings': random_paddings,
                 'padding_algorithm': random_padding_algorithm,
                 'data_format': random_data_layout,
-                'use_mkldnn': True,
+                'use_dnnl': True,
             },
         )
 
@@ -122,7 +122,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for mkldnn
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_dnnl=True)
         yield config, ['conv2d'], (1e-5, 1e-5)
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:

@@ -153,15 +153,15 @@ class LayerHelper(LayerHelperBase):
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = self.kwargs.get(
-            'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False)
+        use_dnnl = self.kwargs.get(
+            'use_dnnl', _global_flags().get("FLAGS_use_mkldnn", False)
         )
-        if use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
+        if use_dnnl:
+            act['use_dnnl'] = use_dnnl
         act_type = act.pop('type')
         if _non_static_mode():
             res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
+                input_var, act_type, use_cudnn, use_dnnl
             )
             return res
         else:

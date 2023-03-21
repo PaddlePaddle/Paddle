@@ -93,7 +93,7 @@ TEST(test_tracer, test_trace_op) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
 #ifndef PADDLE_WITH_XPU
@@ -145,7 +145,7 @@ TEST(test_tracer, test_trace_op_with_backward) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
   for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
@@ -191,7 +191,7 @@ TEST(test_tracer, test_track_backward_output) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
@@ -236,7 +236,7 @@ TEST(test_tracer, test_track_backward_input) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
@@ -284,7 +284,7 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>(
       "elementwise_add", ins, outs, mul_attr_map, gpu_place, true);
 
@@ -421,7 +421,7 @@ TEST(test_tracer, test_var_without_grad_var) {
   imperative::NameVarBaseMap ins = {x_pair, y_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
@@ -640,7 +640,7 @@ TEST(test_tracer, eager_tracer) {
   imperative::NameTensorMap ins = {x_pair, y_pair};
   imperative::NameTensorMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_dnnl"] = false;
   tracer.TraceOp<egr::EagerVariable>(
       "mul", ins, outs, mul_attr_map, place, true);
 

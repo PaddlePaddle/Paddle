@@ -43,7 +43,7 @@ class TestTranspose2Unsqueeze2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axis": transpose_axis,
-                "use_mkldnn": True,
+                "use_dnnl": True,
             },
         )
 
@@ -73,7 +73,7 @@ class TestTranspose2Unsqueeze2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],
@@ -102,7 +102,7 @@ class TestElementwiseMulUnsqueeze2OneDNNFusePass(PassAutoScanTest):
             type='elementwise_mul',
             inputs={'X': ['eltwise_X'], 'Y': ['eltwise_Y']},
             outputs={'Out': ['eltwise_output']},
-            attrs={"use_mkldnn": True},
+            attrs={"use_dnnl": True},
         )
 
         unsqueeze2_op = OpConfig(
@@ -138,7 +138,7 @@ class TestElementwiseMulUnsqueeze2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],

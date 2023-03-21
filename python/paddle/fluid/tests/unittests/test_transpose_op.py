@@ -36,7 +36,7 @@ class TestTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -45,7 +45,7 @@ class TestTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])
@@ -129,7 +129,7 @@ class TestCase10(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -152,7 +152,7 @@ class TestCase_ZeroDim(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -174,7 +174,7 @@ class TestAutoTuneTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -190,7 +190,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])
@@ -213,7 +213,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -231,7 +231,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])
@@ -255,7 +255,7 @@ class TestTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -266,7 +266,7 @@ class TestTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])

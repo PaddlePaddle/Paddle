@@ -42,7 +42,7 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
         pass
 
     def set_attrs(self):
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_dnnl": True}
 
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
@@ -143,7 +143,7 @@ class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         )
 
     def set_attrs(self):
-        self.attrs = {"use_mkldnn": True, "approximate": True}
+        self.attrs = {"use_dnnl": True, "approximate": True}
 
 
 class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
@@ -203,7 +203,7 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.alpha = 0.2
-        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+        self.attrs = {"use_dnnl": True, "alpha": self.alpha}
 
 
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
@@ -221,7 +221,7 @@ class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.beta = 0.2
-        self.attrs = {"use_mkldnn": True, "beta": self.beta}
+        self.attrs = {"use_dnnl": True, "beta": self.beta}
 
 
 class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
@@ -271,7 +271,7 @@ class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.alpha = 0.2
-        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+        self.attrs = {"use_dnnl": True, "alpha": self.alpha}
 
 
 class TestMKLDNNExpBF16Op(MKLDNNBF16ActivationOp, TestActivation):

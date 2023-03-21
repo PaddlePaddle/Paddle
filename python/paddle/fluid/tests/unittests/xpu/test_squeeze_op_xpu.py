@@ -42,7 +42,7 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "squeeze"
             self.__class__.op_type = "squeeze"
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.init_dtype()
             self.init_test_case()
             self.inputs = {

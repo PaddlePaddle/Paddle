@@ -60,7 +60,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_dnnl': True,
             },
         )
 
@@ -73,7 +73,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_dnnl': True},
         )
 
         if activation_type == "relu6":
@@ -131,7 +131,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 'matmul_elementwise_add_mkldnn_fuse_pass',
                 'matmul_activation_mkldnn_fuse_pass',

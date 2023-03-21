@@ -37,7 +37,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
 
     class ElementwiseMulOp(XPUOpTest):
         def init_kernel_type(self):
-            self.use_mkldnn = False
+            self.use_dnnl = False
 
         def setUp(self):
             self.op_type = 'elementwise_mul'
@@ -95,7 +95,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+            self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
 
         def init_dtype(self):
             pass

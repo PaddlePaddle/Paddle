@@ -69,8 +69,8 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
         FLAGS_use_mkldnn ||
-        (op->HasAttr("use_mkldnn") &&
-         PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+        (op->HasAttr("use_dnnl") &&
+         PADDLE_GET_CONST(bool, op->GetAttr("use_dnnl")))) {
       op->SetInput("X", this->Input("X"));  // x
     }
 
@@ -471,10 +471,8 @@ REGISTER_OP_VERSION(softplus).AddCheckpoint(
         .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
 
 REGISTER_OP_VERSION(mish).AddCheckpoint(
-    R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
+    R"ROC(add new attributes [use_dnnl], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
     paddle::framework::compatible::OpVersionDesc().NewAttr(
-        "use_mkldnn",
-        "(bool, default false) Only used in mkldnn kernel",
-        false));
+        "use_dnnl", "(bool, default false) Only used in mkldnn kernel", false));
 
 /* ========================================================================== */

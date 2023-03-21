@@ -49,10 +49,9 @@ void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_op, transpose2_op, squeeze2_transpose2_pattern);
 
-    if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
-        (transpose2_op->Op()->HasAttr("use_mkldnn") &&
-         !(PADDLE_GET_CONST(bool,
-                            transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
+    if (!transpose2_op->Op()->HasAttr("use_dnnl") ||
+        (transpose2_op->Op()->HasAttr("use_dnnl") &&
+         !(PADDLE_GET_CONST(bool, transpose2_op->Op()->GetAttr("use_dnnl"))))) {
       VLOG(4) << "Only oneDNN version of transpose2 can be fused after with "
                  "squeeze2.";
       return;

@@ -41,7 +41,7 @@ class TestMKLDNNElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -62,7 +62,7 @@ class TestMKLDNNElementwiseSubOp(OpTest):
         self.axis = -1
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -193,7 +193,7 @@ class TestBf16(TestMKLDNNElementwiseSubOp):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def init_dtype(self):
@@ -273,7 +273,7 @@ class TestBf16Broadcasting(TestBf16):
 
 class TestInt8(TestMKLDNNElementwiseSubOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self._cpu_only = True
 
     def init_dtype(self):

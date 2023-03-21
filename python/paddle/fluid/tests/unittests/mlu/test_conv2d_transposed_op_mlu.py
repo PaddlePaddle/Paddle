@@ -140,7 +140,7 @@ class TestConv2DTransposeOp(OpTest):
         self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.output_size = None
         self.output_padding = []
         self.data_format = "NCHW"
@@ -161,7 +161,7 @@ class TestConv2DTransposeOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'data_format': self.data_format,
         }
         if self.output_size is not None:

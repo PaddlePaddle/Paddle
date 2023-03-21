@@ -44,8 +44,8 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Handle FC MKL-DNN pass";
-    if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
-      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
+    if (!(graph->Has("use_dnnl") && graph->Get<bool>("use_dnnl"))) {
+      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_dnnl "
                  "attribute.";
       return;
     }
@@ -68,7 +68,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
                  "2, 3 & 4, or when width or height is different than one.";
       return;
     }
-    desc->SetAttr("use_mkldnn", true);
+    desc->SetAttr("use_dnnl", true);
 
     found_fc_count++;
   };

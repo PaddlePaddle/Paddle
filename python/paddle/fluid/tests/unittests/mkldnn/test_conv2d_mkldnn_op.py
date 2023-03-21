@@ -43,7 +43,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
 
     def init_kernel_type(self):
         self.data_format = "NCHW"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self._cpu_only = True
         self.dtype = np.float32
 
@@ -189,7 +189,7 @@ class TestWithInput1x1Filter1x1(TestConv2DMKLDNNOp):
 
 class TestConv2DOp_AsyPadding_MKLDNN(TestConv2DOp_v2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.dtype = np.float32
 
     def init_paddings(self):

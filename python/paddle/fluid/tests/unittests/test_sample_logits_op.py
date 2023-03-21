@@ -23,7 +23,7 @@ class TestSampleLogitsOp(OpTest):
     def setUp(self):
         self.op_type = "sample_logits"
         self.dtype = np.float64
-        self.use_mkldnn = False
+        self.use_dnnl = False
         bs = 2
         K = 20
         NT = 10

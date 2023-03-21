@@ -48,7 +48,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 
     def setUp(self):
         self.op_type = "softmax"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.dtype = np.uint16
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -61,7 +61,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -70,32 +70,32 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         pass
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
 
 if __name__ == '__main__':

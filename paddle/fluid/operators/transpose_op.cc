@@ -42,7 +42,7 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "(vector<int>) A list of values, and the size of the list should be "
         "the same with the input tensor rank. This operator permutes the input "
         "tensor's axes according to the values given.");
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();

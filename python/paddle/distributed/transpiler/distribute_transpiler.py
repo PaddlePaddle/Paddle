@@ -2180,7 +2180,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 type="sum",
                 inputs={"X": pserver_side_table_grad_list},
                 outputs={"Out": [grad_var]},
-                attrs={"use_mkldnn": False},
+                attrs={"use_dnnl": False},
             )
         else:
             # in async_mode, for table gradient, it also need to be split to each parameter server
@@ -2470,7 +2470,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False},
+                attrs={"use_dnnl": False},
             )
             optimize_block.append_op(
                 type="scale",

@@ -745,7 +745,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
     AddAttr<bool>(
-        "use_mkldnn",
+        "use_dnnl",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false)
         .AsExtra();

@@ -208,7 +208,7 @@ void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Out", {output_name});
 
     new_op_desc.SetAttr("group", group);
-    new_op_desc.SetAttr("use_mkldnn", true);
+    new_op_desc.SetAttr("use_dnnl", true);
     new_op_desc.Flush();
 
     // Create a new node for the fused op.

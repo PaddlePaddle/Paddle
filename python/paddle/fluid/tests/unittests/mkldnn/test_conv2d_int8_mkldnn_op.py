@@ -39,11 +39,11 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.data_format = "NCHW"
         self.mkldnn_data_type = "int8"
         self.weighttype = np.float32
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -167,7 +167,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'Scale_in': self.scale_in,
@@ -434,7 +434,7 @@ create_test_int8_class(TestWithInput1x1Filter1x1)
 
 class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]

@@ -41,7 +41,7 @@ class TestSoftplusOneDNNOp(OpTest):
         self.threshold = 20
         self.config()
         self.set_dtype()
-        self.attrs = {'use_mkldnn': True, 'beta': self.beta}
+        self.attrs = {'use_dnnl': True, 'beta': self.beta}
         self.x = np.random.random(self.x_shape)
         self.out = ref_softplus(self.x, self.beta, self.threshold)
 

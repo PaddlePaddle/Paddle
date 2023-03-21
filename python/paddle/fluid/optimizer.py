@@ -7637,7 +7637,7 @@ class GradientMergeOptimizer:
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
                 outputs={'Out': step_var},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1, 'use_dnnl': False},
             )
 
             # cond_var = (step_var == 0)
@@ -7706,7 +7706,7 @@ class GradientMergeOptimizer:
                 type="elementwise_add",
                 inputs={'X': grad, 'Y': gradient_merge_var},
                 outputs={'Out': gradient_merge_var},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1, 'use_dnnl': False},
             )
             self._add_gm_op_role_var(
                 new_grad_op, param, gradient_merge_var, cond

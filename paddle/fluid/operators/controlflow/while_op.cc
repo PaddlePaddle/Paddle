@@ -613,7 +613,7 @@ class WhileGradOp : public framework::OperatorBase {
               "sum",
               {{"X", {pg_ig_names[param_id], new_inside_name}}},
               {{"Out", {pg_ig_names[param_id]}}},
-              framework::AttributeMap{{"use_mkldnn", {false}}});
+              framework::AttributeMap{{"use_dnnl", {false}}});
           sum_op->Run(cur_scope, dev_place);
           cur_scope.Rename(new_inside_name, inside_grad_name);
         } else {

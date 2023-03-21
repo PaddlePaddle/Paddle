@@ -467,8 +467,8 @@ void TrtMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     desc.SetAttr("transpose_X", matmul_v2_op->Op()->GetAttr("trans_x"));
     desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
     desc.SetAttr("alpha", 1.0f);
-    if (matmul_v2_op->Op()->HasAttr("use_mkldnn")) {
-      desc.SetAttr("use_mkldnn", matmul_v2_op->Op()->GetAttr("use_mkldnn"));
+    if (matmul_v2_op->Op()->HasAttr("use_dnnl")) {
+      desc.SetAttr("use_dnnl", matmul_v2_op->Op()->GetAttr("use_dnnl"));
     }
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));

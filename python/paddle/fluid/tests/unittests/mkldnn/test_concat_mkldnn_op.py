@@ -32,7 +32,7 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
         self.attrs = {
             'axis': self.axis,
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
 

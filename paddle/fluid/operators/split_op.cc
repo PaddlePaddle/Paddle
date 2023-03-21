@@ -196,7 +196,7 @@ Example:
                  "(int, default 0) "
                  "The axis which the input will be split on.")
         .SetDefault(0);
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<std::string>(

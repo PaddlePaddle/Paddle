@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 class TestTransposeOp(OpTest):
     def setUp(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "bfloat16"
         self.init_test_case()
         self.init_test_data()
@@ -37,7 +37,7 @@ class TestTransposeOp(OpTest):
 
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
 

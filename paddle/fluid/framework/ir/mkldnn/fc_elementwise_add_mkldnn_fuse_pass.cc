@@ -93,8 +93,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) {
       VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
               << ") with " << elementwise_op->Name() << "("
-              << elementwise_op->id()
-              << ") because not both ops have use_mkldnn";
+              << elementwise_op->id() << ") because not both ops have use_dnnl";
       return;
     }
     if (!IsReachable(g, residual_data, fc_output)) {

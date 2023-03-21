@@ -47,7 +47,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
         self._cpu_only = True
 
     def init_test_case(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.is_test = True
         self.pad = [0, 0]
         self.fuse_bias = False

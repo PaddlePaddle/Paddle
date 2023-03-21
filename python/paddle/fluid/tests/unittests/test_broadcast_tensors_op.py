@@ -92,8 +92,8 @@ class TestCPUBroadcastTensorsOp(OpTest):
 
     def setUp(self):
         self.op_type = "broadcast_tensors"
-        self.use_mkldnn = False
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.use_dnnl = False
+        self.attrs = {'use_dnnl': self.use_dnnl}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,

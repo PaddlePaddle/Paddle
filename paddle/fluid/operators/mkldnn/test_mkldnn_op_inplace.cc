@@ -93,11 +93,11 @@ bool TestMain(const platform::Place &place,
           ? framework::OpRegistry::CreateOp(op_type,
                                             {{"X", {"x"}}, {"Y", {"x1"}}},
                                             {{"Out", {"y"}}},
-                                            {{"use_mkldnn", {true}}})
+                                            {{"use_dnnl", {true}}})
           : framework::OpRegistry::CreateOp(op_type,
                                             {{"X", {"x"}}},
                                             {{"Out", {"y"}}},
-                                            {{"use_mkldnn", {true}}});
+                                            {{"use_dnnl", {true}}});
 
   op_ref->Run(scope, place);
   pool.Get(place)->Wait();
@@ -110,11 +110,11 @@ bool TestMain(const platform::Place &place,
                 ? framework::OpRegistry::CreateOp(op_type,
                                                   {{"X", {"x"}}, {"Y", {"x1"}}},
                                                   {{"Out", {"x"}}},
-                                                  {{"use_mkldnn", {true}}})
+                                                  {{"use_dnnl", {true}}})
                 : framework::OpRegistry::CreateOp(op_type,
                                                   {{"X", {"x"}}},
                                                   {{"Out", {"x"}}},
-                                                  {{"use_mkldnn", {true}}});
+                                                  {{"use_dnnl", {true}}});
 
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();

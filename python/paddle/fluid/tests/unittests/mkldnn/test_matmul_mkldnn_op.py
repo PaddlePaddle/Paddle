@@ -36,10 +36,10 @@ class TestDnnlMatMulOp(OpTest):
         os.environ["DNNL_MAX_CPU_ISA"] = "AVX"
         self.op_type = "matmul"
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.generate_data()
         self.set_attributes()
-        self.attrs['use_mkldnn'] = True
+        self.attrs['use_dnnl'] = True
 
         self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': self.out}
@@ -285,14 +285,14 @@ class TestReshapeTransposeMatMulOp(OpTest):
     def setUp(self):
         self.set_op_type_and_transpose_y_name()
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.transpose_y = True
         self.init_data_type()
         self.generate_data()
 
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             self.transpose_y_name: self.transpose_y,
         }
         if len(self.fused_transpose_X) > 0:
@@ -488,13 +488,13 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
     def setUp(self):
         self.set_op_type()
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.init_data_type()
         self.generate_data()
         self.init_params_and_out()
 
         self.inputs = {'X': self.x, 'Y': self.y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_dnnl': self.use_dnnl}
 
         if len(self.reshape_out) > 0:
             self.attrs['fused_reshape_Out'] = self.reshape_out

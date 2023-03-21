@@ -77,7 +77,7 @@ class TestFCOp(OpTest):
             activation_type = "relu"
         else:
             activation_type = ""
-        self.attrs = {'use_mkldnn': False, 'activation_type': activation_type}
+        self.attrs = {'use_dnnl': False, 'activation_type': activation_type}
 
         self.outputs = {
             'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)

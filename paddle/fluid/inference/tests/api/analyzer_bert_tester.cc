@@ -20,13 +20,13 @@ namespace inference {
 
 using paddle::PaddleTensor;
 
-void profile(bool use_mkldnn = false, bool use_bfloat16 = false);
+void profile(bool use_dnnl = false, bool use_bfloat16 = false);
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData();
-void CompareNativeAndAnalysisWrapper(bool use_mkldnn = false);
+void CompareNativeAndAnalysisWrapper(bool use_dnnl = false);
 std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
     const std::string &line);
 
-AnalysisConfig SetConfig(bool use_mkldnn = false, bool use_bfloat16 = false);
+AnalysisConfig SetConfig(bool use_dnnl = false, bool use_bfloat16 = false);
 
 template <typename T>
 paddle::PaddleTensor ParseTensor(const std::string &field);
@@ -49,14 +49,14 @@ TEST(Analyzer_bert, profile) {
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, profile_mkldnn) {
-  auto use_mkldnn = true;
-  profile(use_mkldnn);
+  auto use_dnnl = true;
+  profile(use_dnnl);
 }
 
 TEST(Analyzer_bert, profile_mkldnn_bf16) {
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   auto use_bfloat16 = true;
-  profile(use_mkldnn, use_bfloat16);
+  profile(use_dnnl, use_bfloat16);
 }
 #endif
 
@@ -81,8 +81,8 @@ TEST(Analyzer_bert, compare) {
 }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, compare_mkldnn) {
-  auto use_mkldnn = true;
-  CompareNativeAndAnalysisWrapper(use_mkldnn);
+  auto use_dnnl = true;
+  CompareNativeAndAnalysisWrapper(use_dnnl);
 }
 #endif
 
@@ -146,8 +146,8 @@ TEST(Analyzer_bert, transfer_scope_cache) {
           "The size of data cache is not equal to thread number."));
 }
 
-void profile(bool use_mkldnn, bool use_bfloat16) {
-  auto config(SetConfig(use_mkldnn, use_bfloat16));
+void profile(bool use_dnnl, bool use_bfloat16) {
+  auto config(SetConfig(use_dnnl, use_bfloat16));
   std::vector<std::vector<PaddleTensor>> outputs;
   auto inputs = LoadInputData();
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
@@ -179,8 +179,8 @@ std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
   return inputs;
 }
 
-void CompareNativeAndAnalysisWrapper(bool use_mkldnn) {
-  auto cfg(SetConfig(use_mkldnn));
+void CompareNativeAndAnalysisWrapper(bool use_dnnl) {
+  auto cfg(SetConfig(use_dnnl));
   auto inputs = LoadInputData();
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
@@ -211,12 +211,12 @@ std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
   return tensors;
 }
 
-AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
+AnalysisConfig SetConfig(bool use_dnnl, bool use_bfloat16) {
   AnalysisConfig config;
   config.SetModel(FLAGS_infer_model);
   config.DisableFCPadding();
 
-  if (use_mkldnn) {
+  if (use_dnnl) {
     config.EnableMKLDNN();
   }
 

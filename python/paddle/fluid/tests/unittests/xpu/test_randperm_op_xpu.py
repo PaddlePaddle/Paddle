@@ -76,7 +76,7 @@ class XPUTestRandpermOp(XPUOpTestWrapper):
             self.initTestCase()
             self.dtype = self.in_type
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.inputs = {}
             self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
             self.attrs = {
@@ -86,7 +86,7 @@ class XPUTestRandpermOp(XPUOpTestWrapper):
 
         def init_op_type(self):
             self.op_type = "randperm"
-            self.use_mkldnn = False
+            self.use_dnnl = False
 
         def initTestCase(self):
             self.n = 200

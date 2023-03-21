@@ -34,7 +34,7 @@ class XPUOpTest(OpTest):
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
         cls.use_xpu = True
-        cls.use_mkldnn = False
+        cls.use_dnnl = False
         cls.epsilon_xpu2xpu = 0.00000001
         super().setUpClass()
 
@@ -253,8 +253,8 @@ class XPUOpTest(OpTest):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
-            op_attrs["use_mkldnn"] = False
+        if "use_dnnl" in op_attrs and op_attrs["use_dnnl"]:
+            op_attrs["use_dnnl"] = False
             use_onednn = True
 
         mean_grad_op_types = get_xpu_op_support_types('mean')
@@ -272,7 +272,7 @@ class XPUOpTest(OpTest):
         )
 
         if use_onednn:
-            op_attrs["use_mkldnn"] = True
+            op_attrs["use_dnnl"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

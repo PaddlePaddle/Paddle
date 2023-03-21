@@ -264,7 +264,7 @@ class TestPool2D_Op(OpTest):
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': False,
-            'use_mkldnn': False,
+            'use_dnnl': False,
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
             'exclusive': self.exclusive,

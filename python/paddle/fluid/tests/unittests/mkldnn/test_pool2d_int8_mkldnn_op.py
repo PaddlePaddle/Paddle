@@ -26,7 +26,7 @@ from paddle.fluid.tests.unittests.test_pool2d_op import (
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def init_data_type(self):
         self.dtype = np.int8

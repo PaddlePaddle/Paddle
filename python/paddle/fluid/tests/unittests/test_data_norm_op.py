@@ -66,7 +66,7 @@ class TestDataNormOpInference(unittest.TestCase):
         init members of this class
         """
         self.dtype = np.float32
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(
@@ -157,7 +157,7 @@ class TestDataNormOpInference(unittest.TestCase):
                 Scales="scales",
                 # attrs
                 epsilon=epsilon,
-                use_mkldnn=self.use_mkldnn,
+                use_dnnl=self.use_dnnl,
                 slot_dim=slot_dim,
                 enable_scale_and_shift=False,
             )
@@ -185,7 +185,7 @@ class TestDataNormOpInference(unittest.TestCase):
                 Scales="scales",
                 # attrs
                 epsilon=epsilon,
-                use_mkldnn=self.use_mkldnn,
+                use_dnnl=self.use_dnnl,
                 slot_dim=slot_dim,
                 enable_scale_and_shift=True,
             )
@@ -237,7 +237,7 @@ class TestDataNormOp(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         epsilon = 0.00001
         x_shape = [10, 12]
         scale_shape = [12]
@@ -262,7 +262,7 @@ class TestDataNormOp(OpTest):
             "BatchSquareSum": batch_square_sum,
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
+        self.attrs = {"epsilon": epsilon, "use_dnnl": self.use_dnnl}
 
     def test_check_output(self):
         """
@@ -290,7 +290,7 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         epsilon = 0.00001
         slot_dim = -1
         enable_scale_and_shift = True
@@ -323,7 +323,7 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "slot_dim": slot_dim,
             "enable_scale_and_shift": True,
         }
@@ -354,7 +354,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         epsilon = 0.00001
         slot_dim = -1
         enable_scale_and_shift = True
@@ -385,7 +385,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
             "bias": bias,
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
+        self.attrs = {"epsilon": epsilon, "use_dnnl": self.use_dnnl}
 
     def test_check_output(self):
         """
@@ -413,7 +413,7 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         epsilon = 0.00001
         slot_dim = 1
         enable_scale_and_shift = True
@@ -446,7 +446,7 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "slot_dim": slot_dim,
             "enable_scale_and_shift": True,
         }
@@ -477,7 +477,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         epsilon = 0.00001
         slot_dim = 1
         x_shape = [2, 50]
@@ -505,7 +505,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "slot_dim": slot_dim,
         }
 

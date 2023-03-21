@@ -131,7 +131,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
         conv_bias_shape = []
         inputs = {}
         weights = {}
-        use_mkldnn = None
+        use_dnnl = None
         conv_type = 'conv2d'
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
@@ -146,7 +146,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
                 'bias': TensorConfig(shape=bias_shape),
                 'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
-            use_mkldnn = True
+            use_dnnl = True
         else:
             inputs = {
                 'Input': ['input_x'],
@@ -156,7 +156,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
                 'filter': TensorConfig(shape=f_shape),
                 'bias': TensorConfig(shape=bias_shape),
             }
-            use_mkldnn = False
+            use_dnnl = False
 
         conv2d_op = OpConfig(
             conv_type,
@@ -168,7 +168,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=use_mkldnn,
+            use_dnnl=use_dnnl,
         )
 
         add_op = OpConfig(

@@ -125,7 +125,7 @@ def _conv_nd(
     channel_dim=1,
     op_type="conv2d",
     use_cudnn=True,
-    use_mkldnn=False,
+    use_dnnl=False,
     name=None,
 ):
 
@@ -209,8 +209,8 @@ def _conv_nd(
             groups,
             'use_cudnn',
             use_cudnn,
-            'use_mkldnn',
-            use_mkldnn,
+            'use_dnnl',
+            use_dnnl,
             'fuse_relu_before_depthwise_conv',
             False,
             "padding_algorithm",
@@ -231,7 +231,7 @@ def _conv_nd(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn,
+            'use_dnnl': use_dnnl,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -255,7 +255,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1, 'use_dnnl': use_dnnl},
                 )
             else:
                 assert len(x_shape) > len(
@@ -270,7 +270,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1, 'use_dnnl': use_dnnl},
                 )
         else:
             out = pre_bias
@@ -512,7 +512,7 @@ def conv1d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
+            'use_dnnl': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": conv2d_data_format,
@@ -753,7 +753,7 @@ def conv2d(
             else:
                 return pre_bias
 
-    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
+    use_dnnl = _global_flags()["FLAGS_use_mkldnn"]
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
     if is_compiled_with_npu():
@@ -783,7 +783,7 @@ def conv2d(
         channel_dim,
         l_type,
         use_cudnn,
-        use_mkldnn,
+        use_dnnl,
         name,
     )
 
@@ -1362,7 +1362,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1, 'use_dnnl': False},
                 )
             else:
                 assert len(x_shape) > len(
@@ -1376,7 +1376,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1, 'use_dnnl': False},
                 )
         else:
             out = pre_bias

@@ -84,7 +84,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
                                       {{"pooling_type", {std::string("max")}},
                                        {"ksize", {ksize}},
                                        {"data_format", {std::string("NHWC")}},
-                                       {"use_mkldnn", {true}}});
+                                       {"use_dnnl", {true}}});
 
   auto axis = std::vector<int>(4, 0);
   axis[1] = 2;
@@ -94,7 +94,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
       transpose_type,
       {{"X", {"y"}}},
       {{"Out", {"z"}}},
-      {{"axis", {axis}}, {"use_mkldnn", {true}}});
+      {{"axis", {axis}}, {"use_dnnl", {true}}});
 
   op_pool->Run(scope, p);
   op_transpose->Run(scope, p);
@@ -147,7 +147,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
                                       {{"pooling_type", {std::string("max")}},
                                        {"ksize", {ksize}},
                                        {"data_format", {std::string("NHWC")}},
-                                       {"use_mkldnn", {true}}});
+                                       {"use_dnnl", {true}}});
 
   auto axis = std::vector<int>(4, 0);
   axis[1] = 2;
@@ -157,10 +157,10 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
       "relu",
       {{"X", {"y"}}},
       {{"Out", {"u"}}},
-      {{"axis", {axis}}, {"use_mkldnn", {false}}});
+      {{"axis", {axis}}, {"use_dnnl", {false}}});
 
   auto op_relu2 = framework::OpRegistry::CreateOp(
-      "relu", {{"X", {"u"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {true}}});
+      "relu", {{"X", {"u"}}}, {{"Out", {"z"}}}, {{"use_dnnl", {true}}});
 
   op_pool->Run(scope, p);
   op_relu1->Run(scope, p);
@@ -209,10 +209,10 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
                                       {{"pooling_type", {std::string("max")}},
                                        {"ksize", {ksize}},
                                        {"data_format", {std::string("NHWC")}},
-                                       {"use_mkldnn", {true}}});
+                                       {"use_dnnl", {true}}});
 
   auto op_shape = framework::OpRegistry::CreateOp(
-      "shape", {{"Input", {"y"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {true}}});
+      "shape", {{"Input", {"y"}}}, {{"Out", {"z"}}}, {{"use_dnnl", {true}}});
 
   op_pool->Run(scope, p);
   op_shape->Run(scope, p);
@@ -278,7 +278,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
                                       {{"pooling_type", {std::string("max")}},
                                        {"ksize", {ksize}},
                                        {"data_format", {std::string("NHWC")}},
-                                       {"use_mkldnn", {true}}});
+                                       {"use_dnnl", {true}}});
 
   std::vector<int> offsets{0, 0, 0, 0};
   auto op_crop = framework::OpRegistry::CreateOp("crop",

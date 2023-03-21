@@ -209,7 +209,7 @@ void SetOp(ProgramDesc* prog,
            const std::unordered_map<std::string, std::string>& attrs = {}) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", true);
+  op->SetAttr("use_dnnl", true);
   op->SetAttr("name", name);
   if (!attrs.empty())
     for (auto& attr : attrs) op->SetAttr(attr.first, attr.second);

@@ -44,7 +44,7 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
             self.op_type = "flatten_contiguous_range"
             self.place = paddle.XPUPlace(0)
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_dnnl = False
 
             self.start_axis = 0
             self.stop_axis = -1

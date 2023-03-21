@@ -35,10 +35,10 @@ void SetConfig(AnalysisConfig* config, const std::string& infer_model) {
 }
 
 std::unique_ptr<PaddlePredictor> InitializePredictor(
-    const std::string& infer_model, std::vector<float>& data, bool use_mkldnn) {
+    const std::string& infer_model, std::vector<float>& data, bool use_dnnl) {
   AnalysisConfig cfg;
   SetConfig(&cfg, infer_model);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
   }
 
@@ -53,7 +53,7 @@ std::unique_ptr<PaddlePredictor> InitializePredictor(
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   // Create Input to models
   std::vector<float> data(N * C * H * W);
   std::default_random_engine re{1234};
@@ -63,9 +63,9 @@ void compare(bool use_mkldnn = false) {
   }
 
   // Initialize Models predictors
-  auto predictor_1 = InitializePredictor(FLAGS_infer_model, data, use_mkldnn);
-  auto predictor_xx = InitializePredictor(FLAGS_infer_model2, data, use_mkldnn);
-  auto predictor_3 = InitializePredictor(FLAGS_infer_model3, data, use_mkldnn);
+  auto predictor_1 = InitializePredictor(FLAGS_infer_model, data, use_dnnl);
+  auto predictor_xx = InitializePredictor(FLAGS_infer_model2, data, use_dnnl);
+  auto predictor_3 = InitializePredictor(FLAGS_infer_model3, data, use_dnnl);
 
   // Run single xx model
   predictor_xx->ZeroCopyRun();
@@ -79,7 +79,7 @@ void compare(bool use_mkldnn = false) {
 
   // Initialize xx model's predictor to trigger oneDNN cache clearing
   predictor_xx =
-      std::move(InitializePredictor(FLAGS_infer_model2, data, use_mkldnn));
+      std::move(InitializePredictor(FLAGS_infer_model2, data, use_dnnl));
 
   // Run sequence of models
   predictor_1->ZeroCopyRun();
@@ -108,7 +108,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_mmp, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_mmp, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_mmp, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 }  // namespace inference

@@ -215,7 +215,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = "conv3d"
             self.use_cudnn = False
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.data_format = "AnyLayout"
             self.init_kernel_type()
             self.init_group()
@@ -248,7 +248,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
                 'data_format': self.data_format,
             }
             self.outputs = {'Output': output}
@@ -383,7 +383,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = "conv3d"
             self.use_cudnn = False
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.data_format = "NCDHW"
             self.init_kernel_type()
             self.init_group()
@@ -423,7 +423,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
                 'data_format': self.data_format,
             }
             self.outputs = {'Output': output}

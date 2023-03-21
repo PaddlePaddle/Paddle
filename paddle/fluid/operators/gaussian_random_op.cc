@@ -110,7 +110,7 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 5(FP32)) "
                  "Output data type.")
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddComment(R"DOC(

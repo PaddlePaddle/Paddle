@@ -50,7 +50,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.weights_dtype = 'fp32'
@@ -145,7 +145,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
 

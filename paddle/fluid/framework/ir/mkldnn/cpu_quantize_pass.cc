@@ -590,8 +590,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       return;
     }
 
-    if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
-      MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
+    if (!fc->Op()->GetAttrIfExists<bool>("use_dnnl")) {
+      MarkAndLogCannotQuantizeOp(fc, "use_dnnl attribute set to false");
       return;
     }
 

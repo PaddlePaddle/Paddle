@@ -382,9 +382,9 @@ void CreateAllOps(const framework::BlockDesc& block,
 
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) {
-      if (op->HasAttr("use_mkldnn")) {
-        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
-        op_base->SetAttr("use_mkldnn", true);
+      if (op->HasAttr("use_dnnl")) {
+        VLOG(4) << "Set use_dnnl=True for " << op_base->Type();
+        op_base->SetAttr("use_dnnl", true);
       }
     }
 #endif

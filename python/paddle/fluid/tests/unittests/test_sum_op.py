@@ -34,7 +34,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.op import Operator
 
 
-def sum_wrapper(X, use_mkldnn=False):
+def sum_wrapper(X, use_dnnl=False):
     res = 0
     for x in X:
         res += x
@@ -46,7 +46,7 @@ class TestSumOp(OpTest):
         self.op_type = "sum"
         self.python_api = sum_wrapper
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.init_kernel_type()
         x0 = np.random.random((3, 40)).astype(self.dtype)
         x1 = np.random.random((3, 40)).astype(self.dtype)
@@ -54,7 +54,7 @@ class TestSumOp(OpTest):
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_dnnl': self.use_dnnl}
 
     def init_kernel_type(self):
         self.dtype = np.float64

@@ -29,14 +29,14 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn = false,
+           bool use_dnnl = false,
            ISTEST_STATE is_test = ISTEST_STATE::UNSET) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("name", name);
   op->SetInput("X", inputs);
   op->SetOutput("Out", outputs);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_dnnl", use_dnnl);
   if (is_test == ISTEST_STATE::UNSET)
     op->MutableAttrMap()->erase("is_test");
   else if (is_test == ISTEST_STATE::FALSE)

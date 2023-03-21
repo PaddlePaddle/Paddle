@@ -351,7 +351,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
             'std': std,
             'seed': seed,
             'dtype': dtype,
-            'use_mkldnn': False,
+            'use_dnnl': False,
         }
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type=op_type_for_check

@@ -68,8 +68,8 @@ void MainTest() {
   for (const auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "shuffle_channel") {
       const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("use_dnnl"));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_dnnl")));
     }
   }
 }

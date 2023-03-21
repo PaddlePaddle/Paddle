@@ -102,7 +102,7 @@ class TestBatchNormOpInference(unittest.TestCase):
                 "epsilon": epsilon,
                 "is_test": True,
                 "data_layout": data_layout,
-                "use_mkldnn": False,
+                "use_dnnl": False,
                 "fuse_with_relu": False,
             }
             outputs = {
@@ -155,7 +155,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.set_npu()
         self.init_dtype()
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
         self.momentum = 0.9
@@ -325,7 +325,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": self.use_mkldnn,
+                    "use_dnnl": self.use_dnnl,
                     "fuse_with_relu": self.fuse_with_relu,
                     "use_global_stats": self.use_global_stats,
                 }

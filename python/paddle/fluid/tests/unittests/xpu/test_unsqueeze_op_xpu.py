@@ -40,7 +40,7 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "unsqueeze"
             self.__class__.op_type = "unsqueeze"
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.init_test_case()
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype)

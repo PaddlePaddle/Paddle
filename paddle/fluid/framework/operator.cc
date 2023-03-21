@@ -1510,7 +1510,7 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          phi::DataType data_type) const {
-  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+  return ctx.HasAttr("use_dnnl") && ctx.Attr<bool>("use_dnnl") &&
          platform::is_cpu_place(ctx.GetPlace()) &&
          this->SupportsMKLDNN(data_type);
 }
@@ -2020,8 +2020,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
     // use attr here because some GradMakers (like ActivationGradOpMaker) add
-    // input when use_mkldnn=true;
-    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
+    // input when use_dnnl=true;
+    if (!(HasAttr("use_dnnl") && Attr<bool>("use_dnnl"))) {
       CheckUnusedVar(*this, scope);
     }
   }

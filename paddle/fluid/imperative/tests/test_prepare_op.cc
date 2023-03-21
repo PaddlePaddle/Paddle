@@ -251,7 +251,7 @@ TEST(test_prepare_op, test_complex_eager) {
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
-  TestPrepareDataSamePlace({{"use_mkldnn", true}});
+  TestPrepareDataSamePlace({{"use_dnnl", true}});
 }
 #endif
 }  // namespace imperative

@@ -63,7 +63,7 @@ class TestPReluModeChannelOneDNNOp(OpTest):
         self.x = np.random.random((2, 4, 5, 5)).astype("float32") + 1
         self.init_attrs()
         self.set_inputs()
-        self.attrs = {'mode': self.mode, 'use_mkldnn': True}
+        self.attrs = {'mode': self.mode, 'use_dnnl': True}
         self.set_dtype_attr()
 
         self.outputs = {'Out': ref_prelu(self.x, self.alpha, self.mode)}

@@ -23,7 +23,7 @@ from paddle.fluid import core
 
 class ElementwiseMulOp(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def setUp(self):
         self.op_type = "elementwise_mul"
@@ -43,18 +43,18 @@ class ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(not self.use_mkldnn))
+        self.check_output(check_dygraph=(not self.use_dnnl))
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
             check_prim=True,
         )
 
@@ -64,7 +64,7 @@ class ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
             check_prim=True,
         )
 
@@ -74,7 +74,7 @@ class ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
             check_prim=True,
         )
 
@@ -146,7 +146,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ),
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.attrs = {'axis': self.axis, 'use_dnnl': False}
         self.if_enable_cinn()
 
     def test_check_output(self):
@@ -198,7 +198,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 class ElementwiseMulOp_broadcast(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def setUp(self):
         self.op_type = "elementwise_mul"
@@ -252,7 +252,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -264,7 +264,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.check_prim = self.axis == -1
 
     def if_check_dygraph(self):
-        self.check_dygraph = (not self.use_mkldnn) and (self.axis == -1)
+        self.check_dygraph = (not self.use_dnnl) and (self.axis == -1)
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
@@ -277,7 +277,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
 
     def init_axis(self):
         self.axis = 0
@@ -417,7 +417,7 @@ class TestComplexElementwiseMulOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_dnnl': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

@@ -31,7 +31,7 @@ class TestFlattenOneDNNOp(OpTest):
         self.set_op_type()
         self.init_test_case()
         self.set_inputs()
-        self.attrs = {"axis": self.axis, 'use_mkldnn': True}
+        self.attrs = {"axis": self.axis, 'use_dnnl': True}
         self.ori_shape = self.inputs['X'].shape
         self.outputs = {"Out": self.inputs["X"].copy().reshape(self.new_shape)}
 

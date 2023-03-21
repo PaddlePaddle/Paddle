@@ -45,7 +45,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         self.init_data()
         self.inputs = {'X': self.x}
         self.attrs = {
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'num': self.num,
             'mkldnn_data_type': "bfloat16",
         }

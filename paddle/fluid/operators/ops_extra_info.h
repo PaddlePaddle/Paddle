@@ -33,7 +33,7 @@ enum class ExtraAttrProperty : uint8_t {
   // The attributes that are no longer used by any scene
   DEPRECATED = 0,
   // The attributes used for framework execution scheduling,
-  // such as `use_mkldnn`, `use_cudnn`, no need to save
+  // such as `use_dnnl`, `use_cudnn`, no need to save
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
@@ -86,7 +86,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_quantizer", ExtraAttrProperty::DEPRECATED},
         // SCHEDULE attributes
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
-        {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
+        {"use_dnnl", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},

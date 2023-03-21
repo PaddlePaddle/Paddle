@@ -294,7 +294,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 'epsilon': self.epsilon,
                 'is_test': False,
                 'data_layout': self.data_layout,
-                'use_mkldnn': False,
+                'use_dnnl': False,
                 'fuse_with_relu': False,
                 'use_global_stats': False,
             }

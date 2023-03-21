@@ -28,7 +28,7 @@ class TestShuffleChannelOneDNNOp(OpTest):
         self.set_dtype()
         self.set_group()
         self.inputs = {'X': np.random.random((5, 64, 2, 3)).astype(self.dtype)}
-        self.attrs = {'use_mkldnn': True, 'group': self.group}
+        self.attrs = {'use_dnnl': True, 'group': self.group}
 
         _, c, h, w = self.inputs['X'].shape
         input_reshaped = np.reshape(

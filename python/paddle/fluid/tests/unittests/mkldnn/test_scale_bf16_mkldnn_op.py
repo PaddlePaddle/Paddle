@@ -35,8 +35,8 @@ class TestScaleOpBF16(OpTest):
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.scale = -2.3
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'scale': self.scale, 'use_mkldnn': True, 'bias': 0.4}
-        self.use_mkldnn = True
+        self.attrs = {'scale': self.scale, 'use_dnnl': True, 'bias': 0.4}
+        self.use_dnnl = True
         self.outputs = {
             'Out': (self.x_fp32 * self.attrs['scale']) + self.attrs['bias']
         }
@@ -77,11 +77,11 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
         self.inputs = {'X': self.x_bf16}
         self.attrs = {
             'scale': self.scale,
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'bias': 0.0,
             'bias_after_scale': False,
         }
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.outputs = {
             'Out': (self.x_fp32 + self.attrs['bias']) * self.attrs['scale']
         }
@@ -98,7 +98,7 @@ class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
             'X': self.x_bf16,
             'ScaleTensor': convert_float_to_uint16(self.scale_tensor),
         }
-        self.attrs = {'use_mkldnn': True}
+        self.attrs = {'use_dnnl': True}
         self.outputs = {'Out': self.x_fp32 * self.scale}
 
 
@@ -116,7 +116,7 @@ class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
         self.attrs = {
             'bias': -1.1,
             'bias_after_scale': False,
-            'use_mkldnn': True,
+            'use_dnnl': True,
         }
         self.outputs = {'Out': (self.x_fp32 + self.attrs['bias']) * self.scale}
 

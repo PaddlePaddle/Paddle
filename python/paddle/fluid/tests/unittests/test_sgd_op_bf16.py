@@ -37,7 +37,7 @@ class TestSGDOpBF16(OpTest):
     def setUp(self):
         self.op_type = 'sgd'
         self.dtype = np.uint16
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.conf()
         w = np.random.random((self.h, self.w)).astype('float32')
         w_bf16 = convert_float_to_uint16(w)
@@ -48,7 +48,7 @@ class TestSGDOpBF16(OpTest):
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
         self.outputs = {'ParamOut': w - lr * g}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_dnnl': self.use_dnnl}
 
     def conf(self):
         self.h = 102
@@ -154,7 +154,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_dnnl=True,
         )
         sgd_op.run(scope, place)
 
@@ -212,7 +212,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_dnnl=True,
         )
         sgd_op.run(scope, place)
 

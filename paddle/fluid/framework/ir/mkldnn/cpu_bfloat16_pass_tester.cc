@@ -27,11 +27,11 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn,
+           bool use_dnnl,
            const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_dnnl", use_dnnl);
   op->SetAttr("name", name);
 
   if (type == "conv2d") {
@@ -95,137 +95,133 @@ void MainTest(const ProgramDesc& prog,
   EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
 }
 
-ProgramDesc BuildProgramDescConv(bool use_mkldnn) {
+ProgramDesc BuildProgramDescConv(bool use_dnnl) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
-  SetOp(&prog, "conv2d", "Conv1", {"b"}, {"c"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "pool2d", "Pool", {"c"}, {"d"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "transpose2", "Transpose", {"e"}, {"f"}, use_mkldnn, "float32");
+  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_dnnl, "float32");
+  SetOp(&prog, "conv2d", "Conv1", {"b"}, {"c"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "pool2d", "Pool", {"c"}, {"d"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"e"}, {"f"}, use_dnnl, "float32");
 
   return prog;
 }
 
 TEST(CpuBfloat16Pass, convolution) {
-  bool use_mkldnn = true;
+  bool use_dnnl = true;
   int quant_op = 3;
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescConv(use_mkldnn), quant_op, dequant_op, added_nodes);
+  MainTest(BuildProgramDescConv(use_dnnl), quant_op, dequant_op, added_nodes);
 }
 
-ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
+ProgramDesc BuildProgramDescDoubleInput(bool use_dnnl) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
-  SetOp(&prog, "matmul", "Matmul", {"b", "b"}, {"c"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_mkldnn, "float32");
+  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_dnnl, "float32");
+  SetOp(&prog, "matmul", "Matmul", {"b", "b"}, {"c"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_dnnl, "float32");
   SetOp(&prog,
         "elementwise_add",
         "ElemetwiseAdd",
         {"c", "e"},
         {"f"},
-        use_mkldnn,
+        use_dnnl,
         "bfloat16");
-  SetOp(&prog, "reshape2", "Reshape", {"f"}, {"g"}, use_mkldnn, "bfloat16");
+  SetOp(&prog, "reshape2", "Reshape", {"f"}, {"g"}, use_dnnl, "bfloat16");
 
   return prog;
 }
 
 TEST(CpuBfloat16Pass, double_input_ops) {
-  bool use_mkldnn = true;
+  bool use_dnnl = true;
   int quant_op = 4;
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDoubleInput(use_mkldnn),
-           quant_op,
-           dequant_op,
-           added_nodes);
+  MainTest(
+      BuildProgramDescDoubleInput(use_dnnl), quant_op, dequant_op, added_nodes);
 }
 
-ProgramDesc BuildProgramDescDuplicatedInput(bool use_mkldnn) {
+ProgramDesc BuildProgramDescDuplicatedInput(bool use_dnnl) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, use_mkldnn, "float32");
-  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, use_mkldnn, "float32");
-  SetOp(&prog, "concat", "Concat", {"b", "d"}, {"e"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "transpose2", "Transpose", {"f"}, {"g"}, use_mkldnn, "float32");
-  SetOp(&prog, "sum", "Sum", {"e", "g"}, {"h"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "reshape2", "Reshape", {"h"}, {"i"}, use_mkldnn, "bfloat16");
+  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, use_dnnl, "float32");
+  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, use_dnnl, "float32");
+  SetOp(&prog, "concat", "Concat", {"b", "d"}, {"e"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"f"}, {"g"}, use_dnnl, "float32");
+  SetOp(&prog, "sum", "Sum", {"e", "g"}, {"h"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "reshape2", "Reshape", {"h"}, {"i"}, use_dnnl, "bfloat16");
 
   return prog;
 }
 
 TEST(CpuBfloat16Pass, duplicated_input_ops) {
-  bool use_mkldnn = true;
+  bool use_dnnl = true;
   int quant_op = 5;
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDuplicatedInput(use_mkldnn),
+  MainTest(BuildProgramDescDuplicatedInput(use_dnnl),
            quant_op,
            dequant_op,
            added_nodes);
 }
 
-ProgramDesc BuildProgramDescDuplicatedOutput(bool use_mkldnn) {
+ProgramDesc BuildProgramDescDuplicatedOutput(bool use_dnnl) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
-  SetOp(&prog, "split", "Split", {"b"}, {"c", "d"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "transpose2", "Transpose", {"c"}, {"e"}, use_mkldnn, "float32");
-  SetOp(&prog, "reshape2", "Reshape", {"d"}, {"f"}, use_mkldnn, "bfloat16");
+  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_dnnl, "float32");
+  SetOp(&prog, "split", "Split", {"b"}, {"c", "d"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"c"}, {"e"}, use_dnnl, "float32");
+  SetOp(&prog, "reshape2", "Reshape", {"d"}, {"f"}, use_dnnl, "bfloat16");
 
   return prog;
 }
 
 TEST(CpuBfloat16Pass, duplicated_output_ops) {
-  bool use_mkldnn = true;
+  bool use_dnnl = true;
   int quant_op = 2;
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDuplicatedOutput(use_mkldnn),
+  MainTest(BuildProgramDescDuplicatedOutput(use_dnnl),
            quant_op,
            dequant_op,
            added_nodes);
 }
 
-ProgramDesc BuildProgramDescDoubleOutputs(bool use_mkldnn) {
+ProgramDesc BuildProgramDescDoubleOutputs(bool use_dnnl) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(
-      &prog, "layer_norm", "LayerNorm1", {"a"}, {"b"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "dropout", "Dropout1", {"b"}, {"c"}, use_mkldnn, "float32");
-  SetOp(&prog, "transpose2", "Transpose", {"b"}, {"d"}, use_mkldnn, "bfloat16");
-  SetOp(
-      &prog, "layer_norm", "LayerNorm2", {"d"}, {"e"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "reshape2", "Reshape", {"e"}, {"f"}, use_mkldnn, "float32");
-  SetOp(&prog, "dropout", "Dropout2", {"e"}, {"g"}, use_mkldnn, "float32");
+  SetOp(&prog, "layer_norm", "LayerNorm1", {"a"}, {"b"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "dropout", "Dropout1", {"b"}, {"c"}, use_dnnl, "float32");
+  SetOp(&prog, "transpose2", "Transpose", {"b"}, {"d"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "layer_norm", "LayerNorm2", {"d"}, {"e"}, use_dnnl, "bfloat16");
+  SetOp(&prog, "reshape2", "Reshape", {"e"}, {"f"}, use_dnnl, "float32");
+  SetOp(&prog, "dropout", "Dropout2", {"e"}, {"g"}, use_dnnl, "float32");
 
   return prog;
 }
 
 TEST(CpuBfloat16Pass, double_outputs_ops) {
-  bool use_mkldnn = true;
+  bool use_dnnl = true;
   int quant_op = 3;
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDoubleOutputs(use_mkldnn),
+  MainTest(BuildProgramDescDoubleOutputs(use_dnnl),
            quant_op,
            dequant_op,
            added_nodes);

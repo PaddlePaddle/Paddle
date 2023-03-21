@@ -69,7 +69,7 @@ class TestFusionLSTMOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.set_conf()
 
         T = sum(self.lod[0])
@@ -135,7 +135,7 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
 
     def test_check_output(self):

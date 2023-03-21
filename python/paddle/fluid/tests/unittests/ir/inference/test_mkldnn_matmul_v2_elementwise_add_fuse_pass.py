@@ -53,7 +53,7 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
             type='matmul_v2',
             inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
             outputs={'Out': ['matmul_output']},
-            attrs={'use_mkldnn': True},
+            attrs={'use_dnnl': True},
         )
 
         if matmul_as_x:
@@ -65,7 +65,7 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_dnnl': True},
         )
 
         model_net = [matmul_op, elt_add_op]
@@ -86,7 +86,7 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_dnnl=True)
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):

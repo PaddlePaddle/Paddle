@@ -18,14 +18,14 @@ from paddle import _legacy_C_ops
 
 @dygraph_only
 def _append_activation_in_dygraph(
-    input, act=None, use_cudnn=None, use_mkldnn=None
+    input, act=None, use_cudnn=None, use_dnnl=None
 ):
     """Append activation in dygraph mode.
 
         Args:
             input: the input variable.
             act: activation type
-            use_mkldnn: if use mkldnn
+            use_dnnl: if use mkldnn
             use_cudnn: if use cudnn
 
     Return the Variable after append activation
@@ -36,8 +36,8 @@ def _append_activation_in_dygraph(
     attrs = ()
     if use_cudnn:
         attrs = ('use_cudnn', use_cudnn)
-    if use_mkldnn:
-        attrs += ('use_mkldnn', use_mkldnn)
+    if use_dnnl:
+        attrs += ('use_dnnl', use_dnnl)
 
     act_op = getattr(_legacy_C_ops, act)
     return act_op(input, *attrs)

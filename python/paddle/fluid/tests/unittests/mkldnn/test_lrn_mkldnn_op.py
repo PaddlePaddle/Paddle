@@ -20,7 +20,7 @@ from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
 class TestLRNMKLDNNOp(TestLRNOp):
     def get_attrs(self):
         attrs = TestLRNOp.get_attrs(self)
-        attrs['use_mkldnn'] = True
+        attrs['use_dnnl'] = True
         return attrs
 
     def test_check_output(self):

@@ -48,13 +48,13 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             self.python_api = paddle.normal
             self.set_attrs()
             self.inputs = {}
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.attrs = {
                 "shape": [123, 92],
                 "mean": self.mean,
                 "std": self.std,
                 "seed": 10,
-                "use_mkldnn": self.use_mkldnn,
+                "use_dnnl": self.use_dnnl,
             }
             paddle.seed(10)
 
@@ -102,7 +102,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
             }
 
             self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -111,7 +111,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [-1, 92]
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.mean = 1.0
             self.std = 2.0
             self.seed = 10
@@ -127,7 +127,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [-1, -1]
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.mean = 1.0
             self.std = 2.0
             self.seed = 10
@@ -138,7 +138,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [123, -1]
-            self.use_mkldnn = True
+            self.use_dnnl = True
             self.mean = 1.0
             self.std = 2.0
             self.seed = 10
@@ -149,7 +149,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [123, -1]
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.mean = 1.0
             self.std = 2.0
             self.seed = 10
@@ -160,20 +160,20 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             '''Test gaussian_random op with specified value'''
             self.init()
             self.init_data()
-            self.use_mkldnn = False
+            self.use_dnnl = False
 
             self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
             self.attrs = {
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
             }
             self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}
 
         def init_data(self):
             self.shape = [123, 92]
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.mean = 1.0
             self.std = 2.0
             self.seed = 10

@@ -135,7 +135,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
               "consistent with :code:`x`.");
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<std::string>(

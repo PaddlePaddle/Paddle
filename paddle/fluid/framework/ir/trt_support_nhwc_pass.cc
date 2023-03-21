@@ -49,7 +49,7 @@ void DoInsertTransposeOp(ir::Graph *graph,
       desc.SetInput("X", {x_name});
       desc.SetOutput("Out", {out_name});
       desc.SetAttr("axis", axis_attr);
-      desc.SetAttr("use_mkldnn", false);
+      desc.SetAttr("use_dnnl", false);
       desc.SetAttr("data_format", std::string{"AnyLayout"});
       desc.SetAttr("use_quantizer", false);
       desc.SetAttr("mkldnn_data_type", std::string{"float32"});

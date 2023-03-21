@@ -2838,7 +2838,7 @@ PDNode *patterns::QuantizePlacement::operator()(
   auto *op =
       pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<bool>("use_mkldnn");
+    return node->Op()->GetAttrIfExists<bool>("use_dnnl");
   });
   return op;
 }
@@ -2883,7 +2883,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
   auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+    return node->Op()->GetAttrIfExists<bool>("use_dnnl") ||
            node->Op()->Type() == "reshape2";
   });
   op->LinksFrom({op_in});
@@ -2965,7 +2965,7 @@ PDNode *patterns::MKLDNNInPlace::operator()() {
   auto next_output = pattern->NewNode(next_op_out_repr())->AsOutput();
 
   // Check if op is MKL-DNN enabled
-  possible_inplace_op->assert_op_attr("use_mkldnn", true);
+  possible_inplace_op->assert_op_attr("use_dnnl", true);
 
   // linked structure
   possible_inplace_op->LinksTo({output});

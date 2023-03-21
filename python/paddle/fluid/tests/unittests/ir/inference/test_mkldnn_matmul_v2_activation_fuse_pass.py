@@ -81,7 +81,7 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
             attrs={
                 'trans_x': transpose_X,
                 'trans_y': transpose_Y,
-                'use_mkldnn': True,
+                'use_dnnl': True,
             },
         )
 
@@ -144,7 +144,7 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 'matmul_activation_mkldnn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',

@@ -52,7 +52,7 @@ class TestSplitSectionsOneDNNOp(OpTest):
         self.init_data_type()
         self.init_test_case()
         self.inputs = {'X': self.x}
-        self.attrs = {'use_mkldnn': True, 'num': self.num}
+        self.attrs = {'use_dnnl': True, 'num': self.num}
 
         if self.axis is not None:
             self.attrs['axis'] = self.axis

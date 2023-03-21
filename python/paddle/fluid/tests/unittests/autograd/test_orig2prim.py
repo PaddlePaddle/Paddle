@@ -1083,7 +1083,7 @@ class TestBatchnormOrig2Prim(TestElementWiseAddOrig2Prim):
             "epsilon": 1e-5,
             "is_test": False,
             "data_layout": 'NCHW',
-            "use_mkldnn": False,
+            "use_dnnl": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,

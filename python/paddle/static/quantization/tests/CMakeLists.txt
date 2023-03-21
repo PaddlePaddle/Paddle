@@ -5,13 +5,13 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(_inference_analysis_python_api_int8_test target model_dir data_path
-         filename use_mkldnn)
+         filename use_dnnl)
   py_test(
     ${target}
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=${use_mkldnn}
+         FLAGS_use_mkldnn=${use_dnnl}
          ARGS
          --infer_model
          ${model_dir}/model

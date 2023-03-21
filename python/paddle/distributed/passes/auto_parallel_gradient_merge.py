@@ -120,7 +120,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
             outputs={'Out': step_var},
             attrs={
                 'axis': -1,
-                'use_mkldnn': False,
+                'use_dnnl': False,
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )
@@ -206,7 +206,7 @@ def _append_gradient_merge_backward_op(
             outputs={'Out': gradient_merge_var},
             attrs={
                 'axis': -1,
-                'use_mkldnn': False,
+                'use_dnnl': False,
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )

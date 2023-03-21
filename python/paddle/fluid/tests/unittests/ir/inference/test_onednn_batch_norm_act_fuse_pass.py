@@ -78,7 +78,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
                 'momentum': momentum,
                 'trainable_statistics': trainable_statistics,
                 'use_global_stats': use_global_stats,
-                'use_mkldnn': use_mkldnn1,
+                'use_dnnl': use_mkldnn1,
             },
         )
 
@@ -86,7 +86,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
             type='relu',
             inputs={'X': ['norm_output']},
             outputs={'Out': ['relu_output']},
-            attrs={'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn2},
+            attrs={'use_cudnn': use_cudnn, 'use_dnnl': use_mkldnn2},
         )
 
         model_net = [batch_norm_op, relu_op]
@@ -108,7 +108,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_dnnl=True)
         yield config, ['batch_norm'], (1e-5, 1e-5)
 
     def test(self):

@@ -222,7 +222,7 @@ class AutoScanTest(unittest.TestCase):
         self,
         passes: Optional[List[str]] = None,
         use_gpu: bool = False,
-        use_mkldnn: bool = False,
+        use_dnnl: bool = False,
         use_xpu: bool = False,
         ir_optim: Optional[bool] = None,
     ):
@@ -234,7 +234,7 @@ class AutoScanTest(unittest.TestCase):
             config.switch_ir_optim(ir_optim)
         if use_gpu:
             config.enable_use_gpu(100, 0)
-        if use_mkldnn:
+        if use_dnnl:
             config.enable_mkldnn()
         if use_xpu:
             config.enable_xpu()
@@ -334,7 +334,7 @@ class MkldnnAutoScanTest(AutoScanTest):
     def inference_config_str(self, config) -> str:
         dic = {}
         enable_mkldnn = config.mkldnn_enabled()
-        dic['use_mkldnn'] = enable_mkldnn
+        dic['use_dnnl'] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu
         return str(dic)
@@ -571,7 +571,7 @@ class PassAutoScanTest(AutoScanTest):
     def inference_config_str(self, config) -> str:
         dic = {}
         enable_mkldnn = config.mkldnn_enabled()
-        dic['use_mkldnn'] = enable_mkldnn
+        dic['use_dnnl'] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu
         enable_xpu = config.use_xpu()

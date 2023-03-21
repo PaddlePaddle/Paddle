@@ -26,7 +26,7 @@ class TestTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.initInputData()
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self._cpu_only = True
         self.axis = (0, 2, 3, 1)
 
@@ -36,7 +36,7 @@ class TestTransposeOp(OpTest):
 
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
 
         self.outputs = {

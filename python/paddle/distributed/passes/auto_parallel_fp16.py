@@ -65,8 +65,8 @@ def set_op_dtype_to_fp16(op):
         op._set_attr('dtype', __target_dtype__)
 
     if __target_dtype__ == core.VarDesc.VarType.BF16:
-        if op.has_attr('use_mkldnn'):
-            op._set_attr('use_mkldnn', True)
+        if op.has_attr('use_dnnl'):
+            op._set_attr('use_dnnl', True)
         if op.has_attr('mkldnn_data_type'):
             op._set_attr('mkldnn_data_type', 'bfloat16')
 

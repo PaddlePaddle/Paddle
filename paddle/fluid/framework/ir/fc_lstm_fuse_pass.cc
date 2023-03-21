@@ -199,7 +199,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
                           Node* cell,
                           Node* xx,
                           Node* fc_bias,
-                          const bool use_mkldnn) {
+                          const bool use_dnnl) {
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
@@ -239,7 +239,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
     op_desc.SetOutput("XX", {xx->Name()});
     op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
-    op_desc.SetAttr("use_mkldnn", use_mkldnn);
+    op_desc.SetAttr("use_dnnl", use_dnnl);
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
@@ -304,8 +304,8 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
-    const bool use_mkldnn =
-        (mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+    const bool use_dnnl =
+        (mul->Op()->GetAttrIfExists<bool>("use_dnnl") &&
          lstm->Op()->GetAttrIfExists<std::string>("gate_activation") ==
              "sigmoid" &&
          lstm->Op()->GetAttrIfExists<std::string>("cell_activation") ==
@@ -327,7 +327,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
                    Cell,
                    fc_out,
                    fc_bias,
-                   use_mkldnn);
+                   use_dnnl);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, elementwise_add, mul_out, BatchGate, BatchCellPreAct});
@@ -343,7 +343,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
                    Cell,
                    fc_out,
                    nullptr,
-                   use_mkldnn);
+                   use_dnnl);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, BatchGate, BatchCellPreAct});

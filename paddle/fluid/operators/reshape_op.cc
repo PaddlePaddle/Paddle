@@ -303,7 +303,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();

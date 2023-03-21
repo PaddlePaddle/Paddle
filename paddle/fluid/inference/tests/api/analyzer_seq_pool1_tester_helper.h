@@ -158,7 +158,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   }
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
+void SetConfig(AnalysisConfig *cfg, bool use_dnnl = false) {
   cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
@@ -167,7 +167,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   if (FLAGS_zero_copy) {
     cfg->SwitchUseFeedFetchOps(false);
   }
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg->EnableMKLDNN();
   }
   // Enable seqpool_concat_fuse_pass, disabled by default since it takes much

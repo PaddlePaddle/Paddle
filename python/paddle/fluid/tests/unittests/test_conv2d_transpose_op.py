@@ -173,7 +173,7 @@ class TestConv2DTransposeOp(OpTest):
         self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.output_size = None
         self.output_padding = []
         self.data_format = "NCHW"
@@ -194,7 +194,7 @@ class TestConv2DTransposeOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'data_format': self.data_format,
         }
         if self.output_size is not None:
@@ -214,10 +214,10 @@ class TestConv2DTransposeOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+                place, atol=1e-5, check_dygraph=(not self.use_dnnl)
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_dygraph=(not self.use_dnnl))
 
     def test_check_grad_no_input(self):
         if self.need_check_grad:
@@ -771,10 +771,10 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=0.02, check_dygraph=(not self.use_mkldnn)
+                place, atol=0.02, check_dygraph=(not self.use_dnnl)
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_dygraph=(not self.use_dnnl))
 
 
 @unittest.skipIf(

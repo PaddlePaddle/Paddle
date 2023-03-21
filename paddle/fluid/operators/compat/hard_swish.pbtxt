@@ -25,7 +25,7 @@ extra {
     type: INT
   }
   attrs {
-    name: "use_mkldnn"
+    name: "use_dnnl"
     type: BOOLEAN
   }
   attrs {
@@ -53,4 +53,3 @@ extra {
     type: STRING
   }
 }
-

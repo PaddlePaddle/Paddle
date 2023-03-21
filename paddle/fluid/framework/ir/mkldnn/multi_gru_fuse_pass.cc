@@ -187,7 +187,7 @@ MultiGRUFusePass::MultiGRUFusePass() {
       .AddAttr("origin_mode")
       .IsType<bool>()
       .End()
-      .AddAttr("use_mkldnn")
+      .AddAttr("use_dnnl")
       .IsType<bool>()
       .End()
       .AddAttr("mkldnn_data_type")

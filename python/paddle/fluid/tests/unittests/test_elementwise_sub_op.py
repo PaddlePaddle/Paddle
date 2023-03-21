@@ -381,7 +381,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_dnnl': False}
         self.outputs = {'Out': self.out}
         self.if_check_prim()
         self.if_enable_cinn()
@@ -648,7 +648,7 @@ class TestTensorSubAPIWarnings(unittest.TestCase):
                 type="elementwise_sub",
                 inputs={'X': data, 'Y': data},
                 outputs={'Out': out},
-                attrs={'axis': 1, 'use_mkldnn': False},
+                attrs={'axis': 1, 'use_dnnl': False},
             )
             self.assertTrue(
                 "op elementwise_sub's attr axis = 1 is not the default value: -1"

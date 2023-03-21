@@ -56,7 +56,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             },
             outputs={"Out": ["fc_output"]},
             attrs={
-                "use_mkldnn": True,
+                "use_dnnl": True,
                 "padding_weights": False,
                 "in_num_col_dims": 1,
             },
@@ -134,7 +134,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=[
                 "fc_act_mkldnn_fuse_pass",
                 "operator_scale_onednn_fuse_pass",

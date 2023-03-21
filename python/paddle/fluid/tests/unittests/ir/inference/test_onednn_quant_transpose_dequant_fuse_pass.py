@@ -62,10 +62,10 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 'axis': axis,
-                'use_mkldnn': True,
+                'use_dnnl': True,
                 'mkldnn_data_type': 'int8',
             },
-            use_mkldnn=True,
+            use_dnnl=True,
         )
 
         transpose2_op_2 = OpConfig(
@@ -77,10 +77,10 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 'axis': axis,
-                'use_mkldnn': True,
+                'use_dnnl': True,
                 'mkldnn_data_type': 'int8',
             },
-            use_mkldnn=True,
+            use_dnnl=True,
         )
 
         dequantize_op = OpConfig(
@@ -106,7 +106,7 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_dnnl=True,
             passes=['quant_transpose2_dequant_onednn_fuse_pass'],
         )
         yield config, ['fused_transpose', 'fused_transpose'], (1e-5, 1e-5)

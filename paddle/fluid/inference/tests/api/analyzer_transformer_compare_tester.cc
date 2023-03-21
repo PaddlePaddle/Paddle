@@ -19,10 +19,10 @@ namespace inference {
 namespace analysis {
 namespace transformer_tester {
 
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
   }
 
@@ -34,7 +34,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_Transformer, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 }  // namespace transformer_tester

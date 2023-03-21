@@ -32,13 +32,13 @@ class TestNPUGaussianRandomOp(OpTest):
         self.init_dtype()
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
         }
         paddle.seed(10)
 

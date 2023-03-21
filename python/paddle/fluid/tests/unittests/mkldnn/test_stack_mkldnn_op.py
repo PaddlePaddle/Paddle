@@ -56,7 +56,7 @@ class TestStack2DOneDNNOp(OpTest):
 
         self.inputs = {'X': input_list}
         self.outputs = {'Y': np.stack(self.op_inputs, axis=self.axis)}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': True}
+        self.attrs = {'axis': self.axis, 'use_dnnl': True}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())

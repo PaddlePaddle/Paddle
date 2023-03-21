@@ -199,7 +199,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             self.use_cudnn = False
             self.exhaustive_search = False
             self.use_cuda = False
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.fuse_relu_before_depthwise_conv = False
             self.data_format = "AnyLayout"
             self.init_kernel_type()
@@ -244,7 +244,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
                 'data_format': self.data_format,
                 'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
                 'exhaustive_search': self.exhaustive_search,
@@ -353,7 +353,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             self.use_cudnn = False
             self.exhaustive_search = False
             self.use_cuda = False
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.fuse_relu_before_depthwise_conv = False
             self.init_kernel_type()
             self.init_group()
@@ -405,7 +405,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_dnnl': self.use_dnnl,
                 'data_format': self.data_format,
                 'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
                 'exhaustive_search': self.exhaustive_search,

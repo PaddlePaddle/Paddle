@@ -29,7 +29,7 @@ from paddle.fluid.tests.unittests.op_test import (
 class TestMulOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.attrs = {'use_mkldnn': True}
+        self.attrs = {'use_dnnl': True}
         self.init_shapes_and_attrs()
 
         self.x_fp32 = np.random.random(self.x_shape).astype(np.float32)

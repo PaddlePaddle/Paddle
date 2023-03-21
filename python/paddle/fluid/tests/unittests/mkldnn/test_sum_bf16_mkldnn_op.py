@@ -28,7 +28,7 @@ from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 class TestSumBF16MKLDNN(TestSumOp):
     def setUp(self):
         self.op_type = "sum"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "bfloat16"
 
         # float32 input to be use for reference
@@ -45,7 +45,7 @@ class TestSumBF16MKLDNN(TestSumOp):
 
         y = x0 + x1 + x2
         self.outputs = {'Out': convert_float_to_uint16(y)}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_dnnl': self.use_dnnl}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())

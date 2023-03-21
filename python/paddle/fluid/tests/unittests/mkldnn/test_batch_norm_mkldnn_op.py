@@ -31,7 +31,7 @@ _set_use_system_allocator(True)
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_formats = ["NCHW"]
 
     def ref_forward_backward(
@@ -76,7 +76,7 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
 
 class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.data_formats = ["NHWC"]
 
 
@@ -131,7 +131,7 @@ class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
 
     def test_check_output(self):
         place = core.CPUPlace()
@@ -148,7 +148,7 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
 
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.fuse_with_relu = True
 
     def test_check_output(self):

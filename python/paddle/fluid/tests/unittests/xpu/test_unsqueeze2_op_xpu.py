@@ -39,7 +39,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.init_dtype()
             self.init_test_case()
             self.inputs = {
@@ -106,7 +106,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.init_dtype()
             self.init_test_case()
 
@@ -177,7 +177,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
-            self.use_mkldnn = False
+            self.use_dnnl = False
             self.init_test_case()
             self.init_dtype()
 

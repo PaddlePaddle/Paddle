@@ -23,7 +23,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestOneDNNConvBnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
-        use_mkldnn = True
+        use_dnnl = True
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
         groups = draw(st.integers(min_value=1, max_value=3))
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
@@ -78,7 +78,7 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
             groups=groups,
             paddings=paddings,
             strides=strides,
-            use_mkldnn=use_mkldnn,
+            use_dnnl=use_dnnl,
             has_bias=False,
             is_test=True,
         )

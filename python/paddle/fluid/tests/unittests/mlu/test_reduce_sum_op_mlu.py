@@ -55,7 +55,7 @@ class TestMLUReduceSumOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.keep_dim = False
         self.reduce_all = False
 

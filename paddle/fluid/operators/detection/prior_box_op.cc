@@ -142,7 +142,7 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Please note, this order affects the weights order of convolution layer"
         "followed by and does not affect the final detection results.")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<bool>(

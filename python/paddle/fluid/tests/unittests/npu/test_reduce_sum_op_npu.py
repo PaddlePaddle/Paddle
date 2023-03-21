@@ -34,7 +34,7 @@ class TestReduceSum(OpTest):
         self.init_op_type()
         self.initTestCase()
 
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.attrs = {
             'dim': self.axis,
             'keep_dim': self.keep_dim,
@@ -58,7 +58,7 @@ class TestReduceSum(OpTest):
 
     def init_op_type(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.keep_dim = False
         self.reduce_all = False
 

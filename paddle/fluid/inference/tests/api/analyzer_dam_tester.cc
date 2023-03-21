@@ -204,11 +204,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+void profile(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
@@ -249,7 +249,7 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_dam, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_dnnl */); }
 #endif
 
 // Check the fuse status
@@ -265,10 +265,10 @@ TEST(Analyzer_dam, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
@@ -304,7 +304,7 @@ TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
 TEST(Analyzer_dam, compare) { compare(); }
 
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 // Compare Deterministic result

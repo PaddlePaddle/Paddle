@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 class TestElementwiseMulBf16MklDNNOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "bfloat16"
         self.axis = -1
 
@@ -35,7 +35,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def generate_data(self):

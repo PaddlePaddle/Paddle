@@ -29,13 +29,12 @@ class PlacementPassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             paddle::tribool use_mkldnn) {
+             paddle::tribool use_dnnl) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!paddle::indeterminate(use_mkldnn))
-      op->SetAttr("use_mkldnn", use_mkldnn);
+    if (!paddle::indeterminate(use_dnnl)) op->SetAttr("use_dnnl", use_dnnl);
 
     if (type == "conv2d") {
       op->SetAttr("name", name);
@@ -55,7 +54,7 @@ class PlacementPassTest {
     op->SetOutput("Out", {outputs[0]});
   }
 
-  // operator                      use_mkldnn
+  // operator                      use_dnnl
   // ---------------------------------------
   // (a,b)->concat->c              none
   // (c,weights,bias)->conv->f     none
@@ -145,8 +144,8 @@ class PlacementPassTest {
     for (auto* node : graph->Nodes()) {
       if (node->IsOp()) {
         auto* op = node->Op();
-        if (op->HasAttr("use_mkldnn") &&
-            PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
+        if (op->HasAttr("use_dnnl") &&
+            PADDLE_GET_CONST(bool, op->GetAttr("use_dnnl"))) {
           ++use_mkldnn_true_count;
         }
       }

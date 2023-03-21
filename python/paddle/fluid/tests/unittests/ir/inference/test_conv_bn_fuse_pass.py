@@ -60,7 +60,7 @@ class TestConvBnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
         )
-        use_mkldnn = draw(st.booleans())
+        use_dnnl = draw(st.booleans())
         epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
         x_shape = (
@@ -108,7 +108,7 @@ class TestConvBnFusePass(PassAutoScanTest):
             groups=groups,
             paddings=paddings,
             strides=strides,
-            use_mkldnn=use_mkldnn,
+            use_dnnl=use_dnnl,
             has_bias=False,
             is_test=True,
         )
@@ -158,7 +158,7 @@ class TestConvBnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for mkldnn
-        if program_config.ops[0].attrs['use_mkldnn']:
+        if program_config.ops[0].attrs['use_dnnl']:
             config = self.create_inference_config()
             config.enable_mkldnn()
             yield config, ['fused_conv2d'], (1e-5, 1e-5)

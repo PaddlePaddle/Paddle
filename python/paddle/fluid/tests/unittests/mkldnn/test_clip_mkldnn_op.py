@@ -63,7 +63,7 @@ class TestClipOneDNNOp(OpTest):
         pass
 
     def set_attrs(self):
-        self.attrs = {'min': 7.2, 'max': 9.6, 'use_mkldnn': True}
+        self.attrs = {'min': 7.2, 'max': 9.6, 'use_dnnl': True}
 
     def test_check_output(self):
         self.check_output()

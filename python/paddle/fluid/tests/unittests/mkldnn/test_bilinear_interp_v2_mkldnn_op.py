@@ -150,7 +150,7 @@ class TestBilinearInterpOneDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
-            'use_mkldnn': self.use_onednn,
+            'use_dnnl': self.use_onednn,
         }
         self.outputs = {'Out': output_np}
 

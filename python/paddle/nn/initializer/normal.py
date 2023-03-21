@@ -89,7 +89,7 @@ class NormalInitializer(Initializer):
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
-                    "use_mkldnn": False,
+                    "use_dnnl": False,
                 },
                 stop_gradient=True,
             )

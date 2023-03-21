@@ -25,14 +25,14 @@ class TestSumMKLDNN(TestSumOp):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
-        self.use_mkldnn = True
+        self.use_dnnl = True
         x0 = np.random.random((25, 8)).astype(self.dtype)
         x1 = np.random.random((25, 8)).astype(self.dtype)
         x2 = np.random.random((25, 8)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_dnnl': self.use_dnnl}
 
     def init_data_type(self):
         self.dtype = np.float32
@@ -50,7 +50,7 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.x0 = np.random.random((25, 8)).astype(self.dtype)
         self.x1 = np.random.random((25, 8)).astype(self.dtype)
 
@@ -71,7 +71,7 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
                 tensor.set(var_value, place)
 
         sum_op = fluid_op.Operator(
-            "sum", X=["x0", "x1"], Out=out_var_name, use_mkldnn=True
+            "sum", X=["x0", "x1"], Out=out_var_name, use_dnnl=True
         )
         expected_out = np.array(self.x0 + self.x1)
         sum_op.run(scope, place)

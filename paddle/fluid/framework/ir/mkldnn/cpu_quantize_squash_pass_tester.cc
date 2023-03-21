@@ -27,7 +27,7 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn,
+           bool use_dnnl,
            const std::vector<float> scale = {},
            float bias = 0.0,
            const std::string& mkldnn_data_type = "float32",
@@ -36,7 +36,7 @@ void SetOp(ProgramDesc* prog,
            bool is_negative_input = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_dnnl", use_dnnl);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
@@ -116,7 +116,7 @@ void SetOp(ProgramDesc* prog,
 // d->Dequant(scale1)->e
 // e->Quant(scale2)->f
 // (f,w2,b2)->Conv2->i
-ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn,
+ProgramDesc BuildConvRequantProgramDesc(bool use_dnnl,
                                         float scale_out,
                                         float scale_in) {
   ProgramDesc prog;
@@ -133,16 +133,16 @@ ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn,
         "Conv1",
         {"a", "w1", "b1"},
         {"d"},
-        use_mkldnn,
+        use_dnnl,
         {1.23f, scale_out});
-  SetOp(&prog, "dequantize", "Dequant", {"d"}, {"e"}, use_mkldnn, {scale_out});
-  SetOp(&prog, "quantize", "Quant", {"e"}, {"f"}, use_mkldnn, {scale_in});
+  SetOp(&prog, "dequantize", "Dequant", {"d"}, {"e"}, use_dnnl, {scale_out});
+  SetOp(&prog, "quantize", "Quant", {"e"}, {"f"}, use_dnnl, {scale_in});
   SetOp(&prog,
         "conv2d",
         "Conv2",
         {"f", "w2", "b2"},
         {"i"},
-        use_mkldnn,
+        use_dnnl,
         {scale_in, 2.34f});
   return prog;
 }
@@ -169,27 +169,23 @@ static const std::initializer_list<std::string> variable_names{"a",
 // c->Quant1(scale2)->d and d->(scale2)Conv2->e
 // c->Conv3->f
 // c->Quant2(scale3)->g and g->Concat->h
-ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn,
-                                            float scale_out,
-                                            float scale1,
-                                            float scale2,
-                                            float scale3) {
+ProgramDesc BuildConvMultiOutputProgramDesc(
+    bool use_dnnl, float scale_out, float scale1, float scale2, float scale3) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale1});
-  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, {scale1});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_dnnl, {1.23f, scale1});
+  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_dnnl, {scale1});
 
-  SetOp(&prog, "quantize", "Quant1", {"c"}, {"d"}, use_mkldnn, {scale2});
-  SetOp(
-      &prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, {scale2, scale_out});
+  SetOp(&prog, "quantize", "Quant1", {"c"}, {"d"}, use_dnnl, {scale2});
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_dnnl, {scale2, scale_out});
 
-  SetOp(&prog, "conv2d", "Conv3", {"c"}, {"f"}, use_mkldnn);
+  SetOp(&prog, "conv2d", "Conv3", {"c"}, {"f"}, use_dnnl);
 
-  SetOp(&prog, "quantize", "Quant2", {"c"}, {"g"}, use_mkldnn, {scale3});
-  SetOp(&prog, "concat", "Concat", {"g"}, {"h"}, use_mkldnn);
+  SetOp(&prog, "quantize", "Quant2", {"c"}, {"g"}, use_dnnl, {scale3});
+  SetOp(&prog, "concat", "Concat", {"g"}, {"h"}, use_dnnl);
 
   return prog;
 }
@@ -198,7 +194,7 @@ ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn,
 //  d->Fc->e->Requant(scale2)->f
 //  {x,y}->Matmul->g->Requant(scale3)->h
 //  {c,f,h}->Concat
-ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn,
+ProgramDesc BuildOpRequantProgramDesc(bool use_dnnl,
                                       float conv_scale,
                                       float fc_scale,
                                       float matmul_scale,
@@ -210,37 +206,37 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn,
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "conv2d", "Conv", {"a"}, {"b"}, use_mkldnn, {1.23f, conv_scale});
+  SetOp(&prog, "conv2d", "Conv", {"a"}, {"b"}, use_dnnl, {1.23f, conv_scale});
   SetOp(&prog,
         "requantize",
         "Requant1",
         {"b"},
         {"c"},
-        use_mkldnn,
+        use_dnnl,
         {conv_scale, requant_scale1});
-  SetOp(&prog, "fc", "Fc", {"d", "w1"}, {"e"}, use_mkldnn, {1.23f, fc_scale});
+  SetOp(&prog, "fc", "Fc", {"d", "w1"}, {"e"}, use_dnnl, {1.23f, fc_scale});
   SetOp(&prog,
         "requantize",
         "Requant2",
         {"e"},
         {"f"},
-        use_mkldnn,
+        use_dnnl,
         {fc_scale, requant_scale2});
   SetOp(&prog,
         "matmul",
         "Matmul",
         {"x", "y"},
         {"g"},
-        use_mkldnn,
+        use_dnnl,
         {1.23f, matmul_scale});
   SetOp(&prog,
         "requantize",
         "Requant3",
         {"g"},
         {"h"},
-        use_mkldnn,
+        use_dnnl,
         {matmul_scale, requant_scale3});
-  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, {use_dnnl});
 
   return prog;
 }
@@ -250,7 +246,7 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn,
 // c->Quant(scale2)->d
 // d->Conv1->e
 // d->Conv2->f
-ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_mkldnn,
+ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_dnnl,
                                                float scale_out,
                                                float scale1,
                                                float scale2) {
@@ -259,20 +255,18 @@ ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_mkldnn,
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_mkldnn);
-  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, {scale1});
-  SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_mkldnn, {scale2});
-  SetOp(
-      &prog, "conv2d", "Conv1", {"d"}, {"e"}, use_mkldnn, {scale2, scale_out});
-  SetOp(
-      &prog, "conv2d", "Conv2", {"d"}, {"f"}, use_mkldnn, {scale2, scale_out});
+  SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_dnnl);
+  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_dnnl, {scale1});
+  SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_dnnl, {scale2});
+  SetOp(&prog, "conv2d", "Conv1", {"d"}, {"e"}, use_dnnl, {scale2, scale_out});
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"f"}, use_dnnl, {scale2, scale_out});
   return prog;
 }
 
 // a->Conv1->b
 // b->Requant1(Scale1)->c
 // b->Requant2(Scale2)->d
-ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn,
+ProgramDesc BuildConvMultiRequantProgramDesc(bool use_dnnl,
                                              float scale_out,
                                              float scale1,
                                              float scale2) {
@@ -280,20 +274,20 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_dnnl, {1.23f, scale_out});
   SetOp(&prog,
         "requantize",
         "Requant1",
         {"b"},
         {"c"},
-        use_mkldnn,
+        use_dnnl,
         {scale_out, scale1});
   SetOp(&prog,
         "requantize",
         "Requant2",
         {"b"},
         {"d"},
-        use_mkldnn,
+        use_dnnl,
         {scale_out, scale2});
   return prog;
 }
@@ -480,64 +474,64 @@ ProgramDesc BuildS8S8S8ConcatProgramDesc(float scale_out, float scale) {
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // c->Concat
-ProgramDesc BuildConvDequantConcatProgramDesc(bool use_mkldnn,
+ProgramDesc BuildConvDequantConcatProgramDesc(bool use_dnnl,
                                               float scale_out,
                                               float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
-  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
-  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_dnnl, {1.23f, scale_out});
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_dnnl, {scale});
+  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_dnnl);
   return prog;
 }
 
 // a->fc->b
 // b->Dequant1->c
 // c->Concat1->d
-ProgramDesc BuildFcDequantConcatProgramDesc(bool use_mkldnn,
+ProgramDesc BuildFcDequantConcatProgramDesc(bool use_dnnl,
                                             float scale_out,
                                             float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {1.23f, scale_out});
-  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
-  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_dnnl, {1.23f, scale_out});
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_dnnl, {scale});
+  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_dnnl);
   return prog;
 }
 
 // a->fc->b
 // b->Dequant1->c
 // b->fc->d
-ProgramDesc BuildFcDequantFcProgramDesc(bool use_mkldnn,
+ProgramDesc BuildFcDequantFcProgramDesc(bool use_dnnl,
                                         float scale_out,
                                         float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {1.23f, scale_out});
-  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
-  SetOp(&prog, "fc", "Fc2", {"b", "w2"}, {"d"}, use_mkldnn, {scale_out, 2.34f});
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_dnnl, {1.23f, scale_out});
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_dnnl, {scale});
+  SetOp(&prog, "fc", "Fc2", {"b", "w2"}, {"d"}, use_dnnl, {scale_out, 2.34f});
   return prog;
 }
 
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // b->Conv2->d
-ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn,
+ProgramDesc BuildConvDequantConvProgramDesc(bool use_dnnl,
                                             float scale_out,
                                             float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
-  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
-  SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_mkldnn);
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_dnnl, {1.23f, scale_out});
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_dnnl, {scale});
+  SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_dnnl);
   return prog;
 }
 
@@ -545,35 +539,27 @@ ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn,
 // b->Quant1(Scale1)->c->fc->f
 // b->Quant2(Scale2)->d->fc->g
 // b->concat->e
-ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn,
+ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_dnnl,
                                              float first_scale,
                                              float second_scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "concat", "Concat1", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "concat", "Concat1", {"a"}, {"b"}, use_dnnl);
+  SetOp(&prog, "quantize", "Quantize1", {"b"}, {"c"}, use_dnnl, {first_scale});
+  SetOp(&prog, "quantize", "Quantize2", {"b"}, {"d"}, use_dnnl, {second_scale});
+  SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_dnnl);
+  SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_dnnl, {first_scale, 1.23f});
   SetOp(
-      &prog, "quantize", "Quantize1", {"b"}, {"c"}, use_mkldnn, {first_scale});
-  SetOp(
-      &prog, "quantize", "Quantize2", {"b"}, {"d"}, use_mkldnn, {second_scale});
-  SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_mkldnn);
-  SetOp(
-      &prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn, {first_scale, 1.23f});
-  SetOp(&prog,
-        "fc",
-        "Fc2",
-        {"d", "w2"},
-        {"g"},
-        use_mkldnn,
-        {second_scale, 2.34f});
+      &prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_dnnl, {second_scale, 2.34f});
 
   return prog;
 }
 
 // a->Dequant->b
 // b->Scale->c
-ProgramDesc BuildDequantScaleProgramDesc(bool use_mkldnn,
+ProgramDesc BuildDequantScaleProgramDesc(bool use_dnnl,
                                          float dequant_scale,
                                          float scale_scale,
                                          float bias) {
@@ -581,21 +567,16 @@ ProgramDesc BuildDequantScaleProgramDesc(bool use_mkldnn,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog,
-        "dequantize",
-        "Dequant",
-        {"a"},
-        {"b"},
-        use_mkldnn,
-        {dequant_scale});
-  SetOp(&prog, "scale", "Scale", {"b"}, {"c"}, use_mkldnn, {scale_scale}, bias);
+  SetOp(
+      &prog, "dequantize", "Dequant", {"a"}, {"b"}, use_dnnl, {dequant_scale});
+  SetOp(&prog, "scale", "Scale", {"b"}, {"c"}, use_dnnl, {scale_scale}, bias);
 
   return prog;
 }
 
 // a->Scale->b
 // b->Quant->c
-ProgramDesc BuildScaleQuantProgramDesc(bool use_mkldnn,
+ProgramDesc BuildScaleQuantProgramDesc(bool use_dnnl,
                                        float scale_scale,
                                        float quant_scale,
                                        float bias) {
@@ -603,28 +584,22 @@ ProgramDesc BuildScaleQuantProgramDesc(bool use_mkldnn,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "scale", "Scale", {"a"}, {"b"}, use_mkldnn, {scale_scale}, bias);
-  SetOp(&prog, "quantize", "Quant", {"b"}, {"c"}, use_mkldnn, {quant_scale});
+  SetOp(&prog, "scale", "Scale", {"a"}, {"b"}, use_dnnl, {scale_scale}, bias);
+  SetOp(&prog, "quantize", "Quant", {"b"}, {"c"}, use_dnnl, {quant_scale});
 
   return prog;
 }
 
 // {x,y}->Matmul->b
 // b->Dequant->c
-ProgramDesc BuildMatmulDequantProgramDesc(bool use_mkldnn,
-                                          float dequant_scale) {
+ProgramDesc BuildMatmulDequantProgramDesc(bool use_dnnl, float dequant_scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "matmul", "Matmul", {"x", "y"}, {"b"}, use_mkldnn);
-  SetOp(&prog,
-        "dequantize",
-        "Dequant",
-        {"b"},
-        {"c"},
-        use_mkldnn,
-        {dequant_scale});
+  SetOp(&prog, "matmul", "Matmul", {"x", "y"}, {"b"}, use_dnnl);
+  SetOp(
+      &prog, "dequantize", "Dequant", {"b"}, {"c"}, use_dnnl, {dequant_scale});
 
   return prog;
 }
@@ -633,7 +608,7 @@ ProgramDesc BuildMatmulDequantProgramDesc(bool use_mkldnn,
 // c->Requant2->d->Fc->e
 // f->Requant3->g->Conv->h
 // {b,e,h}->Concat->i
-ProgramDesc BuildRequantOpProgramDesc(bool use_mkldnn,
+ProgramDesc BuildRequantOpProgramDesc(bool use_dnnl,
                                       float requant_scale_in,
                                       float op_scale_in,
                                       float op_scale_out) {
@@ -646,64 +621,64 @@ ProgramDesc BuildRequantOpProgramDesc(bool use_mkldnn,
         "Requant1",
         {"a"},
         {"x"},
-        use_mkldnn,
+        use_dnnl,
         {requant_scale_in, op_scale_in});
   SetOp(&prog,
         "matmul",
         "Matmul",
         {"x", "y"},
         {"b"},
-        use_mkldnn,
+        use_dnnl,
         {op_scale_in, op_scale_out});
   SetOp(&prog,
         "requantize",
         "Requant2",
         {"c"},
         {"d"},
-        use_mkldnn,
+        use_dnnl,
         {requant_scale_in, op_scale_in});
   SetOp(&prog,
         "fc",
         "Fc",
         {"d", "w1"},
         {"e"},
-        use_mkldnn,
+        use_dnnl,
         {op_scale_in, op_scale_out});
   SetOp(&prog,
         "requantize",
         "Requant3",
         {"f"},
         {"g"},
-        use_mkldnn,
+        use_dnnl,
         {requant_scale_in, op_scale_in});
   SetOp(&prog,
         "conv2d",
         "Conv",
         {"g"},
         {"h"},
-        use_mkldnn,
+        use_dnnl,
         {op_scale_in, op_scale_out});
-  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, {use_dnnl});
 
   return prog;
 }
 
 // a->Quant->b
 // b->Conv2d->c
-ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_mkldnn,
+ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_dnnl,
                                         const float& quant_scale,
                                         const std::string& mkldnn_data_type) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "quantize", "Quant", {"a"}, {"b"}, use_mkldnn, {quant_scale});
+  SetOp(&prog, "quantize", "Quant", {"a"}, {"b"}, use_dnnl, {quant_scale});
   SetOp(&prog,
         "conv2d",
         "Conv2d",
         {"b", "filter"},
         {"c"},
-        use_mkldnn,
+        use_dnnl,
         {},
         0.0f,
         mkldnn_data_type);
@@ -836,11 +811,11 @@ void IsForceFp32OutputTest(const ProgramDesc& prog,
 TEST(CpuQuantizeSquashPass, equal_scales) {
   auto scale_out = 1.234f;
   auto scale = 2.345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // Remove 4 nodes: Dequant, Quant, e, f
   auto remove_nodes = 4;
 
-  CountNodeTest(BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale),
+  CountNodeTest(BuildConvRequantProgramDesc(use_dnnl, scale_out, scale),
                 remove_nodes);
 }
 
@@ -850,14 +825,14 @@ TEST(CpuQuantizeSquashPass, equal_scales) {
 TEST(CpuQuantizeSquashPass, unequal_scales) {
   auto scale_out = 1.230f;
   auto scale_in = 2.34f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // Remove 4 nodes: Dequant, Quant, e, d
   auto remove_nodes = 4;
 
-  CountNodeTest(BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale_in),
+  CountNodeTest(BuildConvRequantProgramDesc(use_dnnl, scale_out, scale_in),
                 remove_nodes);
 
-  EqualScaleTest(BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale_in),
+  EqualScaleTest(BuildConvRequantProgramDesc(use_dnnl, scale_out, scale_in),
                  "Conv1",
                  "Scale_out",
                  scale_in);
@@ -875,10 +850,10 @@ TEST(CpuQuantizeSquashPass, op_requantize_squash) {
   auto requant_scale1 = 2.234f;
   auto requant_scale2 = 3.234f;
   auto requant_scale3 = 4.234f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // Remove 4 nodes: b, Requant1, e, Requant2, g, Requant3
   auto remove_nodes = 6;
-  auto program_desc = BuildOpRequantProgramDesc(use_mkldnn,
+  auto program_desc = BuildOpRequantProgramDesc(use_dnnl,
                                                 conv_scale,
                                                 fc_scale,
                                                 matmul_scale,
@@ -905,16 +880,16 @@ TEST(CpuQuantizeSquashPass, branch_to_equal_unequal_and_fp32) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
   auto scale2 = 21.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // Remove 3 nodes: Quant1, c, Quant2,
   // Insert 1 node: Requant
   auto remove_nodes = 2;
 
   CountNodeTest(BuildConvMultiOutputProgramDesc(
-                    use_mkldnn, scale_out, scale, scale, scale2),
+                    use_dnnl, scale_out, scale, scale, scale2),
                 remove_nodes);
   CheckRequantScalesTest(BuildConvMultiOutputProgramDesc(
-                             use_mkldnn, scale_out, scale, scale, scale2),
+                             use_dnnl, scale_out, scale, scale, scale2),
                          scale,
                          scale2);
 }
@@ -926,16 +901,16 @@ TEST(CpuQuantizeSquashPass,
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
   auto scale2 = 21.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // Remove 3 nodes: Dequant1, c, Quant
   // Insert 1 node: Requant
   auto remove_nodes = 2;
 
   CountNodeTest(
-      BuildConcatDequantQuantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      BuildConcatDequantQuantProgramDesc(use_dnnl, scale_out, scale, scale2),
       remove_nodes);
   CheckRequantScalesTest(
-      BuildConcatDequantQuantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      BuildConcatDequantQuantProgramDesc(use_dnnl, scale_out, scale, scale2),
       scale,
       scale2);
 }
@@ -947,11 +922,11 @@ TEST(CpuQuantizeSquashPass, more_than_one_conv_out_outputs) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
   auto scale2 = 21.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // nothing change
   auto remove_nodes = 0;
   CountNodeTest(
-      BuildConvMultiRequantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      BuildConvMultiRequantProgramDesc(use_dnnl, scale_out, scale, scale2),
       remove_nodes);
 }
 
@@ -959,13 +934,13 @@ TEST(CpuQuantizeSquashPass, more_than_one_conv_out_outputs) {
 TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove 2 nodes: Dequant1, c
   auto remove_nodes = 2;
-  CountNodeTest(BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+  CountNodeTest(BuildConvDequantConcatProgramDesc(use_dnnl, scale_out, scale),
                 remove_nodes);
   IsForceFp32OutputTest(
-      BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+      BuildConvDequantConcatProgramDesc(use_dnnl, scale_out, scale),
       "conv2d",
       true);
 }
@@ -974,13 +949,13 @@ TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
 TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // nothing change
   auto remove_nodes = 0;
-  CountNodeTest(BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
+  CountNodeTest(BuildConvDequantConvProgramDesc(use_dnnl, scale_out, scale),
                 remove_nodes);
   IsForceFp32OutputTest(
-      BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
+      BuildConvDequantConvProgramDesc(use_dnnl, scale_out, scale),
       "conv2d",
       false);
 }
@@ -992,28 +967,26 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
 TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove 2 nodes: b, Dequant1
   auto remove_nodes = 2;
-  CountNodeTest(BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+  CountNodeTest(BuildFcDequantConcatProgramDesc(use_dnnl, scale_out, scale),
                 remove_nodes);
   IsForceFp32OutputTest(
-      BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
-      "fc",
-      true);
+      BuildFcDequantConcatProgramDesc(use_dnnl, scale_out, scale), "fc", true);
 }
 
 // If there are more than one op after fc->dequantize, do not fuse
 TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // nothing change
   auto remove_nodes = 0;
-  CountNodeTest(BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale),
+  CountNodeTest(BuildFcDequantFcProgramDesc(use_dnnl, scale_out, scale),
                 remove_nodes);
   IsForceFp32OutputTest(
-      BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale), "fc", false);
+      BuildFcDequantFcProgramDesc(use_dnnl, scale_out, scale), "fc", false);
 }
 
 // a->Concat1->b
@@ -1024,11 +997,11 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
 TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove nodes: Quantize2 + d
   auto remove_nodes = 1 + 1;
   CountNodeTest(
-      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      BuildMultipleQuantizeProgramDesc(use_dnnl, first_scale, second_scale),
       remove_nodes);
 }
 
@@ -1036,11 +1009,11 @@ TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
 TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.5432f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // nothing change
   auto remove_nodes = 0;
   CountNodeTest(
-      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      BuildMultipleQuantizeProgramDesc(use_dnnl, first_scale, second_scale),
       remove_nodes);
 }
 
@@ -1049,17 +1022,17 @@ TEST(CpuQuantizeSquashPass, dequantize_scale_with_no_bias) {
   auto dequant_scale = 1.2345f;
   auto scale_scale = 1.5432f;
   auto bias = 0.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove: dequant out, scale op
   auto remove_nodes = 2;
-  CountNodeTest(BuildDequantScaleProgramDesc(
-                    use_mkldnn, dequant_scale, scale_scale, bias),
-                remove_nodes);
-  EqualScaleTest(BuildDequantScaleProgramDesc(
-                     use_mkldnn, dequant_scale, scale_scale, bias),
-                 "Dequant",
-                 "Scale",
-                 dequant_scale / scale_scale);
+  CountNodeTest(
+      BuildDequantScaleProgramDesc(use_dnnl, dequant_scale, scale_scale, bias),
+      remove_nodes);
+  EqualScaleTest(
+      BuildDequantScaleProgramDesc(use_dnnl, dequant_scale, scale_scale, bias),
+      "Dequant",
+      "Scale",
+      dequant_scale / scale_scale);
 }
 
 // if scale has bias
@@ -1067,17 +1040,17 @@ TEST(CpuQuantizeSquashPass, dequantize_scale_with_bias) {
   auto dequant_scale = 1.2345f;
   auto scale_scale = 1.5432f;
   auto bias = 1.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // nothing change
   auto remove_nodes = 0;
-  CountNodeTest(BuildDequantScaleProgramDesc(
-                    use_mkldnn, dequant_scale, scale_scale, bias),
-                remove_nodes);
-  EqualScaleTest(BuildDequantScaleProgramDesc(
-                     use_mkldnn, dequant_scale, scale_scale, bias),
-                 "Dequant",
-                 "Scale",
-                 dequant_scale);
+  CountNodeTest(
+      BuildDequantScaleProgramDesc(use_dnnl, dequant_scale, scale_scale, bias),
+      remove_nodes);
+  EqualScaleTest(
+      BuildDequantScaleProgramDesc(use_dnnl, dequant_scale, scale_scale, bias),
+      "Dequant",
+      "Scale",
+      dequant_scale);
 }
 
 // if scale has no bias
@@ -1085,14 +1058,14 @@ TEST(CpuQuantizeSquashPass, scale_with_no_bias_quantize) {
   constexpr auto scale_scale = 1.5432f;
   constexpr auto quant_scale = 1.2345f;
   constexpr auto bias = 0.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove: dequant out, scale op
   auto remove_nodes = 2;
   CountNodeTest(
-      BuildScaleQuantProgramDesc(use_mkldnn, scale_scale, quant_scale, bias),
+      BuildScaleQuantProgramDesc(use_dnnl, scale_scale, quant_scale, bias),
       remove_nodes);
   EqualScaleTest(
-      BuildScaleQuantProgramDesc(use_mkldnn, scale_scale, quant_scale, bias),
+      BuildScaleQuantProgramDesc(use_dnnl, scale_scale, quant_scale, bias),
       "Scale",
       "Quant",
       quant_scale * scale_scale);
@@ -1100,22 +1073,22 @@ TEST(CpuQuantizeSquashPass, scale_with_no_bias_quantize) {
 
 TEST(CpuQuantizeSquashPass, matmul_with_dequant) {
   auto dequant_scale = 1.2345f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   // remove: matmul_out, dequant_op
   auto remove_nodes = 2;
-  CountNodeTest(BuildMatmulDequantProgramDesc(use_mkldnn, dequant_scale),
+  CountNodeTest(BuildMatmulDequantProgramDesc(use_dnnl, dequant_scale),
                 remove_nodes);
   IsForceFp32OutputTest(
-      BuildMatmulDequantProgramDesc(use_mkldnn, dequant_scale), "matmul", true);
+      BuildMatmulDequantProgramDesc(use_dnnl, dequant_scale), "matmul", true);
 }
 
 TEST(CpuQuantizeSquashPass, requantize_with_matmul_fc_conv) {
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   auto requant_scale_in = 1.2f, op_scale_in = 2.3f, op_scale_out = 3.4f;
   // remove: 3 requant ops + 3 requant outs
   auto remove_nodes = 6;
   auto program_desc = BuildRequantOpProgramDesc(
-      use_mkldnn, requant_scale_in, op_scale_in, op_scale_out);
+      use_dnnl, requant_scale_in, op_scale_in, op_scale_out);
   CountNodeTest(program_desc, remove_nodes);
   EqualScaleTest(program_desc, "Matmul", "Scale_x", requant_scale_in);
   EqualScaleTest(program_desc, "Fc", "Scale_in", requant_scale_in);
@@ -1124,12 +1097,12 @@ TEST(CpuQuantizeSquashPass, requantize_with_matmul_fc_conv) {
 
 TEST(CpuQuantizeSquashPass, quant_bf16_conv2d) {
   auto quant_scale = 1.0f;
-  auto use_mkldnn = true;
+  auto use_dnnl = true;
   auto mkldnn_data_type = "bfloat16";
   // remove: quant_op, conv_in
   auto remove_nodes = 2;
   CountNodeTest(
-      BuildQuantConv2dProgramDesc(use_mkldnn, quant_scale, mkldnn_data_type),
+      BuildQuantConv2dProgramDesc(use_dnnl, quant_scale, mkldnn_data_type),
       remove_nodes);
 }
 

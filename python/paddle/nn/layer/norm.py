@@ -1002,7 +1002,7 @@ class BatchNorm(Layer):
             if self._act is None:
                 return batch_norm_out
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                batch_norm_out, act=self._act, use_dnnl=self._use_mkldnn
             )
         else:
             # create output
@@ -1019,7 +1019,7 @@ class BatchNorm(Layer):
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
                 "data_layout": self._data_layout,
-                "use_mkldnn": False,
+                "use_dnnl": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
                 "trainable_statistics": self._trainable_statistics,
@@ -1539,7 +1539,7 @@ class SyncBatchNorm(_BatchNormBase):
                 not self.training,
                 "data_layout",
                 self._data_format,
-                "use_mkldnn",
+                "use_dnnl",
                 False,
                 "fuse_with_relu",
                 False,
@@ -1569,7 +1569,7 @@ class SyncBatchNorm(_BatchNormBase):
             "epsilon": self._epsilon,
             "is_test": not self.training,
             "data_layout": self._data_format,
-            "use_mkldnn": False,
+            "use_dnnl": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,

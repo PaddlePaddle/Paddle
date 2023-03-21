@@ -268,13 +268,13 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
+        use_dnnl = _global_flags()["FLAGS_use_mkldnn"]
+        if (use_dnnl is not None) and use_dnnl:
+            act['use_dnnl'] = use_dnnl
         act_type = act.pop('type')
         if in_dygraph_mode():
             res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
+                input_var, act_type, use_cudnn, use_dnnl
             )
             return res
         else:

@@ -432,7 +432,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();

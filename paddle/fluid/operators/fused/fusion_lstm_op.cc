@@ -268,8 +268,7 @@ void FusionLSTMOpMaker::Make() {
                        "`tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
+  AddAttr<bool>("use_dnnl", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "mkldnn_data_type",

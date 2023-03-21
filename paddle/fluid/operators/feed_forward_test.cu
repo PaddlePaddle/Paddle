@@ -166,7 +166,7 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
   cudaMemcpy(
       dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
-  bool use_mkldnn = false;
+  bool use_dnnl = false;
   std::vector<int> fused_reshape_X = {};
   std::vector<int> fused_reshape_Y = {};
   std::vector<int> fused_reshape_Out = {};
@@ -181,7 +181,7 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
   attrs.insert({"transpose_X", transpose_a});
   attrs.insert({"transpose_Y", transpose_b});
   attrs.insert({"alpha", alpha});
-  attrs.insert({"use_mkldnn", use_mkldnn});
+  attrs.insert({"use_dnnl", use_dnnl});
   attrs.insert({"fused_reshape_X", fused_reshape_X});
   attrs.insert({"fused_reshape_Y", fused_reshape_Y});
   attrs.insert({"fused_reshape_Out", fused_reshape_Out});
@@ -245,14 +245,14 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec,
       dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
   int axis = -1;
-  bool use_mkldnn = false, use_quantizer = false;
+  bool use_dnnl = false, use_quantizer = false;
   std::string mkldnn_data_type = "float32";
   std::string x_data_format = "", y_data_format = "";
   float Scale_x = 1.0, Scale_y = 1.0, Scale_out = 1.0;
 
   framework::AttributeMap attrs;
   attrs.insert({"axis", axis});
-  attrs.insert({"use_mkldnn", use_mkldnn});
+  attrs.insert({"use_dnnl", use_dnnl});
   attrs.insert({"x_data_format", x_data_format});
   attrs.insert({"y_data_format", y_data_format});
   attrs.insert({"use_quantizer", use_quantizer});

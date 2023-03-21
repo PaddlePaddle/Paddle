@@ -83,10 +83,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
-void profile(bool use_mkldnn = false) {
+void profile(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
   }
   // cfg.pass_builder()->TurnOnDebug();
@@ -122,7 +122,7 @@ void profile(bool use_mkldnn = false) {
 TEST(Analyzer_vis, profile) { profile(); }
 
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_dnnl */); }
 #endif
 
 // Check the fuse status
@@ -135,10 +135,10 @@ TEST(Analyzer_vis, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg.EnableMKLDNN();
   }
 
@@ -150,7 +150,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_vis, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 // Compare Deterministic result

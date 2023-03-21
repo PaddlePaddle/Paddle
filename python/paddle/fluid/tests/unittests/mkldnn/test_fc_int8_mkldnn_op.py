@@ -29,7 +29,7 @@ class TestFCINT8OneDNNOp(OpTest):
         self.set_inputs()
 
         self.attrs = {
-            'use_mkldnn': True,
+            'use_dnnl': True,
             'Scale_in': self.x_scale,
             'Scale_weights': [self.y_scale],
             'Scale_out': self.out_scale,

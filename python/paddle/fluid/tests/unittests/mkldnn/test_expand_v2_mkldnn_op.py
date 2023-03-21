@@ -34,7 +34,7 @@ class TestExpandV2OneDNNOp(OpTest):
         self.op_type = "expand_v2"
         self.init_data()
         self.x = np.random.random(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.attrs = {'shape': self.shape, 'use_dnnl': True}
         self.set_inputs()
         self.set_additional_inputs()
         output = np.tile(self.x, self.expand_times)

@@ -157,7 +157,7 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
                               " indicating the dimensions to squeeze.")
         .SetDefault({})
         .SupportTensor();
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();

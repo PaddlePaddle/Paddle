@@ -133,10 +133,10 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
 }
 
 void SetConfig(AnalysisConfig *cfg,
-               bool use_mkldnn = false,
+               bool use_dnnl = false,
                bool use_gpu = false) {
   cfg->SetModel(FLAGS_infer_model);
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg->EnableMKLDNN();
   }
   if (use_gpu) {

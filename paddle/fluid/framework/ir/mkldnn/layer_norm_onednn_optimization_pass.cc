@@ -46,8 +46,8 @@ void LayerNormOneDNNOptimizationPass::ApplyImpl(Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_scale, layer_norm_scale, layer_norm_shift_scale_pattern);
 
-    if (layer_norm_op->Op()->HasAttr("use_mkldnn") &&
-        !(PADDLE_GET_CONST(bool, layer_norm_op->Op()->GetAttr("use_mkldnn")))) {
+    if (layer_norm_op->Op()->HasAttr("use_dnnl") &&
+        !(PADDLE_GET_CONST(bool, layer_norm_op->Op()->GetAttr("use_dnnl")))) {
       VLOG(4) << "Only oneDNN version of layer_norm can be optimized to "
                  "include Bias and Shift in a single tensor.";
       return;

@@ -56,7 +56,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
     def init_test_case(self):
         self.pad = [0, 0]
         self.fuse_bias = False
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.is_test = True
         self.bias_size = None
         self.fuse_activation = ""
@@ -92,7 +92,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'data_format': self.data_format,

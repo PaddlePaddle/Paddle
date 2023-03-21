@@ -218,8 +218,7 @@ void FusionGRUOpMaker::Make() {
                 "bool"
                 "use origin mode in article https://arxiv.org/abs/1412.3555")
       .SetDefault(false);
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
+  AddAttr<bool>("use_dnnl", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "mkldnn_data_type",

@@ -65,20 +65,20 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   (*inputs).emplace_back(input_slots);
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
+void SetConfig(AnalysisConfig *cfg, bool use_dnnl = false) {
   cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
                 FLAGS_infer_model + "/inference.pdiparams");
 
-  if (use_mkldnn) {
+  if (use_dnnl) {
     cfg->EnableMKLDNN();
     cfg->SwitchIrOptim();
   }
 }
 
 // Compare results of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_dnnl = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn);
+  SetConfig(&cfg, use_dnnl);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -89,7 +89,7 @@ void compare(bool use_mkldnn = false) {
 TEST(Analyzer_vit_ocr, compare) { compare(); }
 
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_dnnl */); }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

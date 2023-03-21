@@ -528,7 +528,7 @@ def _elementwise_op(helper):
     )
 
     axis = helper.kwargs.get('axis', -1)
-    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
+    use_dnnl = helper.kwargs.get('use_dnnl', False)
     name = helper.kwargs.get('name', None)
 
     if out is None:
@@ -543,7 +543,7 @@ def _elementwise_op(helper):
         type=op_type,
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
-        attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
+        attrs={'axis': axis, 'use_dnnl': use_dnnl},
     )
     return helper.append_activation(out)
 
@@ -1682,7 +1682,7 @@ def add_n(inputs, name=None):
             type='sum',
             inputs={'X': inputs},
             outputs={'Out': out},
-            attrs={'use_mkldnn': False},
+            attrs={'use_dnnl': False},
         )
 
         return out

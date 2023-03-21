@@ -222,7 +222,7 @@ def batch_norm(
             "epsilon": epsilon,
             "is_test": not training,
             "data_layout": data_format,
-            "use_mkldnn": False,
+            "use_dnnl": False,
             "fuse_with_relu": False,
             "use_global_stats": use_global_stats,
             "trainable_statistics": trainable_statistics,

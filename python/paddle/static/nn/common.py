@@ -220,7 +220,7 @@ def fc(
                 type="sum",
                 inputs={"X": mul_results},
                 outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False},
+                attrs={"use_dnnl": False},
             )
         # add bias
         pre_activation = helper.append_bias_op(
@@ -1052,7 +1052,7 @@ def conv2d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
+            'use_dnnl': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -1347,7 +1347,7 @@ def conv3d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
+            'use_dnnl': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
         },
@@ -2832,7 +2832,7 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
+                'use_dnnl',
                 False,
                 'fuse_with_relu',
                 False,
@@ -2847,7 +2847,7 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
+                'use_dnnl',
                 False,
                 'fuse_with_relu',
                 False,
@@ -2880,7 +2880,7 @@ def batch_norm(
             )
 
         return paddle.fluid.dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=act, use_mkldnn=False
+            batch_norm_out, act=act, use_dnnl=False
         )
 
     saved_mean = helper.create_variable_for_type_inference(
@@ -2912,7 +2912,7 @@ def batch_norm(
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": False,
+        "use_dnnl": False,
         "fuse_with_relu": False,
         "use_global_stats": use_global_stats,
     }

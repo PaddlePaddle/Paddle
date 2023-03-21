@@ -26,10 +26,10 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn = false) {
+           bool use_dnnl = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_dnnl", use_dnnl);
   op->SetAttr("name", name);
   op->SetAttr("groups", 1);
   op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
@@ -133,12 +133,12 @@ TEST(DepthwiseConvMKLDNNPass, basic) {
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->Type() == "conv2d") {
-        if (PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))
+        if (PADDLE_GET_CONST(bool, op->GetAttr("use_dnnl")))
           after.mkldnn_conv_nodes++;
         else
           after.other_conv_nodes++;
       } else if (op->Type() == "depthwise_conv2d") {
-        if (PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))
+        if (PADDLE_GET_CONST(bool, op->GetAttr("use_dnnl")))
           after.mkldnn_depthwise_conv_nodes++;
         else
           after.other_depthwise_conv_nodes++;

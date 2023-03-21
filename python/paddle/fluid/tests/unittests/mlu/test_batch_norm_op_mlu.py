@@ -303,7 +303,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             # attrs
             is_test=True,
             data_layout=data_layout,
-            use_mkldnn=False,
+            use_dnnl=False,
             fuse_with_relu=self.fuse_with_relu,
             epsilon=epsilon,
         )
@@ -514,7 +514,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": False,
+                    "use_dnnl": False,
                     "fuse_with_relu": self.fuse_with_relu,
                     "use_global_stats": self.use_global_stats,
                 }

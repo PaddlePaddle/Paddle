@@ -39,7 +39,7 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
     AddAttr<int>("in_dtype", "input data type");
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddComment(R"DOC(
@@ -65,7 +65,7 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
+    grad->SetAttr("use_dnnl", this->GetAttr("use_dnnl"));
   }
 };
 

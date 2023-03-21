@@ -33,7 +33,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
     def set_attributes(self):
         self.attrs = {
             'alpha': self.alpha,
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "mkldnn_data_type": self.mkldnn_data_type,
             "force_fp32_output": self.force_fp32_output,
             'transpose_X': False,
@@ -43,7 +43,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
     def setUp(self):
         self.op_type = "matmul"
         self.alpha = 1.0
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.dtype = np.uint16
         self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
@@ -146,7 +146,7 @@ class TestDnnlMatMulOpTransposeX(TestMatmulBf16MklDNNOp):
 
     def set_attributes(self):
         self.attrs = {
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "mkldnn_data_type": self.mkldnn_data_type,
             'transpose_X': True,
             'transpose_Y': False,
@@ -161,7 +161,7 @@ class TestDnnlMatMulOpTransposeY(TestMatmulBf16MklDNNOp):
 
     def set_attributes(self):
         self.attrs = {
-            "use_mkldnn": self.use_mkldnn,
+            "use_dnnl": self.use_dnnl,
             "mkldnn_data_type": self.mkldnn_data_type,
             'transpose_Y': True,
             'transpose_X': False,

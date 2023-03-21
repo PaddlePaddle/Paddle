@@ -113,7 +113,7 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
                  "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
                  "input tensor is (d_0, d_1, ... d_n).")
         .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
+    AddAttr<bool>("use_dnnl",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();

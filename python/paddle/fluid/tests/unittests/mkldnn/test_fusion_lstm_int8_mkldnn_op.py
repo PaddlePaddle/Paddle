@@ -38,7 +38,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cand = 'tanh'
         self.use_peepholes = False  # LSTM u8 doesn't support peepholes
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.mkldnn_data_type = "int8"
         self.force_fp32_output = False
         self.error_margin = 1e-5
@@ -134,7 +134,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             'candidate_activation': self.act_cand,
             'is_reverse': self.is_reverse,
             'use_peepholes': self.use_peepholes,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'mkldnn_data_type': self.mkldnn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,

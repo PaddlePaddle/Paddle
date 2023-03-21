@@ -66,7 +66,7 @@ class TestNearestInterpMKLDNNOp(OpTest):
         self.op_type = "nearest_interp"
         self.interp_method = 'nearest'
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_dnnl = True
         self.input_shape = [1, 1, 2, 2]
         self.data_layout = 'NCHW'
         # priority: actual_shape > out_size > scale > out_h & out_w
@@ -121,7 +121,7 @@ class TestNearestInterpMKLDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {'Out': output_np}
 

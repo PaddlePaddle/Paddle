@@ -309,7 +309,7 @@ class TestConv3DOp(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.data_format = "AnyLayout"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -342,7 +342,7 @@ class TestConv3DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}
@@ -354,7 +354,7 @@ class TestConv3DOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+            place, atol=1e-5, check_dygraph=(not self.use_dnnl)
         )
 
     def test_check_grad(self):
@@ -367,7 +367,7 @@ class TestConv3DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
         )
 
     def test_check_grad_no_filter(self):
@@ -381,7 +381,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Filter']),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
         )
 
     def test_check_grad_no_input(self):
@@ -395,7 +395,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_dnnl),
         )
 
     def init_test_case(self):
@@ -625,7 +625,7 @@ class TestConv3DOp_2(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_dnnl = False
         self.data_format = "NCDHW"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -665,7 +665,7 @@ class TestConv3DOp_2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}

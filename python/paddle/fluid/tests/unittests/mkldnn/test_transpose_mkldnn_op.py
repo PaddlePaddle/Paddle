@@ -26,7 +26,7 @@ class TestTransposeMKLDNN(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_dnnl': self.use_dnnl,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
@@ -35,7 +35,7 @@ class TestTransposeMKLDNN(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = True
+        self.use_dnnl = True
         return
 
     def test_check_output(self):

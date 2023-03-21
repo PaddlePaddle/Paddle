@@ -175,7 +175,7 @@ class QuantInt8MkldnnPass:
         conv_op_node.set_attr("Scale_weights", scale_w)
         conv_op_node.set_attr("Scale_in", scale_in)
         conv_op_node.set_attr("Scale_out", 1.0)
-        conv_op_node.set_attr("use_mkldnn", 1)
+        conv_op_node.set_attr("use_dnnl", 1)
         conv_op_node.set_attr("force_fp32_output", 1)
         graph.link_to(input_var_node, conv_op_node)
         graph.link_to(weight_var_node, conv_op_node)
@@ -221,7 +221,7 @@ class QuantInt8MkldnnPass:
         mul_op_node.set_attr("scale_y", scale_w)
         mul_op_node.set_attr("scale_x", scale_in)
         mul_op_node.set_attr("scale_out", 1.0)
-        mul_op_node.set_attr("use_mkldnn", 1)
+        mul_op_node.set_attr("use_dnnl", 1)
         mul_op_node.set_attr("force_fp32_output", 1)
         graph.link_to(input_var_node, mul_op_node)
         graph.link_to(weight_var_node, mul_op_node)
@@ -246,7 +246,7 @@ class QuantInt8MkldnnPass:
             op_type='quantize',
             attrs={
                 'data_format': 'MKLDNNLAYOUT',
-                'use_mkldnn': 1,
+                'use_dnnl': 1,
                 'Scale': scale_in,
                 'is_negative_input': 1,
             },

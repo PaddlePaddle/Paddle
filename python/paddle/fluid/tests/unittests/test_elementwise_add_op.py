@@ -27,7 +27,7 @@ from paddle.fluid.layer_helper import LayerHelper
 
 class TestElementwiseAddOp(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_dnnl = False
 
     def setUp(self):
         self.op_type = "elementwise_add"
@@ -45,11 +45,11 @@ class TestElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_dnnl': self.use_dnnl}
         self.outputs = {'Out': self.out}
 
     def check_dygraph(self):
-        return not self.use_mkldnn and self.axis == -1
+        return not self.use_dnnl and self.axis == -1
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -182,7 +182,7 @@ class TestBF16ElementwiseAddOp(OpTest):
                 convert_float_to_uint16(self.y)
             ),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.attrs = {'axis': self.axis, 'use_dnnl': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.if_enable_cinn()
 
@@ -683,7 +683,7 @@ class TestComplexElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_dnnl': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -849,7 +849,7 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 type="elementwise_add",
                 inputs={'X': data, 'Y': data},
                 outputs={'Out': out},
-                attrs={'axis': 1, 'use_mkldnn': False},
+                attrs={'axis': 1, 'use_dnnl': False},
             )
             self.assertTrue(
                 "op elementwise_add's attr axis = 1 is not the default value: -1"

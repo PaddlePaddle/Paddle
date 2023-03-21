@@ -198,7 +198,7 @@ class TestMultiGruMkldnnOp(OpTest):
             'gate_activation': 'sigmoid',
             'layers': self.layers,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': True,
+            'use_dnnl': True,
         }
 
         if is_int8:
