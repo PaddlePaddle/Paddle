@@ -171,7 +171,7 @@ class TestOneHotOpApi(unittest.TestCase):
         self._run(num_classes)
 
     def test_api_with_depthTensor(self):
-        num_classes = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        num_classes = paddle.assign(np.array([10], dtype=np.int32))
         self._run(num_classes)
 
     def test_api_with_dygraph(self):

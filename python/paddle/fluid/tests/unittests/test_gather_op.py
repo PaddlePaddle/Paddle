@@ -35,6 +35,7 @@ class TestGatherOp(OpTest):
         self.op_type = "gather"
         self.python_api = paddle.gather
         self.config()
+        self.prim_op_type = "prim"
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
@@ -46,7 +47,7 @@ class TestGatherOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def config(self):
         """
@@ -384,6 +385,29 @@ class TestGathertError(unittest.TestCase):
                 paddle.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
+
+    def test_error3(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            shape = [8, 9, 6]
+            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
+            axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
+            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='index_float'
+            )
+
+            def test_axis_minsize():
+                paddle.gather(x, index, axis=-1)
+
+            self.assertRaises(ValueError, test_axis_minsize)
+
+            def test_axis_maxsize():
+                paddle.gather(x, index, axis=512)
+
+            self.assertRaises(ValueError, test_axis_maxsize)
 
 
 class TestCheckOutType(unittest.TestCase):

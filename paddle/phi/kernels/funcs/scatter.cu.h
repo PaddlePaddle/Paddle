@@ -28,6 +28,7 @@ namespace funcs {
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices,
                                       T* output,
+                                      size_t output_count,
                                       size_t index_size,
                                       size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
@@ -35,12 +36,14 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
-    PADDLE_ENFORCE(scatter_i >= 0,
-                   "The index is out of bounds, "
-                   "please check whether the dimensions of index and "
-                   "input meet the requirements. It should "
-                   "be greater than or equal to 0, but received [%d]",
-                   scatter_i);
+    PADDLE_ENFORCE(
+        scatter_i >= 0 && scatter_i < output_count,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater or equal to 0, but received [%d]",
+        output_count,
+        scatter_i);
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
@@ -51,6 +54,7 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params,
                                   const IndexT* indices,
                                   T* output,
+                                  size_t output_count,
                                   size_t index_size,
                                   size_t slice_size,
                                   bool overwrite) {
@@ -59,12 +63,14 @@ __global__ void ScatterCUDAKernel(const T* params,
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
-    PADDLE_ENFORCE(scatter_i >= 0,
-                   "The index is out of bounds, "
-                   "please check whether the dimensions of index and "
-                   "input meet the requirements. It should "
-                   "be greater than or equal to 0, but received [%d]",
-                   scatter_i);
+    PADDLE_ENFORCE(
+        scatter_i >= 0 && scatter_i < output_count,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater or equal to 0, but received [%d]",
+        output_count,
+        scatter_i);
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
@@ -143,8 +149,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
   auto src_dims = src.dims();
-  phi::DDim output_dims(src_dims);
-  output_dims[0] = index_size;
+  phi::DDim output_dims = output->dims();
 
   // slice size
   size_t slice_size = 1;
@@ -169,11 +174,16 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   // if not overwrite mode, init data
   if (!overwrite) {
     ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_index, p_output, index_size, slice_size);
+        p_index, p_output, output_dims[0], index_size, slice_size);
   }
 
-  ScatterCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size, overwrite);
+  ScatterCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_src,
+                                                                 p_index,
+                                                                 p_output,
+                                                                 output_dims[0],
+                                                                 index_size,
+                                                                 slice_size,
+                                                                 overwrite);
 }
 
 // The function is only for scatter grad x,
@@ -203,7 +213,7 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_index, p_output, index_size, slice_size);
+      p_index, p_output, dst_dims[0], index_size, slice_size);
 }
 
 template <typename T, typename IndexT = int>

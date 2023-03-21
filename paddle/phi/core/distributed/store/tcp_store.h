@@ -60,12 +60,15 @@ class MasterDaemon {
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
   void _do_set(SocketType socket);
+  void _notify_waiting_sockets(const std::string&);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
   int _nranks = -1;
   int _timeout = 0;
+  std::unordered_map<std::string, std::vector<SocketType>>
+      _waiting_sockets;  // key -> list of waiting sockets
 
   void InitControlFd();
   void CloseControlFd();

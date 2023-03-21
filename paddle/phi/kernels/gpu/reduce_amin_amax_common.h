@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
@@ -58,10 +57,10 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   new_dout.Resize(phi::make_ddim(update_dims));
   dev_ctx.Alloc(d_x, d_out->dtype());
 
-  auto new_in = paddle::experimental::MakePhiDenseTensor(*in_x);
+  auto new_in = std::make_unique<phi::DenseTensor>(*in_x);
   auto new_in_tensor = new_in.get();
 
-  auto new_dx = paddle::experimental::MakePhiDenseTensor(*d_x);
+  auto new_dx = std::make_unique<phi::DenseTensor>(*d_x);
   auto new_dx_tensor = new_dx.get();
 
   // make equal_out
@@ -92,7 +91,14 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
           reduce_dims,
           false);
 
-  // 3. dx = Div(dout, equal_out)
+  // 3. dx = dout * 1
+  std::vector<const phi::DenseTensor*> mul_inputs = {&new_dout,
+                                                     &equal_out_tensor};
+  std::vector<phi::DenseTensor*> mul_outputs = {&equal_out_tensor};
+  funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+      dev_ctx, mul_inputs, &mul_outputs, 0, funcs::MultiplyFunctor<T>());
+
+  // 4. dx = Div(dx, equal_out)
   std::vector<const phi::DenseTensor*> grad_inputs = {&equal_out_tensor,
                                                       equal_count};
   std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};

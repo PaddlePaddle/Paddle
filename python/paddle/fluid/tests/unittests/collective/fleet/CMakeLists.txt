@@ -138,22 +138,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
                                                                          "350")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_fleet_graph_execution_meta_optimizer
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21216;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
 if(WITH_NCCL)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -166,16 +150,6 @@ if(WITH_NCCL)
     set_tests_properties(test_communicator_half_async
                          PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
   endif()
-endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(

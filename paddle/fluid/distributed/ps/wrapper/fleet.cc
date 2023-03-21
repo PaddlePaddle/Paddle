@@ -129,6 +129,8 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
           paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
     }
+    dist_desc_ = dist_desc;
+    is_initialized_ = true;
   } else {
     VLOG(3) << "Client can be initialized only once";
   }

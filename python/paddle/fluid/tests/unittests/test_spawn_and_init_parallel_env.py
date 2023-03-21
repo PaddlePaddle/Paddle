@@ -24,7 +24,6 @@ from paddle.distributed.spawn import (
     _options_valid_check,
 )
 from paddle.fluid import core
-from paddle.fluid.dygraph import parallel_helper
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be
@@ -44,6 +43,8 @@ class TestInitParallelEnv(unittest.TestCase):
             dist.init_parallel_env()
 
     def test_init_parallel_env_break(self):
+        from paddle.distributed import parallel_helper
+
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
         os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'

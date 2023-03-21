@@ -25,15 +25,33 @@ namespace cub = hipcub;
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/malloc.h"
-
 namespace phi {
 namespace funcs {
+
+template <typename T>
+class CumTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class CumTypeTrait<phi::dtype::float16> {
+ public:
+  using Type = __half;
+};
+
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+template <>
+class CumTypeTrait<phi::dtype::bfloat16> {
+ public:
+  using Type = __nv_bfloat16;
+};
+#endif
 
 template <typename T>
 struct IsComplex : public std::false_type {};
@@ -50,7 +68,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                              size_t n,
                              BinaryOp op,
                              const phi::GPUContext &dev_ctx) {
-  paddle::memory::allocation::AllocationPtr allocation;
+  phi::Allocator::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   for (size_t i = 0; i < 2; ++i) {
@@ -64,7 +82,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                                        dev_ctx.stream()));
     if (i == 0 && temp_storage_bytes > 0) {
       allocation =
-          paddle::memory::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+          phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
       temp_storage = allocation->ptr();
     }
   }

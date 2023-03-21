@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -142,12 +143,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       return;
     }
 
-    matmul_desc->SetType("fused_matmul");
-    if (matmul_type == "matmul") {
-      matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
-      matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
-      matmul_desc->SetAttr("matmul_alpha", matmul_desc->GetAttr("alpha"));
-    }
+    ConvertToFusedOp(matmul_desc);
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
@@ -265,50 +261,6 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("matmul_alpha")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_activation")
-      .IsType<std::string>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_alpha")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_beta")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_output_scale")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_X")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_X")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_Y")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_Y")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_Out")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_Out")
-      .IsType<std::vector<int>>()
-      .IsOptional()
       .End();
 }
 

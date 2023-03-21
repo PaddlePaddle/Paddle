@@ -86,13 +86,15 @@ class TestAudioBackends(unittest.TestCase):
             np.testing.assert_array_almost_equal(wav_data, waveform)
 
         current_backend = paddle.audio.backends.get_current_backend()
-        self.assertTrue(current_backend in ["wave_backend", "soundfile"])
+        self.assertTrue(
+            current_backend in ["wave_backend", "soundfile", "sox_io"]
+        )
 
         paddle.audio.backends.set_backend("wave_backend")
 
         backends = paddle.audio.backends.list_available_backends()
         for backend in backends:
-            self.assertTrue(backend in ["wave_backend", "soundfile"])
+            self.assertTrue(backend in ["wave_backend", "soundfile", "sox_io"])
 
         # Test error
         try:
@@ -105,7 +107,9 @@ class TestAudioBackends(unittest.TestCase):
 
             backends = paddle.audio.backends.list_available_backends()
             for backend in backends:
-                self.assertTrue(backend in ["wave_backend", "soundfile"])
+                self.assertTrue(
+                    backend in ["wave_backend", "soundfile", "sox_io"]
+                )
             current_backend = paddle.audio.backends.get_current_backend()
             self.assertTrue(current_backend, "wave_backend")
             paddleaudio.backends.set_audio_backend("soundfile")

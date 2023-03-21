@@ -415,7 +415,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
 
             mem1 = paddle.scale(x=h_pre1, scale=1.0)
             mem2 = paddle.scale(x=h_pre2, scale=1.0)
-            out = layers.sums(input=[mem1, x_t, mem2])
+            out = paddle.add_n([mem1, x_t, mem2])
 
             rnn.update_memory(h_pre1, mem1)
             rnn.update_memory(h_pre2, mem2)
@@ -620,7 +620,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
                 init_value=0.0,
             )
             step_in = rnn.step_input(x)
-            concat_in = layers.concat([step_in, pre_h], 1)
+            concat_in = paddle.concat([step_in, pre_h], 1)
             new_h = paddle.matmul(concat_in, w2)
             new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)

@@ -68,14 +68,15 @@ void StartInterceptor::SendDataReadyToDownStream() {
   }
   if (finish_count_ == batch_size_) {
     for (int64_t i = 0; i < batch_size_; ++i) {
+      int64_t scope_id = step_ % node_->max_run_times();
       for (auto& outs : out_buffs_) {
         auto down_id = outs.first;
         InterceptorMessage ready_msg;
         ready_msg.set_message_type(DATA_IS_READY);
-        ready_msg.set_scope_idx(step_);
+        ready_msg.set_scope_idx(scope_id);
         VLOG(3) << "StartInterceptor " << interceptor_id_
                 << " Send data_is_ready msg to " << down_id
-                << " in scope: " << step_;
+                << " in scope: " << scope_id;
         Send(down_id, ready_msg);
       }
       step_++;

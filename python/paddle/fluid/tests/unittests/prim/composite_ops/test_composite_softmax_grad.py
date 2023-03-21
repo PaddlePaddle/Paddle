@@ -20,6 +20,7 @@ from utils import TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 
 def generate_data(shape, dtype="float32"):
@@ -93,7 +94,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             # Ensure that softmax in original block
             self.assertTrue('softmax' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that softmax is splitted into small ops
@@ -143,7 +144,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
     def cal_composite_grad(self, inputs):
@@ -158,7 +159,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
             x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()
@@ -169,6 +170,9 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
         return res
 
     def compare_backward(self):
+        if not attrs.shape and attrs.axis not in [-1, 0]:
+            # op softmax does not support both case
+            return
         np_data = generate_data(attrs.shape)
         tensor_data = paddle.to_tensor(np_data)
 

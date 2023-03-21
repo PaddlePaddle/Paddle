@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,

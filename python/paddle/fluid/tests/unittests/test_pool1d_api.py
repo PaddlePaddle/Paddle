@@ -139,6 +139,32 @@ class TestPool1D_API(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
+    def check_avg_static_results_fp16(self, place):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float16"
+            )
+            result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
+
+            input_np = np.random.random([2, 3, 32]).astype("float16")
+            result_np = avg_pool1D_forward_naive(
+                input_np,
+                ksize=[2],
+                strides=[2],
+                paddings=[0],
+                ceil_mode=False,
+            )
+
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
+                np.testing.assert_allclose(fetches[0], result_np, rtol=1e-03)
+
     def check_avg_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32]).astype("float32")
@@ -272,6 +298,7 @@ class TestPool1D_API(unittest.TestCase):
             self.check_max_dygraph_padding_same(place)
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
+            self.check_avg_static_results_fp16(place)
 
 
 class TestPool1DError_API(unittest.TestCase):

@@ -20,7 +20,6 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 def apply_pass(use_amp=False, level=None):
@@ -38,7 +37,7 @@ def apply_pass(use_amp=False, level=None):
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
-        amp.use_pure_fp16 = level in ["o2", "o3"]
+        amp.level = level
         amp.use_optimizer_fp16 = level == "o3"
         print("amp level: ", level)
     return strategy
@@ -62,7 +61,7 @@ class TestAMPPass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_amp=False, level=None):

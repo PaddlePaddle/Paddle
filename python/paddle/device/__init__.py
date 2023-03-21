@@ -19,7 +19,6 @@ import ctypes
 import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
@@ -238,7 +237,7 @@ def _convert_to_place(device):
                 "The device should not be 'gpu', "
                 "since PaddlePaddle is not compiled with CUDA"
             )
-        place = core.CUDAPlace(ParallelEnv().dev_id)
+        place = core.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
     elif lower_device == 'xpu':
         if not core.is_compiled_with_xpu():
             raise ValueError(
@@ -524,7 +523,7 @@ def get_available_custom_device():
     return core.get_available_custom_device()
 
 
-class Event(object):
+class Event:
     '''
     A device event wrapper around StreamBase.
     Parameters:
@@ -669,7 +668,7 @@ class Event(object):
         return self.event_base
 
 
-class Stream(object):
+class Stream:
     '''
     A device stream wrapper around StreamBase.
     Parameters:
@@ -937,7 +936,7 @@ def set_stream(stream):
     return prev_stream
 
 
-class stream_guard(object):
+class stream_guard:
     '''
     Notes:
         This API only supports dynamic graph mode currently.

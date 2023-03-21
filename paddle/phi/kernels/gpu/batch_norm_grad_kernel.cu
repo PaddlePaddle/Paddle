@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -630,7 +629,7 @@ void BatchNormGradRawKernel(const Context &ctx,
   if (!use_global_stats) {
     if ((N * H * W * D) == 1) {
       if (d_x) {
-        paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
       }
       phi::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
@@ -655,10 +654,9 @@ void BatchNormGradRawKernel(const Context &ctx,
     cudnnBatchNormMode_t mode_;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+        phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnCreateTensorDescriptor(
-            &bn_param_desc_));
+        phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -695,16 +693,14 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnSetTensorNdDescriptor(
-            data_desc_,
-            CudnnDataType<T>::type,
-            x_dims.size() > 3 ? x_dims.size() : 4,
-            dims.data(),
-            strides.data()));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDeriveBNTensorDescriptor(
-            bn_param_desc_, data_desc_, mode_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+        data_desc_,
+        CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4,
+        dims.data(),
+        strides.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 #endif
 
     const auto *saved_mean_data =
@@ -934,26 +930,25 @@ void BatchNormGradRawKernel(const Context &ctx,
         auto reserve_space_size = reserve_space->memory_size();
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::
-                cudnnGetBatchNormalizationBackwardExWorkspaceSize(
-                    /*handle=*/ctx.cudnn_handle(),
-                    /*mode=*/mode_,
-                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-                    /*xDesc=*/data_desc_,
-                    /*yDesc=*/data_desc_,
-                    /*dyDesc=*/data_desc_,
-                    /*dzDesc=*/nullptr,
-                    /*dxDesc=*/data_desc_,
-                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-                    /*activationDesc=*/nullptr,
-                    /*sizeInBytes=*/&workspace_size));
+            phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+                /*handle=*/ctx.cudnn_handle(),
+                /*mode=*/mode_,
+                /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                /*xDesc=*/data_desc_,
+                /*yDesc=*/data_desc_,
+                /*dyDesc=*/data_desc_,
+                /*dzDesc=*/nullptr,
+                /*dxDesc=*/data_desc_,
+                /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
+                /*activationDesc=*/nullptr,
+                /*sizeInBytes=*/&workspace_size));
 
         workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationBackwardEx(
+            phi::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/ctx.cudnn_handle(),
                 /*mode=*/mode_,
                 /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
@@ -989,7 +984,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                 /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationBackward(
+            phi::dynload::cudnnBatchNormalizationBackward(
                 ctx.cudnn_handle(),
                 mode_,
                 CudnnDataType<T>::kOne(),
@@ -1089,10 +1084,9 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+        phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDestroyTensorDescriptor(
-            bn_param_desc_));
+        phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
 
   } else {

@@ -37,13 +37,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {
@@ -125,11 +130,13 @@ static std::vector<std::string> ParseAttrStr(const std::string& attr) {
 ////////////////// Kernel Define ////////////////////
 
 // custom op kernel call function define
-static void RunKernelFunc(const framework::ExecutionContext& ctx,
-                          const paddle::KernelFunc& func,
-                          const std::vector<std::string>& inputs,
-                          const std::vector<std::string>& outputs,
-                          const std::vector<std::string>& attrs) {
+static void RunKernelFunc(
+    const framework::ExecutionContext& ctx,
+    const paddle::KernelFunc& func,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
   VLOG(3) << "Custom Operator: Start run KernelFunc.";
   // prepare CustomOpKernelContext
   paddle::CustomOpKernelContext kernel_ctx;
@@ -142,7 +149,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::NotFound(
                             "Input vector<tensor> (%s) is empty.", in_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_in;
+      std::vector<paddle::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
@@ -158,7 +165,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i,
                               in_name));
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
@@ -172,7 +179,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      paddle::experimental::Tensor custom_in;
+      paddle::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (custom_in.is_gpu_pinned()) {
@@ -239,7 +246,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::NotFound(
                             "Output vector<tensor> (%s) is empty.", out_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_out;
+      std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
         auto* out = vec_out[j];
         PADDLE_ENFORCE_NOT_NULL(
@@ -249,7 +256,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 j,
                 out_name));
         true_out_ptrs.emplace_back(out);
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         // here only can copy the output tensor into context
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
@@ -261,7 +268,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               platform::errors::NotFound(
                                   "Output tensor (%s) is nullptr.", out_name));
       true_out_ptrs.emplace_back(out);
-      paddle::experimental::Tensor custom_out;
+      paddle::Tensor custom_out;
       // here only can copy the output tensor into context
       custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
@@ -270,7 +277,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+
+    FLAGS_tensor_operants_mode = "phi";
+    if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+      paddle::OperantsManager::Instance().phi_operants.reset(
+          new paddle::operants::PhiTensorOperants());
+      VLOG(4) << "Initialize phi tensor operants successfully";
+    }
+
+    // handle inplace case
+    kernel_ctx.MapPlainOutputs(inputs, outputs, inplace_map);
     func(&kernel_ctx);
+    kernel_ctx.AssignInplaceOutputs();
 
     // sync output tensor data into original output
     auto* calc_outs = kernel_ctx.AllMutableOutput();
@@ -673,12 +691,14 @@ static void RegisterOperatorKernelWithPlace(
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
 
-static void RegisterOperatorKernel(const std::string& name,
-                                   const paddle::KernelFunc& kernel_func,
-                                   const std::vector<std::string>& inputs,
-                                   const std::vector<std::string>& outputs,
-                                   const std::vector<std::string>& attrs,
-                                   void* dso_handle) {
+static void RegisterOperatorKernel(
+    const std::string& name,
+    const paddle::KernelFunc& kernel_func,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs,
+    const std::unordered_map<std::string, std::string>& inplace_map,
+    void* dso_handle) {
   VLOG(3) << "Custom Operator: op name in kernel: " << name;
   // NOTE [ Dummy Op Kernel Key ]
   // TODO(chenweihang): Because execute engine need get device context based
@@ -688,10 +708,10 @@ static void RegisterOperatorKernel(const std::string& name,
   OperatorWithKernel::OpKernelFunc op_kernel_func;
   if (kernel_func) {
     VLOG(3) << "Register custom operator " << name << " with kernel func";
-    op_kernel_func = [kernel_func, inputs, outputs, attrs](
+    op_kernel_func = [kernel_func, inputs, outputs, attrs, inplace_map](
                          const framework::ExecutionContext& ctx) {
       VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
-      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
+      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs, inplace_map);
     };
   } else {
     VLOG(3) << "Register custom operator " << name
@@ -747,6 +767,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(base_op_meta);
   auto& kernel_fn = OpMetaInfoHelper::GetKernelFn(base_op_meta);
   auto& infer_shape_func = OpMetaInfoHelper::GetInferShapeFn(base_op_meta);
   auto& infer_dtype_func = OpMetaInfoHelper::GetInferDtypeFn(base_op_meta);
@@ -758,6 +779,12 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           << string::join_strings(op_outputs, ',');
   VLOG(3) << "Custom Operator: forward, op attrs: "
           << string::join_strings(op_attrs, ',');
+  if (!op_inplace_map.empty()) {
+    VLOG(3) << "Custom Operator: forward, op inplace_map: "
+            << string::join_strings(op_inplace_map, ',', [](auto& pair) {
+                 return pair.first + ": " + pair.second;
+               });
+  }
 
   // Op
   info.creator_ = [](const std::string& op_name,
@@ -781,6 +808,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           "Fail to initialize %s's OpProto, because %s is not initialized.",
           op_name,
           info.proto_->InitializationErrorString()));
+
+  // Inplace
+  if (!op_inplace_map.empty()) {
+    info.infer_inplace_ = [op_inplace_map](bool use_cuda) {
+      return op_inplace_map;
+    };
+  }
 
   // InferShape
   if (infer_shape_func == nullptr) {
@@ -895,8 +929,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   }
 
   // Kernel func
-  RegisterOperatorKernel(
-      op_name, kernel_fn, op_inputs, op_outputs, op_attrs, dso_handle);
+  RegisterOperatorKernel(op_name,
+                         kernel_fn,
+                         op_inputs,
+                         op_outputs,
+                         op_attrs,
+                         op_inplace_map,
+                         dso_handle);
 
   // If grad op or double grad op exists
   std::string cur_op_name = op_name;
@@ -907,6 +946,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     auto& grad_op_inputs = OpMetaInfoHelper::GetInputs(cur_grad_op);
     auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
     auto& grad_op_attrs = OpMetaInfoHelper::GetAttrs(cur_grad_op);
+    auto& grad_op_inplace_map = OpMetaInfoHelper::GetInplaceMap(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
     auto& grad_infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(cur_grad_op);
 
@@ -915,6 +955,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
             << string::join_strings(grad_op_inputs, ',');
     VLOG(3) << "Custom Operator: backward, op outputs: "
             << string::join_strings(grad_op_outputs, ',');
+    VLOG(3) << "Custom Operator: backward, op attrs: "
+            << string::join_strings(grad_op_attrs, ',');
+    if (!op_inplace_map.empty()) {
+      VLOG(3) << "Custom Operator: backward, op inplace_map: "
+              << string::join_strings(grad_op_inplace_map, ',', [](auto& pair) {
+                   return pair.first + ": " + pair.second;
+                 });
+    }
 
     bool is_double_grad = (i == 2);
 
@@ -1027,6 +1075,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                            grad_op_inputs,
                            grad_op_outputs,
                            grad_op_attrs,
+                           grad_op_inplace_map,
                            dso_handle);
 
     // update current info

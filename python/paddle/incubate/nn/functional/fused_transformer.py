@@ -887,6 +887,7 @@ def fused_multi_transformer(
     epsilon=1e-05,
     cache_kvs=None,
     pre_caches=None,
+    seq_lens=None,
     rotary_embs=None,
     time_step=None,
     attn_mask=None,
@@ -956,6 +957,7 @@ def fused_multi_transformer(
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
         pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+        seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
         rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
@@ -1055,6 +1057,7 @@ def fused_multi_transformer(
             pre_caches,
             rotary_embs,
             time_step,
+            seq_lens,
             attn_mask,
             linear_weights,
             linear_biases,
@@ -1115,6 +1118,7 @@ def fused_multi_transformer(
             inputs['PreCaches'] = pre_caches
         if rotary_emb_dims > 0:
             inputs['RotaryPosEmb'] = rotary_embs
+        inputs['SeqLengths'] = seq_lens
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:

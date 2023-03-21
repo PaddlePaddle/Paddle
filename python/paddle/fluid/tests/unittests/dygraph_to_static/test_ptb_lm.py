@@ -28,7 +28,7 @@ PRINT_STEP = 20
 SEED = 2020
 
 
-class SimpleLSTMRNN(fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
@@ -89,7 +89,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([step_input, pre_hidden], 1)
+                nn = paddle.concat([step_input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -111,16 +111,16 @@ class SimpleLSTMRNN(fluid.Layer):
                         mode='upscale_in_train',
                     )
             res.append(step_input)
-        real_res = fluid.layers.concat(res, 1)
+        real_res = paddle.concat(res, 1)
         real_res = paddle.reshape(
             real_res, [-1, self._num_steps, self._hidden_size]
         )
-        last_hidden = fluid.layers.concat(hidden_array, 1)
+        last_hidden = paddle.concat(hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(cell_array, 1)
+        last_cell = paddle.concat(cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
@@ -128,7 +128,7 @@ class SimpleLSTMRNN(fluid.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,

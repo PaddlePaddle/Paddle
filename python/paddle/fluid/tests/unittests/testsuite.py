@@ -94,11 +94,13 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-def append_input_output(block, op_proto, np_list, is_input, dtype):
+def append_input_output(
+    block, op_proto, np_list, is_input, dtype, is_calc_ref=False
+):
     '''Insert VarDesc and generate Python variable instance'''
     proto_list = op_proto.inputs if is_input else op_proto.outputs
 
-    def create_var(block, name, np_list, var_proto):
+    def create_var(block, name, np_list, var_proto, is_calc_ref=False):
         dtype = None
         shape = None
         lod_level = None
@@ -118,6 +120,8 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
+            if is_calc_ref and dtype == np.float16:
+                dtype = np.float32
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name
         )
@@ -138,11 +142,15 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
             var_list = []
             for (name, np_value) in np_list[var_name]:
                 var_list.append(
-                    create_var(block, name, {name: np_value}, var_proto)
+                    create_var(
+                        block, name, {name: np_value}, var_proto, is_calc_ref
+                    )
                 )
             var_dict[var_name] = var_list
         else:
-            var_dict[var_name] = create_var(block, var_name, np_list, var_proto)
+            var_dict[var_name] = create_var(
+                block, var_name, np_list, var_proto, is_calc_ref
+            )
 
     return var_dict
 

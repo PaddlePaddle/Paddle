@@ -252,7 +252,7 @@ class TestDygraphBasicApi(unittest.TestCase):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
-            data = fluid.layers.assign(self.input)
+            data = paddle.assign(self.input)
             static_out = dygraph_to_static_func(self.dygraph_func)(data)
 
         exe = fluid.Executor(fluid.CPUPlace())

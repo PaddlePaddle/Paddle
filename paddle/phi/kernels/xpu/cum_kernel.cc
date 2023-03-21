@@ -66,19 +66,55 @@ void CumsumKernel(const Context& dev_ctx,
     }
   }
 
-  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T* y,
-  // const std::vector<int>& xshape, bool reverse, bool exclusive, int axis);
-  int r = cumsum(dev_ctx.x_context(),
-                 reinterpret_cast<const XPUType*>(x.data<T>()),
-                 reinterpret_cast<XPUType*>(out->data<T>()),
-                 x_shape,
-                 reverse,
-                 exclusive,
-                 axis_as_int);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+  // special for fp16
+  if (std::is_same<T, dtype::float16>::value) {
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    float* cast_input_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
+    float* temp_result_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
+    // cast to fp32
+    int r =
+        xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  cast_input_fp32,
+                                  x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    // cumsum in fp32
+    r = xpu::cumsum<float>(dev_ctx.x_context(),
+                           cast_input_fp32,
+                           temp_result_fp32,
+                           x_shape,
+                           reverse,
+                           exclusive,
+                           axis_as_int);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+    // cast back to fp16
+    r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                  temp_result_fp32,
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  } else {
+    // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
+    // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
+    // axis);
+    int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x.data<T>()),
+                                 reinterpret_cast<XPUType*>(out->data<T>()),
+                                 x_shape,
+                                 reverse,
+                                 exclusive,
+                                 axis_as_int);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cumsum, XPU, ALL_LAYOUT, phi::CumsumKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(cumsum,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CumsumKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

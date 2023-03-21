@@ -290,7 +290,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 /// mode.
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
-  XpuPassStrategy() : PassStrategy({}) { use_xpu_ = true; }
+  XpuPassStrategy();
 };
 
 /// \class NpuPassStrategy

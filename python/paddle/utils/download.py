@@ -136,7 +136,7 @@ def get_path_from_url(
         str: a local path to save downloaded models & weights & datasets.
     """
 
-    from paddle.fluid.dygraph.parallel import ParallelEnv
+    from paddle.distributed import ParallelEnv
 
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
