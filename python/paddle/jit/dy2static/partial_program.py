@@ -1094,6 +1094,8 @@ class PartialProgramLayer:
 
 def partial_program_from(concrete_program, from_method=False):
     inputs = concrete_program.inputs
+
+    # NOTE(SigureMo): Remove the first arg `self` from method args.
     if inputs and from_method:
         inputs = inputs[1:]
 
