@@ -1439,6 +1439,37 @@ struct PriorBox : public PatternBase {
   PATTERN_DECL_NODE(prior_box_variances);
 };
 
+// bev_cross_attention
+struct BevCrossAttention : public PatternBase {
+  BevCrossAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bev_cross_attention") {}
+  PDNode* operator()(PDNode* in_q, PDNode* in_k, PDNode* in_v);
+  PATTERN_DECL_NODE(reshapeA1_op);
+  PATTERN_DECL_NODE(reshapeA1_out);
+  PATTERN_DECL_NODE(transposeA1_op);
+  PATTERN_DECL_NODE(transposeA1_out);
+  PATTERN_DECL_NODE(scaleA1_op);
+  PATTERN_DECL_NODE(scaleA1_out);
+  PATTERN_DECL_NODE(matmulA1_op);
+  PATTERN_DECL_NODE(matmulA1_out);
+  PATTERN_DECL_NODE(softmaxA1_op);
+  PATTERN_DECL_NODE(softmaxA1_out);
+  PATTERN_DECL_NODE(matmulA2_op);
+  PATTERN_DECL_NODE(matmulA2_out);
+  PATTERN_DECL_NODE(transposeA2_op);
+  PATTERN_DECL_NODE(transposeA2_out);
+  PATTERN_DECL_NODE(reshapeA2_op);
+  PATTERN_DECL_NODE(reshapeA2_out);
+  PATTERN_DECL_NODE(reshapeB1_op);
+  PATTERN_DECL_NODE(reshapeB1_out);
+  PATTERN_DECL_NODE(transposeB1_op);
+  PATTERN_DECL_NODE(transposeB1_out);
+  PATTERN_DECL_NODE(reshapeC1_op);
+  PATTERN_DECL_NODE(reshapeC1_out);
+  PATTERN_DECL_NODE(transposeC1_op);
+  PATTERN_DECL_NODE(transposeC1_out);
+};
+
 // vit_attention
 struct VitAttention : public PatternBase {
   VitAttention(PDPattern* pattern, const std::string& name_scope)
