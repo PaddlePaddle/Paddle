@@ -833,9 +833,9 @@ phi:
   for (int64_t i = threadIdx.x; i < num_cols; i += blockDim.x) {
     bool inRange = (i < num_cols);
     T v = inRange ? cur_input[i] : static_cast<T>(0);
-    bool isKValue = inRange && ((v == kth_value) ||
-                                (std::isnan(static_cast<float>(v)) &&
-                                 std::isnan(static_cast<float>(kth_value))));
+    bool isKValue =
+        inRange && ((v == kth_value) || (isnan(static_cast<float>(v)) &&
+                                         isnan(static_cast<float>(kth_value))));
     if (isKValue) {
       kth_index = i;
       foundKValue = true;
