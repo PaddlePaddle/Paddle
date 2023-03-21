@@ -722,7 +722,7 @@
     func : inverse_grad
 
 - backward_op : kldiv_loss_grad
-  forward : kldiv_loss(Tensor x, Tensor label, str reduction) -> Tensor(out)
+  forward : kldiv_loss(Tensor x, Tensor label, str reduction="mean") -> Tensor(out)
   args : (Tensor x, Tensor label, Tensor out_grad, str reduction)
   output : Tensor(x_grad)
   infer_meta :
