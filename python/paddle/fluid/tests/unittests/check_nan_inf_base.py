@@ -50,7 +50,7 @@ def net():
     y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
     # test int64 value
-    zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    zero = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
 
     # test float16 value
     fp16_zero = paddle.cast(zero, dtype='float16')

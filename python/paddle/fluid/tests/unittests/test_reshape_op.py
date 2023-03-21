@@ -327,7 +327,7 @@ class TestReshapeOpBool(TestReshapeOp):
 # Test python API
 class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
-        self.fill_constant = paddle.fluid.layers.fill_constant
+        self.fill_constant = paddle.tensor.fill_constant
         self.data = paddle.static.data
         self.to_tensor = paddle.to_tensor
         self._executed_api()

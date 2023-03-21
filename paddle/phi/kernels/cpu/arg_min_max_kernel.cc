@@ -32,26 +32,34 @@ template <typename Context,
           ArgMinMaxType argMinMaxValue>
 struct ArgMinMaxFunctor {};
 
-#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)  \
-  template <typename Context, typename T, typename Tout, int64_t Rank>    \
-  struct ArgMinMaxFunctor<Context, T, Tout, Rank, enum_argminmax_value> { \
-    void operator()(const Context& dev_ctx,                               \
-                    const DenseTensor& in,                                \
-                    DenseTensor* out,                                     \
-                    phi::DDim x_dims,                                     \
-                    int64_t axis,                                         \
-                    bool keepdims) {                                      \
-      auto in_eigen = EigenTensor<T, Rank>::From(in, x_dims);             \
-      if (keepdims) {                                                     \
-        auto out_eigen = EigenTensor<Tout, Rank>::From(*out);             \
-        out_eigen.device(*(dev_ctx.eigen_device())) =                     \
-            in_eigen.eigen_op_type(axis).template cast<Tout>();           \
-      } else {                                                            \
-        auto out_eigen = EigenTensor<Tout, Rank - 1>::From(*out);         \
-        out_eigen.device(*(dev_ctx.eigen_device())) =                     \
-            in_eigen.eigen_op_type(axis).template cast<Tout>();           \
-      }                                                                   \
-    }                                                                     \
+#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)      \
+  template <typename Context, typename T, typename Tout, int64_t Rank>        \
+  struct ArgMinMaxFunctor<Context, T, Tout, Rank, enum_argminmax_value> {     \
+    void operator()(const Context& dev_ctx,                                   \
+                    const DenseTensor& in,                                    \
+                    DenseTensor* out,                                         \
+                    phi::DDim x_dims,                                         \
+                    phi::DDim out_dims,                                       \
+                    int64_t axis,                                             \
+                    bool keepdims,                                            \
+                    bool flatten) {                                           \
+      auto in_eigen = EigenTensor<T, Rank>::From(in, x_dims);                 \
+      if (flatten) {                                                          \
+        auto out_eigen = EigenTensor<Tout, 0>::From(*out, out_dims);          \
+        out_eigen.device(*(dev_ctx.eigen_device())) =                         \
+            in_eigen.eigen_op_type(axis).template cast<Tout>();               \
+      } else {                                                                \
+        if (keepdims) {                                                       \
+          auto out_eigen = EigenTensor<Tout, Rank>::From(*out, out_dims);     \
+          out_eigen.device(*(dev_ctx.eigen_device())) =                       \
+              in_eigen.eigen_op_type(axis).template cast<Tout>();             \
+        } else {                                                              \
+          auto out_eigen = EigenTensor<Tout, Rank - 1>::From(*out, out_dims); \
+          out_eigen.device(*(dev_ctx.eigen_device())) =                       \
+              in_eigen.eigen_op_type(axis).template cast<Tout>();             \
+        }                                                                     \
+      }                                                                       \
+    }                                                                         \
   }
 
 DECLARE_ARG_MIN_MAX_FUNCTOR(argmin, ArgMinMaxType::kArgMin);
@@ -81,32 +89,30 @@ struct VisitDataArgMinMaxFunctor {
   template <typename Tout>
   void apply() const {
     dev_ctx.template Alloc<Tout>(out);
-    bool new_keepdims = keepdims;
-    if (flatten) new_keepdims = true;
 
     // if flatten, will construct the new dims for the cacluate
     phi::DDim x_dims;
+    phi::DDim out_dims;
     int new_axis = axis;
     if (flatten) {
+      // always reduce 1D -> 0D
       x_dims = phi::make_ddim({x.numel()});
-      // if flatten, the axis just as 0
+      out_dims = phi::make_ddim({});
       new_axis = 0;
     } else {
       x_dims = x.dims();
+      out_dims = out->dims();
       if (axis < 0) new_axis = axis + x_dims.size();
-    }
-
-    // For 0D Tensor
-    if (x.dims().size() == 0) {
-      phi::funcs::set_constant(dev_ctx, out, 0);
-      return;
     }
 
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                         \
   ArgMinMaxFunctor<Context, T, Tout, rank, EnumArgMinMaxValue> functor##rank; \
-  functor##rank(dev_ctx, x, out, x_dims, new_axis, new_keepdims)
+  functor##rank(dev_ctx, x, out, x_dims, out_dims, new_axis, keepdims, flatten)
 
     switch (x_dims.size()) {
+      case 0:
+        phi::funcs::set_constant(dev_ctx, out, 0);
+        return;
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
         break;
@@ -195,9 +201,7 @@ PD_REGISTER_KERNEL(argmin,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(argmax,
                    CPU,
@@ -208,6 +212,4 @@ PD_REGISTER_KERNEL(argmax,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+                   uint8_t) {}
