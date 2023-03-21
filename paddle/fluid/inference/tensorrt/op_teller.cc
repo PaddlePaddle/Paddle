@@ -745,8 +745,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVar(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
 
-      if (x_dtype != framework::proto::VarType::FP32 &&
-          x_dtype != framework::proto::VarType::FP16) {
+      if (!(x_dtype == framework::proto::VarType::FP32 ||
+            x_dtype == framework::proto::VarType::FP16)) {
         return false;
       }
 
