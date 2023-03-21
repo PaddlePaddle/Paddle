@@ -439,7 +439,9 @@ def piecewise_decay(boundaries, values):
                 pred=paddle.greater_equal(
                     global_step, paddle.to_tensor(float(boundaries[-1]))
                 ),
-                true_fn=lambda: values[len(values) - 1],
+                true_fn=lambda: paddle.to_tensor(
+                    values[len(values) - 1], dtype="float32"
+                ),
                 false_fn=lambda: lr,
             )
             for i in range(len(boundaries) - 1, -1, -1):
@@ -447,7 +449,9 @@ def piecewise_decay(boundaries, values):
                     pred=paddle.less_than(
                         global_step, paddle.to_tensor(float(boundaries[i]))
                     ),
-                    true_fn=lambda: values[i],
+                    true_fn=lambda: paddle.to_tensor(
+                        values[i], dtype="float32"
+                    ),
                     false_fn=lambda: current_lr,
                 )
             paddle.assign(current_lr, lr)
