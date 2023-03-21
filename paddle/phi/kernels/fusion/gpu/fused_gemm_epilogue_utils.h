@@ -15,6 +15,10 @@
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
+
+#include <cuda_runtime_api.h>  // NOLINT
+#include "cuda.h"              // NOLINT
+
 #if CUDA_VERSION >= 11060
 
 #include <cublasLt.h>
