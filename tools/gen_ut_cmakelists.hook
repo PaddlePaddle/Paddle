@@ -1,8 +1,6 @@
 
 set -e
 
-contains=" "
-
 for cmake in `echo $*`; do
     testlist=`dirname $cmake`/testslist.csv
     res=`python3 -c 'import sys
