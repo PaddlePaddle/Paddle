@@ -230,7 +230,7 @@ void IsnanCooKernel(const Context& dev_ctx,
 
   phi::MetaTensor meta(out_values);
   meta.set_dims(x_values.dims());
-  meta.set_dtype(paddle::experimental::DataType::BOOL);
+  meta.set_dtype(DataType::BOOL);
 
   phi::IsnanKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
@@ -253,7 +253,7 @@ void IsnanCsrKernel(const Context& dev_ctx,
 
   phi::MetaTensor meta(out_values);
   meta.set_dims(x_values.dims());
-  meta.set_dtype(paddle::experimental::DataType::BOOL);
+  meta.set_dtype(DataType::BOOL);
 
   phi::IsnanKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
