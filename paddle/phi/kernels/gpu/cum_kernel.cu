@@ -255,7 +255,7 @@ ThrustCumsumKernel(const Context& dev_ctx,
 }
 
 template <typename Context, typename T>
-std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
+typename std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
 ThrustCumsumKernel(const Context& dev_ctx,
                    const phi::dtype::float16* in_data,
                    phi::dtype::float16* out_data,
