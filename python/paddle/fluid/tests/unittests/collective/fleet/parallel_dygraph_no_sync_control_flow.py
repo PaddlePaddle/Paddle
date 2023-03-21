@@ -17,7 +17,6 @@ from parallel_dygraph_no_sync import TestNoSync
 from test_dist_base import runtime_main
 
 import paddle
-import paddle.fluid as fluid
 from paddle.nn import Linear
 
 seed = 90
@@ -26,7 +25,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNetControlFlow(fluid.Layer):
+class SimpleNetControlFlow(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = Linear(10, 20)

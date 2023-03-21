@@ -48,7 +48,7 @@ class TestCompiledProgram(unittest.TestCase):
                 feed={"image": self.img, "label": self.label},
                 fetch_list=[loss.name],
             )
-            self.loss = loss_data[0]
+            self.loss = float(loss_data)
 
     def test_compiled_program_base(self):
         with new_program_scope():
@@ -70,7 +70,7 @@ class TestCompiledProgram(unittest.TestCase):
                 feed={"image": self.img, "label": self.label},
                 fetch_list=[loss.name],
             )
-            np.testing.assert_array_equal(loss_data[0], self.loss)
+            np.testing.assert_array_equal(float(loss_data), self.loss)
 
 
 class TestCompiledProgramError(unittest.TestCase):

@@ -97,6 +97,7 @@ def composite_batchnorm(
     batch_mean = zeros(run_mean.shape, run_mean.dtype)
     batch_var = zeros(run_var.shape, run_var.dtype)
     if not use_run_stat:
+
         batch_mean = mean(x, reduce_axes, keepdim=True)
         temp = mean(x * x, reduce_axes, keepdim=True)
         batch_var = temp - batch_mean * batch_mean
@@ -119,16 +120,19 @@ def composite_batchnorm(
     if is_amp:
         y = cast(y, "float16")
 
+    # As the same with op kernel, indeed return inverse std
+    inv_std = 1.0 / sqrt(batch_var + epsilon)
+
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = assign(reshape(batch_var, run_var.shape))
+    inv_std_ = assign(reshape(inv_std, run_var.shape))
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
 
-    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+    return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
@@ -165,6 +169,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     variance = reshape(variance, [-1])
     if is_amp:
         out = cast(out, "float16")
+
     return out, mean_, variance
 
 
@@ -298,6 +303,8 @@ def stack_composite(x, axis):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
+
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
     CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
@@ -393,6 +400,15 @@ def hard_swish_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('index_select')
+def index_select_composite(x, index, axis):
+    """define composite rule of op index_select."""
+    if axis < 0:
+        axis = len(x.shape) + axis
+    res = gather(x, index, axis=axis)
+    return res
+
+
 @REGISTER_COMPOSITE('sigmoid')
 def sigmoid_composite(x):
     """
@@ -422,6 +438,40 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """arg place is not used, add it here to keep same as python api."""
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('squeeze2')
+def squeeze2_composite(x, axis):
+    """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
+    """
+    rank = len(x.shape)
+    if len(axis) == 0:
+        dims = set(range(rank))
+    else:
+        dims = set([ax % rank for ax in axis])
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = reshape(x, new_shape)
+    return [out, None]
+
+
+@REGISTER_COMPOSITE('sqrt')
+def sqrt_composite(x):
+    """
+    define composite rule of op sqrt
+    res = pow(x, 0.5)
+    """
+    y = full(x.shape, 0.5, x.dtype)
+    res = pow(x, y)
+    return res
 
 
 @REGISTER_COMPOSITE('pow')
