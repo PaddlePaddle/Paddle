@@ -4675,11 +4675,35 @@ class PipelineOptimizer(object):
         device = self._param_device_map[param_name]
         return device
 
+    def _find_op_by_output(self, startup_program, var_name):
+        """ find the first op with output named var_name in startup_program. """
+        for op in startup_program.global_block().ops:
+            if op.output_arg_names[0] == var_name:
+                return op
+        return None 
+
     def _split_startup_program(self, startup_program, device_id):
         block = startup_program.global_block()
         new_startup_program = Program()
-        for op in block.ops:
-            device = op.attr(self._op_device_key)
+
+        cur_device = None 
+        prev_master_name = ''
+        for idx, op in enumerate(list(block.ops)):
+            if "master" in op.output_arg_names[0]:
+                master_name = op.output_arg_names[0]
+                if master_name != prev_master_name or prev_master_name == '':
+                    #assert cur_device is None 
+                    param_name = master_name[:master_name.index("_fp32_master")]
+                    pre_op = self._find_op_by_output(startup_program, param_name)
+                    device = pre_op.attr(self._op_device_key)
+                    cur_device = device
+                    prev_master_name = param_name 
+                else:
+                    device = cur_device
+            else:
+                device = op.attr(self._op_device_key)
+                cur_device = None
+
             if device == "cpu":
                 assert op.type == "fill_constant", (
                     "For ops in startup program with the op_device attribute "
