@@ -95,7 +95,9 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
             startup_program = fluid.Program()
             train_program = fluid.Program()
             with fluid.program_guard(startup_program, train_program):
-                x = fluid.data(name='input', dtype=self.dtype, shape=self.shape)
+                x = paddle.static.data(
+                    name='input', dtype=self.dtype, shape=self.shape
+                )
                 x.stop_gradient = False
                 out = self._choose_paddle_func(func, x)
 

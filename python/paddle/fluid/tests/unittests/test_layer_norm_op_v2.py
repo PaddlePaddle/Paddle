@@ -90,7 +90,9 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
                     ln = paddle.nn.LayerNorm(shape[1:])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ln(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -99,7 +101,9 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
                     ln = paddle.nn.LayerNorm(shape[1:])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ln(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]

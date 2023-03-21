@@ -184,7 +184,7 @@ class TestModeError(unittest.TestCase):
     def test_mode_error(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'any')
             except Exception as e:
@@ -193,7 +193,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error1(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'channel', data_format='N')
             except Exception as e:
@@ -202,7 +202,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error2(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = paddle.static.nn.prelu(x, 'channel', data_format='N')
             except ValueError as e:

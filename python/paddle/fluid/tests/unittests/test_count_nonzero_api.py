@@ -37,7 +37,7 @@ class TestCountNonzeroAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_shape)
+            x = paddle.static.data('X', self.x_shape)
             out1 = paddle.count_nonzero(x)
             out2 = paddle.tensor.count_nonzero(x)
             out3 = paddle.tensor.math.count_nonzero(x)
@@ -80,7 +80,7 @@ class TestCountNonzeroAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(ValueError, paddle.count_nonzero, x, axis=10)
 
 

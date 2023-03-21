@@ -77,7 +77,7 @@ class TestErfinvAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('x', [1, 5], dtype=self.dtype)
+                x = paddle.static.data('x', [1, 5], dtype=self.dtype)
                 out = paddle.erfinv(x)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'x': self.x.reshape([1, 5])})
