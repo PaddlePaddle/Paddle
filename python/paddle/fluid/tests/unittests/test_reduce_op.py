@@ -1081,7 +1081,7 @@ class API_TestSumOp(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data("data", shape=shape, dtype=x_dtype)
+                data = paddle.static.data("data", shape=shape, dtype=x_dtype)
                 result_sum = paddle.sum(
                     x=data, axis=attr_axis, dtype=attr_dtype
                 )
@@ -1156,7 +1156,7 @@ class TestAllAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
@@ -1213,7 +1213,7 @@ class TestAnyAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 

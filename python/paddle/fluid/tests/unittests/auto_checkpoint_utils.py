@@ -65,8 +65,12 @@ class AutoCheckpointBase(unittest.TestCase):
         self, exe, main_prog, startup_prog, minimize=True, iterable=True
     ):
         def simple_net():
-            image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+            image = paddle.static.data(
+                name='image', shape=[-1, 4, 4], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
             fc_tmp = paddle.static.nn.fc(image, size=CLASS_NUM)
             cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(

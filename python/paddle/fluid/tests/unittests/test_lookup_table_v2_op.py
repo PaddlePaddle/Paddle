@@ -275,20 +275,24 @@ class TestEmbedOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the input dtype must be int64
-                input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
+                input = paddle.static.data(
+                    name='x1', shape=[4, 6], dtype='float32'
+                )
                 paddle.static.nn.embedding(input=input, size=(10, 64))
 
             self.assertRaises(TypeError, test_input_dtype)
 
             def test_param_dtype():
                 # dtype must be float32 or float64
-                input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
+                input2 = paddle.static.data(
+                    name='x2', shape=[4, 6], dtype='int64'
+                )
                 paddle.static.nn.embedding(
                     input=input2, size=(10, 64), dtype='int64'
                 )
 
             self.assertRaises(TypeError, test_param_dtype)
-            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
+            input3 = paddle.static.data(name='x3', shape=[4, 6], dtype='int64')
             paddle.static.nn.embedding(
                 input=input3, size=(10, 64), dtype='float16'
             )

@@ -287,8 +287,8 @@ class TestSplitAPI(unittest.TestCase):
         positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
         positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
-        x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
-        x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
+        x_1 = paddle.static.data(shape=[4, 5, 6], dtype='int32', name='x_1')
+        x_2 = paddle.static.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = paddle.split(
             x=x_1,

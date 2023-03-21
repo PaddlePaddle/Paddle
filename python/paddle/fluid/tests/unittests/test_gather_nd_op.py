@@ -237,9 +237,9 @@ class TestGatherNdError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-            index = paddle.fluid.data(shape=shape, dtype='bool', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            index = paddle.static.data(shape=shape, dtype='bool', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
             np_x = np.random.random(shape).astype('float32')
