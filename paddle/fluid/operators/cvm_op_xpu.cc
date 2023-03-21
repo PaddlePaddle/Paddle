@@ -17,6 +17,7 @@ limitations under the License. */
 //#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cvm_op.h"
+#include "xpu/refactor/table.h"
 
 namespace paddle {
 namespace operators {
@@ -60,7 +61,7 @@ class CVMGradXPUKernel : public framework::OpKernel<T> {
     const T* cvm_data = cvm->data<T>();
 
     const auto* dOut =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Y"));
+        context.Input<LoDTensor>(framework::GradVarName("Y"));
     const T* dout_data = dOut->data<T>();
 
     auto use_cvm = context.Attr<bool>("use_cvm");
@@ -73,7 +74,8 @@ class CVMGradXPUKernel : public framework::OpKernel<T> {
         context.template device_context<DeviceContext>().x_context();
     if (dx->NumLevels() == 0) { 
         // api::cvm_grad<T>(&ctx_cpu, use_cvm, item_size, cvm0ptr, dy0ptr, dx0ptr, true, lod0ptr, lod_size, batch_size)
-        int r = xpu::cvm_grad<T>(xpu_context, use_cvm, item_size, cvm_data, dout_data, dx_data,  false, nullptr, 0, batch_size);
+        // int r = xpu::cvm_grad<T>(xpu_context, use_cvm, item_size, cvm_data, dout_data, dx_data,  false, nullptr, 0, batch_size);
+        int r = xpu::cvm_grad<T>(xpu_context, cvm_data, dout_data, dx_data, nullptr, 0, batch_size, item_size, use_cvm);
         PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                 platform::errors::External(
                             "The cvm_grad XPU OP return wrong value[%d %s]",
@@ -82,7 +84,8 @@ class CVMGradXPUKernel : public framework::OpKernel<T> {
          auto lod = dx->lod()[0];
          int lod_size = static_cast<int>(lod.size());
 	 const int* lod_ptr = reinterpret_cast<const int*>(lod.data());
-         int r = xpu::cvm_grad<T>(xpu_context, use_cvm, item_size, cvm_data, dout_data, dx_data,  true, lod_ptr, lod_size, batch_size);
+        //  int r = xpu::cvm_grad<T>(xpu_context, use_cvm, item_size, cvm_data, dout_data, dx_data,  true, lod_ptr, lod_size, batch_size);
+         int r = xpu::cvm_grad<T>(xpu_context, cvm_data, dout_data, dx_data, lod_ptr, lod_size, batch_size, item_size, use_cvm);
          PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                 platform::errors::External(
                             "The cvm_grad XPU OP return wrong value[%d %s]",

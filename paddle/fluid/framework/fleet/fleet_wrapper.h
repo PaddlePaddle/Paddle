@@ -29,6 +29,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "Eigen/Core"
 
 #include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/program_desc.h"
