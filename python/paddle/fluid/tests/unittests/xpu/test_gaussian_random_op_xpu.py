@@ -265,9 +265,8 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.gaussian([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -281,6 +280,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
         test_default_fp64()
         test_default_fp32()
+        test_default_fp16()
 
         paddle.enable_static()
 
@@ -291,9 +291,8 @@ class TestStandardNormalDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.standard_normal([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -307,6 +306,7 @@ class TestStandardNormalDtype(unittest.TestCase):
 
         test_default_fp64()
         test_default_fp32()
+        test_default_fp16()
 
         paddle.enable_static()
 
