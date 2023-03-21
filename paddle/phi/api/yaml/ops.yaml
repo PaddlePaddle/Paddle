@@ -1,3 +1,10 @@
+# This file is designed for C++ operators, which manages the
+# generated code for dynamic mode and static mode. If you want
+# to add the new operator configuration, make sure an operator's
+# Python API, dynamic graph API, and static graph Opertaor parameters
+# are consistent and correspond one-to-one. It's forbidden that the
+# operator configured in this yaml file does not have Python API.
+
 - op : acos
   args : (Tensor x)
   output : Tensor
@@ -530,25 +537,27 @@
 
 - op : flash_attn
   args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
-  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
     func : flash_attn
     data_type : q
+  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
-- op : flash_attn_raw
+- op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false)
-  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
-    func : flash_attn_raw
+    func : flash_attn_unpadded
     data_type : q
-  backward : flash_attn_raw_grad
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_unpadded_grad
 
 - op : flip
   args : (Tensor x, int[] axis)
@@ -1011,6 +1020,15 @@
   optional : weight
   backward : nll_loss_grad
 
+- op : nonzero
+  args : (Tensor condition)
+  output : Tensor(out)
+  infer_meta :
+    func : NonZeroInferMeta
+  kernel :
+    func : nonzero
+    data_type: condition
+
 - op : npu_identity
   args : (Tensor x, int format = -1)
   output : Tensor
@@ -1261,6 +1279,7 @@
     func : UnchangedInferMeta
   kernel :
     func : sigmoid
+  inplace : (x -> out)
   backward : sigmoid_grad
 
 - op : sign

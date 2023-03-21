@@ -16,6 +16,7 @@ list(
   concat_op.cc
   dropout_op.cc
   group_norm_op.cc
+  pad3d_op.cc
   pad_op.cc
   split_op.cc
   square_op.cc
@@ -46,6 +47,7 @@ list(
   hard_swish_op.cc
   clip_op.cc
   gather_op.cc
+  index_select_op.cc
   anchor_generator_op.cc
   yolo_box_op.cc
   yolo_box_head_op.cc
@@ -101,7 +103,8 @@ list(
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
-  expand_v2_op.cc)
+  expand_v2_op.cc
+  temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
@@ -137,7 +140,8 @@ nv_test(
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator)
+  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator
+       init_phi)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

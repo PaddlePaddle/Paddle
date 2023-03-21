@@ -105,8 +105,8 @@ class TestAssignPosAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            cum_count = paddle.fluid.data(
+            x = paddle.static.data('x', self.x.shape, dtype="int64")
+            cum_count = paddle.static.data(
                 'cum_count', self.cum_count.shape, dtype="int64"
             )
             out = utils._assign_pos(x, cum_count)
