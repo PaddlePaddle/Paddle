@@ -1338,6 +1338,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
