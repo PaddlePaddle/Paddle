@@ -313,6 +313,25 @@ class TestBceLossOpFloat16(TestBceLossOp):
                 )
 
 
+class TestBceLossOpStaticFP16(unittest.TestCase):
+    def test_fp16(self):
+        input_data = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
+            "float16"
+        )
+        label_data = paddle.randint(low=0, high=2, shape=[10, 10]).astype(
+            "float16"
+        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 10], name='y', dtype='float16')
+            out = paddle.bce_loss(x, y)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_data, 'y': label_data}, fetch_list=[out])
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
