@@ -176,7 +176,7 @@ KernelSignature ElementwiseMulGradOpArgumentMapping(
 
 KernelSignature ElementwiseFMaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fmax_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("fmax", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseFMinOpArgumentMapping(
@@ -187,7 +187,7 @@ KernelSignature ElementwiseFMinOpArgumentMapping(
 KernelSignature ElementwiseFMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "fmax_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "fmax_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(

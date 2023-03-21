@@ -57,19 +57,8 @@ class FeedDataReader:
         assert isinstance(exe, fluid.Executor), "exe must be Executor"
         use_cuda = isinstance(exe.place, fluid.CUDAPlace)
         if isinstance(program, fluid.CompiledProgram):
-            if program._is_data_parallel:
-                use_executor = False
-                if program._places is None:
-                    device_num = (
-                        len(fluid.cuda_places())
-                        if use_cuda
-                        else len(fluid.cpu_places())
-                    )
-                else:
-                    device_num = len(program._places)
-            else:
-                use_executor = True
-                device_num = 1
+            use_executor = True
+            device_num = 1
         else:
             use_executor = True
             device_num = 1

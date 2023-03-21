@@ -40,7 +40,6 @@ class TestFleetWithASPSharding(unittest.TestCase):
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
-        os.environ['FLAGS_enable_parallel_graph'] = "0"
         os.environ['FLAGS_fraction_of_gpu_memory_to_use'] = "0.1"
         os.environ['FLAGS_sync_nccl_allreduce'] = "1"
         os.environ['FLAGS_eager_delete_tensor_gb'] = "0"

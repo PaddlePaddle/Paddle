@@ -108,8 +108,7 @@ void SyncBatchNormKernel(const Context &ctx,
     }
 
     if (comm) {
-      int dtype = paddle::platform::ToNCCLDataType(
-          paddle::framework::TransToProtoVarType(mean_out->dtype()));
+      int dtype = phi::ToNCCLDataType(mean_out->dtype());
       // In-place operation
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::ncclAllReduce(stats,

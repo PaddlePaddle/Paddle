@@ -17,8 +17,6 @@ add_subdirectory(kernels)
 add_subdirectory(infermeta)
 # phi tools
 add_subdirectory(tools)
-# phi tests
-add_subdirectory(tests)
 # phi capi
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
@@ -55,7 +53,7 @@ file(
 )
 
 # generate inner headers include dir for users
-generate_unify_header(backends)
+generate_unify_header(backends EXCLUDES context_pool_utils.h)
 generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)
