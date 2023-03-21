@@ -35,6 +35,7 @@ select = [
     # Comprehensions
     "C408",
     "C409",
+    "C410",
     
     # Pyupgrade
     "UP001",
