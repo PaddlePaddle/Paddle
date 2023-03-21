@@ -54,6 +54,7 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.prim_op_type = "comp"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -118,6 +119,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.op_type = "softmax"
         self.prim_op_type = "comp"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
