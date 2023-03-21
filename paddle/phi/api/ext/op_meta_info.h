@@ -33,11 +33,9 @@ limitations under the License. */
  */
 
 namespace paddle {
-namespace framework {
-class PADDLE_API OpMetaInfoHelper;
-}  // namespace framework
 
-using Tensor = paddle::experimental::Tensor;
+class PADDLE_API OpMetaInfoHelper;
+using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
 
@@ -108,6 +106,7 @@ class PADDLE_API CustomOpKernelContext {
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
+  Tensor& MutableInputAt(size_t idx);
   const std::vector<paddle::any>& Attrs() const { return attrs_; }
   const std::vector<std::pair<size_t, size_t>>& InputRange() {
     return input_range_;
@@ -129,11 +128,23 @@ class PADDLE_API CustomOpKernelContext {
     }
   }
 
+  // handle inplace map
+  void MapPlainOutputs(
+      const std::vector<std::string>& inputs,
+      const std::vector<std::string>& outputs,
+      const std::unordered_map<std::string, std::string>& inplace_map);
+  void AssignInplaceOutputs();
+  std::vector<Tensor*>* AllMutablePlainOutput();
+  std::unordered_map<size_t, size_t> GetInplaceTensorMap();
+
  private:
   // TODO(chenweihang): replaced be SmallVector
   std::vector<Tensor> inputs_;
   std::vector<Tensor> outputs_;
   std::vector<paddle::any> attrs_;
+  // handle inplace map
+  std::vector<Tensor*> plain_outputs_;
+  std::unordered_map<size_t, size_t> inplace_tensor_map_;
 
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
@@ -148,8 +159,7 @@ using KernelFunc = void (*)(CustomOpKernelContext*);
   template <typename... Tail>                                                  \
   struct ComputeCallHelper<attr_type, Tail...> {                               \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
-    static void Compute(CustomOpKernelContext* ctx,                            \
-                        const PreviousArgs&... pargs) {                        \
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {  \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
       ComputeCallHelper<                                                       \
           Tail...>::template Compute<in_idx, attr_idx + 1, out_idx>(ctx,       \
@@ -177,10 +187,9 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
-      auto& arg = ctx->InputAt(range.first);
+      auto& arg = ctx->MutableInputAt(range.first);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
@@ -191,8 +200,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<const std::vector<Tensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
       ComputeCallHelper<
@@ -232,11 +240,12 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
   PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
 
+  // Used to be compatible with 2.3 released internal inplace interface, not
+  // recommended
   template <typename... Tail>
   struct ComputeCallHelper<Tensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->OutputRangeAt(out_idx);
       auto* arg = ctx->MutableOutputAt(range.first);
       ComputeCallHelper<
@@ -246,17 +255,32 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Used to be compatible with 2.3 released internal inplace interface, not
+  // recommended
   // TODO(chenweihang): What is the appropriate output form?
   // std::vector<Tensor>*? or std::vector<Tensor*>? or std::vector<Tensor*>*
   template <typename... Tail>
   struct ComputeCallHelper<std::vector<Tensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->OutputRangeAt(out_idx);
       auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle Tensor& for inplace case
+  template <typename... Tail>
+  struct ComputeCallHelper<Tensor&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto& arg = ctx->MutableInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
                                                                     arg);
     }
@@ -268,12 +292,12 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   // For compatibility with the original custom op form
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, std::vector<Tensor>> {
-    static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
+    static void Compute(CustomOpKernelContext* ctx, Args&... args) {
       static_assert(out_idx == 0,
                     "If return std::vector<Tensor> in Custom OpKernel, "
                     "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
-      auto* orig_outs = ctx->AllMutableOutput();
+      auto* orig_outs = ctx->AllMutablePlainOutput();
       PD_CHECK(orig_outs->size() == outs.size(),
                "The number of element in custom operator outputs is wrong, "
                "expected contains ",
@@ -282,15 +306,14 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                outs.size(),
                " Tensors.");
       for (size_t i = 0; i < outs.size(); ++i) {
-        AssignTensorImpl(outs.at(i), &(orig_outs->at(i)));
+        AssignTensorImpl(outs.at(i), orig_outs->at(i));
       }
     }
   };
 
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, void> {
-    static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
-      static_assert(out_idx > 0, "Custom OpKernel has no output.");
+    static void Compute(CustomOpKernelContext* ctx, Args&... args) {
       impl_fn(args...);
     }
   };
@@ -299,8 +322,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       ComputeReturnHelper<out_idx, Return>::Compute(ctx, pargs...);
     }
   };
@@ -547,8 +569,13 @@ class PADDLE_API OpMetaInfo {
   // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Outputs(std::vector<std::string>&& outputs);
 
-  // format: {"<name1>:<type1>", "<name1>:<type1>", ...}
+  // format: {"<name1>:<type1>", "<name2>:<type2>", ...}
   OpMetaInfo& Attrs(std::vector<std::string>&& attrs);
+
+  // format: {"<input_name1>:<output_name1>",
+  // "<input_name2>:<output_name2>",...}
+  OpMetaInfo& SetInplaceMap(
+      std::unordered_map<std::string, std::string>&& inplace_map);
 
   // format: PD_KERNEL(...)
   OpMetaInfo& SetKernelFn(KernelFunc&& func);
@@ -560,17 +587,51 @@ class PADDLE_API OpMetaInfo {
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
-  friend class framework::OpMetaInfoHelper;
+  friend class OpMetaInfoHelper;
 
   // 1. desc info
   std::string name_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
+  std::unordered_map<std::string, std::string> inplace_map_;
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
+};
+
+//////////////// Op Meta Info Helper /////////////////
+class OpMetaInfoHelper {
+ public:
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
+    return info.name_;
+  }
+  static const std::vector<std::string>& GetInputs(
+      const paddle::OpMetaInfo& info) {
+    return info.inputs_;
+  }
+  static const std::vector<std::string>& GetOutputs(
+      const paddle::OpMetaInfo& info) {
+    return info.outputs_;
+  }
+  static const std::vector<std::string>& GetAttrs(
+      const paddle::OpMetaInfo& info) {
+    return info.attrs_;
+  }
+  static const std::unordered_map<std::string, std::string>& GetInplaceMap(
+      const paddle::OpMetaInfo& info) {
+    return info.inplace_map_;
+  }
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
+    return info.kernel_fn_;
+  }
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_shape_fn_;
+  }
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_dtype_fn_;
+  }
 };
 
 //////////////// Op Meta Info Map /////////////////
@@ -605,6 +666,8 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
   OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);
+  OpMetaInfoBuilder& SetInplaceMap(
+      std::unordered_map<std::string, std::string>&& inplace_map);
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);

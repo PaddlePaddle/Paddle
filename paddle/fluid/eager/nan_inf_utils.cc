@@ -103,7 +103,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 
 void CheckTensorHasNanOrInf(
     const std::string& api_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>& tensors) {
   for (auto& tensor_vector : tensors) {
     CheckTensorHasNanOrInf(api_name, tensor_vector);

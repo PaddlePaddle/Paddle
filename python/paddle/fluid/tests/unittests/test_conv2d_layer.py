@@ -23,7 +23,7 @@ from paddle import fluid, nn
 
 
 def _reverse_repeat_list(t, n):
-    return list(x for x in reversed(t) for _ in range(n))
+    return [x for x in reversed(t) for _ in range(n)]
 
 
 class Conv2DTestCase(unittest.TestCase):
@@ -53,7 +53,7 @@ class Conv2DTestCase(unittest.TestCase):
 
         self.padding = padding
         if padding_mode in {'reflect', 'replicate', 'circular'}:
-            _paired_padding = fluid.layers.utils.convert_to_list(
+            _paired_padding = paddle.utils.convert_to_list(
                 padding, 2, 'padding'
             )
             self._reversed_padding_repeated_twice = _reverse_repeat_list(

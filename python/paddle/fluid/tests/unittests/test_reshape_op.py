@@ -27,7 +27,9 @@ class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.attrs = {"shape": self.new_shape}
@@ -45,17 +47,32 @@ class TestReshapeOp(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
-class TestReshapeOp_ZeroDim1(OpTest):
+class TestReshapeOp_ZeroDim1(TestReshapeOp):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
+        }
+
     def init_data(self):
         self.ori_shape = ()
         self.new_shape = (1,)
         self.infered_shape = (1,)
 
 
-class TestReshapeOp_ZeroDim2(OpTest):
+class TestReshapeOp_ZeroDim2(TestReshapeOp_ZeroDim1):
     def init_data(self):
         self.ori_shape = ()
         self.new_shape = (-1,)
@@ -73,7 +90,10 @@ class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.dtype = np.uint16
         x = np.random.random(self.ori_shape).astype("float32")
@@ -96,7 +116,7 @@ class TestReshapeBF16Op(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
@@ -310,7 +330,7 @@ class TestReshapeOpBool(TestReshapeOp):
 # Test python API
 class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
-        self.fill_constant = paddle.fluid.layers.fill_constant
+        self.fill_constant = paddle.tensor.fill_constant
         self.data = paddle.static.data
         self.to_tensor = paddle.to_tensor
         self._executed_api()

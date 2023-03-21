@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"

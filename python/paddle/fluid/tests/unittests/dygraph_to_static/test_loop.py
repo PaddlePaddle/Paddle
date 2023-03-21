@@ -89,7 +89,7 @@ def for_loop_dyfunc(max_len):
 
 def for_loop_dyfunc2(max_len):
     # Test case: a variable is used and created in loop, but used before created
-    x = fluid.layers.fill_constant(shape=[1, 2], dtype="int32", value=1)
+    x = paddle.tensor.fill_constant(shape=[1, 2], dtype="int32", value=1)
 
     for i in range(max_len):
         if i > 1:
@@ -97,7 +97,7 @@ def for_loop_dyfunc2(max_len):
         a = 1
         q, _ = x.shape  # test var x.shape only used but not created in loop
 
-    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s + q)
+    ret = paddle.tensor.fill_constant(shape=[1], dtype="int32", value=s + q)
     return ret
 
 
@@ -189,7 +189,7 @@ def for_loop_class_var(max_len):
     foo = Foo()
 
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    max_len = fluid.layers.fill_constant(
+    max_len = paddle.tensor.fill_constant(
         shape=[1], value=max_len, dtype="int32"
     )
 
@@ -206,8 +206,8 @@ def var_create_in_for_loop(max_len):
 
 
 def nested_for_loop_dyfunc():
-    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
-    three = fluid.layers.fill_constant(shape=[1], value=3, dtype="int32")
+    two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
+    three = paddle.tensor.fill_constant(shape=[1], value=3, dtype="int32")
     for j in range(two):
         for i in range(10):
             a = 2 + j

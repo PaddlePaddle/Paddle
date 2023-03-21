@@ -279,30 +279,29 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(
-    paddle_infer::Tensor &tensor,  // NOLINT
-    paddle::experimental::Tensor &&paddle_tensor) {
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                   paddle::Tensor &&paddle_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);
   }
-  if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+  if (paddle_tensor.dtype() == phi::DataType::FLOAT32) {
     tensor.ShareExternalData(
         static_cast<float *>(paddle_tensor.data<float>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT16) {
+  } else if (paddle_tensor.dtype() == phi::DataType::FLOAT16) {
     tensor.ShareExternalData(
         static_cast<paddle::platform::float16 *>(
             paddle_tensor.data<paddle::platform::float16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::INT32) {
+  } else if (paddle_tensor.dtype() == phi::DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::INT64) {
+  } else if (paddle_tensor.dtype() == phi::DataType::INT64) {
     tensor.ShareExternalData(
         static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
         shape,

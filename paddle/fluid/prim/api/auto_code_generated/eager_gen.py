@@ -356,10 +356,10 @@ namespace paddle {
 namespace prim {
 """,
         """
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 """,
         """
 }  // namespace prim

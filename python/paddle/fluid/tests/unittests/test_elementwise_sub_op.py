@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+import warnings
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
@@ -32,7 +36,7 @@ class TestElementwiseOp(OpTest):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -61,7 +65,7 @@ class TestElementwiseOp(OpTest):
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -69,6 +73,7 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, []).astype("float64"),
@@ -76,12 +81,12 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -89,6 +94,7 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
@@ -96,12 +102,12 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -109,6 +115,7 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, []).astype("float64"),
@@ -116,12 +123,12 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -129,6 +136,7 @@ class TestBF16ElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.dtype = np.uint16
         x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -141,7 +149,7 @@ class TestBF16ElementwiseOp(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -162,7 +170,7 @@ class TestBF16ElementwiseOp(OpTest):
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -173,6 +181,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
@@ -186,6 +195,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
@@ -253,6 +263,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
@@ -287,6 +298,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
@@ -303,6 +315,7 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
@@ -319,6 +332,7 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
@@ -335,6 +349,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 12).astype(np.float64),
@@ -355,6 +370,7 @@ class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
@@ -368,7 +384,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def init_base_dtype(self):
         self.dtype = np.float64
@@ -421,7 +437,7 @@ class TestComplexElementwiseSubOp(OpTest):
             check_prim=self.check_prim,
         )
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def if_check_prim(self):
@@ -443,7 +459,7 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def if_check_prim(self):
@@ -613,6 +629,32 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestTensorSubAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+
+            paddle.enable_static()
+            helper = LayerHelper("elementwise_sub")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="elementwise_sub",
+                inputs={'X': data, 'Y': data},
+                outputs={'Out': out},
+                attrs={'axis': 1, 'use_mkldnn': False},
+            )
+            self.assertTrue(
+                "op elementwise_sub's attr axis = 1 is not the default value: -1"
+                in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':

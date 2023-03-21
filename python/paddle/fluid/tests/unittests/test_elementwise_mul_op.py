@@ -29,13 +29,14 @@ class ElementwiseMulOp(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -88,7 +89,7 @@ class ElementwiseMulOp(OpTest):
     def init_axis(self):
         pass
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -98,7 +99,7 @@ class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -108,7 +109,7 @@ class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -118,7 +119,7 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -127,6 +128,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.dtype = np.uint16
 
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -145,7 +147,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -159,7 +161,7 @@ class TestBF16ElementwiseMulOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -171,6 +173,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
             'Y': np.random.rand(1).astype(np.float64),
@@ -184,6 +187,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
             'Y': np.random.random((100,)).astype("float64"),
@@ -200,6 +204,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.init_dtype()
         self.init_kernel_type()
         self.init_axis()
@@ -349,8 +354,8 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def if_skip_cinn(self):
-        self.enable_cinn = False
+    def if_enable_cinn(self):
+        pass
 
 
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
@@ -358,6 +363,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
             'Y': np.random.rand(1, 1, 100).astype(np.float64),
@@ -371,6 +377,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(30, 3, 1, 5).astype(np.float64),
             'Y': np.random.rand(30, 1, 4, 1).astype(np.float64),
@@ -384,6 +391,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(10, 10).astype(np.float64),
             'Y': np.random.rand(2, 2, 10, 10).astype(np.float64),

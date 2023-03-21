@@ -32,6 +32,8 @@ class TestTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -50,7 +52,7 @@ class TestTransposeOp(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def initTestCase(self):
         self.shape = (3, 40)
@@ -118,12 +120,46 @@ class TestCase9(TestTransposeOp):
 
 
 class TestCase10(TestTransposeOp):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float64"),
+            'Out': self.inputs['X'].transpose(self.axis),
+        }
+
     def initTestCase(self):
         self.shape = (10, 8, 2)
         self.axis = (-1, 1, -3)
 
 
 class TestCase_ZeroDim(TestTransposeOp):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float64"),
+            'Out': self.inputs['X'].transpose(self.axis),
+        }
+
     def initTestCase(self):
         self.shape = ()
         self.axis = ()
@@ -134,6 +170,8 @@ class TestAutoTuneTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -160,7 +198,7 @@ class TestAutoTuneTransposeOp(OpTest):
         fluid.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestAutoTuneTransposeBF16Op(OpTest):
@@ -169,6 +207,9 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.initTestCase()
         self.dtype = np.uint16
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random(self.shape).astype("float32")
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
@@ -198,7 +239,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         fluid.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTransposeBF16Op(OpTest):
@@ -206,7 +247,10 @@ class TestTransposeBF16Op(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.dtype = np.uint16
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
 
         self.inputs = {'X': convert_float_to_uint16(x)}

@@ -30,7 +30,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on CPU."));
 
@@ -43,16 +43,15 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+  const auto& index_type = index.dtype();
+  if (index_type == phi::DataType::INT32) {
     phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
         *x_grad,
         axis,
         index,
         out_grad,
         dev_ctx);  // the gradient of gather is scatter
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == phi::DataType::INT64) {
     phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
         *x_grad, axis, index, out_grad, dev_ctx);
   }

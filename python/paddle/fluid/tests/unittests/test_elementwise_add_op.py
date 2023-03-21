@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+import warnings
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
@@ -20,6 +22,7 @@ from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestElementwiseAddOp(OpTest):
@@ -29,14 +32,14 @@ class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
-        self.only_prim()
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -100,13 +103,10 @@ class TestElementwiseAddOp(OpTest):
     def init_axis(self):
         self.axis = -1
 
-    def only_prim(self):
-        pass
-
     def if_check_prim(self):
         self.check_prim = self.axis == -1
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -116,7 +116,7 @@ class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -153,41 +153,6 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
                     check_prim=self.check_prim,
                 )
 
-    def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X', 'Y'],
-                'Out',
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
-
-    def test_check_grad_ingore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
-
-    def test_check_grad_ingore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -199,6 +164,7 @@ class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.dtype = np.uint16
 
@@ -218,7 +184,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -240,7 +206,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             place, ['X'], 'Out', no_grad_set=set('Y'), check_prim=True
         )
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -262,9 +228,6 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y
-
-    def only_prim(self):
-        self.only_prim = True
 
 
 @skip_check_grad_ci(
@@ -516,9 +479,12 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(100, 1).astype(self.dtype)
-        self.y = np.random.rand(1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1)
+        self.x = np.random.rand(10, 100, 1).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
@@ -864,6 +830,32 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         b = np.array([1.5], dtype='float16')[0]
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
+
+
+class TestTensorAddAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+
+            paddle.enable_static()
+            helper = LayerHelper("elementwise_add")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="elementwise_add",
+                inputs={'X': data, 'Y': data},
+                outputs={'Out': out},
+                attrs={'axis': 1, 'use_mkldnn': False},
+            )
+            self.assertTrue(
+                "op elementwise_add's attr axis = 1 is not the default value: -1"
+                in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':

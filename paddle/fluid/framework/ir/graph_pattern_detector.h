@@ -1925,7 +1925,6 @@ struct FusionGru : public PatternBase {
 struct FusionLSTM : public PatternBase {
   FusionLSTM(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fusion_lstm") {}
-  // TODO(lidanqing): Is it enough to detect fusion_lstm with these things
   PDNode* operator()();
 
   // declare op
@@ -2039,6 +2038,23 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(beta);
   PATTERN_DECL_NODE(shift);
   PATTERN_DECL_NODE(shift_out);
+};
+
+//
+// \brief   Pattern looking for subgraph representing layer normalization
+//          operation.
+//
+struct SplitLayerNorm : public PatternBase {
+  SplitLayerNorm(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "split_layer_norm") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
 };
 
 //

@@ -37,7 +37,7 @@ def apply_pass(use_amp=False, level=None):
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
-        amp.use_pure_fp16 = level in ["o2", "o3"]
+        amp.level = level
         amp.use_optimizer_fp16 = level == "o3"
         print("amp level: ", level)
     return strategy
