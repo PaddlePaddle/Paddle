@@ -273,6 +273,7 @@ class TestChannelShuffleFP16OP(OpTest):
         self.op_type = "channel_shuffle"
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.float16
+        self.__class__.op_type = self.op_type
         self.place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -304,6 +305,7 @@ class TestChannelShuffleBF16OP(OpTest):
         self.op_type = "channel_shuffle"
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
         self.use_mkldnn = False
         self.input_shape = (2, 4, 3, 3)
         self.groups = 2
@@ -328,8 +330,6 @@ class TestChannelShuffleBF16OP(OpTest):
                     place,
                     ['X'],
                     'Out',
-                    user_defined_grads=[self.inputs['X']],
-                    user_defined_grad_outputs=[self.outputs['Out']],
                 )
 
 
