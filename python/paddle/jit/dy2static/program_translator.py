@@ -993,7 +993,7 @@ class ConcreteProgram:
 
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
-                # 1. Adds `fluid.data` layers for input if needed
+                # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
                 )

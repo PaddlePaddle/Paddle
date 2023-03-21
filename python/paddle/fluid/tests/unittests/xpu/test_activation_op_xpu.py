@@ -126,7 +126,7 @@ class TestSiluAPI(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [11, 17])
+            x = paddle.static.data('X', [11, 17])
             out1 = F.silu(x)
             m = paddle.nn.Silu()
             out2 = m(x)
@@ -152,12 +152,12 @@ class TestSiluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.silu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[11, 17], dtype='int32'
             )
             self.assertRaises(TypeError, F.silu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[11, 17], dtype='float16'
             )
             F.silu(x_fp16)

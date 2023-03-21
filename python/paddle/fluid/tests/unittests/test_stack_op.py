@@ -46,6 +46,7 @@ class TestStackOpBase(OpTest):
         self.op_type = 'stack'
         self.prim_op_type = "comp"
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -129,6 +130,7 @@ class TestStackBF16Op(OpTest):
         self.prim_op_type = "comp"
         self.enable_cinn = False
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(

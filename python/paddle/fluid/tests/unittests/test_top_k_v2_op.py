@@ -47,6 +47,7 @@ class TestTopkOp(OpTest):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 20)
         self.init_args()
@@ -88,6 +89,7 @@ class TestTopkOp3(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(16, 100)
         self.init_args()
@@ -109,6 +111,7 @@ class TestTopkOp4(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
@@ -130,6 +133,7 @@ class TestTopkOp5(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
@@ -151,6 +155,7 @@ class TestTopkOp6(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float32
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
@@ -172,6 +177,7 @@ class TestTopkOp7(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float16
         self.input_data = np.random.rand(10, 20, 10)
         self.init_args()

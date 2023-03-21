@@ -26,8 +26,12 @@ class TestAscendTriggerOP(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         with fluid.program_guard(program):
-            x = fluid.data(name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.data(name='y', shape=[1], dtype='int64', lod_level=0)
+            x = paddle.static.data(
+                name='x', shape=[1], dtype='int64', lod_level=0
+            )
+            y = paddle.static.data(
+                name='y', shape=[1], dtype='int64', lod_level=0
+            )
             block.append_op(
                 type="ascend_trigger",
                 inputs={"FeedList": [x]},
