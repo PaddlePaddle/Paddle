@@ -78,7 +78,6 @@ TEST(attribute_test, dictionary_attribute) {
       std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));
   ir::DictionaryAttribute dic_attr1 =
       ir::DictionaryAttribute::get(ctx, named_attr1);
-
   std::map<ir::StrAttribute, ir::Attribute> named_attr2;
   named_attr2.insert(
       std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));

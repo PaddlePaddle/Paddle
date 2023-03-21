@@ -27,8 +27,6 @@ class StrAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
 
-  friend class StrAttributeStorage;
-
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
 
   bool operator<(const StrAttribute &right) const {
@@ -44,13 +42,13 @@ class NamedAttribute {
  public:
   NamedAttribute(StrAttribute name, Attribute value);
 
-  StrAttribute name() const;
+  StrAttribute name() const { return name_; }
 
-  Attribute value() const;
+  Attribute value() const { return value_; }
 
-  void SetName(StrAttribute name);
+  void SetName(StrAttribute name) { name_ = name; }
 
-  void SetValue(Attribute value);
+  void SetValue(Attribute value) { value_ = value; }
 
   bool operator<(const NamedAttribute &right) const;
 

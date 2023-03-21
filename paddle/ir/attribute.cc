@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/ir/attribute.h"
-#include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/dialect.h"
 
 namespace ir {
