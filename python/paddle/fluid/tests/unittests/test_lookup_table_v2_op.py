@@ -66,6 +66,26 @@ class TestLookupTableOp(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_eager=True)
 
 
+class TestLookupTableFP16Op(OpTest):
+
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
+        table = np.random.random((17, 31)).astype(self.dtype)
+        ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
+        self.inputs = {'W': table.astype(self.dtype), 'Ids': ids.astype(self.dtype)}
+        self.outputs = {'Out': table[ids]}
+
+    def id_dtype(self):
+        return np.float16
+
+    def test_check_output(self):
+        self.check_output(check_eager=True,atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_eager=True,atol=1e-3)
+
+
 class TestLookupTableOpInt16(OpTest):
 
     def id_dtype(self):

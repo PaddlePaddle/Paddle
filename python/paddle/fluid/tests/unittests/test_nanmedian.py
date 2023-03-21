@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+from op_test import OpTest,convert_float_to_uint16
 
 np.random.seed(102)
 
@@ -198,6 +199,123 @@ class TestNanmedian(unittest.TestCase):
         y = paddle.nanmedian(x_tensor, axis=1, keepdim=True)
         dx = paddle.grad(y, x_tensor)[0].numpy()
         np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+
+def ref_nanmedian(arr):
+    arr_nan = np.isnan(arr)
+    arr_nonnan = arr[~arr_nan]
+    if arr_nonnan.size == 0:
+        return np.nan
+    else:
+        return np.median(arr_nonnan)
+
+def ref_nanmedian_grad(arr, dout):
+    arr_nan = np.isnan(arr)
+    arr_nonnan = arr[~arr_nan]
+    if arr_nonnan.size == 0:
+        return np.zeros_like(arr)
+    else:
+        median = np.median(arr_nonnan)
+        num_nonnan = arr_nonnan.size
+        grad_nonnan = dout / num_nonnan
+        grad = np.zeros_like(arr)
+        grad[~arr_nan] = grad_nonnan
+        return grad
+
+class TestNanmedianBF16(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.dtype = np.bfloat16
+
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = np.nanmedian
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        x[0][0] = np.nan
+        out_ref = np.nanmedian(x)
+        self.out_grad = np.random.randn(*self.x_shape).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx = ref_nanmedian_grad(self.inputs['X'], self.out_grad)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2
+        )
+
+
+class TestNanmedianFP16OP(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = np.nanmedian
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(np.float32)
+        x[0][0] = np.nan
+        out_ref = np.nanmedian(x)
+        self.out_grad = np.random.randn(*self.x_shape).astype(np.float32)
+        self.inputs = {'X': x.astype(self.dtype)}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx = ref_nanmedian_grad(self.inputs['X'], self.out_grad)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2
+        )
+
+
+class TestNanmedianOP(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.dtype = "float64"
+
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = np.nanmedian
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        x[0][0] = np.nan
+        out_ref = np.nanmedian(x)
+        self.out_grad = np.random.randn(*self.x_shape).astype(self.dtype)
+        self.inputs = {'X'}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx = ref_nanmedian_grad(self.inputs['X'], self.out_grad)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2
+        )
 
 
 if __name__ == "__main__":

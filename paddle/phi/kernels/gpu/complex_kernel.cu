@@ -20,12 +20,15 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 PD_REGISTER_KERNEL(conj,
                    GPU,
                    ALL_LAYOUT,
                    phi::ConjKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    float,
@@ -37,6 +40,8 @@ PD_REGISTER_KERNEL(real,
                    GPU,
                    ALL_LAYOUT,
                    phi::RealKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
@@ -46,12 +51,14 @@ PD_REGISTER_KERNEL(imag,
                    GPU,
                    ALL_LAYOUT,
                    phi::ImagKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
 PD_REGISTER_KERNEL(
-    complex, GPU, ALL_LAYOUT, phi::ComplexKernel, float, double) {
+    complex, GPU, ALL_LAYOUT, phi::ComplexKernel, float, double,phi::dtype::bfloat16,phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }

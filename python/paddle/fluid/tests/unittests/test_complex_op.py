@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import dygraph
@@ -104,6 +104,141 @@ class TestComplexOp(OpTest):
                         user_defined_grads=[dx],
                         user_defined_grad_outputs=[dout],
                         check_eager=True)
+
+
+class TestComplexFP16Op(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.op_type = "complex"
+        self.python_api = paddle.complex
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        y = np.random.randn(*self.y_shape).astype(self.dtype)
+        out_ref = ref_complex(x, y)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            self.dtype
+        ) + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
+        self.inputs = {'X': x.astype(self.dtype), 'Y': y.astype(self.dtype)}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True,atol=1e-3)
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-3
+        )
+
+    def test_check_grad_ignore_x(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.assertTupleEqual(dx.shape, tuple(self.x_shape))
+        self.assertTupleEqual(dy.shape, tuple(self.y_shape))
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            user_defined_grads=[dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+
+    def test_check_grad_ignore_y(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+
+
+class TestComplexBF16(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.dtype = np.bfloat16
+
+    def setUp(self):
+        self.op_type = "complex"
+        self.python_api = paddle.complex
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        y = np.random.randn(*self.y_shape).astype(self.dtype)
+        out_ref = ref_complex(x, y)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            np.float32
+        ) + 1j * np.random.randn(*self.y_shape).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x), 'Y': convert_float_to_uint16(y)}
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True,atol=1e-2)
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2
+        )
+
+    def test_check_grad_ignore_x(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.assertTupleEqual(dx.shape, tuple(self.x_shape))
+        self.assertTupleEqual(dy.shape, tuple(self.y_shape))
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            user_defined_grads=[dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+
+    def test_check_grad_ignore_y(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
