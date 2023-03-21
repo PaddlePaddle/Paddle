@@ -1479,8 +1479,12 @@ class TestCos(TestActivation):
     def setUp(self):
         self.op_type = "cos"
         self.python_api = paddle.cos
+        self.public_python_api = paddle.cos
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
+        # prim not support now
+        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1495,7 +1499,7 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1611,6 +1615,8 @@ class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
         self.python_api = paddle.sin
+        self.public_python_api = paddle.sin
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         # prim not support now
@@ -1629,7 +1635,7 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSin_ZeroDim(TestSin):
