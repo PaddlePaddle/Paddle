@@ -17,6 +17,7 @@
 			*paddle_infer::LayoutConvert*;
 
 			*paddle::experimental*;
+			*paddle::Tensor*;
 			*paddle::internal*;
 			*paddle::get_version*;
 			*paddle::LiteNNAdapterConfig*;
@@ -40,6 +41,9 @@
 			*paddle::CPUContextResource*;
 			*paddle::OpMetaInfoBuilder*;
 			*paddle::CustomOpKernelContext*;
+			*paddle::RegisterSymbolsFor*;
+			*paddle::from_blob*;
+			*paddle::InitPhi*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
@@ -64,6 +68,9 @@
 			/* *paddle::platform::GetExportedFlagInfoMap*; */
 
 			/* *paddle::framework*; */
+			*paddle::framework::InitDevices*;
+			*paddle::framework::InitMemoryMethod*;
+                        
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
 			*paddle::framework::proto*;

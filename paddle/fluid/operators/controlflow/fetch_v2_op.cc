@@ -34,7 +34,7 @@ namespace operators {
 static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
-  if (src_item.IsInitialized() && src_item.numel() > 0) {
+  if (src_item.IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {
@@ -58,9 +58,7 @@ static void DeepCopy(const phi::DenseTensor &src_item,
     paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
-    // Not copy, if the src tensor is empty.
-    dst_item->clear();
-    dst_item->Resize({0});
+    VLOG(4) << "No copy";
   }
   dst_item->set_lod(src_item.lod());
 }
