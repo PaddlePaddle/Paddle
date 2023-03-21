@@ -19,6 +19,8 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
+#include "paddle/phi/core/errors.h"
+
 namespace phi {
 namespace fusion {
 
@@ -51,7 +53,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
         sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
   }
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
       "parallel op."));
 #endif
