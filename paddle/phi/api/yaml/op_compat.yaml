@@ -951,9 +951,9 @@
 - op : kldiv_loss
   backward : kldiv_loss_grad
   inputs :
-    {x : X, label: Label}
+    {x : X, label: Target}
   outputs :
-    {out : Out}
+    out : Loss
 
 - op : kron
   backward : kron_grad
