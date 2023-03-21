@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
 namespace fusion {
@@ -40,6 +41,19 @@ void ConvXPUKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = Input.dims();
   auto filter_dims = Filter.dims();
+  std::vector<int> paddings_vec = paddings;
+  std::vector<int> dilations_vec = dilations;
+
+  phi::DDim in_data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
+  phi::DDim filter_data_dims =
+      phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_data_dims,
+                                strides,
+                                ksize);
 
   int batch = static_cast<int>(input_dims[0]);
   int in_c = static_cast<int>(input_dims[1]);
@@ -54,12 +68,12 @@ void ConvXPUKernel(const Context& ctx,
   const float* input_max_data = InputMax.get_ptr() == nullptr
                                     ? nullptr
                                     : InputMax.get_ptr()->data<float>();
-  const float* branch_data = Branch.get_ptr() == nullptr
-                                    ? nullptr
-                                    : Branch.get_ptr()->data<float>();
-  const float* bias_data = Bias.get_ptr() == nullptr
-                                    ? nullptr
-                                    : Bias.get_ptr()->data<float>();
+  auto* branch_data =
+      Branch.get_ptr() == nullptr
+          ? nullptr
+          : reinterpret_cast<const XPUType*>(Branch.get_ptr()->data<T>());
+  const float* bias_data =
+      Bias.get_ptr() == nullptr ? nullptr : Bias.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(Output));
 
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
@@ -70,29 +84,29 @@ void ConvXPUKernel(const Context& ctx,
   }
   int r = xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX, TW.
                                                                    // TY, TGEMM
-          ctx.x_context(),                                         // ctx
-          input_data,                                              // input
-          Filter.data<int16_t>(),                                  // filter
-          out_data,                                                // output
-          batch,                                                   // batch
-          in_c,                                                    // in_c
-          in_h,                                                    // in_h
-          in_w,                                                    // in_w
-          filter_num,                                              // out_c
-          std::vector<int>{win_h, win_w},                          // k_size
-          strides,                                                 // strides
-          paddings,                                                // paddings
-          dilations,                                               // dilations
-          group,                                                   // group
-          input_max_data,                                          // in_maxptr
-          FilterMax.data<float>(),               // filter_maxptr
-          ctx.template Alloc<float>(OutputMax),  // out_maxptr
-          true,                                  // ?
-          bias_data,                             // bias
-          branch_data,                           // branch
-          act,                                   // act
-          nullptr);                              // branch_maxptr
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
+      ctx.x_context(),                                             // ctx
+      input_data,                                                  // input
+      Filter.data<int16_t>(),                                      // filter
+      out_data,                                                    // output
+      batch,                                                       // batch
+      in_c,                                                        // in_c
+      in_h,                                                        // in_h
+      in_w,                                                        // in_w
+      filter_num,                                                  // out_c
+      std::vector<int>{win_h, win_w},                              // k_size
+      strides,                                                     // strides
+      paddings_vec,                                                // paddings
+      dilations_vec,                                               // dilations
+      group,                                                       // group
+      input_max_data,                                              // in_maxptr
+      FilterMax.data<float>(),               // filter_maxptr
+      ctx.template Alloc<float>(OutputMax),  // out_maxptr
+      true,                                  // ?
+      bias_data,                             // bias
+      branch_data,                           // branch
+      act,                                   // act
+      nullptr);                              // branch_maxptr
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
 }
 
 }  // namespace fusion

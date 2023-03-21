@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
 inline int ConvOutSize(int input_size,
@@ -33,45 +34,17 @@ inline int ConvOutSize(int input_size,
   return output_size;
 }
 
-void UpdatePaddingAndDilation(std::vector<int>& paddings,
-                              std::vector<int>& dilations,
-                              std::vector<int>& strides,
-                              std::string padding_algorithm,
-                              phi::DDim data_dims,
-                              phi::DDim ksize) {
-  // when padding_desc is "VALID" or "SAME"
-  if (padding_algorithm == "SAME") {
-    for (size_t i = 0; i < strides.size(); ++i) {
-      int out_size = (data_dims[i + 2] + strides[i] - 1) / strides[i];
-      int pad_sum = (std::max)(
-          (out_size - 1) * strides[i] + ksize[i + 2] - data_dims[i + 2],
-          (int64_t)0);
-      int pad_0 = pad_sum / 2;
-      int pad_1 = pad_sum - pad_0;
-      // pad
-      *(paddings.begin() + i * 2) = pad_0;
-      *(paddings.begin() + i * 2 + 1) = pad_1;
-      // dilation
-      *(dilations.begin() + i) = 1;
-    }
-  } else if (padding_algorithm == "VALID") {
-    for (auto& it : paddings) {
-      it = 0;
-    }
-  }
-}
-
 void ConvXPUInferMeta(const MetaTensor& Input,
                       const MetaTensor& InputMax,
                       const MetaTensor& Filter,
                       const MetaTensor& Filtermax,
                       const MetaTensor& Bias,
                       const MetaTensor& Branch,
-                      std::vector<int>& paddings,
-                      std::vector<int>& dilations,
-                      std::vector<int>& strides,
-                      std::vector<int>& groups,
-                      std::string padding_algorithm,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& groups,
+                      const std::string& padding_algorithm,
                       bool has_bias,
                       bool has_branch,
                       int act_type,
@@ -80,18 +53,25 @@ void ConvXPUInferMeta(const MetaTensor& Input,
                       MetaTensor* OutputMax) {
   const auto in_dims = Input.dims();
   const auto filter_dims = Filter.dims();
+  std::vector<int> paddings_vec = paddings;
+  std::vector<int> dilations_vec = dilations;
 
-  UpdatePaddingAndDilation(
-      paddings, dilations, strides, padding_algorithm, in_dims, filter_dims);
+  std::vector<int> ksize = phi::vectorize<int>(filter_dims);
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_dims,
+                                strides,
+                                ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
     out_shape.push_back(ConvOutSize(in_dims[i + 2],
-                                          filter_dims[i + 2],
-                                          dilations[i],
-                                          paddings[i * 2],
-                                          paddings[i * 2 + 1],
-                                          strides[i]));
+                                    filter_dims[i + 2],
+                                    dilations[i],
+                                    paddings_vec[i * 2],
+                                    paddings_vec[i * 2 + 1],
+                                    strides[i]));
   }
   // set output and output max dims
   Output->set_dims(DDim(out_shape.data(), out_shape.size()));
