@@ -14,7 +14,6 @@
 
 import itertools
 import re
-import sys
 from typing import Dict, List, Sequence
 
 from type_mapping import (
@@ -79,15 +78,6 @@ def find_optinal_inputs_name(inputs):
         input["fluid_name"] for input in inputs if input["optional"] is True
     ]
     return optional_inputs_name
-
-
-def find_first_selected_rows_param(inputs, kernel):
-    for index, input in enumerate(inputs):
-        if input == "selected_rows":
-            return index
-    sys.stderr(
-        "Inputs of kernel {} don't have 'selected_rows' param!".format(kernel)
-    )
 
 
 def delete_last_underline(op_name):
