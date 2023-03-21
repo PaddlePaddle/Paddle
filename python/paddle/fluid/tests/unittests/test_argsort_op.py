@@ -519,8 +519,7 @@ class TestArgsortFP16OP(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
+                self.check_grad(
                     ['X'],
                     'Out',
                     max_relative_error=1e-3,
