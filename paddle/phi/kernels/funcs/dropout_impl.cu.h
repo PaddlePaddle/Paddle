@@ -208,7 +208,7 @@ __global__ void DropOutNdForwardKernel(
     T* y,
     int64_t N,
     kps::details::BroadcastConfig broadcast_config,
-    uint64* seed_ptr) {
+    const uint64_t* seed_ptr) {
   // Vectorized Generate Mask
   // kCount is 4 for curand_uniform4 is used
   if (seed_ptr) {
@@ -376,7 +376,8 @@ void DropoutFwGPUKernelDriver(
                                                     &seed_data,
                                                     &increment,
                                                     true);
-      uint64_t* seed_ptr = copy_in_kernel ? seed->data<uint64_t>() : nullptr;
+      const uint64_t* seed_ptr =
+          copy_in_kernel ? seed->data<uint64_t>() : nullptr;
 
       DropOutNdForwardKernel<T>
           <<<grid_size, block_size, 0, stream>>>(size,
@@ -387,7 +388,8 @@ void DropoutFwGPUKernelDriver(
                                                  increment,
                                                  main_offset,
                                                  dst_functor,
-                                                 mask_functor y_data,
+                                                 mask_functor,
+                                                 y_data,
                                                  y->numel(),
                                                  broadcast_config,
                                                  seed_ptr);
