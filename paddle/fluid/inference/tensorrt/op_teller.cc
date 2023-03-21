@@ -734,6 +734,22 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+
+      if (x_dtype !=
+          paddle::framework::proto::VarType::Type::VarType_Type_FP32) {
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -743,7 +759,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 3;
-      if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
+      if (axis == 0 || flatten ||
+          (dtype !=
+               paddle::framework::proto::VarType::Type::VarType_Type_INT32 &&
+           dtype != framework::proto::VarType::Type::VarType_Type_INT64))
+        return false;
     }
 
     if (op_type == "affine_channel") {
