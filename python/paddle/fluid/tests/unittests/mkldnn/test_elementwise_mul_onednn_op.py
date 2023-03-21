@@ -115,48 +115,6 @@ class TestInt8(ElementwiseMulOp):
         pass
 
 
-# class TestInt8Scales(TestInt8):
-#     def quantize(self, tensor, dt="int8"):
-#         max_int = 127.0 if dt == "int8" else 255.0
-#         scale = max_int / np.abs(np.amax(tensor))
-#         quantized = np.round(scale * tensor).astype(dt)
-#         return scale, quantized
-
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100,)).astype("float")
-#         self.y_f = np.random.random((100,)).astype("float")
-#         self.out_f = np.multiply(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f)
-#         self.scale_y, self.y = self.quantize(self.y_f)
-#         self.scale_o, self.out = self.quantize(self.out_f)
-
-#     def init_scales(self):
-#         self.attrs['scale_x'] = self.scale_x
-#         self.attrs['scale_y'] = self.scale_y
-#         self.attrs['scale_out'] = self.scale_o
-
-#     def test_check_output(self):
-#         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-#         self.init_scales()
-#         int_atol = 1  # different quantization techniques
-#         self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
-
-
-# class TestUint8Scales(TestInt8Scales):
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100,)).astype("float")
-#         self.y_f = np.random.random((100,)).astype("float")
-#         self.out_f = np.multiply(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-#         self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-#         self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-#     def init_dtype(self):
-#         self.dtype = np.uint8
-
-
 if __name__ == '__main__':
     enable_static()
     unittest.main()
