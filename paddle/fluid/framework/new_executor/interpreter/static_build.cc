@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
@@ -27,7 +28,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 
 // These Op needs set output dtype when register phi kernel, but they didn't
 std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "atan2",
     "clip_by_norm",
     "eig",
     "eig_grad",
@@ -57,17 +57,21 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
-    "sequence_pool"};
+    "sequence_pool",
+    "stft"};
 
-std::set<std::string> StaticBuildBlackList = {"sparse_sparse_coo_tensor"};
+std::set<std::string> StaticBuildBlackList = {
+    "batch_norm" /*: to handle reserve_space output*/,
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 5) & 1
-  // is_operator_base = (kernelCode >> 4) & 1
+  // in_black_list = (kernelCode >> 6) & 1
+  // is_operator_base = (kernelCode >> 5) & 1
+  // is_custom_op = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
   // need_move_to_phi = (kernelCode >> 1) & 1
@@ -83,6 +87,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool in_black_list = StaticBuildBlackList.count(op_type);
     bool is_operator_base =
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
+    bool is_custom_op =
+        egr::Controller::Instance().GetOpMetaInfoMap().count(op_type);
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
@@ -92,15 +98,15 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         !has_fluid_kernel && !has_structured_kernel &&
         OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type);
 
-    KernelCode kernel_code = (in_black_list << 5) + (is_operator_base << 4) +
-                             (has_fluid_kernel << 3) +
+    KernelCode kernel_code = (in_black_list << 6) + (is_operator_base << 5) +
+                             (is_custom_op << 4) + (has_fluid_kernel << 3) +
                              (has_structured_kernel << 2) +
                              (need_move_to_phi << 1) + need_set_dtype;
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          need_move_to_phi || need_set_dtype) {
+          is_custom_op || need_move_to_phi || need_set_dtype) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -110,8 +116,9 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_blace_list = " << (item.second >> 5 & 1)
-         << ", is_operator_base = " << (item.second >> 4 & 1)
+      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
+         << ", is_operator_base = " << (item.second >> 5 & 1)
+         << ", is_custom_op = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
@@ -338,7 +345,7 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount") {
             dtype = GetInputDType(runtime_ctx, "X");
-          } else if (op_type == "layer_norm") {
+          } else if (op_type == "layer_norm" || op_type == "reduce_sum_grad") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
             int dtype_attr = op.Attr<int>("out_dtype");

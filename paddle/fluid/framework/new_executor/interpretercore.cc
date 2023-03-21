@@ -297,12 +297,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
-    is_build_ = true;
     UpdateSyncOpNum();
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
+    is_build_ = true;
   } else {
     RunImpl();
   }
@@ -613,7 +613,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-  dependecy_count_.resize(instr_num);
+  dependecy_count_ = std::vector<size_t>(instr_num, 0);
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
@@ -673,6 +673,7 @@ void InterpreterCore::Convert(
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
   auto nodes = *op_func_nodes;
   auto op_nums = nodes.size();
+  vec_instruction_.clear();
   vec_instruction_.reserve(op_nums);
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
@@ -1090,6 +1091,7 @@ void InterpreterCore::ExecuteInstructionList(
     // EOF is not a fatal error.
     if (exception_holder_.Type() != "EOF") {
       async_work_queue_->Cancel();
+      async_work_queue_.reset();
     }
     VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
@@ -1327,12 +1329,12 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
-    is_build_ = true;
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
     BuildSkipShareLoDInfo();
+    is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
