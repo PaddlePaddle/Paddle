@@ -134,7 +134,9 @@ class TestRuleBasedTuner(unittest.TestCase):
         tuner.gen_full_program()
         tuner.match_program(tuner._dist_context.serial_main_program)
         process_mesh = ProcessMesh([0, 1])
+        tuner.gen_fwd_sub_programs_by_clone()
         tuner.complete_sub_fwd_programs(process_mesh)
+        tuner.complete_sub_bwd_programs()
 
 
 if __name__ == "__main__":
