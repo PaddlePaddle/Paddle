@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_linear_param_grad_add_kernel.h"
+#include "paddle/phi/kernels/fusion/fused_linear_param_grad_add_kernel.h"
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
