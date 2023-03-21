@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,

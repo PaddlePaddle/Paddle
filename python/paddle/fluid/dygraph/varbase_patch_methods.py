@@ -728,7 +728,8 @@ def monkey_patch_varbase():
         return framework.default_main_program().global_block()
 
     def __nonzero__(self):
-        numel = np.prod(self.shape)
+        # np.prod([]) -> np.float64, so use int
+        numel = int(np.prod(self.shape))
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
@@ -764,7 +765,7 @@ def monkey_patch_varbase():
                 print(type(x_array))      #<class 'numpy.ndarray'>
                 print(x_array.shape)      #(2, 2)
         """
-        array = self.numpy()
+        array = self.numpy(False)
         if dtype:
             array = array.astype(dtype)
         return array

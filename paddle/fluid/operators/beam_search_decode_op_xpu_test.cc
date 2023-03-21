@@ -76,7 +76,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   }
 
   phi::DenseTensor tensor_id;
-  const phi::DenseTensorMeta meta_data_id(paddle::experimental::DataType::INT64,
+  const phi::DenseTensorMeta meta_data_id(phi::DataType::INT64,
                                           tensor_id_cpu.dims());
   tensor_id.set_meta(meta_data_id);
   tensor_id.set_lod(lod);
@@ -101,24 +101,24 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   phi::DenseTensor tensor_score;
 
   if (std::is_same<float, T>::value) {
-    const phi::DenseTensorMeta meta_data_score(
-        paddle::experimental::DataType::FLOAT32, tensor_score_cpu.dims());
+    const phi::DenseTensorMeta meta_data_score(phi::DataType::FLOAT32,
+                                               tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
   } else if (std::is_same<double, T>::value) {
-    const phi::DenseTensorMeta meta_data_score(
-        paddle::experimental::DataType::FLOAT64, tensor_score_cpu.dims());
+    const phi::DenseTensorMeta meta_data_score(phi::DataType::FLOAT64,
+                                               tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
   } else if (std::is_same<paddle::platform::float16, T>::value) {
-    const phi::DenseTensorMeta meta_data_score(
-        paddle::experimental::DataType::FLOAT16, tensor_score_cpu.dims());
+    const phi::DenseTensorMeta meta_data_score(phi::DataType::FLOAT16,
+                                               tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
   } else if (std::is_same<int, T>::value) {
-    const phi::DenseTensorMeta meta_data_score(
-        paddle::experimental::DataType::INT32, tensor_score_cpu.dims());
+    const phi::DenseTensorMeta meta_data_score(phi::DataType::INT32,
+                                               tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
   } else if (std::is_same<int64_t, T>::value) {
-    const phi::DenseTensorMeta meta_data_score(
-        paddle::experimental::DataType::INT64, tensor_score_cpu.dims());
+    const phi::DenseTensorMeta meta_data_score(phi::DataType::INT64,
+                                               tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
   }
 

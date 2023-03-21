@@ -85,17 +85,19 @@ class TestGenerateProposals(LayerTest):
         variances_np = np.ones((4, 4, 3, 4)).astype('float32')
 
         with self.static_graph():
-            scores = fluid.data(
+            scores = paddle.static.data(
                 name='scores', shape=[2, 3, 4, 4], dtype='float32'
             )
-            bbox_deltas = fluid.data(
+            bbox_deltas = paddle.static.data(
                 name='bbox_deltas', shape=[2, 12, 4, 4], dtype='float32'
             )
-            im_info = fluid.data(name='im_info', shape=[2, 3], dtype='float32')
-            anchors = fluid.data(
+            im_info = paddle.static.data(
+                name='im_info', shape=[2, 3], dtype='float32'
+            )
+            anchors = paddle.static.data(
                 name='anchors', shape=[4, 4, 3, 4], dtype='float32'
             )
-            variances = fluid.data(
+            variances = paddle.static.data(
                 name='var', shape=[4, 4, 3, 4], dtype='float32'
             )
             rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
@@ -175,8 +177,12 @@ class TestDistributeFpnProposals(LayerTest):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')
         with self.static_graph():
-            rois = fluid.data(name='rois', shape=[10, 4], dtype='float32')
-            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
+            rois = paddle.static.data(
+                name='rois', shape=[10, 4], dtype='float32'
+            )
+            rois_num = paddle.static.data(
+                name='rois_num', shape=[None], dtype='int32'
+            )
             (
                 multi_rois,
                 restore_ind,
@@ -230,7 +236,7 @@ class TestDistributeFpnProposals(LayerTest):
     def test_distribute_fpn_proposals_error(self):
         program = Program()
         with program_guard(program):
-            fpn_rois = fluid.data(
+            fpn_rois = paddle.static.data(
                 name='data_error', shape=[10, 4], dtype='int32', lod_level=1
             )
             self.assertRaises(
