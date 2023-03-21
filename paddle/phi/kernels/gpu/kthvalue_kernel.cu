@@ -189,6 +189,8 @@ void KthvalueKernel(const Context& dev_ctx,
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
+  T* output_data = dev_ctx.template Alloc<T>(output);
+  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
@@ -203,9 +205,6 @@ void KthvalueKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, 0);
     return;
   }
-
-  T* output_data = dev_ctx.template Alloc<T>(output);
-  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
