@@ -217,50 +217,60 @@ DEFINE_ACTIVATION_CUDA_KERNEL(Relu6,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name) \
-  PD_REGISTER_STRUCT_KERNEL(act_type,                      \
-                            GPU,                           \
-                            ALL_LAYOUT,                    \
-                            ops::op_name##CudaKernel,      \
-                            float,                         \
-                            double,                        \
-                            plat::float16,                 \
-                            plat::bfloat16) {}             \
-  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,               \
-                            GPU,                           \
-                            ALL_LAYOUT,                    \
-                            ops::op_name##GradCudaKernel,  \
-                            float,                         \
-                            double,                        \
-                            plat::float16,                 \
-                            plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(soft_relu,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftReluCudaKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftReluGradCudaKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
 
-REGISTER_ACTIVATION_CUDA_KERNEL(soft_relu, SoftRelu)
-REGISTER_ACTIVATION_CUDA_KERNEL(softsign, Softsign)
+PD_REGISTER_STRUCT_KERNEL(softsign,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftsignCudaKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(softsign_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftsignGradCudaKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(act_type, op_name) \
-  PD_REGISTER_STRUCT_KERNEL(act_type,                          \
-                            GPU,                               \
-                            ALL_LAYOUT,                        \
-                            ops::op_name##CudaKernel,          \
-                            float,                             \
-                            double,                            \
-                            int,                               \
-                            int64_t,                           \
-                            plat::float16,                     \
-                            plat::bfloat16) {}                 \
-  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                   \
-                            GPU,                               \
-                            ALL_LAYOUT,                        \
-                            ops::op_name##GradCudaKernel,      \
-                            float,                             \
-                            double,                            \
-                            int,                               \
-                            int64_t,                           \
-                            plat::float16,                     \
-                            plat::bfloat16) {}
-
-REGISTER_ACTIVATION_CUDA_KERNEL_INT(relu6, Relu6)
+PD_REGISTER_STRUCT_KERNEL(relu6,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::Relu6CudaKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(relu6_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::Relu6GradCudaKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16,
+                          plat::bfloat16) {}
 
 #ifdef PADDLE_WITH_XPU_KP
 REGISTER_OP_KERNEL(

@@ -2406,6 +2406,9 @@ class TestSoftRelu(TestActivation):
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -3816,6 +3819,7 @@ def create_test_act_fp16_class(
     parent,
     atol=1e-3,
     grad_check=True,
+    check_dygraph=True,
     check_prim=False,
     enable_cinn=True,
     grad_atol=0.80,
@@ -3835,7 +3839,10 @@ def create_test_act_fp16_class(
             support_fp16 = core.is_float16_supported(place)
             if support_fp16:
                 self.check_output_with_place(
-                    place, atol=atol, check_prim=check_prim
+                    place,
+                    atol=atol,
+                    check_dygraph=check_dygraph,
+                    check_prim=check_prim,
                 )
 
         def test_check_grad(self):
@@ -3846,6 +3853,7 @@ def create_test_act_fp16_class(
                     place,
                     ['X'],
                     'Out',
+                    check_dygraph=check_dygraph,
                     check_prim=check_prim,
                     max_relative_error=grad_atol,
                 )
@@ -3885,7 +3893,7 @@ create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(TestGelu, check_prim=True)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
-create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
+create_test_act_fp16_class(TestSoftRelu, check_dygraph=False, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
