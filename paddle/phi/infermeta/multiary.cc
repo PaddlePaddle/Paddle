@@ -769,12 +769,6 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
     target_rank = std::max(target_rank, input_ddim.size());
   }
 
-  PADDLE_ENFORCE_GT(target_rank,
-                    0,
-                    errors::InvalidArgument("BroadcastTensorsOp requires at "
-                                            "least one input tensor to have "
-                                            "rank greater than zero"));
-
   std::vector<int64_t> target_dims(target_rank, 0);
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   for (int index = 0; index < target_rank; index++) {
