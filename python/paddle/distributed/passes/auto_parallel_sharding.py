@@ -1611,7 +1611,7 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
     for input_name in op.input_arg_names:
-        # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are be renamed,
+        # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are renamed,
         # to solve the param@RESHARD cannot be identifed.
         if not is_parameter_related(input_name, op.block, dist_context):
             dist_attr = dist_context.get_op_dist_attr_for_program(op)
