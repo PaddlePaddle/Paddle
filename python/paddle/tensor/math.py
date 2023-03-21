@@ -2872,9 +2872,9 @@ def clip(x, min=None, max=None, name=None):
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
-            min = min.numpy().item(0)
+            min = min.item(0)
         if isinstance(max, Variable):
-            max = max.numpy().item(0)
+            max = max.item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.clip(x, min, max)
@@ -2939,9 +2939,9 @@ def clip_(x, min=None, max=None, name=None):
     fmin = float(np.finfo(np.float32).min)
     fmax = float(np.finfo(np.float32).max)
     if isinstance(min, Variable):
-        min = min.numpy().item(0)
+        min = min.item(0)
     if isinstance(max, Variable):
-        max = max.numpy().item(0)
+        max = max.item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
 
@@ -4662,7 +4662,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         axis = 0
     dtype = x.dtype
     axes = [axis]
-    infer_flags = list(1 for i in range(len(axes)))
+    infer_flags = [1 for i in range(len(axes))]
     if in_dygraph_mode():
         has_pend = False
         input_list = []

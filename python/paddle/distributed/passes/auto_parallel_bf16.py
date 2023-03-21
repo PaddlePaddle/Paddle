@@ -45,7 +45,7 @@ from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 world_process_group = get_world_process_group()
 
 
-class BF16State(object):
+class BF16State:
     def __init__(self, block):
         self._block: Block = block
         self._op_bf16_dict = {}

@@ -28,6 +28,7 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
@@ -72,6 +73,7 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, []).astype("float64"),
@@ -92,6 +94,7 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
@@ -112,6 +115,7 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, []).astype("float64"),
@@ -132,6 +136,7 @@ class TestBF16ElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.dtype = np.uint16
         x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -176,6 +181,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
@@ -189,6 +195,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
@@ -256,6 +263,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
@@ -290,6 +298,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
@@ -306,6 +315,7 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
@@ -322,6 +332,7 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
@@ -338,6 +349,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.rand(10, 12).astype(np.float64),
@@ -358,6 +370,7 @@ class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
