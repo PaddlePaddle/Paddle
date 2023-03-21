@@ -306,18 +306,6 @@ class TestScatterBF16Op2(TestScatterOp2):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=False)
-
-    def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
-            )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -396,18 +384,6 @@ class TestScatterBF16Op3(TestScatterOp3):
         self.attrs = {'overwrite': False}
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=False)
-
-    def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
-            )
 
 
 class TestScatterOp4(OpTest):
@@ -542,18 +518,6 @@ class TestScatterBF16Op5(TestScatterOp5):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=False)
-
-    def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
-            )
 
 
 class TestScatterOp6(OpTest):
