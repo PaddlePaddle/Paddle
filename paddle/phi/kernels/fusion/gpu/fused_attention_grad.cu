@@ -94,13 +94,18 @@ void FusedSoftmaxMaskGradKernel(
     DenseTensor *transpose_out_2_grad,
     DenseTensor *qk_out_grad,
     DenseTensor *softmax_out_grad,
-    DenseTensor *attn_dropout_grad,
+    DenseTensor *attn_dropout_out_grad,
     DenseTensor *fmha_out_grad,
     DenseTensor *out_linear_out_grad) {
   using U = phi::fusion::LayerNormParamType<T>;
 
-  const bool has_attn_dropout = (attn_dropout_prob != 0.0f);
-  phi::fusion::DropoutParam dropout_param2(ctx, 0);
+  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
+  phi::fusion::DropoutParam dropout_param2(dropout_rate,
+                                           dropout_implementation,
+                                           is_test,
+                                           dropout_fix_seed,
+                                           nullptr,
+                                           dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
   bool is_upscale_in_train_1 =
@@ -121,7 +126,7 @@ void FusedSoftmaxMaskGradKernel(
   auto *ln_2_scale_data =
       (ln_scale_2_p == nullptr ? nullptr : ln_scale_2_p->data<U>());
   // fw parameters.
-  auto *src_mask = src_mask.get_ptr();
+  auto *src_mask_p = src_mask.get_ptr();
   auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
   auto *qkv_bias_p = qkv_bias.get_ptr();
   auto *out_linear_weight_p =
@@ -146,13 +151,12 @@ void FusedSoftmaxMaskGradKernel(
   auto *ln_mean_2_p = ln_mean_2.get_ptr();
   auto *ln_var_2_p = ln_var_2.get_ptr();
   auto *dropout_mask_out_p = const_cast<phi::DenseTensor *>(&dropout_mask_out);
-  auto *bias_dropout_residual_out_p =
-      const_cast<phi::DenseTensor *>(&bias_dropout_residual_out);
+  auto *bias_dropout_residual_out_p = bias_dropout_residual_out.get_ptr();
   auto *fmha_out_data = fmha_out_p->data<T>();
   auto *transpose_out_2_data = transpose_out_2_p->data<T>();
   auto *softmax_out_data = softmax_out_p->data<T>();
   auto *src_mask_out_data =
-      (src_mask == nullptr) ? nullptr : src_mask_out_p->data<T>();
+      (src_mask_p == nullptr) ? nullptr : src_mask_out_p->data<T>();
   auto *dropout_mask_out_data =
       has_dropout ? dropout_mask_out_p->data<uint8_t>() : nullptr;
 
@@ -184,7 +188,7 @@ void FusedSoftmaxMaskGradKernel(
                              attn_dropout_out_grad->numel() * sizeof(T))
                        : nullptr;
   auto *d_src_mask_out_data =
-      (src_mask == nullptr)
+      (src_mask_p == nullptr)
           ? nullptr
           : dev_ctx.template Alloc<T>(src_mask_out_grad,
                                       src_mask_out_grad->numel() * sizeof(T));
@@ -264,7 +268,7 @@ void FusedSoftmaxMaskGradKernel(
                                                 compute_qkv_bias);
   phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
                                                    attn_dropout_implementation,
-                                                   attn_dropout_prob,
+                                                   attn_dropout_rate,
                                                    is_upscale_in_train_1,
                                                    attn_dropout_fix_seed,
                                                    attn_dropout_seed,
@@ -280,7 +284,7 @@ void FusedSoftmaxMaskGradKernel(
       dev_ctx, transA, transB, bsz_seq, input_size, output_size, compute_bias);
   phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
-          dev_ctx, bsz_seq, dim_embed, dropout_param2, ln2epsilon);
+          dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 
   if (pre_layer_norm) {
     fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
@@ -296,15 +300,15 @@ void FusedSoftmaxMaskGradKernel(
     auto *bias_dropout_residual_out_data =
         bias_dropout_residual_out_p->data<T>();
     auto *d_ln_2_scale_data =
-        (ln_2_scale_grad == nullptr
+        (ln_scale_2_grad == nullptr
              ? nullptr
-             : dev_ctx.template Alloc<U>(ln_2_scale_grad,
-                                         ln_2_scale_grad->numel() * sizeof(U)));
-    auto *d_ln_2_bias_data =
-        (ln_2_bias_grad == nullptr
+             : dev_ctx.template Alloc<U>(ln_scale_2_grad,
+                                         ln_scale_2_grad->numel() * sizeof(U)));
+    auto *d_ln_bias_2_data =
+        (ln_bias_2_grad == nullptr
              ? nullptr
-             : dev_ctx.template Alloc<U>(ln_2_bias_grad,
-                                         ln_2_bias_grad->numel() * sizeof(U)));
+             : dev_ctx.template Alloc<U>(ln_bias_2_grad,
+                                         ln_bias_2_grad->numel() * sizeof(U)));
     auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
         bias_dropout_residual_out_grad,
         bias_dropout_residual_out_grad->numel() * sizeof(T));
@@ -319,7 +323,7 @@ void FusedSoftmaxMaskGradKernel(
         ln_2_var_data,
         d_bias_dropout_residual_out_data,
         d_ln_2_scale_data,
-        d_ln_2_bias_data,
+        d_ln_bias_2_data,
         d_out_linear_out_data,
         d_out_linear_bias_data,
         d_residual_data);
@@ -343,7 +347,7 @@ void FusedSoftmaxMaskGradKernel(
 
   if (qkv_bias_p != nullptr) {
     fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
-                                     has_attn_dropout ? src_mask : nullptr,
+                                     has_attn_dropout ? src_mask_p : nullptr,
                                      *softmax_out_p,
                                      *attn_dropout_mask_out_p,
                                      *attn_dropout_out_p,
@@ -360,7 +364,7 @@ void FusedSoftmaxMaskGradKernel(
                                      qkv_bias_out_grad);
   } else {
     fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
-                                     has_attn_dropout ? src_mask : nullptr,
+                                     has_attn_dropout ? src_mask_p : nullptr,
                                      *softmax_out_p,
                                      *attn_dropout_mask_out_p,
                                      *attn_dropout_out_p,
@@ -386,9 +390,9 @@ void FusedSoftmaxMaskGradKernel(
   }
 
   if (pre_layer_norm) {
-    auto *ln_mean_p = ln_mean;
-    auto *ln_var_p = ln_var;
-    auto *ln_out_p = ln_out;
+    auto *ln_mean_p = ln_mean.get_ptr();
+    auto *ln_var_p = ln_var.get_ptr();
+    auto *ln_out_p = ln_out.get_ptr();
     auto *ln_mean_data = ln_mean_p->data<U>();
     auto *ln_var_data = ln_var_p->data<U>();
     auto *ln_out_data = ln_out_p->data<T>();
