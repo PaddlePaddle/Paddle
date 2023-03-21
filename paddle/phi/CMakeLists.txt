@@ -22,11 +22,9 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
-# make an unity target for compile deps
-set(PHI_DEPS
+set(PHI_CORE
     convert_utils
     dense_tensor
-    phi_backends
     kernel_factory
     kernel_context
     arg_map_context
@@ -35,9 +33,14 @@ set(PHI_DEPS
     sparse_csr_tensor
     sparse_coo_tensor
     string_tensor
-    api_scalar
-    api_int_array
     extended_tensor)
+
+set(PHI_API api_scalar api_int_array)
+
+set(PHI_BACKENDS phi_backends)
+
+# make an unity target for compile deps
+set(PHI_DEPS ${PHI_CORE} ${PHI_BACKENDS} ${PHI_API})
 
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
@@ -72,16 +75,6 @@ file(
   "api/lib/sparse_api.cc"
   "api/lib/strings_api.cc"
   "api/lib/tensor*.cc"
-  "backends/all_context.cc"
-  "backends/callback_manager.cc"
-  "backends/context_pool.cc"
-  "backends/device_base.cc"
-  "backends/device_guard.cc"
-  "backends/device_manager.cc"
-  "backends/event.cc"
-  "backends/stream.cc"
-  "backends/cpu/*.cc"
-  "core/*.cc"
   "kernels/*.cc"
   "kernels/cpu/*.cc"
   "kernels/funcs/*.cc"
@@ -96,8 +89,18 @@ if(WITH_MKLDNN)
        "kernels/fusion/onednn/*.cc" "kernels/onednn/*.cc")
 endif()
 
+list(
+  APPEND
+  PHI_API
+  phi_function_api
+  sparse_api
+  phi_dygraph_api
+  strings_api
+  phi_tensor_operants
+  operants_manager
+  tensor_api)
+
 set(PHI_SHARED_DEPS
-    flags
     eigen3
     simple_threadpool
     warpctc
@@ -105,14 +108,9 @@ set(PHI_SHARED_DEPS
     pocketfft
     utf8proc
     cblas
-    #we need add below target for generating src code
-    phi_function_api
-    sparse_api
-    phi_dygraph_api
-    strings_api
-    phi_tensor_operants
-    operants_manager
-    tensor_api)
+    ${PHI_CORE}
+    ${PHI_BACKENDS}
+    ${PHI_API})
 
 if(WITH_GPU)
   set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} external_error_proto)
@@ -135,8 +133,14 @@ if(WITH_GLOO)
   list(APPEND PHI_SHARED_DEPS gloo)
 endif()
 
+# On Windows (including MinGW), the Shlwapi library is used by gflags if available.
+if(WIN32)
+  list(APPEND PHI_SHARED_DEPS shlwapi.lib)
+endif()
+
 cc_library(
   phi_shared SHARED
   SRCS ${PHI_SRCS}
   DEPS ${PHI_SHARED_DEPS})
+
 set_target_properties(phi_shared PROPERTIES OUTPUT_NAME phi)
