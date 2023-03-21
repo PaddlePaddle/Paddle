@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/none.h"
+#include "paddle/utils/optional.h"
 
 /**
  * Op Meta Info Related Define.
@@ -59,6 +61,7 @@ using Tensor = paddle::Tensor;
 constexpr char kGradTensorSuffix[] = "@GRAD";
 constexpr char kTensorVectorSuffix[] = "@VECTOR";
 constexpr char kDoubleGradNewOutSuffix[] = "@NEW";
+constexpr char kOptionalSuffix[] = "@OPTIONAL";
 
 // Used for Construct Grad Tensor name
 inline std::string Grad(const std::string& t_name) {
@@ -84,6 +87,15 @@ inline std::string New(const std::string& t_name) {
   result.reserve(t_name.size() + 4U);
   result += t_name;
   result += kDoubleGradNewOutSuffix;
+  return result;
+}
+
+// Used for Construct paddle::optional name
+inline std::string Optional(const std::string& t_name) {
+  std::string result;
+  result.reserve(t_name.size() + 9U);
+  result += t_name;
+  result += kOptionalSuffix;
   return result;
 }
 
@@ -196,6 +208,25 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
                                                                     arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct ComputeCallHelper<const paddle::optional<paddle::Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto& arg = ctx->InputAt(range.first);
+      if (!arg.is_initialized()) {
+        ComputeCallHelper<Tail...>::
+            template Compute<in_idx + 1, attr_idx, out_idx>(
+                ctx, pargs..., paddle::none);
+      } else {
+        ComputeCallHelper<
+            Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                      pargs...,
+                                                                      arg);
+      }
     }
   };
 
@@ -432,6 +463,31 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPES(
       const std::vector<std::vector<int64_t>>&);
 
+  template <typename... Tail>
+  struct InferShapeCallHelper<const paddle::optional<std::vector<int64_t>>&,
+                              Tail...> {
+    template <int in_idx,
+              int vec_in_idx,
+              int attr_idx,
+              typename... PreviousArgs>
+    static Return InferShape(
+        const std::vector<std::vector<int64_t>>& input_shapes,
+        const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
+        const std::vector<paddle::any>& attrs,
+        const PreviousArgs&... pargs) {
+      const std::vector<int64_t>& arg = input_shapes[in_idx];
+      if (arg.empty()) {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx + 1, vec_in_idx, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., paddle::none);
+      } else {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx + 1, vec_in_idx, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., arg);
+      }
+    }
+  };
+
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(std::vector<int64_t>);
@@ -537,6 +593,27 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
   PD_SPECIALIZE_InferDtypeCallHelper_TO_DTYPE(const DataType&);
   PD_SPECIALIZE_InferDtypeCallHelper_FOR_DTYPES(const std::vector<DataType>&);
+
+  template <typename... Tail>
+  struct InferDtypeCallHelper<const paddle::optional<paddle::DataType>&,
+                              Tail...> {
+    template <int in_idx, int vec_in_idx, typename... PreviousArgs>
+    static Return InferDtype(
+        const std::vector<DataType>& input_dtypes,
+        const std::vector<std::vector<DataType>>& vec_input_dtypes,
+        const PreviousArgs&... pargs) {
+      const DataType& arg = input_dtypes[in_idx];
+      if (arg == DataType::UNDEFINED) {
+        return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1,
+                                                                  vec_in_idx>(
+            input_dtypes, vec_input_dtypes, pargs..., paddle::none);
+      } else {
+        return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1,
+                                                                  vec_in_idx>(
+            input_dtypes, vec_input_dtypes, pargs..., arg);
+      }
+    }
+  };
 
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
