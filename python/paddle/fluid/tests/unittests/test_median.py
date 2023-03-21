@@ -32,8 +32,6 @@ class TestMedian(unittest.TestCase):
         paddle.enable_static()
         x, axis, keepdims = lis_test
         res_np = np.median(x, axis=axis, keepdims=keepdims)
-        if not isinstance(res_np, np.ndarray):
-            res_np = np.array([res_np])
         main_program = Program()
         startup_program = Program()
         exe = paddle.static.Executor()
@@ -47,10 +45,8 @@ class TestMedian(unittest.TestCase):
     def dygraph_single_test_median(self, lis_test):
         x, axis, keepdims = lis_test
         res_np = np.median(x, axis=axis, keepdims=keepdims)
-        if not isinstance(res_np, np.ndarray):
-            res_np = np.array([res_np])
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
-        self.check_numpy_res(res_pd.numpy(), res_np)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
 
     def test_median_static(self):
         h = 3
