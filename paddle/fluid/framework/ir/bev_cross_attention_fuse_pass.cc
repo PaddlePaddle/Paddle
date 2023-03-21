@@ -86,7 +86,6 @@ void BevCrossAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "bev_cross_attention_fuse";
   FusePassBase::Init(pattern_name, graph);
-  auto* scope = param_scope();
 
 #ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
