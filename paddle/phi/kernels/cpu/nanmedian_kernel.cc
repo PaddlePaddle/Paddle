@@ -207,4 +207,5 @@ PD_REGISTER_KERNEL(nanmedian,
                    float,
                    double,
                    int,
+                   phi::dtype::bfloat16,
                    int64_t) {}
