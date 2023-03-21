@@ -180,6 +180,12 @@ def instancenorm_composite(x, scale, bias, epsilon):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
 
     n, c, h, w = x.shape
     axis = tuple(range(2, len(x.shape)))
@@ -200,6 +206,8 @@ def instancenorm_composite(x, scale, bias, epsilon):
 
     saved_mean = reshape(saved_mean, [-1])
     saved_variance = reshape(saved_variance, [-1])
+    if is_amp:
+        y = cast(y, "float16")
     return y, saved_mean, saved_variance
 
 
