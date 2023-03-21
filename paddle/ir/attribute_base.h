@@ -118,7 +118,9 @@ class AttributeStorage : public StorageManager::StorageBase {
   ///
   /// \return The AbstractAttribute of the AttributeStorage.
   ///
-  const AbstractAttribute &abstract_attribute() { return *abstract_attribute_; }
+  const AbstractAttribute &abstract_attribute() const {
+    return *abstract_attribute_;
+  }
 
  private:
   ///
@@ -240,24 +242,26 @@ struct AttributeManager {
 ///
 /// \brief Add some necessary functions to the custom Attribute class.
 ///
-#define DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(concrete_attribute, storage_type)   \
-  using Storage = storage_type;                                               \
-                                                                              \
-  Storage *storage() const { return static_cast<Storage *>(this->storage_); } \
-                                                                              \
-  static ir::TypeId type_id() {                                               \
-    return ir::TypeId::get<concrete_attribute>();                             \
-  }                                                                           \
-                                                                              \
-  template <typename T>                                                       \
-  static bool classof(T val) {                                                \
-    return val.type_id() == type_id();                                        \
-  }                                                                           \
-                                                                              \
-  template <typename... Args>                                                 \
-  static concrete_attribute get(ir::IrContext *ctx, Args... args) {           \
-    return ir::AttributeManager::template get<concrete_attribute>(ctx,        \
-                                                                  args...);   \
+#define DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(concrete_attribute, storage_type) \
+  using Storage = storage_type;                                             \
+                                                                            \
+  const Storage *storage() const {                                          \
+    return static_cast<const Storage *>(this->storage_);                    \
+  }                                                                         \
+                                                                            \
+  static ir::TypeId type_id() {                                             \
+    return ir::TypeId::get<concrete_attribute>();                           \
+  }                                                                         \
+                                                                            \
+  template <typename T>                                                     \
+  static bool classof(T val) {                                              \
+    return val.type_id() == type_id();                                      \
+  }                                                                         \
+                                                                            \
+  template <typename... Args>                                               \
+  static concrete_attribute get(ir::IrContext *ctx, Args... args) {         \
+    return ir::AttributeManager::template get<concrete_attribute>(ctx,      \
+                                                                  args...); \
   }
 
 ///

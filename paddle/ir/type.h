@@ -55,7 +55,7 @@ class Type {
 
   const AbstractType &abstract_type() { return storage_->abstract_type(); }
 
-  Storage *storage() const { return storage_; }
+  const Storage *storage() const { return storage_; }
 
   const Dialect &dialect() const { return storage_->abstract_type().dialect(); }
 
@@ -82,7 +82,7 @@ class Type {
   friend struct std::hash<Type>;
 
  protected:
-  Storage *storage_{nullptr};
+  const Storage *storage_{nullptr};
 };
 
 }  // namespace ir
@@ -94,7 +94,7 @@ namespace std {
 template <>
 struct hash<ir::Type> {
   std::size_t operator()(const ir::Type &obj) const {
-    return std::hash<ir::Type::Storage *>()(obj.storage_);
+    return std::hash<const ir::Type::Storage *>()(obj.storage_);
   }
 };
 }  // namespace std

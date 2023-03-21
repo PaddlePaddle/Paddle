@@ -14,7 +14,6 @@
 
 #include <gtest/gtest.h>
 #include <map>
-#include <unordered_map>
 
 #include "paddle/ir/attribute.h"
 #include "paddle/ir/attribute_base.h"

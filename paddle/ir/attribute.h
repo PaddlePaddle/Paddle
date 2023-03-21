@@ -29,7 +29,7 @@ class Attribute {
   constexpr Attribute() = default;
 
   Attribute(const Storage *storage)  // NOLINT
-      : storage_(const_cast<Storage *>(storage)) {}
+      : storage_(storage) {}
 
   Attribute(const Attribute &other) = default;
 
@@ -52,7 +52,7 @@ class Attribute {
     return storage_->abstract_attribute();
   }
 
-  Storage *storage() const { return storage_; }
+  const Storage *storage() const { return storage_; }
 
   const Dialect &dialect() const {
     return storage_->abstract_attribute().dialect();
@@ -78,7 +78,7 @@ class Attribute {
   friend struct std::hash<Attribute>;
 
  protected:
-  Storage *storage_{nullptr};
+  const Storage *storage_{nullptr};
 };
 }  // namespace ir
 
@@ -86,7 +86,7 @@ namespace std {
 template <>
 struct hash<ir::Attribute> {
   std::size_t operator()(const ir::Attribute &obj) const {
-    return std::hash<ir::Attribute::Storage *>()(obj.storage_);
+    return std::hash<const ir::Attribute::Storage *>()(obj.storage_);
   }
 };
 }  // namespace std

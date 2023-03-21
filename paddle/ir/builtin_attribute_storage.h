@@ -76,7 +76,7 @@ struct DictionaryAttributeStorage : public AttributeStorage {
 
   ParamKey GetAsKey() const;
 
-  Attribute GetValue(const StrAttribute &name);
+  Attribute GetValue(const StrAttribute &name) const;
 
   NamedAttribute *data() const { return data_; }
 

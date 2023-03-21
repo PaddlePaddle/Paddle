@@ -57,7 +57,7 @@ DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
   return ParamKey(data_, data_ + size_);
 }
 
-Attribute DictionaryAttributeStorage::GetValue(const StrAttribute &name) {
+Attribute DictionaryAttributeStorage::GetValue(const StrAttribute &name) const {
   if (size_ > 0) {
     size_t left = 0;
     size_t right = size_ - 1;
