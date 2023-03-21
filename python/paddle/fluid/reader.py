@@ -655,7 +655,7 @@ class DataLoader:
 
         Args:
             feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
-                The Tensors should be created by :code:`fluid.data()`.
+                The Tensors should be created by :code:`paddle.static.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader
                 is fast.
@@ -1656,8 +1656,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
            reader = fluid.io.PyReader(feed_list=[image, label],
                                       capacity=4,
@@ -1713,8 +1713,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
            reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
 
            user_defined_reader = reader_creator_random_image(784, 784)
@@ -1805,7 +1805,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1842,7 +1842,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1913,8 +1913,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -1980,8 +1980,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -2048,8 +2048,8 @@ class PyReader(DataLoaderBase):
                             yield batch_image, batch_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)

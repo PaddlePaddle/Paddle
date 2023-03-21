@@ -350,7 +350,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.conv = nn.Conv2D(4, 2, (3, 3), bias_attr=False)
         self.bn = BatchNorm(2, act="relu")
         self.run_mean = zeros([2])

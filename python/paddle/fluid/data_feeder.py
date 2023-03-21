@@ -347,8 +347,8 @@ class DataFeeder:
             startup_program = fluid.Program()
 
             with fluid.program_guard(main_program, startup_program):
-                data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
-                data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
+                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
+                data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
                 # ...
             feeder = fluid.DataFeeder([data_1, data_2], place)
@@ -414,9 +414,9 @@ class DataFeeder:
                     for i in range(1, limit + 1):
                         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
 
-                data_1 = fluid.data(name='data_1', shape=[None, 2, 1, 3])
-                data_2 = fluid.data(name='data_2', shape=[None, 1], dtype='int64')
-                data_3 = fluid.data(name='data_3', shape=[None, 3, 3], dtype='float32')
+                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
+                data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
+                data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
                 feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
 
 
