@@ -153,11 +153,10 @@ class TestFrameFP16OP(TestFrameOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestFrameBF16(OpTest):
+class TestFrameBF16OP(OpTest):
     def setUp(self):
         self.op_type = "frame"
         self.python_api = paddle.signal.frame
-        self.__class__.op_type = self.op_type
         self.shape, self.dtype, self.attrs = self.initTestCase()
         x = np.random.random(size=self.shape).astype(np.float32)
         out = frame_from_librosa(x, **self.attrs)

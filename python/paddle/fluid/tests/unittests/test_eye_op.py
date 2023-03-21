@@ -202,7 +202,7 @@ class TestEyeFP16OP(TestEyeOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestEyeBF16(OpTest):
+class TestEyeBF16OP(OpTest):
     def setUp(self):
         self.op_type = "eye"
         self.dtype = np.uint16
