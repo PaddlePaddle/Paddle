@@ -201,7 +201,7 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
 
 
 class TestSqueezeDoubleGradCheck(unittest.TestCase):
-    def squeeze_warpper(self, x):
+    def squeeze_wrapper(self, x):
         axes = [0, 2]
         return paddle.squeeze(x[0], axes)
 
@@ -221,7 +221,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
             [x], out, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
-            self.squeeze_warpper, [x], out, x_init=x_arr, place=place
+            self.squeeze_wrapper, [x], out, x_init=x_arr, place=place
         )
 
     def test_grad(self):

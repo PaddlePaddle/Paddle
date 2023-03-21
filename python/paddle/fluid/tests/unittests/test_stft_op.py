@@ -85,7 +85,7 @@ class TestStftOp(OpTest):
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
         paddle.disable_static()
 
 

@@ -271,7 +271,7 @@ def avg_pool3D_forward_naive(
     return out
 
 
-def pool3d_warpper_not_use_cudnn(
+def pool3d_wrapper_not_use_cudnn(
     X,
     ksize=[],
     strides=[],
@@ -302,7 +302,7 @@ def pool3d_warpper_not_use_cudnn(
     )
 
 
-def pool3d_warpper_use_cudnn(
+def pool3d_wrapper_use_cudnn(
     X,
     ksize=[],
     strides=[],
@@ -384,9 +384,9 @@ class TestPool3D_Op(OpTest):
         self.outputs = {'Out': output}
 
         if self.use_cudnn:
-            self.python_api = pool3d_warpper_use_cudnn
+            self.python_api = pool3d_wrapper_use_cudnn
         else:
-            self.python_api = pool3d_warpper_not_use_cudnn
+            self.python_api = pool3d_wrapper_not_use_cudnn
 
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn

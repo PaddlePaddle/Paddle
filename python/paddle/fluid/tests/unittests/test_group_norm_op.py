@@ -67,7 +67,7 @@ class TestGroupNormOpError(unittest.TestCase):
                 self.assertRaises(TypeError, test_x_dtype)
 
 
-def group_norm_warpper(
+def group_norm_wrapper(
     input, weight, bias, epsilon=1e-5, num_groups=0, data_format="NCHW"
 ):
     if data_format == "AnyLayout":
@@ -80,7 +80,7 @@ def group_norm_warpper(
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
-        self.python_api = group_norm_warpper
+        self.python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.float64
@@ -219,7 +219,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
-        self.python_api = group_norm_warpper
+        self.python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.uint16

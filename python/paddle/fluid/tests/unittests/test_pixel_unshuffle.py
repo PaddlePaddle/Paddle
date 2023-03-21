@@ -68,7 +68,7 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         return npresult
 
 
-def pixel_unshuffle_warpper(x, downscale_factor, data_format):
+def pixel_unshuffle_wrapper(x, downscale_factor, data_format):
     return paddle._legacy_C_ops.pixel_unshuffle(
         x, "downscale_factor", downscale_factor, "data_format", data_format
     )
@@ -81,7 +81,7 @@ class TestPixelUnshuffleOp(OpTest):
         '''setUp'''
 
         self.op_type = "pixel_unshuffle"
-        self.python_api = pixel_unshuffle_warpper
+        self.python_api = pixel_unshuffle_wrapper
         self.init_data_format()
         n, c, h, w = 2, 1, 12, 12
 

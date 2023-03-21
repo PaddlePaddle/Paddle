@@ -68,7 +68,7 @@ def create_test_cudnn_channel_last_class(parent):
     globals()[cls_name] = TestCudnnChannelLastCase
 
 
-def warpper_conv2d_fusion_cutlass(
+def wrapper_conv2d_fusion_cutlass(
     Input,
     Filter,
     Bias=None,
@@ -109,7 +109,7 @@ def warpper_conv2d_fusion_cutlass(
 class TestConv2DFusionOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d_fusion"
-        self.python_api = warpper_conv2d_fusion_cutlass
+        self.python_api = wrapper_conv2d_fusion_cutlass
         self.exhaustive_search = False
         self.data_format = "NCHW"
         self.dtype = np.float32

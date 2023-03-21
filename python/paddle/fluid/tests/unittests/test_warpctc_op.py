@@ -24,8 +24,6 @@ import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 
-paddle.enable_static()
-
 CUDA_BLOCK_SIZE = 32
 
 
@@ -207,6 +205,19 @@ class CTCForward:
         return self.loss
 
 
+def warpctc_wrapper(
+    Logits,
+    Label,
+    LogitsLength=None,
+    LabelLength=None,
+    blank=0,
+    norm_by_times=False,
+):
+    return paddle._C_ops.warpctc(
+        Logits, Label, LogitsLength, LabelLength, blank, norm_by_times
+    )
+
+
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
@@ -218,6 +229,8 @@ class TestWarpCTCOp(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -305,6 +318,7 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -426,6 +440,7 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
         self.python_out_sig = ["Loss"]
         self.config()
 
