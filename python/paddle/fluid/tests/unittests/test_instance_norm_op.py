@@ -102,6 +102,7 @@ class TestInstanceNormOp(OpTest):
         self.rev_comp_rtol = 1e-04
         self.rev_comp_atol = 1e-04
         self.init_test_case()
+
         ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
             self.x_np,
             self.scale_np,
