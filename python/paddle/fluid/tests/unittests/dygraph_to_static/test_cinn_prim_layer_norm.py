@@ -42,7 +42,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(64, 64)
 
     def forward(self, x, w, b):

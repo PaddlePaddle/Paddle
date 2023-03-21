@@ -840,7 +840,7 @@ class Stream:
 
     def __eq__(self, o):
         if isinstance(o, Stream):
-            return super(Stream, self).__eq__(o)
+            return super().__eq__(o)
         return False
 
     def __hash__(self):
