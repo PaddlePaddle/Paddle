@@ -502,7 +502,10 @@ class PipelineLayer(nn.Layer):
             if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad, group=comm['group']
+                        param.grad
+                        if not hasattr(param, "main_grad")
+                        else param.main_grad,
+                        group=comm['group'],
                     )
             else:
                 with paddle.framework.no_grad():
