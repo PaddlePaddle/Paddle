@@ -86,7 +86,7 @@ class DistModel {
   bool FetchResult(const framework::LoDTensor& fetch,
                    DistModelTensor* output_data);
 
-  std::string carrier_id_;
+  int32_t carrier_id_;
   std::vector<framework::LoDTensor> feed_tensors_;
   std::vector<framework::OpDesc*> feeds_;
   std::map<std::string, int64_t> feed_names_;

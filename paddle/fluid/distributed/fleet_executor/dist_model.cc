@@ -153,7 +153,7 @@ class DistModelTimer {
 }  // namespace
 
 bool DistModel::Init() {
-  carrier_id_ = "inference";
+  carrier_id_ = 0;
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
   PADDLE_ENFORCE_EQ(init_method,
                     true,
@@ -624,7 +624,7 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
     VLOG(3) << "Finish loading data.";
   }
 
-  fleet_exe->Run(carrier_id_);
+  fleet_exe->Run();
   if (config_.enable_timer) {
     fleet_exe_elapse = timer.toc();
     LOG(INFO) << "Finish FleetExe running, cost "

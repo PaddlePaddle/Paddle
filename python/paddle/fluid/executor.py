@@ -2563,7 +2563,7 @@ class Executor(object):
             fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
         )
         self._fleet_executor.init(
-            carrier_id,
+            1,
             program.desc,
             scope,
             place,
@@ -2692,7 +2692,7 @@ class Executor(object):
             )
             tensor.set(data, self.place)
 
-        self._fleet_executor.run(cache_key)
+        self._fleet_executor.run()
 
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate

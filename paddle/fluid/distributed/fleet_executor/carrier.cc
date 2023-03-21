@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "gflags/gflags.h"
@@ -41,34 +42,13 @@ USE_INTERCEPTOR(Sink);
 USE_INTERCEPTOR(Cond);
 USE_INTERCEPTOR(Start);
 
-void Carrier::Init(
-    int64_t rank,
-    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
-  rank_ = rank;
-  interceptor_id_to_rank_ = interceptor_id_to_rank;
-
-  // TODO(fleet_exe dev): thread pool
-  thread_num_ = 1;
-  thread_pool_.SetThreadNum(thread_num_);
-  thread_pool_.Start();
-
-  if (FLAGS_fleetexecutor_debug_mode) {
-    test_thread_ = std::thread([this]() { loop_to_send_msg(); });
-    cache_begin_ == std::chrono::steady_clock::now();
-  }
-}
-
 void Carrier::loop_to_send_msg() {
-  // VLOG(3) << "loop_send_msg loop now";
   while (1) {
     while (1) {
       int q_size = 0;
       std::chrono::time_point<std::chrono::steady_clock> c_begin;
-      {
-        std::lock_guard<std::mutex> lock(running_mutex_);
-        q_size = messages_for_test_.size();
-        c_begin = cache_begin_;
-      }
+      q_size = messages_for_test_.size();
+      c_begin = cache_begin_;
 
       auto now = std::chrono::steady_clock::now();
       auto delta =
@@ -85,37 +65,28 @@ void Carrier::loop_to_send_msg() {
       }
     }
 
-    {
-      std::lock_guard<std::mutex> lock(running_mutex_);
-      while (!messages_for_test_.empty()) {
-        auto msg = messages_for_test_.back();
-        messages_for_test_.pop_back();
+    while (!messages_for_test_.empty()) {
+      auto msg = messages_for_test_.back();
+      messages_for_test_.pop_back();
 
-        int64_t src_id = msg.src_id();
-        // TODO(liyurui): compatible solution, will be removed completely in the
-        // future
-        if (interceptor_id_to_rank_.find(src_id) ==
-                interceptor_id_to_rank_.end() &&
-            src_id == SOURCE_ID) {
-          src_id = msg.dst_id();
-        }
-        int64_t dst_id = msg.dst_id();
-        int64_t dst_rank = GetRank(dst_id);
+      int64_t src_id = msg.src_id();
+      int64_t dst_id = msg.dst_id();
+      int64_t dst_rank = GetRank(dst_id);
 
-        VLOG(3) << "Send a cached message from interceptor " << src_id
-                << " to interceptor " << dst_id
-                << ", which are in different ranks, scope_idx:"
-                << msg.scope_idx();
+      VLOG(3) << "Send a cached message from interceptor " << src_id
+              << " to interceptor " << dst_id
+              << ", which are in different ranks, scope_idx:"
+              << msg.scope_idx();
 
-        if (!GlobalVal<MessageBus>::Get()->Send(dst_rank, msg)) {
-          LOG(FATAL) << "send msg error";
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      if (!GlobalVal<MessageBus>::Get()->Send(dst_rank, msg)) {
+        LOG(FATAL) << "send msg error";
       }
-
-      cache_begin_ = std::chrono::steady_clock::now();
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
+
+    cache_begin_ = std::chrono::steady_clock::now();
   }
+
   VLOG(3) << "reset cache_begin_";
 }
 
@@ -125,48 +96,31 @@ void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
     const framework::ProgramDesc& program,
     framework::Scope* scope,
-    int64_t num_micro_batches,
+    framework::Scope* minibatch_scope,
     const platform::Place& place,
-    const std::vector<std::string>& inference_root_scope_vars,
-    const std::vector<framework::Scope*>& micro_scope_list) {
+    const std::vector<framework::Scope*>& micro_scope_list,
+    TaskLoopThreadPool* thread_pool) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
   root_scope_ = scope;
+  minibatch_scope_ = minibatch_scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  bool need_create_scope = micro_scope_list.empty();
+  microbatch_scopes_ = micro_scope_list;
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
       platform::errors::InvalidArgument("root_scope can not be nullptr"));
 
-  if (need_create_scope) {
-    minibatch_scope_ = &root_scope_->NewScope();
-    microbatch_scopes_.resize(num_micro_batches);
-    for (int i = 0; i < num_micro_batches; ++i) {
-      microbatch_scopes_[i] = &minibatch_scope_->NewScope();
-      CopyParameters(i, program, inference_root_scope_vars);
-    }
-  } else {
-    microbatch_scopes_ = micro_scope_list;
-    for (int i = 0; i < num_micro_batches; ++i) {
-      CopyParameters(i, program, inference_root_scope_vars);
-    }
-  }
-
   // Add source and sink interceptor id to rank
   interceptor_id_to_rank_.emplace(SOURCE_ID, rank);
   interceptor_id_to_rank_.emplace(SINK_ID, rank);
 
-  // TODO(fleet_exe dev): thread pool
-  thread_num_ = 1;
-  thread_pool_.SetThreadNum(thread_num_);
-  thread_pool_.Start();
-
+  thread_pool_ = thread_pool;
   if (FLAGS_fleetexecutor_debug_mode) {
     test_thread_ = std::thread([this]() { loop_to_send_msg(); });
-    cache_begin_ == std::chrono::steady_clock::now();
+    cache_begin_ = std::chrono::steady_clock::now();
   }
 
   CreateInterceptors();
@@ -181,36 +135,9 @@ void Carrier::Release() {
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
-void Carrier::CopyParameters(
-    int microbatch_id,
-    const framework::ProgramDesc& program,
-    const std::vector<std::string>& inference_root_scope_vars) {
-  std::map<std::string, int> inference_root_scope_var_map;
-  for (auto var_name : inference_root_scope_vars) {
-    inference_root_scope_var_map.insert({var_name, 1});
-  }
-  for (size_t i = 0; i < program.Size(); ++i) {
-    for (auto& var : program.Block(i).AllVars()) {
-      std::string var_name = var->Name();
-      bool force_root = inference_root_scope_var_map.find(var_name) !=
-                        inference_root_scope_var_map.end();
-      if (force_root) {
-        VLOG(4) << var_name
-                << " will be forced to be created in the root scope.";
-      }
-      if ((var->Persistable() || force_root) && microbatch_id == 0) {
-        auto* ptr = root_scope_->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(5) << "Create persistable var: " << var->Name()
-                << ", which pointer is " << ptr;
-      } else if (!var->Persistable()) {
-        auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
-        VLOG(5) << "Create variable " << var->Name() << " for microbatch "
-                << microbatch_id << ", which pointer is " << ptr << ".";
-        InitializeVariable(ptr, var->GetType());
-      }
-    }
-  }
+bool Carrier::HasInterceptor(int64_t interceptor_id) const {
+  return interceptor_idx_to_interceptor_.find(interceptor_id) !=
+         interceptor_idx_to_interceptor_.end();
 }
 
 bool Carrier::EnqueueInterceptorMessage(
@@ -221,7 +148,14 @@ bool Carrier::EnqueueInterceptorMessage(
       platform::errors::Fatal(
           "Control message should be only send inter rank using message bus."));
   int64_t dst_id = interceptor_message.dst_id();
-  Interceptor* dst_interceptor = GetInterceptor(dst_id);
+  Interceptor* dst_interceptor;
+  if (dst_id == SOURCE_ID) {
+    dst_interceptor = source_interceptor_;
+  } else if (dst_id == SINK_ID) {
+    dst_interceptor = sink_interceptor_;
+  } else {
+    dst_interceptor = GetInterceptor(dst_id);
+  }
   dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
   return true;
 }
@@ -237,28 +171,14 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
-void Carrier::Wait() {
-  std::unique_lock<std::mutex> lock(running_mutex_);
-  cond_var_.wait(lock);
-}
-
-void Carrier::WakeUp() {
-  // probably double notify, but ok for ut
-  cond_var_.notify_all();
-}
-
 void Carrier::Start() {
   PADDLE_ENFORCE_EQ(is_init_,
                     true,
                     platform::errors::PreconditionNotMet(
                         "Using carrier before initialized."));
-  InterceptorMessage start_msg;
-  start_msg.set_src_id(SOURCE_ID);
-  start_msg.set_dst_id(SOURCE_ID);
-  start_msg.set_message_type(START);
-  Send(start_msg);
-  // TODO(wangxi): async step
-  Wait();
+}
+
+void Carrier::ClearMicroScopes() {
   dev_ctx_->Wait();
   for (auto* micro_scope : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
@@ -284,12 +204,6 @@ int64_t Carrier::GetRank(int64_t interceptor_id) const {
 
 bool Carrier::Send(const InterceptorMessage& msg) {
   int64_t src_id = msg.src_id();
-  // TODO(liyurui): compatible solution, will be removed completely in the
-  // future
-  if (interceptor_id_to_rank_.find(src_id) == interceptor_id_to_rank_.end() &&
-      src_id == SOURCE_ID) {
-    src_id = msg.dst_id();
-  }
   int64_t dst_id = msg.dst_id();
   int64_t src_rank = GetRank(src_id);
   int64_t dst_rank = GetRank(dst_id);
@@ -319,22 +233,17 @@ bool Carrier::Send(const InterceptorMessage& msg) {
     return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
   }
 
-  {
-    VLOG(3) << "prepare executor debug";
+  VLOG(3) << "prepare executor debug";
 
-    std::unique_lock<std::mutex> lock(running_mutex_);
-    if (messages_for_test_.empty()) {
-      cache_begin_ = std::chrono::steady_clock::now();
-      // std::time_t now_c =
-      // std::chrono::system_clock::to_time_t(cache_begin_));
-      VLOG(3) << "messages_for_test_ empty, reset cache_begin_";
-    }
-
-    VLOG(3) << "Cache message from interceptor " << src_id << " to interceptor "
-            << dst_id
-            << ", which are in different ranks, scope_idx:" << msg.scope_idx();
-    messages_for_test_.emplace_back(msg);
+  if (messages_for_test_.empty()) {
+    cache_begin_ = std::chrono::steady_clock::now();
+    VLOG(3) << "messages_for_test_ empty, reset cache_begin_";
   }
+
+  VLOG(3) << "Cache message from interceptor " << src_id << " to interceptor "
+          << dst_id
+          << ", which are in different ranks, scope_idx:" << msg.scope_idx();
+  messages_for_test_.emplace_back(msg);
 
   return true;
 }
@@ -350,8 +259,8 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         interceptor_id));
   interceptor->RegisterCarrier(this);
 
-  // TODO(fleet_exe dev): get loop
-  auto* loop = thread_pool_.GetLoop(interceptor_id % thread_num_);
+  // Get thread base on carrier id
+  auto* loop = thread_pool_->GetLoop(carrier_id_);
   PADDLE_ENFORCE_NOT_NULL(
       loop, platform::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
@@ -370,12 +279,12 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,
-                                                              max_memory_size));
+        gc = std::make_shared<framework::UnsafeFastGPUGarbageCollector>(
+            place, max_memory_size);
       }
     }
 #endif
-  }  // max_memory_size >= 0
+  }
 
   return gc;
 }
@@ -384,38 +293,6 @@ void Carrier::CreateInterceptors() {
   if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
-
-  // create source and sink task node
-  auto max_run_times = microbatch_scopes_.size();
-  TaskNode* source = new TaskNode(
-      rank_, SOURCE_ID, max_run_times);  // rank, task_id, max_run_times
-  TaskNode* sink = new TaskNode(rank_, SINK_ID, max_run_times);
-  // find nodes without upstreams or without downstreams
-  std::vector<TaskNode*> origin_sources, origin_sinks;
-  for (const auto& item : interceptor_id_to_node_) {
-    TaskNode* task_node = item.second;
-    if (task_node->upstream().empty()) {
-      origin_sources.emplace_back(task_node);
-    }
-    if (task_node->downstream().empty()) {
-      origin_sinks.emplace_back(task_node);
-    }
-  }
-  // link source node with origin source
-  for (const auto& node : origin_sources) {
-    source->AddDownstreamTask(node->task_id(),
-                              std::numeric_limits<int64_t>::max());
-    node->AddUpstreamTask(SOURCE_ID, std::numeric_limits<int64_t>::max());
-  }
-  // link sink node with origin sink
-  for (const auto& node : origin_sinks) {
-    sink->AddUpstreamTask(node->task_id(), std::numeric_limits<int64_t>::max());
-    node->AddDownstreamTask(SINK_ID, std::numeric_limits<int64_t>::max());
-  }
-  // create source and sink interceptor
-  SetInterceptor(SOURCE_ID,
-                 InterceptorFactory::Create("Source", SOURCE_ID, source));
-  SetInterceptor(SINK_ID, InterceptorFactory::Create("Sink", SINK_ID, sink));
 
   // create each Interceptor
   // no auto init since there is no config

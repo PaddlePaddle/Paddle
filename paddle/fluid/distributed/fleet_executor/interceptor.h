@@ -79,7 +79,11 @@ class Interceptor {
     gc_ = gc;
   }
   void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
+  void RegisterMultiCarrier(const std::vector<Carrier*>& carriers) {
+    multi_carriers_ = carriers;
+  }
   void RegisterTaskLoop(TaskLoop* loop) { loop_ = loop; }
+  virtual void SetConditionVariable(std::condition_variable* cv) {}
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -103,6 +107,7 @@ class Interceptor {
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;
+  std::vector<Carrier*> multi_carriers_;
   TaskLoop* loop_;
 
  private:

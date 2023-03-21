@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/source_interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
@@ -37,18 +38,32 @@ void SourceInterceptor::SendDataReadyToDownStream(int64_t downstream_id) {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_IS_READY);
   ready_msg.set_scope_idx(scope_idx);
-  Send(downstream_id, ready_msg);
+  ready_msg.set_src_id(interceptor_id_);
+  ready_msg.set_dst_id(downstream_id);
+  // Get interceptor from carrier and send.
+  VLOG(3) << "Carrier size " << multi_carriers_.size();
+  for (auto& carrier : multi_carriers_) {
+    if (carrier->HasInterceptor(downstream_id)) {
+      VLOG(3) << "Carrier send data ready to " << downstream_id;
+      carrier->Send(ready_msg);
+      break;
+    }
+  }
   downstream_step_.at(downstream_id) = micro_step + 1;
 }
 
 void SourceInterceptor::Run(const InterceptorMessage& msg) {
   if (msg.message_type() == START) {
     // start run in a new step, reset the previous running status
+    VLOG(3) << "SourceInterceptor " << interceptor_id_
+            << " receiving start message";
     for (const auto& down : downstream_step_) {
       downstream_step_.at(down.first) = 0;
       SendDataReadyToDownStream(down.first);
     }
   } else if (msg.message_type() == DATA_IS_USELESS) {
+    VLOG(3) << "SourceInterceptor " << interceptor_id_
+            << " receiving data is useless";
     SendDataReadyToDownStream(msg.src_id());
   }
 }
