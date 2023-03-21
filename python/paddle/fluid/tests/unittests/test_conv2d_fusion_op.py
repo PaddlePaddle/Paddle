@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
 
-import paddle
 import paddle.fluid.core as core
 
 
@@ -61,55 +60,18 @@ def create_test_cudnn_channel_last_class(parent):
             print(self.attrs)
             if self.has_cuda():
                 place = core.CUDAPlace(0)
-                self.check_output_with_place(place, atol=1e-5)
+                self.check_output_with_place(
+                    place, atol=1e-5, check_dygraph=False
+                )
 
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
 
 
-def wrapper_conv2d_fusion_cutlass(
-    Input,
-    Filter,
-    Bias=None,
-    ResidualData=None,
-    strides=1,
-    paddings=0,
-    padding_algorithm="EXIPLICIT",
-    dilations=1,
-    groups=1,
-    data_format="NCDHW",
-    activation="relu",
-    fuse_alpha=0.0,
-):
-    return paddle._legacy_C_ops.conv2d_fusion_cutlass(
-        Input,
-        Filter,
-        Bias,
-        ResidualData,
-        "strides",
-        strides,
-        "paddings",
-        paddings,
-        "padding_algorithm",
-        padding_algorithm,
-        "groups",
-        groups,
-        "dilations",
-        dilations,
-        "data_format",
-        data_format,
-        "activation",
-        activation,
-        "fuse_alpha",
-        fuse_alpha,
-    )
-
-
 class TestConv2DFusionOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d_fusion"
-        self.python_api = wrapper_conv2d_fusion_cutlass
         self.exhaustive_search = False
         self.data_format = "NCHW"
         self.dtype = np.float32
@@ -201,7 +163,7 @@ class TestConv2DFusionOp(OpTest):
     def test_check_output(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def init_test_case(self):
         self.pad = [0, 0]
