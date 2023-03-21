@@ -149,7 +149,7 @@ static void RunKernelFunc(
     VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {  // inputs vector<Tensor>
       std::vector<paddle::Tensor> custom_vec_in;
-      if (ctx.HasInput(in_name)) {  // general inputs
+      if (ctx.HasInputs(in_name)) {  // general inputs
         // return const std::vector<const phi::DenseTensor*>
         auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NE(vec_x.empty(),
@@ -366,7 +366,7 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
   for (auto& in_name : inputs) {
     if (detail::IsDuplicableVar(in_name)) {
       std::vector<std::vector<int64_t>> vec_shape;
-      if (ctx->HasInput(in_name)) {  // general inputs
+      if (ctx->HasInputs(in_name)) {  // general inputs
         auto vec_ddim = ctx->GetInputsDim(in_name);
         vec_shape.reserve(vec_ddim.size());
         std::transform(vec_ddim.begin(),
