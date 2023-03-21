@@ -189,3 +189,7 @@ add_custom_target(build_tests)
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
+
+if(WITH_MKLDNN)
+  add_subdirectory(mkldnn)
+endif()
