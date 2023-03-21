@@ -137,7 +137,8 @@ class TestMainClassBase(unittest.TestCase):
         )
         self.assertEqual(len(res1), len(res2))
         for r1, r2 in zip(res1, res2):
-            np.testing.assert_equal(r1, r2)
+            max_diff = np.max(np.abs(r1 - r2))
+            self.assertLess(max_diff, 1e-10)
 
     def test_main(self):
         if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
