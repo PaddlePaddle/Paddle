@@ -41,7 +41,7 @@ class TestPSPassWithBow(unittest.TestCase):
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
                 ),
                 name="simnet_acc",

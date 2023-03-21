@@ -85,14 +85,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
-
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() == 0 && y_dims.size() == 0) {
-    out->set_dims(phi::make_ddim({}));
-  } else {
-    out->set_dims(phi::make_ddim({1}));
-  }
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -403,12 +396,7 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  if (!x.dims().size() || !y.dims().size()) {
-    out->set_dims(make_ddim({}));
-  } else {
-    out->set_dims(make_ddim({1}));
-  }
-  out->set_dtype(DataType::BOOL);
+  out->set_dims(make_ddim({}));
 }
 
 void ComplexInferMeta(const MetaTensor& x,

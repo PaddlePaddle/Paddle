@@ -412,11 +412,19 @@ def median(x, axis=None, keepdim=False, name=None):
     if x.size == 0:
         raise ValueError("In median, the size of input x should not be 0.")
 
-    if len(x.shape) == 0:
-        return x.clone()
-
-    is_flatten = axis is None
+    is_flatten = False
     dims = len(x.shape)
+    if dims == 0:
+        assert axis in [
+            -1,
+            0,
+            None,
+        ], 'when input 0D, axis can only be [-1, 0] or default None'
+        is_flatten = True
+
+    if axis is None:
+        is_flatten = True
+
     if is_flatten:
         x = paddle.flatten(x)
         axis = 0
@@ -446,16 +454,14 @@ def median(x, axis=None, keepdim=False, name=None):
     out_tensor = out_tensor + paddle.sum(
         paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
     )
-    if not keepdim or is_flatten:
-        if not is_flatten:
-            newshape = x.shape[:axis] + x.shape[axis + 1 :]
-        elif not keepdim:
-            newshape = [1]
+    if is_flatten:
+        if keepdim:
+            out_tensor = out_tensor.reshape([1] * dims)
         else:
-            newshape = [1] * dims
+            out_tensor = out_tensor.reshape([])
     else:
-        newshape = out_tensor.shape
-    out_tensor = out_tensor.reshape(newshape, name=name)
+        if not keepdim:
+            out_tensor = out_tensor.squeeze(axis)
     return out_tensor
 
 
