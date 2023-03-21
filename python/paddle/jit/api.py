@@ -220,7 +220,11 @@ def ignore_module(modules: List[Any]):
 
 
 def to_static(
-    function=None, input_spec=None, build_strategy=None, property=False
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    property=False,
+    backend=None,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -292,6 +296,9 @@ def to_static(
                 type(build_strategy).__name__
             )
         )
+    if backend == 'CINN':
+        build_strategy.build_cinn_pass = True
+        paddle.fluid.core._set_prim_all_enabled(True)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:
