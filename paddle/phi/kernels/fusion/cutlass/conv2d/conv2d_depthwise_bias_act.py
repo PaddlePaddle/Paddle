@@ -162,7 +162,9 @@ def generate_conv2d_depthwise():
         filter_shapes = [[3, 3], [5, 5]]
         stride_shapes = ["1,1", "2,2"]
 
-        for vec_length in ["1", "2", "4", "8"]:
+        # set [1,2,4,8] will generate too many kernels!
+        # Now only set [8]
+        for vec_length in ["8"]:
             kernel_dict["epilogue_vector_length"] = vec_length
             for filter_shape in filter_shapes:
                 for stride_shape in stride_shapes:

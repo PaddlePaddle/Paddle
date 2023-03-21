@@ -99,6 +99,10 @@ class CutlassTeller {
       if (!(kh == 3 && kw == 3) || (kh == 5 && kw == 5)) {
         return false;
       }
+      // Now we only allow ic % 8 == 0
+      if (ic % 8 != 0) {
+        return false;
+      }
 
       // conv2d_depthwise + bias + act
       if (!cdba_act_set.count(activation)) {
