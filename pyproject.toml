@@ -32,6 +32,10 @@ select = [
     # Pyflakes
     "F401",
 
+    # Comprehensions
+    "C408",
+    "C409",
+    
     # Pyupgrade
     "UP001",
     "UP003",
