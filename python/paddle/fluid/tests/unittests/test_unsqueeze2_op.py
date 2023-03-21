@@ -28,6 +28,7 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze2"
         self.python_api = paddle.unsqueeze
+        self.public_python_api = paddle.unsqueeze
         self.python_out_sig = ["Out"]
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()

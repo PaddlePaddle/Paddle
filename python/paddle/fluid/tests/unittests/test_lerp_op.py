@@ -119,8 +119,8 @@ class TestLerpAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
-                y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
+                x = paddle.static.data('x', [1, 4], dtype=self.dtype)
+                y = paddle.static.data('y', [1, 4], dtype=self.dtype)
                 out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
                 res = exe.run(

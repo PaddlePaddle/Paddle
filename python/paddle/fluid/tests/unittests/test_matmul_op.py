@@ -165,9 +165,11 @@ class API_TestMm(unittest.TestCase):
     def test_out(self):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program()):
-                x = fluid.data(name="x", shape=[2], dtype="float64")
-                y = fluid.data(name='y', shape=[2], dtype='float64')
-                res = fluid.data(name="output", shape=[1], dtype="float64")
+                x = paddle.static.data(name="x", shape=[2], dtype="float64")
+                y = paddle.static.data(name='y', shape=[2], dtype='float64')
+                res = paddle.static.data(
+                    name="output", shape=[1], dtype="float64"
+                )
                 result = paddle.mm(x, y)
                 exe = fluid.Executor(fluid.CPUPlace())
                 data1 = np.random.rand(2)
@@ -220,10 +222,10 @@ class API_TestMmError(unittest.TestCase):
 
             def test_error1():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -232,10 +234,10 @@ class API_TestMmError(unittest.TestCase):
 
             def test_error2():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[-1, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -244,10 +246,10 @@ class API_TestMmError(unittest.TestCase):
 
             def test_error3():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)

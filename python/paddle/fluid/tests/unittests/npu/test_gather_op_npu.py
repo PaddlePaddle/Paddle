@@ -101,8 +101,8 @@ class API_TestGather(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float32')
-            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
+            x = paddle.static.data('x', shape=[-1, 2], dtype='float32')
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             out = paddle.gather(x, index)
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)

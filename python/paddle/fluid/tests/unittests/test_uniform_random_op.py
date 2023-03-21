@@ -360,7 +360,9 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            shape = fluid.data(name='shape_tensor', shape=[2], dtype="int32")
+            shape = paddle.static.data(
+                name='shape_tensor', shape=[2], dtype="int32"
+            )
             ret = paddle.uniform(shape)
 
             place = fluid.CPUPlace()

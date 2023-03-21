@@ -290,6 +290,7 @@
   kernel :
     func : cos_grad
   backward : cos_double_grad
+  composite : cos_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : cos_triple_grad
@@ -1355,6 +1356,7 @@
   kernel :
     func : sin_grad
   backward : sin_double_grad
+  composite : sin_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_triple_grad

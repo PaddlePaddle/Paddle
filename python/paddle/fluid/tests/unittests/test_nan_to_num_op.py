@@ -71,7 +71,7 @@ class TestNanToNum(unittest.TestCase):
         out4_np = np_nan_to_num(x_np, 1.0, 9.0, -12.0)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', x_np.shape)
+            x = paddle.static.data('X', x_np.shape)
             out1 = paddle.nan_to_num(x)
             out2 = paddle.nan_to_num(x, 1.0)
             out3 = paddle.nan_to_num(x, 1.0, 9.0)

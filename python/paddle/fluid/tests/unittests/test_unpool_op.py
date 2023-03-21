@@ -411,7 +411,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
         ).astype("float32")
 
-        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
         output, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, return_mask=True
         )
