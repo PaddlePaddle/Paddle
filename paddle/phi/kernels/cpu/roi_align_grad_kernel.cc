@@ -81,7 +81,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         int sampling_ratio,
                         bool aligned,
                         DenseTensor* dx) {
-  auto in_dims = x.dims();
+  const auto& in_dims = x.dims();
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];

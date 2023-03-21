@@ -16,9 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def l2_norm(x, axis, epsilon):
@@ -150,6 +152,37 @@ class TestNormTestOp(OpTest):
 
     def test_check_grad(self):
         pass
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestNormBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "norm"
+        self.python_api = norm_wrapper
+        self.init_test_case()
+        self.dtype = "float32"
+        x = np.random.random(self.shape).astype(self.dtype)
+        y, norm = l2_norm(x, self.axis, self.epsilon)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
+        self.outputs = {'Out': convert_float_to_uint16(y), 'Norm': norm}
+        self.python_out_sig = ['Out']
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', max_relative_error=1e-2
+        )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]

@@ -8,8 +8,8 @@ set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 
-set(XPU_BASE_DATE "20230227")
-set(XPU_XCCL_BASE_VERSION "1.0.10")
+set(XPU_BASE_DATE "20230310")
+set(XPU_XCCL_BASE_VERSION "1.0.12")
 set(XPU_XFT_BASE_VERSION "latest")
 
 if(NOT DEFINED XPU_BASE_URL)
@@ -142,6 +142,8 @@ if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
 
+  set(XPU_XFT_INC_DIR "${XPU_INC_DIR}/xft")
+  include_directories(${XPU_XFT_INC_DIR})
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 

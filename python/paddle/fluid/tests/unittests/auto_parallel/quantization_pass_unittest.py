@@ -39,7 +39,7 @@ def apply_pass():
     ]
     amp.init_loss_scaling = 32768
     amp.use_fp16_guard = False
-    amp.use_pure_fp16 = True
+    amp.level = "o2"
 
     qat = dist_strategy.qat
     qat.enable = True

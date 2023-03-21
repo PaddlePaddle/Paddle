@@ -34,7 +34,6 @@ class TestSliceOp(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = True
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -54,7 +53,7 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -74,7 +73,6 @@ class TestCase1(TestSliceOp):
 
 class TestCase2(TestSliceOp):
     def config(self):
-        self.enable_cinn = True
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
@@ -139,7 +137,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -465,7 +463,6 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 )
 class TestFP16(OpTest):
     def setUp(self):
-        self.enable_cinn = True
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
@@ -491,7 +488,7 @@ class TestFP16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5, check_prim=True)
+            self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -501,7 +498,6 @@ class TestFP16(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=0.006,
                 check_prim=True,
             )
 
@@ -536,7 +532,7 @@ class TestFP16_2(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5, check_prim=True)
+            self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -545,7 +541,6 @@ class TestFP16_2(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=0.006,
                 numeric_grad_delta=0.5,
                 check_prim=True,
             )
@@ -578,6 +573,7 @@ class TestBF16(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    # pad not support bfloat16, so we can't test prim.
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out')
 
@@ -586,8 +582,8 @@ class TestBF16(OpTest):
 class TestSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
-        minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int64", -3)
+        minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
+        minus_3 = paddle.tensor.fill_constant([1], "int64", -3)
         starts = paddle.static.data(
             name='starts', shape=[1, 3], dtype="float32"
         )
@@ -601,7 +597,7 @@ class TestSliceAPI(unittest.TestCase):
         )
 
         # value_int64 is greater than 2147483647 which is the max of int32
-        value_int64 = fluid.layers.fill_constant([1], "int64", 2147483648)
+        value_int64 = paddle.tensor.fill_constant([1], "int64", 2147483648)
 
         out_1 = paddle.slice(
             x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1]
@@ -743,7 +739,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     slice_arr, axis=self.axis, use_stack=True
                 )
             elif case_num == 3:
-                value_int64 = fluid.layers.fill_constant(
+                value_int64 = paddle.tensor.fill_constant(
                     [1], "int64", 2147483648
                 )
                 self.sliced_arr = slice_arr = arr[self.start : value_int64]
