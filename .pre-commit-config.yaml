@@ -68,16 +68,11 @@ repos:
     hooks:
     -   id: flake8
         args: ["--config=.flake8"]
--   repo: https://github.com/PyCQA/autoflake
-    rev: v1.7.7
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.254
     hooks:
-    -   id: autoflake
-        args:
-            - --in-place
-            - --remove-all-unused-imports
-            - --ignore-pass-after-docstring
-            - --ignore-init-module-imports
-            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix, --no-cache]
 -   repo: local
     hooks:
     -   id: pylint-doc-string

@@ -135,8 +135,8 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   meta.SetTensorMeta(dense_tensor->meta());
   meta.SetPlace(fwd_out.place());
 
-  if (dense_tensor->type() == paddle::experimental::DataType::COMPLEX64 ||
-      dense_tensor->type() == paddle::experimental::DataType::COMPLEX128) {
+  if (dense_tensor->type() == phi::DataType::COMPLEX64 ||
+      dense_tensor->type() == phi::DataType::COMPLEX128) {
     need_complex_to_real_ = true;
   }
 }
@@ -195,8 +195,8 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_out_tensor.place());
 
-      if (dense_tensor->type() == paddle::experimental::DataType::COMPLEX64 ||
-          dense_tensor->type() == paddle::experimental::DataType::COMPLEX128) {
+      if (dense_tensor->type() == phi::DataType::COMPLEX64 ||
+          dense_tensor->type() == phi::DataType::COMPLEX128) {
         need_complex_to_real_ = true;
       }
     } else {
@@ -537,6 +537,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
       const paddle::Tensor& grad = slot_out_grads[rank_id];
 
       if (paddle::framework::IsComplexType(fwd_data_type)) continue;
+      if (!grad.impl()) continue;
 
       // Only Handle Complex To Real for DenseTensor for now
       if (phi::DenseTensor::classof(grad.impl().get())) {
