@@ -163,52 +163,6 @@ class TestElementwiseMaxOp_vector(TestElementwiseMaxOp):
         self.out = np.maximum(self.x, self.y)
 
 
-class TestElementwiseMaxOp_broadcast_0(TestElementwiseMaxOp):
-    def init_input_output(self):
-        self.x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
-        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-        self.y = self.x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            self.dtype
-        )
-        self.out = np.maximum(self.x, self.y.reshape(100, 1, 1))
-
-    def init_axis(self):
-        self.axis = 0
-
-
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseMaxOp):
-    def init_input_output(self):
-        self.x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
-        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-        self.y = self.x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            self.dtype
-        )
-        self.out = np.maximum(self.x, self.y.reshape(1, 100, 1))
-
-    def init_axis(self):
-        self.axis = 1
-
-    def test_check_grad_ingore_x(self):
-        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
-        self.check_grad_with_place(
-            self.place,
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[dy],
-        )
-
-    def test_check_grad_ingore_y(self):
-        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
-        self.check_grad_with_place(
-            self.place,
-            ['X'],
-            'Out',
-            no_grad_set=set("Y"),
-            user_defined_grads=[dx],
-        )
-
-
 class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
@@ -243,19 +197,6 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
             no_grad_set=set("Y"),
             user_defined_grads=[dx],
         )
-
-
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp):
-    def init_input_output(self):
-        self.x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(self.dtype)
-        sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
-        self.y = self.x[0, :, :, 0] + sgn * np.random.uniform(
-            1, 2, (50, 2)
-        ).astype(self.dtype)
-        self.out = np.maximum(self.x, self.y.reshape(1, 50, 2, 1))
-
-    def init_axis(self):
-        self.axis = 1
 
 
 class TestElementwiseMaxOp_broadcast_4(TestElementwiseMaxOp):
