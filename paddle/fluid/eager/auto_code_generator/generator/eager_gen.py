@@ -65,6 +65,12 @@ black_ops_list = [
 prim_white_list = ["matmul_double_grad"]
 
 
+special_GradOutMeta = {
+    "matmul_grad": {"x": "grad_y", "y": "grad_x"},
+    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
+}
+
+
 #########
 # Utils #
 #########
@@ -982,12 +988,27 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             grad_node_out_list.append(name)
             is_optional = name in self.optional_inputs
+            is_special_forward_api = (
+                True if forward_api_name in special_GradOutMeta else False
+            )
+
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
             else:
-                set_grad_out_meta = (
-                    f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                )
+                if (
+                    is_special_forward_api
+                    and name in special_GradOutMeta[forward_api_name]
+                ):
+                    meta_name = GetAutoGradMetaName(
+                        special_GradOutMeta[forward_api_name][name]
+                    )
+                    print("&&&&&&------forward api name:", forward_api_name)
+                    print("&&&&&&------meta name:", meta_name)
+                    set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
+                else:
+                    set_grad_out_meta = (
+                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                    )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
