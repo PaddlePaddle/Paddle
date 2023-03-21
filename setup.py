@@ -141,13 +141,6 @@ def get_header_install_dir(header):
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
             print('fluid/jit install_dir: ', install_dir)
-        if 'trace_event.h' in install_dir:
-            install_dir = re.sub(
-                'fluid/platform/profiler',
-                'phi/backends/custom',
-                install_dir,
-            )
-            print('trace_event.h install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
@@ -1217,23 +1210,28 @@ def get_headers():
                 '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
             )
         )
-        + list(  # phi kernel primitive api headers
-            # capi headers
+        + list(  # capi headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        + list(  # phi capi headers
-            # profiler headers
+        + list(  # utils api headers
             find_files(
-                'trace_event.h',
-                paddle_source_dir + '/paddle/fluid/platform/profiler',
+                '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
         )
         + list(  # phi profiler headers
-            # utils api headers
             find_files(
-                '*.h', paddle_source_dir + '/paddle/utils', recursive=True
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/profiler',
+                recursive=True,
+            )
+        )
+        + list(  # phi init headers
+            find_files(
+                'init_phi.h',
+                paddle_source_dir + '/paddle/fluid/platform',
+                recursive=True,
             )
         )
     )  # paddle utils headers

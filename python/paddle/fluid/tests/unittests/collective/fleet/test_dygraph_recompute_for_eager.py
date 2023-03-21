@@ -23,7 +23,7 @@ from paddle.distributed.fleet.utils import recompute
 
 class Model(paddle.nn.Layer):
     def __init__(self, block_idx, input_size, is_last=False):
-        super(Model, self).__init__()
+        super().__init__()
         block_name = "block_" + str(block_idx)
         self.block = paddle.nn.Sequential(
             (

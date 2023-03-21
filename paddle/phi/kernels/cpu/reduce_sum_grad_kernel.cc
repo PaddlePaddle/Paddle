@@ -23,53 +23,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ComputeFromInput(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& input2,
-                      const std::vector<int64_t>& dims,
-                      DenseTensor* x_grad) {
-  auto* input0 = &x;
-  auto* output = x_grad;
-  dev_ctx.template Alloc<T>(output);
-
-  const auto* input2_d = input2.data<T>();
-  auto* output_d = output->data<T>();
-
-  // handle reduce_all
-  if (input2.dims().size() == 1 && input2.dims()[0] == 1) {
-    for (int64_t i = 0; i < phi::product(input0->dims()); ++i) {
-      output_d[i] = input2_d[0];
-    }
-    return;
-  }
-
-  // handle reduce by one dimension
-  int reduce_dim_index = dims[0];
-  if (reduce_dim_index < 0) {
-    reduce_dim_index += input0->dims().size();
-  }
-
-  auto& input_dim = input0->dims();
-  int64_t before_dim = 1;
-  for (int i = 0; i < reduce_dim_index; ++i) {
-    before_dim *= input_dim[i];
-  }
-  int64_t reduce_dim = input_dim[reduce_dim_index];
-  int64_t after_dim = 1;
-  for (int i = reduce_dim_index + 1; i < input_dim.size(); ++i) {
-    after_dim *= input_dim[i];
-  }
-  for (int64_t i = 0; i < before_dim; ++i) {
-    for (int64_t j = 0; j < reduce_dim; ++j) {
-      for (int64_t k = 0; k < after_dim; ++k) {
-        output_d[i * reduce_dim * after_dim + j * after_dim + k] =
-            input2_d[i * after_dim + k];
-      }
-    }
-  }
-}
-
-template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
@@ -78,24 +31,6 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  if (dims.size() == 1) {
-    if (out_grad.dtype() != x.dtype()) {
-      DenseTensorMeta x_grad_meta(
-          out_grad.dtype(), x_grad->dims(), x_grad->layout());
-      DenseTensor x_grad_tmp =
-          phi::Empty<Context>(dev_ctx, std::move(x_grad_meta));
-
-      ComputeFromInput<T, Context>(
-          dev_ctx, x, out_grad, dims.GetData(), &x_grad_tmp);
-
-      phi::CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
-
-    } else {
-      ComputeFromInput<T, Context>(
-          dev_ctx, x, out_grad, dims.GetData(), x_grad);
-    }
-  }
-
   ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
                                                             x,
                                                             paddle::none,
