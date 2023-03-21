@@ -78,9 +78,9 @@ struct DictionaryAttributeStorage : public AttributeStorage {
 
   Attribute GetValue(const StrAttribute &name);
 
-  const NamedAttribute *data() const { return data_; }
+  NamedAttribute *data() const { return data_; }
 
-  const uint32_t size() const { return size_; }
+  uint32_t size() const { return size_; }
 
  private:
   static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
