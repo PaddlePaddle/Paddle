@@ -275,7 +275,7 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places, platform::EmplaceExternalContext);
+  platform::DeviceContextPool::Init(places, platform::EmplaceDevicesContext);
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -470,8 +470,6 @@ void InitMemoryMethod() {
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
-    memory_method->allocator_facade_ =
-        (&(paddle::memory::allocation::AllocatorFacade::Instance()));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif

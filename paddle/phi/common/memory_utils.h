@@ -114,8 +114,6 @@ struct MemoryInterface {
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
 
-  // allocator_facade_ is used for getting allocators
-  phi::AllocatorFacadeInterface* allocator_facade_ = nullptr;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
    * @brief get the memory usage of current GPU device.
@@ -279,21 +277,6 @@ class MemoryUtils {
         nullptr,
         phi::errors::Unavailable("memory_method_ in MemoryUtils is not "
                                  "initiazed yet. You need init it first."));
-  }
-
-  void SetAllocatorFacade(phi::AllocatorFacadeInterface* allocator_facade) {
-    CheckMemoryMethod();
-    memory_method_->allocator_facade_ = allocator_facade;
-  }
-
-  phi::AllocatorFacadeInterface* GetAllocatorFacade() {
-    CheckMemoryMethod();
-    PADDLE_ENFORCE_NE(
-        memory_method_->allocator_facade_,
-        nullptr,
-        phi::errors::Unavailable("allocator_facade_ is not initialized yet, "
-                                 "you need init it first."));
-    return memory_method_->allocator_facade_;
   }
 
  private:

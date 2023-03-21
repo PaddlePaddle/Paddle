@@ -72,7 +72,7 @@ struct DefaultDeviceContextType<phi::CustomPlace> {
 };
 #endif
 
-using EmplaceExternalContextFunc = void (*)(
+using EmplaceDevicesContextFunc = void (*)(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*,
     const phi::Place&,
     bool,
@@ -84,7 +84,7 @@ void EmplaceDeviceContexts(
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
-    EmplaceExternalContextFunc emplace_external_context_func = nullptr);
+    EmplaceDevicesContextFunc emplace_devices_context_func = nullptr);
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {
@@ -93,7 +93,7 @@ class DeviceContextPool {
 
   /*! \brief  Create should only called by Init function */
   static DeviceContextPool& Init(const std::vector<phi::Place>& places,
-                                 EmplaceExternalContextFunc func = nullptr);
+                                 EmplaceDevicesContextFunc func = nullptr);
 
   static bool IsInitialized();
 
@@ -126,7 +126,7 @@ class DeviceContextPool {
   static thread_local const std::
       map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
           external_device_contexts_;  // not owned
-  static EmplaceExternalContextFunc emplace_external_context_func_;
+  static EmplaceDevicesContextFunc emplace_devices_context_func_;
 
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };

@@ -241,7 +241,7 @@ using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 using CustomDeviceContext = phi::CustomContext;
 #endif
 
-void EmplaceExternalContext(
+void EmplaceDevicesContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const platform::Place& place,

@@ -57,7 +57,7 @@ void InitDevice() {
   EXPECT_GT(static_cast<int>(places.size()), 0);
 
   paddle::platform::DeviceContextPool::Init(
-      places, paddle::platform::EmplaceExternalContext);
+      places, paddle::platform::EmplaceDevicesContext);
 }
 
 void TestDeviceInterface(const paddle::platform::Place& place) {
