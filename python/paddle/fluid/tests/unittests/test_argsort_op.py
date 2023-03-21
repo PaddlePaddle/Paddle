@@ -393,7 +393,7 @@ class TestArgsort(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
 
@@ -500,41 +500,12 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestArgsortFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "argsort"
-        self.dtype = np.float16
-        self.__class__.op_type = self.op_type
-        self.inputs = {'X': np.random.randn(2, 8).astype(self.dtype)}
-        self.outputs = {'Out': np.argsort(self.inputs['X'])}
-
-    def test_check_output(self):
-        paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    user_defined_grads=[self.inputs['X']],
-                    user_defined_grad_outputs=[self.outputs['Out']],
-                )
-
+class TestArgsortOpFp16(unittest.TestCase):
     def test_fp16(self):
-        paddle.enable_static()
         x_np = np.random.random((2, 8)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
-            out = np.argsort(x)
-            out = paddle.to_tensor(out)
+            out = paddle.argsort(x)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
@@ -542,47 +513,38 @@ class TestArgsortFP16OP(OpTest):
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
-        self.op_type = "argsort"
+        self.op_type = 'argsort'
         self.dtype = np.uint16
-        self.__class__.op_type = self.op_type
         self.inputs = {'X': np.random.randn(11, 17).astype(self.dtype)}
         self.outputs = {'Out': np.argsort(self.inputs['X'])}
 
     def test_check_output(self):
-        paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    user_defined_grads=[self.inputs['X']],
-                    user_defined_grad_outputs=[self.outputs['Out']],
-                )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+        )
 
     def test_check_grad_ingore_order(self):
-        paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    user_defined_grads=[self.inputs['X']],
-                    user_defined_grad_outputs=[self.outputs['Out']],
-                    no_grad_set=set(),
-                )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set(),
+        )
 
 
 if __name__ == "__main__":
