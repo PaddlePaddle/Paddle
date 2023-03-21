@@ -17,9 +17,9 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Layer, to_variable
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
