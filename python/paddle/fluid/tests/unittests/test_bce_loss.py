@@ -282,8 +282,12 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFloat16(TestBceLossOp):
     def setUp(self):
-        input_np = paddle.uniform(min=0.1, max=0.8, shape=[10,10]).astype("float16")
-        label_np = paddle.randint(low=0, high=2, shape=[10,10]).astype("float16")
+        input_np = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
+            "float16"
+        )
+        label_np = paddle.randint(low=0, high=2, shape=[10, 10]).astype(
+            "float16"
+        )
         output_np = bce_loss(input_np, label_np)
 
         self.inputs = {'X': input_np, 'Label': label_np}
@@ -294,7 +298,7 @@ class TestBceLossOpFloat16(TestBceLossOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, ['X', 'Label'], 'Out', check_eager=True, atol=1e-3
+                    place, ['X'], 'Out', check_eager=True, atol=1e-3
                 )
 
     def test_check_grad(self):
@@ -303,12 +307,11 @@ class TestBceLossOpFloat16(TestBceLossOp):
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place,
-                    ['X', 'Label'],
+                    ['X'],
                     'Out',
                     check_eager=True,
                     max_relative_error=1e-2,
                 )
-
 
 
 if __name__ == "__main__":
