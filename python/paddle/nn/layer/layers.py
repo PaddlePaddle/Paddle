@@ -13,46 +13,89 @@
 # limitations under the License.
 
 import collections
-import numpy as np
-import re
 import copy
-import weakref
-import warnings
 import inspect
+import re
+import warnings
+import weakref
+
+import numpy as np
 
 import paddle
 import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-
-from .. import unique_name
-from paddle.fluid import core
-from .layer_object_helper import LayerObjectHelper
-from .layer_hooks import (
-    record_program_ops_pre_hook,
-    set_op_customized_attrs_post_hook,
-    LayerOpsRecoder,
-)
-from .base import (
-    program_desc_tracing_guard,
-    in_declarative_mode,
-    _convert_into_variable,
-)
-from paddle.fluid import framework
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import (
-    convert_np_dtype_to_dtype_,
-    in_dygraph_mode,
-)
-from paddle.fluid.framework import Program
-from paddle.fluid.framework import _current_expected_place as _get_device
+import paddle.utils.deprecated as deprecated
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
-import paddle.utils.deprecated as deprecated
+from paddle.fluid.dygraph.base import (
+    _convert_into_variable,
+    in_declarative_mode,
+    program_desc_tracing_guard,
+)
+from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
+from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.framework import Parameter, Program
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import (
+    _global_flags,
+    convert_np_dtype_to_dtype_,
+    default_main_program,
+    in_dygraph_mode,
+)
+from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.fluid.param_attr import ParamAttr
+from paddle.profiler.utils import in_profiler_mode
 
-__all__ = ['Layer']
+__all__ = []
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
+
+
+def record_program_ops_pre_hook(layer, inputs):
+    """
+    A pre-hook to mark op numbers before enter layer.forward.
+    """
+    if not in_dygraph_mode():
+        if layer._op_recorder.start < 0:
+            layer._op_recorder.start = len(
+                default_main_program().current_block().ops
+            )
+            layer._op_recorder.is_valid = True
+        else:
+            layer._op_recorder.is_valid = False
+            warnings.warn(
+                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
+                    layer._full_name
+                )
+            )
+
+    return None
+
+
+def set_op_customized_attrs_post_hook(layer, inputs, outputs):
+    """
+    A post-hook to append customized attributes into all operators generated in current layer.
+    """
+    if not in_dygraph_mode() and layer._op_recorder.is_valid:
+
+        start = layer._op_recorder.start
+        end = len(default_main_program().current_block().ops)
+        assert start >= 0 and end >= start
+        ops = default_main_program().current_block().ops[start:end]
+
+        layer._op_recorder.end = end
+        layer._op_recorder.ops = ops
+
+        for op in ops:
+            for attr_name, val in layer._customized_attrs.items():
+                op._set_attr(attr_name, val)
+
+        # remove pre-hook and post-hook
+        for hook_helper in layer._op_recorder.hooks:
+            hook_helper.remove()
+
+    return None
 
 
 def _scope_dist2single(dist_scope):
@@ -80,6 +123,202 @@ def _addindent(string, indent):
         if idx > 0:
             s2.append(str((indent * ' ') + line))
     return s1[0] + '\n' + '\n'.join(s2)
+
+
+class LayerObjectHelper(LayerHelperBase):
+    def __init__(self, name):
+        super().__init__(name, layer_type=name)
+
+    def append_op(
+        self,
+        type=None,
+        inputs=None,
+        outputs=None,
+        attrs=None,
+        stop_gradient=None,
+    ):
+        """append an operator for this layer object.
+
+           Args:
+               type: operator type
+               inputs: input variable of the operator
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
+        return self.main_program.current_block().append_op(
+            type=type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=stop_gradient,
+        )
+
+    def _multiple_input(self, inputs_in):
+        inputs = inputs_in
+        ret = []
+        if isinstance(inputs, (list, tuple)):
+            for inp in inputs:
+                ret.append(self.to_variable(inp))
+        else:
+            ret.append(self.to_variable(inputs))
+        return ret
+
+    # TODO: make it public when we need it
+    def _input(self, inputs_in):
+        inputs = self._multiple_input(inputs_in)
+        if len(inputs) != 1:
+            raise "{0} layer only takes one input in".format(self.layer_type)
+        return inputs[0]
+
+    def _multiple_param_attr(self, length, param_attr_in=None):
+        param_attr = param_attr_in
+        if isinstance(param_attr, ParamAttr):
+            param_attr = [param_attr]
+
+        if len(param_attr) != 1 and len(param_attr) != length:
+            raise ValueError(
+                "parameter number mismatch in {}".format(self.name)
+            )
+        elif len(param_attr) == 1 and length != 1:
+            tmp = [None] * length
+            for i in range(length):
+                tmp[i] = copy.deepcopy(param_attr[0])
+            param_attr = tmp
+        return param_attr
+
+    def iter_inputs_and_params(self, inputs_in, param_attr_in=None):
+        """Access all inputs and params one by one
+
+           Args:
+               inputs_in: inputs to be iter
+               param_attr_in: param_attr to be iter
+
+        Returns input, param_attr
+        """
+        param_attr_in = ParamAttr._to_attr(param_attr_in)
+        if isinstance(param_attr_in, bool):
+            raise ValueError(
+                'Param_attr should not be False in {}'.format(self.name)
+            )
+        inputs = inputs_in if (inputs_in is not None) else []
+        inputs = self._multiple_input(inputs)
+        param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
+        for ipt, param_attr in zip(inputs, param_attrs):
+            yield ipt, param_attr
+
+    def input_dtype(self, inputs_in):
+        """Get input data type
+
+           Args:
+               inputs_in: inputs wanted know the data type
+
+        Returns dtype of the input
+        """
+        inputs_in = inputs_in if (inputs_in is not None) else []
+        inputs = self._multiple_input(inputs_in)
+        dtype = None
+        for each in inputs:
+            if dtype is None:
+                dtype = each.dtype
+            elif dtype != each.dtype:
+                raise ValueError(
+                    "Data Type mismatch: %d to %d in %s"
+                    % (dtype, each.dtype, self.name)
+                )
+        return dtype
+
+    def get_parameter(self, name):
+        """Get parameter specifically
+
+           Args:
+               name: parameter's name
+
+        Returns target parameter
+        """
+        param = self.main_program.global_block().var(name)
+        if not isinstance(param, Parameter):
+            raise ValueError(
+                "no Parameter name %s found in %s" % (name, self.name)
+            )
+        return param
+
+    # TODO: this should not be called anymore after all activation func move to Layers
+    def append_activation(self, input_var, act=None, use_cudnn=None):
+        """Append activation
+
+            Args:
+                input_var: the input variable. The len(input_var.shape) is
+                larger or equal than 2.
+                act: activation type
+                use_cudnn: if use cudnn
+
+        Return the Variable of after append activation
+        """
+        act = act
+        if act is None:
+            return input_var
+        if isinstance(act, str):
+            act = {'type': act}
+        else:
+            raise TypeError(
+                str(act) + " should be unicode or str in %s ", self.name
+            )
+
+        if (use_cudnn is not None) and use_cudnn:
+            act['use_cudnn'] = use_cudnn
+        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
+        if (use_mkldnn is not None) and use_mkldnn:
+            act['use_mkldnn'] = use_mkldnn
+        act_type = act.pop('type')
+        if in_dygraph_mode():
+            res = _append_activation_in_dygraph(
+                input_var, act_type, use_cudnn, use_mkldnn
+            )
+            return res
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+            self.append_op(
+                type=act_type,
+                inputs={"X": [input_var]},
+                outputs={"Out": [tmp]},
+                attrs=act,
+            )
+            return tmp
+
+    def is_instance(self, param, cls):
+        """Check if the input parameter is instance of input class
+
+            Args:
+                param: parameter to be check
+                cls: class of the parameter
+
+        Return result of the check (True or False)
+        """
+        param = param
+        if not isinstance(param, cls):
+            raise TypeError(
+                "The input {0} parameter of method {1} must be {2}, in layer {3}",
+                param,
+                self.layer_type,
+                cls.__name__,
+                self.name,
+            )
+
+
+class LayerOpsRecoder:
+    """
+    Record generated operators information in nn.Layer.
+    """
+
+    def __init__(self, start=-1, end=-1, ops=None, is_valid=False, hooks=None):
+        self.start = start
+        self.end = end
+        self.ops = ops
+        self.is_valid = is_valid
+        self.hooks = hooks
 
 
 class HookRemoveHelper:

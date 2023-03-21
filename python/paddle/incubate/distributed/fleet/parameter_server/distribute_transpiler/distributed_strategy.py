@@ -128,7 +128,7 @@ class TrainerRuntimeConfig:
                     'communicator_send_queue_size'
                 ] = num_threads
 
-        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+        return {key: str(self.runtime_configs[key]) for key in need_keys}
 
     def display(self, configs):
         raw0, raw1, length = 45, 5, 50

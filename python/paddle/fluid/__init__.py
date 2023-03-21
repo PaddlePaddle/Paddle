@@ -46,8 +46,6 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from .data import *
-
 from . import trainer_desc
 
 from . import io
@@ -86,7 +84,6 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from .core import _cuda_synchronize
@@ -118,7 +115,6 @@ __all__ = (
         'initializer',
         'layers',
         'contrib',
-        'data',
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',

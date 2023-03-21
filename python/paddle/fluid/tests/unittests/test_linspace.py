@@ -158,19 +158,21 @@ class TestLinspaceOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_step_dtype)
 
             def test_start_dtype():
-                start = fluid.data(shape=[1], dtype="float64", name="start")
+                start = paddle.static.data(
+                    shape=[1], dtype="float64", name="start"
+                )
                 paddle.linspace(start, 10, 1, dtype="float32")
 
             self.assertRaises(ValueError, test_start_dtype)
 
             def test_end_dtype():
-                end = fluid.data(shape=[1], dtype="float64", name="end")
+                end = paddle.static.data(shape=[1], dtype="float64", name="end")
                 paddle.linspace(0, end, 1, dtype="float32")
 
             self.assertRaises(ValueError, test_end_dtype)
 
             def test_num_dtype():
-                num = fluid.data(shape=[1], dtype="int32", name="step")
+                num = paddle.static.data(shape=[1], dtype="int32", name="step")
                 paddle.linspace(0, 10, num, dtype="float32")
 
             self.assertRaises(TypeError, test_step_dtype)

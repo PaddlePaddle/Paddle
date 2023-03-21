@@ -75,7 +75,7 @@ class DenseTensorUtils {
       ret.meta_.dims[0] = end_idx - begin_idx;
       ret.meta_.offset = tensor.meta_.offset +
                          begin_idx * (tensor.numel() / tensor.dims()[0]) *
-                             paddle::experimental::SizeOf(tensor.dtype());
+                             phi::SizeOf(tensor.dtype());
     }
     return ret;
   }

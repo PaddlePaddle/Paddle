@@ -44,7 +44,7 @@ class TestFracAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with program_guard(Program()):
-            input = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            input = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out = paddle.frac(input)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -105,7 +105,7 @@ class TestFracError(unittest.TestCase):
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [5, 5], 'bool')
+            x = paddle.static.data('X', [5, 5], 'bool')
             self.assertRaises(TypeError, paddle.frac, x)
 
     def test_dygraph_error(self):

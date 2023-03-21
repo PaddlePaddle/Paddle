@@ -465,6 +465,7 @@ class OpTest(unittest.TestCase):
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
         return (
             self.dtype == np.float16
+            or self.dtype == "float16"
             or (
                 hasattr(self, 'output_dtype')
                 and self.output_dtype == np.float16
@@ -1875,7 +1876,7 @@ class OpTest(unittest.TestCase):
                 with _test_eager_guard():
                     return super().find_actual_value(name)
 
-            def find_expect_valur(self, name):
+            def find_expect_value(self, name):
                 with _test_eager_guard():
                     return super().find_expect_value(name)
 
