@@ -298,7 +298,7 @@ class TestBceLossOpFloat16(TestBceLossOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, ['X'], 'Out', check_eager=True, atol=1e-3
+                    place, ['X'], 'Out', atol=1e-3
                 )
 
     def test_check_grad(self):
@@ -309,7 +309,6 @@ class TestBceLossOpFloat16(TestBceLossOp):
                     place,
                     ['X'],
                     'Out',
-                    check_eager=True,
                     max_relative_error=1e-2,
                 )
 
