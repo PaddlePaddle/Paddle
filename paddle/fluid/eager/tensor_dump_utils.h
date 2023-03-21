@@ -27,7 +27,7 @@
 
 namespace egr {
 
-using paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using TupleOfTwoTensors = std::tuple<Tensor, Tensor>;
 using TupleOfThreeTensors = std::tuple<Tensor, Tensor, Tensor>;
 using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
