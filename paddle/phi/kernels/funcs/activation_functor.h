@@ -2477,6 +2477,7 @@ template <typename T>
 struct CudaLogitFunctor : public BaseActivationFunctor<T> {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
+  MT zero = static_cast<MT>(0.0f);
   MT one = static_cast<MT>(1.0f);
   float eps;
 
@@ -2485,11 +2486,16 @@ struct CudaLogitFunctor : public BaseActivationFunctor<T> {
   }
 
   // logit(x) = ln(x/(1-x))
-  __device__ __forceinline__ T operator()(const T x) const {
-    MT y = fmin(x, (one - static_cast<MT>(eps)));
-    y = fmax(y, static_cast<MT>(eps));
-    y = log(y / (one - y));
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT y = min(x, (one - static_cast<MT>(eps)));
+    y = max(y, static_cast<MT>(eps));
 
+    if (!eps) {
+      y = x < zero || x > one ? static_cast<T>(NAN) : log(y / (one - y));
+    } else {
+      y = log(y / (one - y));
+    }
     return static_cast<T>(y);
   }
 };
@@ -2510,7 +2516,7 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
     MT x = static_cast<MT>(arg_x);
     MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
                 ? zero
-                : (static_cast<MT>(dout) / x / (one - x));
+                : (static_cast<MT>(dout) / (x * (one - x)));
     return static_cast<T>(dx);
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {

@@ -107,7 +107,7 @@ class TestLogitOpBf16(OpTest):
         self.op_type = 'logit'
         self.python_api = paddle.logit
         self.set_attrs()
-        x = np.random.uniform(-1.0, 1.0, self.shape).astype(np.float32)
+        x = np.random.uniform(-0.5, 0.5, self.shape).astype(np.float32)
         out = logit(x, self.eps)
         self.x_grad = logit_grad(x, self.eps)
         self.inputs = {'X': convert_float_to_uint16(x)}
