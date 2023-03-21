@@ -1264,8 +1264,6 @@
     x : Boxes
   outpus :
     out : KeepBoxesIdxs
-  attrs :
-    threshold : iou_threshold
 
 - op : nonzero (where_index)
   inputs :
