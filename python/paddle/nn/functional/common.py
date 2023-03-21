@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import numpy
 
 import paddle
@@ -25,6 +27,7 @@ from ...fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
+    convert_dtype,
 )
 from ...fluid.framework import in_dygraph_mode
 from ...tensor import clip, concat, sqrt, sum
@@ -1862,8 +1865,31 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
+
+    def is_transform_format_for_npu(x, weight):
+        is_npu_storage = os.environ.get('FLAGS_npu_storage_format', None) in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]
+        is_npu = 'npu' in paddle.device.get_all_custom_device_type()
+        is_not_align = (
+            (x.shape[len(x.shape) - 1] & 0x0000000F)
+            or (x.shape[len(x.shape) - 2] & 0x0000000F)
+            or (weight.shape[len(weight.shape) - 1] & 0x0000000F)
+            or (weight.shape[len(weight.shape) - 2] & 0x0000000F)
+        )
+        is_fp16 = convert_dtype(x.dtype) == 'float16'
+        return is_npu_storage and is_npu and is_fp16 and is_not_align
+
     if in_dygraph_mode():
         # TODO(jiabin): using addmm for fast forward route
+        # TODO(duanyanhui): temporary for ascned npu performance to be removed along with npu_identity op
+        if is_transform_format_for_npu(x, weight):
+            weight_trans = _C_ops.npu_identity(weight, 29)
+            weight_trans._share_underline_tensor_to(weight)
         return _C_ops.linear(x, weight, bias)
     else:
         helper = LayerHelper('linear', **locals())
@@ -1874,7 +1900,20 @@ def linear(x, weight, bias=None, name=None):
         )
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
-        inputs = {'X': [x], 'Y': [weight]}
+        inputs = {}
+        if is_transform_format_for_npu(x, weight):
+            weight_trans = helper.create_variable_for_type_inference(
+                dtype=weight.dtype, stop_gradient=weight.stop_gradient
+            )
+            helper.append_op(
+                type='npu_identity',
+                inputs={'x': [weight]},
+                outputs={'out': [weight_trans]},
+                attrs={'format': 29},
+            )
+            inputs = {'X': [x], 'Y': [weight_trans]}
+        else:
+            inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
@@ -1883,6 +1922,7 @@ def linear(x, weight, bias=None, name=None):
             outputs={'Out': tmp},
             attrs=attrs,
         )
+
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
