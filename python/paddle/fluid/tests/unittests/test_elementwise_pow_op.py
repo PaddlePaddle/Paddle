@@ -311,9 +311,9 @@ class TestElementwisePowOpFP16(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, atol=1e-3)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_eager=True, atol=1e-3)
+            self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -324,7 +324,6 @@ class TestElementwisePowOpFP16(OpTest):
             ),
             check_eager=True,
             check_prim=True,
-            max_relative_error=1e-2,
         )
 
 
@@ -345,14 +344,12 @@ class TestElementwisePowBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, atol=0.01)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_eager=True, atol=0.01)
+            self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', check_eager=True, max_relative_error=1e-2
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 if __name__ == '__main__':
