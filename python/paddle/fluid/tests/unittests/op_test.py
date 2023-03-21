@@ -445,7 +445,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -459,13 +459,14 @@ class OpTest(unittest.TestCase):
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
         return (
             self.dtype == np.float16
+            or self.dtype == "float16"
             or (
                 hasattr(self, 'output_dtype')
                 and self.output_dtype == np.float16
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "float16"
+                and self.mkldnn_data_type == "float16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -967,7 +968,10 @@ class OpTest(unittest.TestCase):
                 % self.op_type
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig
+                self.python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                kernel_sig,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1476,7 +1480,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -1848,7 +1852,7 @@ class OpTest(unittest.TestCase):
                 with _test_eager_guard():
                     return super().find_actual_value(name)
 
-            def find_expect_valur(self, name):
+            def find_expect_value(self, name):
                 with _test_eager_guard():
                     return super().find_expect_value(name)
 
@@ -1880,17 +1884,18 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
                 check_eager = False
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
-            atol = 1e-3
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -2093,71 +2098,98 @@ class OpTest(unittest.TestCase):
         names,
         max_relative_error,
         msg_prefix,
+        atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
-            # max_relative_error is 1e-7. According to the value of np.abs(a), we
-            # change np.abs(a) to achieve dynamic threshold. For example, if
-            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
-            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
-            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
-
-            abs_a = np.abs(a)
-            if abs_a.ndim > 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    abs_a[abs_a < 1e-10] = 1e-3
-                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-                elif self.is_bfloat16_op():
-                    abs_a[abs_a < 1e-2] = 1
-                else:
-                    abs_a[abs_a < 1e-3] = 1
-            elif abs_a.ndim == 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    if abs_a < 1e-10:
-                        abs_a = 1e-3
-                    elif abs_a > 1e-10 and abs_a <= 1e-8:
-                        abs_a = abs_a * 1e4
-                    elif abs_a > 1e-8 and abs_a <= 1e-6:
-                        abs_a = abs_a * 1e2
-                elif self.is_bfloat16_op():
-                    abs_a = 1 if abs_a < 1e-2 else abs_a
-                else:
-                    abs_a = 1 if abs_a < 1e-3 else abs_a
-
-            if self.dtype == np.bool:
-                diff_mat = np.abs(a ^ b) / abs_a
-            else:
-                diff_mat = np.abs(a - b) / abs_a
-            max_diff = np.max(diff_mat)
-
-            def err_msg():
-                offset = np.argmax(diff_mat > max_relative_error)
-                return (
-                    "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
-                    "the first error element is %d, expected %e, but got %e."
-                ) % (
-                    self.op_type,
-                    msg_prefix,
-                    name,
-                    str(a.shape),
-                    self.dtype,
-                    max_diff,
-                    max_relative_error,
-                    offset,
-                    a.flatten()[offset],
-                    b.flatten()[offset],
+            # Used by bfloat16 for now to solve precision problem
+            if self.is_bfloat16_op():
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                np.testing.assert_allclose(
+                    b,
+                    a,
+                    rtol=max_relative_error,
+                    atol=atol,
+                    equal_nan=False,
+                    err_msg=(
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
+                    )
+                    % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                    ),
                 )
+            else:
+                # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+                # max_relative_error is 1e-7. According to the value of np.abs(a), we
+                # change np.abs(a) to achieve dynamic threshold. For example, if
+                # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+                # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+                # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
 
-            self.assertLessEqual(max_diff, max_relative_error, err_msg())
+                abs_a = np.abs(a)
+                if abs_a.ndim > 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        abs_a[abs_a < 1e-10] = 1e-3
+                        abs_a[
+                            np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)
+                        ] *= 1e4
+                        abs_a[
+                            np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)
+                        ] *= 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a[abs_a < 1e-2] = 1
+                    else:
+                        abs_a[abs_a < 1e-3] = 1
+                elif abs_a.ndim == 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        if abs_a < 1e-10:
+                            abs_a = 1e-3
+                        elif abs_a > 1e-10 and abs_a <= 1e-8:
+                            abs_a = abs_a * 1e4
+                        elif abs_a > 1e-8 and abs_a <= 1e-6:
+                            abs_a = abs_a * 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a = 1 if abs_a < 1e-2 else abs_a
+                    else:
+                        abs_a = 1 if abs_a < 1e-3 else abs_a
+
+                if self.dtype == np.bool_:
+                    diff_mat = np.abs(a ^ b) / abs_a
+                else:
+                    diff_mat = np.abs(a - b) / abs_a
+                max_diff = np.max(diff_mat)
+
+                def err_msg():
+                    offset = np.argmax(diff_mat > max_relative_error)
+                    return (
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                        "the first error element is %d, expected %e, but got %e."
+                    ) % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                        max_diff,
+                        max_relative_error,
+                        offset,
+                        a.flatten()[offset],
+                        b.flatten()[offset],
+                    )
+
+                self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -2180,6 +2212,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
         only_check_prim=False,
+        atol=1e-5,
     ):
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2202,6 +2235,7 @@ class OpTest(unittest.TestCase):
                 check_eager=check_eager,
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
+                atol=atol,
             )
 
     def check_grad_with_place(
@@ -2220,6 +2254,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
         only_check_prim=False,
+        atol=1e-5,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2234,7 +2269,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
             if only_check_prim:
                 return
@@ -2248,9 +2283,16 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
-        if self.is_bfloat16_op() and self.is_mkldnn_op():
-            check_dygraph = False
-            check_eager = False
+        if self.is_bfloat16_op():
+            if self.is_mkldnn_op():
+                check_dygraph = False
+                check_eager = False
+                atol = 1e-2 if atol < 1e-2 else atol
+            else:
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if (
             self.dtype == np.float64
@@ -2354,7 +2396,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2364,10 +2406,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,
@@ -2375,6 +2422,7 @@ class OpTest(unittest.TestCase):
             inputs_to_check,
             max_relative_error,
             "Gradient Check On %s" % str(place),
+            atol=atol,
         )
 
         if check_dygraph:
@@ -2406,6 +2454,7 @@ class OpTest(unittest.TestCase):
                 inputs_to_check,
                 max_relative_error,
                 "Gradient Check On %s" % str(place),
+                atol=atol,
             )
             # ensure switch back eager dygraph
             g_disable_legacy_dygraph()
@@ -2438,6 +2487,7 @@ class OpTest(unittest.TestCase):
                         inputs_to_check,
                         max_relative_error,
                         "Gradient Check On %s" % str(place),
+                        atol=atol,
                     )
 
     def _find_var_in_dygraph(self, output_vars, name):
@@ -2597,7 +2647,9 @@ class OpTest(unittest.TestCase):
 
                 if in_dygraph_mode():
                     core.eager.run_backward(
-                        fluid.layers.utils.flatten(outputs), grad_outputs, False
+                        paddle.utils.flatten(outputs),
+                        grad_outputs,
+                        False,
                     )
                     grad_inputs = []
                     for inputs_list in inputs.values():
@@ -2606,8 +2658,8 @@ class OpTest(unittest.TestCase):
                     return grad_inputs
                 else:
                     grad_inputs = paddle.grad(
-                        outputs=fluid.layers.utils.flatten(outputs),
-                        inputs=fluid.layers.utils.flatten(inputs),
+                        outputs=paddle.utils.flatten(outputs),
+                        inputs=paddle.utils.flatten(inputs),
                         grad_outputs=grad_outputs,
                     )
                     return [grad.numpy() for grad in grad_inputs]

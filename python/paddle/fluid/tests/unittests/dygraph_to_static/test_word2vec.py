@@ -219,7 +219,7 @@ def build_batch(dataset, batch_size, epoch_num):
         )
 
 
-class SkipGram(fluid.dygraph.Layer):
+class SkipGram(paddle.nn.Layer):
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
         super().__init__(name_scope)
         self.vocab_size = vocab_size

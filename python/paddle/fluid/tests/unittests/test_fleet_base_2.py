@@ -71,7 +71,6 @@ class TestFleetBase(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        pe = fluid.ParallelExecutor(use_cuda=False, loss_name=avg_cost.name)
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program()
         )
