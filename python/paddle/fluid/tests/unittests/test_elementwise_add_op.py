@@ -32,6 +32,7 @@ class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_input_output()
@@ -163,6 +164,7 @@ class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.dtype = np.uint16
 

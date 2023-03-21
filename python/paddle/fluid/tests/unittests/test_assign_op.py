@@ -29,6 +29,7 @@ from paddle.fluid.backward import append_backward
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
+        self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
         self.enable_cinn = False
@@ -50,6 +51,7 @@ class TestAssignOp(op_test.OpTest):
 class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
+        self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
         self.enable_cinn = False
