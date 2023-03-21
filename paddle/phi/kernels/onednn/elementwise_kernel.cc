@@ -41,15 +41,6 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"))
           : 1.0f;
 
-  dnnl::post_ops post_operations;
-  funcs::AppendActivation(dev_ctx, post_operations);
-  if (dev_ctx.HasDnnAttr("fused_output_scale")) {
-    float scale_alpha =
-        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
-    post_operations.append_eltwise(
-        1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
-  }
-
   auto* non_const_x = &x;
   auto* non_const_y = &y;
 
@@ -63,8 +54,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
                                         scale_x,
                                         scale_y,
                                         scale_out,
-                                        true,
-                                        post_operations);
+                                        true);
 
   // oneDNN's binary is optimized for broadcasting y into x, so in other case
   // we have to swap tensors to achieve optimal performance
