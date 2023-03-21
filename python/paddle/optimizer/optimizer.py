@@ -1108,8 +1108,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )

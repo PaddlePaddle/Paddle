@@ -35,9 +35,9 @@ class CollectiveController(Controller):
             and self.ctx.args.start_port
             and self.ctx.args.ips
         ):
-            self._build_pod_with_args()
+            return self._build_pod_with_args()
         else:
-            self._build_pod_with_master()
+            return self._build_pod_with_master()
 
     def _build_pod_with_args(self):
         self.pod.replicas = self.pod_replicas()
