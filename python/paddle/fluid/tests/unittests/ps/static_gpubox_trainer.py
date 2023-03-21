@@ -51,7 +51,7 @@ def get_dataset(inputs, config):
     return dataset
 
 
-class Main(object):
+class Main:
     def __init__(self):
         self.metrics = {}
         self.input_data = None

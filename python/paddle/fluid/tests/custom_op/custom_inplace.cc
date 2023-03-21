@@ -75,7 +75,7 @@ std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
                                         const paddle::Tensor& y,
                                         paddle::Tensor& out_grad) {  // NOLINT
   PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
-  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
 
   paddle::Tensor y_grad = paddle::empty(x.shape(), x.dtype(), x.place());
 
@@ -91,7 +91,7 @@ std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
 PD_BUILD_OP(custom_add)
     .Inputs({"X", "Y"})
     .Outputs({"Out"})
-    .Inplace({{"X", "Out"}})
+    .SetInplaceMap({{"X", "Out"}})
     .SetKernelFn(PD_KERNEL(AddForward))
     .SetInferShapeFn(PD_INFER_SHAPE(AddInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(AddInferDtype));
@@ -99,8 +99,86 @@ PD_BUILD_OP(custom_add)
 PD_BUILD_GRAD_OP(custom_add)
     .Inputs({"X", "Y", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X"), paddle::Grad("Y")})
-    .Inplace({{paddle::Grad("Out"), paddle::Grad("X")}})
+    .SetInplaceMap({{paddle::Grad("Out"), paddle::Grad("X")}})
     .SetKernelFn(PD_KERNEL(AddBackward));
+
+void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
+                         const paddle::Tensor& y,
+                         paddle::Tensor& a,  // NOLINT
+                         const paddle::Tensor& b) {
+  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(a.place() == paddle::PlaceType::kCPU, "a must be a CPU Tensor.");
+
+  PD_DISPATCH_FLOATING_TYPES(
+      x.type(), "MultiInplaceForward", ([&] {
+        add_forward_kernel<data_t>(
+            x.data<data_t>(), y.data<data_t>(), x.size());
+        add_forward_kernel<data_t>(
+            a.data<data_t>(), b.data<data_t>(), a.size());
+      }));
+}
+
+std::vector<paddle::DataType> MultiInplaceInferDtype(
+    const paddle::DataType& x_dtype,
+    const paddle::DataType& y_dtype,
+    const paddle::DataType& a_dtype,
+    const paddle::DataType& b_dtype) {
+  return {x_dtype, a_dtype};
+}
+
+std::vector<std::vector<int64_t>> MultiInplaceInferShape(
+    const std::vector<int64_t>& x_shape,
+    const std::vector<int64_t>& y_shape,
+    const std::vector<int64_t>& a_shape,
+    const std::vector<int64_t>& b_shape) {
+  return {x_shape, a_shape};
+}
+
+std::vector<paddle::Tensor> MultiInplaceBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& y,
+    paddle::Tensor& outxy_grad,  // NOLINT
+    const paddle::Tensor& a,
+    const paddle::Tensor& b,
+    paddle::Tensor& outab_grad) {  // NOLINT
+  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+  PD_CHECK(a.place() == paddle::PlaceType::kCPU, "a must be a CPU Tensor.");
+  PD_CHECK(b.place() == paddle::PlaceType::kCPU, "b must be a CPU Tensor.");
+
+  paddle::Tensor y_grad = paddle::empty(x.shape(), x.dtype(), x.place());
+  paddle::Tensor b_grad = paddle::empty(a.shape(), a.dtype(), a.place());
+
+  PD_DISPATCH_FLOATING_TYPES(
+      outxy_grad.type(), "MultiInplaceBackward", ([&] {
+        add_backward_kernel<data_t>(y_grad.data<data_t>(),
+                                    outxy_grad.data<data_t>(),
+                                    outxy_grad.size());
+        add_backward_kernel<data_t>(b_grad.data<data_t>(),
+                                    outab_grad.data<data_t>(),
+                                    outab_grad.size());
+      }));
+
+  return {y_grad, b_grad};
+}
+
+PD_BUILD_OP(custom_multi_inplace)
+    .Inputs({"X", "Y", "A", "B"})
+    .Outputs({"OutXY", "OutAB"})
+    .SetInplaceMap({{"X", "OutXY"}, {"A", "OutAB"}})
+    .SetKernelFn(PD_KERNEL(MultiInplaceForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(MultiInplaceInferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(MultiInplaceInferDtype));
+
+PD_BUILD_GRAD_OP(custom_multi_inplace)
+    .Inputs({"X", "Y", paddle::Grad("OutXY"), "A", "B", paddle::Grad("OutAB")})
+    .Outputs({paddle::Grad("X"),
+              paddle::Grad("Y"),
+              paddle::Grad("A"),
+              paddle::Grad("B")})
+    .SetInplaceMap({{paddle::Grad("OutXY"), paddle::Grad("X")},
+                    {paddle::Grad("OutAB"), paddle::Grad("A")}})
+    .SetKernelFn(PD_KERNEL(MultiInplaceBackward));
 
 void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
   PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
@@ -126,11 +204,11 @@ void ReluBackwardInplace(const paddle::Tensor& x,
 PD_BUILD_OP(custom_relu_inplace)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .Inplace({{"X", "Out"}})
+    .SetInplaceMap({{"X", "Out"}})
     .SetKernelFn(PD_KERNEL(ReluForwardInplace));
 
 PD_BUILD_GRAD_OP(custom_relu_inplace)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
-    .Inplace({{paddle::Grad("Out"), paddle::Grad("X")}})
+    .SetInplaceMap({{paddle::Grad("Out"), paddle::Grad("X")}})
     .SetKernelFn(PD_KERNEL(ReluBackwardInplace));

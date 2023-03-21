@@ -395,7 +395,7 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             with paddle.fluid.device_guard("gpu:0"):
-                x = paddle.fluid.layers.fill_constant([1], "float32", 0)
+                x = paddle.tensor.fill_constant([1], "float32", 0)
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))

@@ -91,7 +91,7 @@ yaml_types_mapping = {
     'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',
-    'DataType': 'paddle::experimental::DataType',
+    'DataType': 'phi::DataType',
     'int64_t[]': 'std::vector<int64_t>',
     'int[]': 'std::vector<int>',
     'Tensor': 'Tensor',
@@ -293,8 +293,10 @@ def ParseYamlArgs(string):
         assert (
             arg_type in yaml_types_mapping.keys()
         ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
-        if arg_type in ["DataType", "DataLayout"] and default_value is not None:
+        if arg_type in ["DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
+        if arg_type in ["DataType"] and default_value is not None:
+            default_value = f"phi::{default_value}"
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)

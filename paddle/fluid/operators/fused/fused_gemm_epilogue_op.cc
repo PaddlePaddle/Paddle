@@ -89,19 +89,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
             K_from_y));
 
     auto activation = ctx->Attrs().Get<std::string>("activation");
-
-    if ((activation != "relu") && (activation != "gelu") &&
-        (activation != "none")) {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "The activation attribute of fused_gemm_epilogue op should be"
-              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-              "But received activation=%s.",
-              activation));
-    }
-
     if (activation == "none" && ctx->HasOutput("ReserveSpace")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The ReserveSpace would not be used when activation = \"none\""));
@@ -276,18 +263,6 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             x_mat_dims[0]));
 
     auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
-    if ((activation_grad != "relu_grad") && (activation_grad != "gelu_grad") &&
-        (activation_grad != "none")) {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "The activation attribute of fused_gemm_epilogue op should be"
-              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-              "But received activation=%s.",
-              activation_grad));
-    }
-
     if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
       PADDLE_ENFORCE_EQ(true,
                         false,

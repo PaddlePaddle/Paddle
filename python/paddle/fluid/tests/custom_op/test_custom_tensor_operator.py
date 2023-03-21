@@ -247,6 +247,7 @@ class TestJITLoad(unittest.TestCase):
         self._test_static()
         self._test_dynamic()
         self._test_logical_operants()
+        self._test_compare_operants()
 
     def _test_static(self):
         for device in self.devices:
@@ -353,6 +354,38 @@ class TestJITLoad(unittest.TestCase):
 
             out = self.custom_module.custom_logical_not(x)
             pd_out = paddle.bitwise_not(x)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+    def _test_compare_operants(self):
+        for device in self.devices:
+            paddle.set_device(device)
+            np_x = paddle.randint(0, 2, [4, 8])
+            x = paddle.to_tensor(np_x, dtype="int32")
+            np_y = paddle.randint(0, 2, [4, 8])
+            y = paddle.to_tensor(np_y, dtype="int32")
+
+            out = self.custom_module.custom_less_than(x, y)
+            pd_out = paddle.less_than(x, y)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+            out = self.custom_module.custom_less_equal(x, y)
+            pd_out = paddle.less_equal(x, y)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+            out = self.custom_module.custom_equal(x, y)
+            pd_out = paddle.equal(x, y)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+            out = self.custom_module.custom_not_equal(x, y)
+            pd_out = paddle.not_equal(x, y)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+            out = self.custom_module.custom_greater_than(x, y)
+            pd_out = paddle.greater_than(x, y)
+            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+
+            out = self.custom_module.custom_greater_equal(x, y)
+            pd_out = paddle.greater_equal(x, y)
             np.testing.assert_equal(out.numpy(), pd_out.numpy())
 
 

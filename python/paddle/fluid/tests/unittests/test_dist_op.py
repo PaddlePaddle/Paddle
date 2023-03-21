@@ -169,8 +169,12 @@ class TestDistAPI(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5], dtype=self.data_type)
-            y = fluid.data(name='y', shape=[3, 1, 5], dtype=self.data_type)
+            x = paddle.static.data(
+                name='x', shape=[2, 3, 4, 5], dtype=self.data_type
+            )
+            y = paddle.static.data(
+                name='y', shape=[3, 1, 5], dtype=self.data_type
+            )
             p = 2
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)

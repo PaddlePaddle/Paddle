@@ -393,7 +393,7 @@ class TestArgsort(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
 
