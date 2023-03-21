@@ -69,13 +69,26 @@ class TestScatterNdAddSimpleOp(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
-        ref_np = np.random.random([100]).astype("float64")
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        ref_np = np.random.random([100]).astype(target_dtype)
         index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
-        updates_np = np.random.random([100]).astype("float64")
+        updates_np = np.random.random([100]).astype(target_dtype)
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -89,17 +102,8 @@ class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
     A simple example
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.float16
-        ref_np = np.random.random([100]).astype("float16")
-        index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
-        updates_np = np.random.random([100]).astype("float16")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
 
 @unittest.skipIf(
@@ -112,19 +116,8 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     A simple example
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.uint16
-        ref_np = np.random.random([100]).astype("float32")
-        index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
-        updates_np = np.random.random([100]).astype("float32")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-        ref_np = convert_float_to_uint16(ref_np)
-        updates_np = convert_float_to_uint16(updates_np)
-        expect_np = convert_float_to_uint16(expect_np)
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -147,14 +140,29 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
-        ref_np = np.random.random((10, 10)).astype("float64")
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        ref_np = np.random.random((10, 10)).astype(target_dtype)
         index_np = np.array([[], []]).astype("int32")
-        updates_np = np.random.random((2, 10, 10)).astype("float64")
+        updates_np = np.random.random((2, 10, 10)).astype(target_dtype)
 
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
 
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
+
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -168,16 +176,8 @@ class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
     Index has empty element
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.float16
-        ref_np = np.random.random((10, 10)).astype("float16")
-        index_np = np.array([[], []]).astype("int32")
-        updates_np = np.random.random((2, 10, 10)).astype("float16")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
 
 @unittest.skipIf(
@@ -190,19 +190,8 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     Index has empty element
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.uint16
-        ref_np = np.random.random((10, 10)).astype("float32")
-        index_np = np.array([[], []]).astype("int32")
-        updates_np = np.random.random((2, 10, 10)).astype("float32")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-        ref_np = convert_float_to_uint16(ref_np)
-        updates_np = convert_float_to_uint16(updates_np)
-        expect_np = convert_float_to_uint16(expect_np)
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -225,17 +214,32 @@ class TestScatterNdAddWithHighRankSame(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
         shape = (3, 2, 2, 1, 10)
-        ref_np = np.random.rand(*shape).astype("float64")
+        ref_np = np.random.rand(*shape).astype(target_dtype)
         index_np = np.vstack(
             [np.random.randint(0, s, size=100) for s in shape]
         ).T.astype("int32")
         update_shape = judge_update_shape(ref_np, index_np)
-        updates_np = np.random.rand(*update_shape).astype("float64")
+        updates_np = np.random.rand(*update_shape).astype(target_dtype)
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
 
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -249,21 +253,8 @@ class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
     Both Index and X have high rank, and Rank(Index) = Rank(X)
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.float16
-        shape = (3, 2, 2, 1, 10)
-        ref_np = np.random.rand(*shape).astype("float16")
-        index_np = np.vstack(
-            [np.random.randint(0, s, size=100) for s in shape]
-        ).T.astype("int32")
-        update_shape = judge_update_shape(ref_np, index_np)
-        updates_np = np.random.rand(*update_shape).astype("float16")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
 
 @unittest.skipIf(
@@ -276,23 +267,8 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     Both Index and X have high rank, and Rank(Index) = Rank(X)
     """
 
-    def setUp(self):
-        self.op_type = "scatter_nd_add"
-        self.python_api = paddle.scatter_nd_add
+    def _set_dtype(self):
         self.dtype = np.uint16
-        shape = (3, 2, 2, 1, 10)
-        ref_np = np.random.rand(*shape).astype("float32")
-        index_np = np.vstack(
-            [np.random.randint(0, s, size=100) for s in shape]
-        ).T.astype("int32")
-        update_shape = judge_update_shape(ref_np, index_np)
-        updates_np = np.random.rand(*update_shape).astype("float32")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-        ref_np = convert_float_to_uint16(ref_np)
-        updates_np = convert_float_to_uint16(updates_np)
-        expect_np = convert_float_to_uint16(expect_np)
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
