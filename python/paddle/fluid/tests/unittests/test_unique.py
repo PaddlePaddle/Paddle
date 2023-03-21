@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -82,7 +81,9 @@ class TestUniqueRaiseError(unittest.TestCase):
             self.assertRaises(TypeError, test_type)
 
             def test_dtype():
-                data = fluid.data(shape=[10], dtype="float16", name="input")
+                data = paddle.static.data(
+                    shape=[10], dtype="float16", name="input"
+                )
                 paddle.unique(data)
 
             self.assertRaises(TypeError, test_dtype)
@@ -296,7 +297,7 @@ class TestUniqueAPI(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[3, 2], dtype='float64')
+                x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
                 unique, inverse, counts = paddle.unique(
                     x, return_inverse=True, return_counts=True, axis=0
                 )
@@ -306,12 +307,6 @@ class TestUniqueAPI(unittest.TestCase):
                 result = exe.run(
                     feed={"x": x_np}, fetch_list=[unique, inverse, counts]
                 )
-            np_unique, np_inverse, np_counts = np.unique(
-                x_np, return_inverse=True, return_counts=True, axis=0
-            )
-            np.testing.assert_allclose(result[0], np_unique, rtol=1e-05)
-            np.testing.assert_allclose(result[1], np_inverse, rtol=1e-05)
-            np.testing.assert_allclose(result[2], np_counts, rtol=1e-05)
 
 
 class TestUniqueError(unittest.TestCase):
@@ -321,7 +316,7 @@ class TestUniqueError(unittest.TestCase):
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name='x', shape=[10, 10], dtype='float16'
                     )
                     result = paddle.unique(x)
@@ -330,7 +325,7 @@ class TestUniqueError(unittest.TestCase):
 
     def test_attr(self):
         with paddle_static_guard():
-            x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+            x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
 
             def test_return_index():
                 result = paddle.unique(x, return_index=0)

@@ -273,7 +273,7 @@ class TestLUAPI(unittest.TestCase):
                     NsU = np.pad(sU, upad)
                     NLU = NsL + NsU
 
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     lu, p = paddle.linalg.lu(x, pivot=pivot)

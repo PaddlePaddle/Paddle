@@ -243,7 +243,9 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name="input", shape=[1, 3], dtype='uint16')
+            input = paddle.static.data(
+                name="input", shape=[1, 3], dtype='uint16'
+            )
             out_1 = random.uniform_random_batch_size_like(
                 input, [2, 4], dtype=np.uint16
             )  # out_1.shape=[1, 4]

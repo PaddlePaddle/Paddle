@@ -206,7 +206,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,
@@ -243,7 +243,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,
@@ -284,7 +284,7 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,

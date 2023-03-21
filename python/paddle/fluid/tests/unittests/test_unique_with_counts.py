@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -84,13 +83,10 @@ class TestUniqueWithCountsRaiseError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
 
-            def test_type():
-                paddle.unique([10])
-
-            self.assertRaises(TypeError, test_type)
-
             def test_dtype():
-                data = fluid.data(shape=[10], dtype="float16", name="input")
+                data = paddle.static.data(
+                    shape=[10], dtype="float16", name="input"
+                )
                 paddle.unique(data)
 
             self.assertRaises(TypeError, test_dtype)

@@ -34,6 +34,7 @@ class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
         self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
         self.config()
         self.prim_op_type = "prim"
         xnp = np.random.random(self.x_shape).astype(self.x_type)
@@ -245,9 +246,9 @@ class API_TestGather(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float64')
-            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
-            axis = paddle.fluid.data('axis', shape=[1], dtype='int32')
+            x = paddle.static.data('x', shape=[-1, 2], dtype='float64')
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
+            axis = paddle.static.data('axis', shape=[1], dtype='int32')
             out = paddle.gather(x, index, axis)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -339,10 +340,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 
@@ -370,9 +371,9 @@ class TestGathertError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             shape = [8, 9, 6]
-            x = fluid.data(shape=shape, dtype='int8', name='x')
-            index = fluid.data(shape=shape, dtype='int32', name='mask')
-            index_float = fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            index = paddle.static.data(shape=shape, dtype='int32', name='mask')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 
@@ -392,10 +393,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
-            axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
-            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int32', name='x')
+            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 

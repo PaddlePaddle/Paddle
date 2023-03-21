@@ -175,10 +175,10 @@ class TestMatrixRankAPI(unittest.TestCase):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 tol_np = np.random.random([3, 4]).astype(np.float32)
-                x_pd = paddle.fluid.data(
+                x_pd = paddle.static.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
-                tol_pd = paddle.fluid.data(
+                tol_pd = paddle.static.data(
                     name="TolTensor", shape=[3, 4], dtype='float32'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, tol_np, hermitian=False)
@@ -196,7 +196,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.fluid.data(
+                x_pd = paddle.static.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
@@ -212,7 +212,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.fluid.data(
+                x_pd = paddle.static.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, 0.1, hermitian=False)

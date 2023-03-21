@@ -93,8 +93,8 @@ class TestKronLayer(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                a_var = fluid.data("a", [-1, -1], dtype="float64")
-                b_var = fluid.data("b", [-1, -1], dtype="float64")
+                a_var = paddle.static.data("a", [-1, -1], dtype="float64")
+                b_var = paddle.static.data("b", [-1, -1], dtype="float64")
                 out_var = paddle.kron(a_var, b_var)
 
         place = fluid.CPUPlace()

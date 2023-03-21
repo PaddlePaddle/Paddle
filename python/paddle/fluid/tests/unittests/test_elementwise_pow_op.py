@@ -31,6 +31,7 @@ class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float64"),
@@ -57,6 +58,7 @@ class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.enable_cinn = False
         self.prim_op_type = "prim"
 
@@ -71,6 +73,7 @@ class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.enable_cinn = False
         self.prim_op_type = "prim"
 
@@ -85,6 +88,7 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.enable_cinn = False
         self.prim_op_type = "prim"
 
@@ -99,6 +103,7 @@ class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -112,6 +117,7 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -128,6 +134,7 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -141,7 +148,7 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
-
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -155,6 +162,7 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -235,6 +243,7 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -298,6 +307,7 @@ class TestElementwisePowOpFP16(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
 
         self.inputs = {

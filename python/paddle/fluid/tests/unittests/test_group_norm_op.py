@@ -383,13 +383,13 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
     def test_case1(self):
         with paddle_static_guard():
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name='data1', shape=[None, 3, 3, 4], dtype='float64'
             )
             out1 = paddle.static.nn.group_norm(
                 input=data1, groups=2, data_layout="NHWC"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name='data2', shape=[None, 4, 3, 3], dtype='float64'
             )
             out2 = paddle.static.nn.group_norm(
@@ -433,7 +433,7 @@ class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
         with paddle_static_guard():
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=[None, 3, 3, 4], dtype="float64"
             )
 

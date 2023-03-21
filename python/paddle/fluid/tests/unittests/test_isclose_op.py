@@ -129,8 +129,12 @@ class TestIscloseStatic(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
-                y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
+                x = paddle.static.data(
+                    name='x', shape=[10, 10], dtype='float64'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[10, 10], dtype='float64'
+                )
                 result = paddle.isclose(x, y)
                 exe = paddle.fluid.Executor(place)
                 fetches = exe.run(
@@ -167,8 +171,10 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
-                y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
+                x = paddle.static.data(name='x', shape=[10, 10], dtype='int32')
+                y = paddle.static.data(
+                    name='y', shape=[10, 10], dtype='float64'
+                )
                 result = paddle.isclose(x, y)
 
         self.assertRaises(TypeError, test_x_dtype)
@@ -177,16 +183,18 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
-                y = paddle.fluid.data(name='y', shape=[10, 10], dtype='int32')
+                x = paddle.static.data(
+                    name='x', shape=[10, 10], dtype='float64'
+                )
+                y = paddle.static.data(name='y', shape=[10, 10], dtype='int32')
                 result = paddle.isclose(x, y)
 
         self.assertRaises(TypeError, test_y_dtype)
 
     def test_attr(self):
         paddle.enable_static()
-        x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
-        y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
+        x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
+        y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
 
         def test_rtol():
             result = paddle.isclose(x, y, rtol=True)

@@ -28,6 +28,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
@@ -46,6 +47,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
@@ -64,6 +66,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
@@ -88,6 +91,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         self.init_input()
 
         self.inputs = {'X': self.xnp, 'Index': self.index}
@@ -118,6 +122,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
@@ -139,6 +144,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         shape = (5, 2, 3, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=2) for s in shape]).T
@@ -160,6 +166,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
         shape = (2, 3, 4, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=200) for s in shape]).T
@@ -230,9 +237,9 @@ class TestGatherNdError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-            index = paddle.fluid.data(shape=shape, dtype='bool', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            index = paddle.static.data(shape=shape, dtype='bool', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
             np_x = np.random.random(shape).astype('float32')
