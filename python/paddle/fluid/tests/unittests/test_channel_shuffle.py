@@ -270,7 +270,8 @@ class TestChannelShuffleError(unittest.TestCase):
 
 class TestChannelShuffleFP16OP(OpTest):
     def setUp(self):
-        self.__class__.op_type = "channel_shuffle"
+        self.op_type = "channel_shuffle"
+        self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.float16
         self.place = (
             fluid.CUDAPlace(0)
@@ -295,23 +296,13 @@ class TestChannelShuffleFP16OP(OpTest):
                     place,
                     ['X'],
                     'Out',
-                    max_relative_error=1e-3,
                 )
-
-    def test_check_grad_ignore_order(self):
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            x = fluid.layers.data(
-                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
-            )
-            out = fluid.layers.channel_shuffle(x=x, group=2)
-            loss = fluid.layers.reduce_mean(out)
-            fluid.backward.append_backward(loss)
 
 
 class TestChannelShuffleBF16OP(OpTest):
     def setUp(self):
-        self.__class__.op_type = "channel_shuffle"
+        self.op_type = "channel_shuffle"
+        self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
         self.use_mkldnn = False
         self.input_shape = (2, 4, 3, 3)
@@ -339,19 +330,6 @@ class TestChannelShuffleBF16OP(OpTest):
                     'Out',
                     user_defined_grads=[self.inputs['X']],
                     user_defined_grad_outputs=[self.outputs['Out']],
-                )
-
-    def test_check_grad_ingore_order(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    user_defined_grads=[self.inputs['X']],
-                    user_defined_grad_outputs=[self.outputs['Out']],
-                    no_grad_set=set(),
                 )
 
 
