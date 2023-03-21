@@ -68,7 +68,7 @@ def _get_tensor_bias(attn_bias):
 
 
 def memory_efficient_attention(
-    query, key, value, attn_bias, p=0.0, scale=None, training=True
+    query, key, value, attn_bias=None, p=0.0, scale=None, training=True
 ):
     assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
     causal = isinstance(
@@ -93,6 +93,8 @@ def memory_efficient_attention(
         if isinstance(attn_bias, BlockDiagonalCausalWithOffsetPaddedKeysMask)
         else None
     )
+    if scale is None:
+        scale = -1.0
 
     bias = _get_tensor_bias(attn_bias)
     is_test = not training

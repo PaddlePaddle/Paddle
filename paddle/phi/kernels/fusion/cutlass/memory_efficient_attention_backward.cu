@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
-#include "paddle/phi/kernels/funcs/WIP.cu.h"
+#include "paddle/phi/kernels/funcs/get_pad_lse.cu.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"

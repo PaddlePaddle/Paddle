@@ -66,6 +66,9 @@
 #include "iterators/epilogue_predicated_tile_iterator.h"
 #include "transform/tile_smem_loader.h"
 
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace phi {
 
 using namespace gemm_kernel_utils;  // NOLINT
@@ -1081,22 +1084,42 @@ struct AttentionBackwardKernel {
     CHECK_ALIGNED_PTR(p.output_ptr, kMinimumAlignment);
     CHECK_ALIGNED_PTR(p.grad_output_ptr, kMinimumAlignment);
     CHECK_ALIGNED_PTR(p.bias_ptr, kMinimumAlignment);
-    XFORMERS_CHECK(p.lse_strideH % 8 == 0, "LSE is not correctly aligned");
-    XFORMERS_CHECK(p.lse_strideB % 8 == 0, "LSE is not correctly aligned");
-    XFORMERS_CHECK(p.q_strideH % kMinimumAlignment == 0,
-                   "query is not correctly aligned");
-    XFORMERS_CHECK(p.k_strideH % kMinimumAlignment == 0,
-                   "key is not correctly aligned");
-    XFORMERS_CHECK(p.v_strideH % kMinimumAlignment == 0,
-                   "value is not correctly aligned");
-    XFORMERS_CHECK(p.bias_strideB % kMinimumAlignment == 0,
-                   "attn_bias is not correctly aligned");
-    XFORMERS_CHECK(p.bias_strideH % kMinimumAlignment == 0,
-                   "attn_bias is not correctly aligned");
-    XFORMERS_CHECK(p.bias_strideM % kMinimumAlignment == 0,
-                   "attn_bias is not correctly aligned");
-    XFORMERS_CHECK(!(p.cu_seqlens_q_ptr && p.bias_ptr),
-                   "CuSeqlen + bias not implemented yet");
+    PADDLE_ENFORCE_EQ(p.lse_strideH % 8,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "LSE is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.lse_strideB % 8,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "LSE is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.q_strideH % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "query is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.k_strideH % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "key is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.v_strideH % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "value is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.bias_strideB % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.bias_strideH % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.bias_strideM % kMinimumAlignment,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(p.cu_seqlens_q_ptr && p.bias_ptr,
+                      false,
+                      paddle::platform::errors::InvalidArgument(
+                          "CuSeqlen + bias not implemented yet"));
     return true;
   }
 
