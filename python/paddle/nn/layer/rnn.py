@@ -30,12 +30,12 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.layers import control_flow
 from paddle.framework import core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
+from .layers import Layer
 
 __all__ = []
 

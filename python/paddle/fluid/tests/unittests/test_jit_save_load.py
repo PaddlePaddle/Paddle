@@ -51,7 +51,7 @@ def random_batch_reader(input_size, label_size):
     return __reader__
 
 
-class LinearNet(fluid.dygraph.Layer):
+class LinearNet(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -61,7 +61,7 @@ class LinearNet(fluid.dygraph.Layer):
         return self._linear(x)
 
 
-class LinearNetWithInputSpec(fluid.dygraph.Layer):
+class LinearNetWithInputSpec(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -71,7 +71,7 @@ class LinearNetWithInputSpec(fluid.dygraph.Layer):
         return self._linear(x)
 
 
-class LinearNetNotDeclarative(fluid.dygraph.Layer):
+class LinearNetNotDeclarative(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -136,7 +136,7 @@ class LinerNetWithUselessInput(paddle.nn.Layer):
         return out
 
 
-class LinearNetReturnLoss(fluid.dygraph.Layer):
+class LinearNetReturnLoss(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -149,7 +149,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
         return z, loss
 
 
-class LinearNetMultiInput(fluid.dygraph.Layer):
+class LinearNetMultiInput(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
@@ -168,7 +168,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         return x_out, y_out, loss
 
 
-class LinearNetMultiInput1(fluid.dygraph.Layer):
+class LinearNetMultiInput1(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
@@ -187,7 +187,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
         return x_out, y_out, loss
 
 
-class MultiLoadingLinearNet(fluid.dygraph.Layer):
+class MultiLoadingLinearNet(paddle.nn.Layer):
     def __init__(self, size, model_path):
         super().__init__()
         self._linear = Linear(size, size)
@@ -203,7 +203,7 @@ class MultiLoadingLinearNet(fluid.dygraph.Layer):
         return y
 
 
-class LinearNetReturnHidden(fluid.dygraph.Layer):
+class LinearNetReturnHidden(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -217,7 +217,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
         return y, loss
 
 
-class LinearNetWithNestOut(fluid.dygraph.Layer):
+class LinearNetWithNestOut(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -278,7 +278,7 @@ class NoParamLayer(paddle.nn.Layer):
         return x + y
 
 
-class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
+class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_0 = Linear(in_size, out_size)

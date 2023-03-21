@@ -1115,8 +1115,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )
@@ -2432,12 +2432,12 @@ class AdamOptimizer(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
             master_weight = None
             _, _, _, _, _, _ = _legacy_C_ops.adam(
