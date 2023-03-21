@@ -558,3 +558,29 @@ def rsqrt_composite(x):
     # rsqrt(x) = x^(-0.5)
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     return pow(x, y)
+
+
+@REGISTER_COMPOSITE('group_norm')
+def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
+    """
+    define composite rule of op group_norm.
+    x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
+    mean and var are computed from groups
+    """
+    if data_layout == "NHWC":
+        x = transpose(x, (0, 3, 1, 2))
+    N, C, H, W = x.shape
+    x = reshape(x, (N * groups, -1))
+    mean_ = mean(x, axis=1, keepdim=True)
+    var_ = mean(x * x, axis=1, keepdim=True) - mean_ * mean_
+    var_ = maximum(var_, zeros_like(var_))
+    var_inv = 1 / sqrt(var_ + epsilon)
+    x = (x - mean_) * var_inv
+    x = reshape(x, (N, C, H, W)) * reshape(scale, (-1, 1, 1)) + reshape(
+        bias, (-1, 1, 1)
+    )
+    if data_layout == "NHWC":
+        x = transpose(out, (0, 2, 3, 1))
+    ret_mean_ = reshape(mean_, (N, groups))
+    ret_var_ = reshape(var_, (N, groups))
+    return x, ret_mean_, ret_var_

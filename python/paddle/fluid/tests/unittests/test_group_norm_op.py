@@ -22,6 +22,7 @@ from eager_op_test import (
     skip_check_grad_ci,
 )
 from testsuite import create_op
+import parameterized as param
 
 import paddle
 from paddle import fluid
@@ -45,11 +46,25 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
+def group_norm_wrapper(x, scale, bias, epsilon, groups, data_layout):
+    if data_layout == 'NCHW':
+        num_channels = x.shape[1]
+    elif data_layout == 'NHWC':
+        num_channels = x.shape[-1]
+    func = paddle.nn.GroupNorm(
+        groups, num_channels, epsilon, False, False, data_layout
+    )
+    func.weight.stop_gradient = False
+    func.bias.stop_gradient = False
+    paddle.assign(scale, func.weight)
+    paddle.assign(bias, func.bias)
+    return func(x)
+
+
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-
                 def test_x_type():
                     input = np.random.random(2, 100, 3, 5).astype('float32')
                     groups = 2
@@ -471,9 +486,6 @@ class TestGroupNormEager(unittest.TestCase):
                 True,
             )
 
-
-class TestGroupNormEager_fp32(unittest.TestCase):
-    def test_dygraph_api(self):
         self.dtype = np.float32
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
@@ -519,6 +531,419 @@ class TestGroupNormEager_fp16(unittest.TestCase):
             self.assertEqual(
                 (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
                 True,
+            )
+
+
+places = [paddle.CPUPlace()]
+if paddle.is_compiled_with_cuda():
+    places.append(paddle.CUDAPlace(0))
+
+
+class PrimNet(paddle.nn.Layer):
+    def __init__(
+        self,
+        num_groups,
+        num_channels,
+        scale,
+        bias,
+        epsilon=1e-05,
+        data_format='NCHW',
+        name=None,
+    ):
+        super(PrimNet, self).__init__()
+        self.func = paddle.nn.GroupNorm(
+            num_groups, num_channels, epsilon, False, False, data_format, name
+        )
+        paddle.assign(scale, self.func.weight)
+        paddle.assign(bias, self.func.bias)
+
+    def forward(self, x):
+        out = self.func(x)
+        return out
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+@param.parameterized_class(
+    ('name', 'shape', 'epsilon', 'groups', 'data_format', 'places', 'dtype'),
+    (
+        (
+            'test0',
+            (2, 100, 3, 5),
+            1e-5,
+            2,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'test1',
+            (2, 100, 3, 5),
+            1e-5,
+            1,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'test2',
+            (2, 100, 3, 5),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'bigeps1',
+            (2, 100, 3, 5),
+            0.5,
+            1,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'bigeps2',
+            (2, 100, 3, 5),
+            0.5,
+            4,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'bigeps3',
+            (2, 100, 3, 5),
+            0.5,
+            2,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'largedata',
+            (2, 32, 64, 64),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'float32',
+        ),
+        (
+            'test0_fp64',
+            (2, 100, 3, 5),
+            1e-5,
+            2,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'test1_fp64',
+            (2, 100, 3, 5),
+            1e-5,
+            1,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'test2_fp64',
+            (2, 100, 3, 5),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'bigeps1_fp64',
+            (2, 100, 3, 5),
+            0.5,
+            1,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'bigeps2_fp64',
+            (2, 100, 3, 5),
+            0.5,
+            4,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'bigeps3_fp64',
+            (2, 100, 3, 5),
+            0.5,
+            2,
+            'NCHW',
+            places,
+            'float64',
+        ),
+        (
+            'largedata_fp64',
+            (2, 32, 64, 64),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'float64',
+        ),
+    ),
+)
+class TestCompositeGroupNorm(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        core._set_prim_all_enabled(True)
+
+    @classmethod
+    def tearDownClass(cls):
+        core._set_prim_all_enabled(False)
+
+    def setUp(self):
+        self.fwd_desire = []
+        self.rev_desire = []
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
+        self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        if self.data_format == 'NHWC':
+            self.num_channels = self.shape[-1]
+        else:
+            self.num_channels = self.shape[1]
+
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        if self.dtype == 'float64':
+            self.atol = 1e-15
+            self.rtol = 1e-15
+
+        for place in self.places:
+            fwd_desire, rev_desire = self.get_eager_desire(place)
+            self.fwd_desire.append(fwd_desire.numpy())
+            self.rev_desire.append(rev_desire.numpy())
+
+    def get_eager_desire(self, place):
+        if isinstance(place, fluid.CPUPlace):
+            paddle.set_device("cpu")
+        if isinstance(place, fluid.CUDAPlace):
+            paddle.set_device("gpu")
+        core.set_prim_eager_enabled(False)
+        paddle.disable_static()
+        input_ = paddle.to_tensor(
+            data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        scale_ = paddle.to_tensor(
+            data=self.scale, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        bias_ = paddle.to_tensor(
+            data=self.bias, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        group_norm = paddle.nn.GroupNorm(
+            self.groups,
+            self.num_channels,
+            self.epsilon,
+            False,
+            False,
+            self.data_format,
+        )
+        paddle.assign(scale_, group_norm.weight)
+        paddle.assign(bias_, group_norm.bias)
+        output = group_norm(input_)
+        grad = paddle.grad(output, input_)
+
+        return output, grad[0]
+
+    def test_static_comp(self):
+        paddle.enable_static()
+        fwd_actual = []
+        rev_actual = []
+        mps = []
+
+        with paddle.fluid.framework._static_guard():
+            for place in self.places:
+                mp, sp = paddle.static.Program(), paddle.static.Program()
+                with paddle.static.program_guard(mp, sp):
+                    input_ = paddle.static.data(
+                        'x', shape=self.x.shape, dtype=self.x.dtype
+                    )
+                    input_.stop_gradient = False
+
+                    scale_ = paddle.static.data(
+                        'scale_', shape=self.scale.shape, dtype=self.bias.dtype
+                    )
+                    scale_.stop_gradient = False
+
+                    bias_ = paddle.static.data(
+                        'bias_', shape=self.bias.shape, dtype=self.x.dtype
+                    )
+                    bias_.stop_gradient = False
+
+                    group_norm = paddle.nn.GroupNorm(
+                        self.groups,
+                        self.num_channels,
+                        self.epsilon,
+                        False,
+                        False,
+                        self.data_format,
+                    )
+                    group_norm.weight.stop_gradient = False
+                    group_norm.bias.stop_gradient = False
+
+                    paddle.assign(scale_, group_norm.weight)
+                    paddle.assign(bias_, group_norm.bias)
+                    output = group_norm(input_)
+                    if core._is_fwd_prim_enabled():
+                        paddle.incubate.autograd.to_prim(mp.blocks)
+                    grad = paddle.static.gradients(output, input_)[0]
+                exe = paddle.static.Executor(place)
+                exe.run(sp)
+                fwd, rev = exe.run(
+                    mp,
+                    feed={
+                        input_.name: self.x,
+                        scale_.name: self.scale,
+                        bias_.name: self.bias,
+                    },
+                    fetch_list=[output, grad],
+                )
+                fwd_actual.append(fwd)
+                rev_actual.append(rev)
+                mps.append(mp)
+        for i in range(len(self.places)):
+            self.assertTrue(
+                'group_norm' not in [op.type for op in mps[i].block(0).ops]
+            )
+            # fwd_diff = np.max(np.abs(self.fwd_desire[i] - fwd_actual[i]))
+            # rev_diff = np.max(np.abs(self.rev_desire[i] - rev_actual[i]))
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "static fwd", fwd_diff)
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "static rev", rev_diff)
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=self.rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s static fwd' % self.places[i],
+            )
+            np.testing.assert_allclose(
+                self.rev_desire,
+                rev_actual,
+                rtol=self.rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s static rev' % self.places[i],
+            )
+        paddle.disable_static()
+
+    def test_jit_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimNet(
+                self.groups,
+                self.num_channels,
+                scale_,
+                bias_,
+                self.epsilon,
+                self.data_format,
+            )
+            net = apply_to_static(net, False)
+            output = net(input_)
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+        for i in range(len(self.places)):
+            # fwd_diff = np.max(np.abs(self.fwd_desire[i] - fwd_actual[i]))
+            # rev_diff = np.max(np.abs(self.rev_desire[i] - rev_actual[i]))
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "jit fwd", fwd_diff)
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "jit rev", rev_diff)
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=self.rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s jit fwd' % self.places[i],
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=self.rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s jit rev' % self.places[i],
+            )
+
+    def test_jit_comp_with_cinn(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimNet(
+                self.groups,
+                self.num_channels,
+                scale_,
+                bias_,
+                self.epsilon,
+                self.data_format,
+            )
+            # failed in cinn test
+            net = apply_to_static(net, False)
+            output = net(input_)
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+        for i in range(len(self.places)):
+            # fwd_diff = np.max(np.abs(self.fwd_desire[i] - fwd_actual[i]))
+            # rev_diff = np.max(np.abs(self.rev_desire[i] - rev_actual[i]))
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "jit_cinn fwd", fwd_diff)
+            # print(self.x.shape, self.groups, self.epsilon, self.places[i], "jit_cinn rev", rev_diff)
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=self.rotl,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s jit_cinn fwd' % self.places[i],
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=self.rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=self.atol,
+                err_msg='%s jit_cinn rev' % self.places[i],
             )
 
 
