@@ -1259,6 +1259,12 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : nms
+  inputs :
+    x : X
+  outpus :
+    out : Out
+
 - op : nonzero (where_index)
   inputs :
     condition : Condition
