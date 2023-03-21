@@ -108,7 +108,7 @@ void DistributeFpnProposalsKernel(
   xpu::VectorParam<int> rois_lod = {
       rois_lod_vec.data(), static_cast<int>(rois_lod_vec.size()), nullptr};
 
-  int r = xpu::distribute_fpn_proposals_helper<XPUType, int, int>(
+  int r = xpu::distribute_fpn_proposals_helper<XPUType, int>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(fpn_rois.data<T>()),
       rois_lod,
@@ -158,7 +158,7 @@ void DistributeFpnProposalsKernel(
           fpn_rois_shape,
           sub_idx.numel(),
           0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "distribute_fpn_proposals_helper");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "gather");
     } else {
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
