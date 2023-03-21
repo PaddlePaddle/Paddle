@@ -242,3 +242,12 @@ class ModelCheckpointAuto(ModelCheckpoint):
             path = '{}/final'.format(self.save_dir)
             print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)
+
+    def on_train_batch_end(self, step, logs=None):
+        if self._is_save():
+            if logs and logs["step"] % self.save_freq == 0:
+                path = '{}/epoch{}_step{}'.format(
+                    self.save_dir, logs["epoch"], logs["step"]
+                )
+                print('save checkpoint at {}'.format(os.path.abspath(path)))
+                self.model.save(path)
