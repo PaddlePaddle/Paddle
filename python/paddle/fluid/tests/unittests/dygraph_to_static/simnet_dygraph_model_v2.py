@@ -344,7 +344,7 @@ class FC(paddle.nn.Layer):
             )
             i += 1
 
-        size = list([self._size])
+        size = [self._size]
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True
         )
