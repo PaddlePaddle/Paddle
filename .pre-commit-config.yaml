@@ -5,6 +5,7 @@ exclude: |
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+|
+        .+_pb2\.py|
         python/paddle/fluid/tests/unittests/npu/.+|
         python/paddle/fluid/tests/unittests/mlu/.+
     )$
@@ -64,15 +65,19 @@ repos:
     hooks:
     -   id: isort
 -   repo: https://github.com/PyCQA/flake8
-    rev: 5.0.4
+    rev: 4.0.1
     hooks:
     -   id: flake8
-        args: ["--config=.flake8"]
--   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.0.254
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v1.7.7
     hooks:
-    -   id: ruff
-        args: [--fix, --exit-non-zero-on-fix, --no-cache]
+    -   id: autoflake
+        args:
+            - --in-place
+            - --remove-all-unused-imports
+            - --ignore-pass-after-docstring
+            - --ignore-init-module-imports
+            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
 -   repo: local
     hooks:
     -   id: pylint-doc-string
@@ -109,7 +114,7 @@ repos:
         name: auto-generate-cmakelists
         entry: bash ./tools/gen_ut_cmakelists.hook
         language: system
-        files: testslist.csv$
+        files: unittests/collective/.*(testslist.csv|CMakeLists.txt)$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
