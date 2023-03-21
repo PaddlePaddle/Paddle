@@ -27,7 +27,7 @@ class PTQ(Quantization):
     """
 
     def __init__(self, config: QuantConfig):
-        super(PTQ, self).__init__(config)
+        super().__init__(config)
 
     def _is_parallel_training(self):
         try:

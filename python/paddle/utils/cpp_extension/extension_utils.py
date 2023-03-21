@@ -1160,6 +1160,7 @@ def _write_setup_file(
     file_path,
     build_dir,
     include_dirs,
+    library_dirs,
     extra_cxx_cflags,
     extra_cuda_cflags,
     link_args,
@@ -1181,6 +1182,7 @@ def _write_setup_file(
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
+                library_dirs={library_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
@@ -1199,6 +1201,7 @@ def _write_setup_file(
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
+        library_dirs=list2str(library_dirs),
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),

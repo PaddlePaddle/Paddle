@@ -1206,6 +1206,7 @@ set(TEST_CINN_OPS
     test_elementwise_div_op
     test_elementwise_mul_op
     test_gather_nd_op
+    test_squeeze2_op
     test_elementwise_pow_op
     test_elementwise_max_op
     test_transpose_op
