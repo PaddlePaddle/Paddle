@@ -165,7 +165,8 @@ PD_REGISTER_KERNEL(mask_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 

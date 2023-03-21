@@ -102,7 +102,6 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6_raw, Relu6Raw)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
-PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(isnan, Isnan)
 
 PD_REGISTER_KERNEL(divide_scalar_coo,
                    GPU,
@@ -149,3 +148,27 @@ PD_REGISTER_KERNEL(cast_csr,
                    int,
                    int64_t,
                    bool) {}
+
+PD_REGISTER_KERNEL(isnan_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IsnanCooKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(isnan_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IsnanCsrKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}

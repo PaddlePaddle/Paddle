@@ -74,7 +74,7 @@ class TestStatic(unittest.TestCase):
         dense_shape = [3, 3]
         sp_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
         sp_y = paddle.sparse.isnan(sp_x)
-        # out = sp_y.to_dense()
+        out = sp_y.to_dense()
 
         exe = paddle.static.Executor()
         indices_data = [[0, 1, 2], [1, 2, 0]]
@@ -82,12 +82,14 @@ class TestStatic(unittest.TestCase):
 
         fetch = exe.run(
             feed={'indices': indices_data, 'values': values_data},
-            fetch_list=[sp_y],
-            return_numpy=False,
+            fetch_list=[out],
+            return_numpy=True,
         )
-        print(fetch[0])
-        # correct_out = np.array().astype('float32')
-        # np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
+
+        correct_out = np.array(
+            [[False, False, False], [False, False, True], [False, False, False]]
+        ).astype('float32')
+        np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
         paddle.disable_static()
 
 
