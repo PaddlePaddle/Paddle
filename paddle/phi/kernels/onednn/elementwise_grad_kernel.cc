@@ -159,6 +159,8 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                dnnl::memory::data_type::f32,
                                dnnl::memory::format_tag::x);
         auto scales_mem = dnnl::memory(scales_md, onednn_engine);
+        auto scale_memory_buf = static_cast<float*>(scales_mem.get_data_handle());
+        *scale_memory_buf = 1.0;
         AddSubNonBroadcast(
             &reorder_handler, dx, reorder_src_memory, dst_memory, scales_mem);
       }
@@ -217,6 +219,8 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                dnnl::memory::data_type::f32,
                                dnnl::memory::format_tag::x);
         auto scales_mem = dnnl::memory(scales_md, onednn_engine);
+        auto scale_memory_buf = static_cast<float*>(scales_mem.get_data_handle());
+        *scale_memory_buf = 1.0;
         AddSubNonBroadcast(
             &reorder_handler, dy, reorder_src_memory, dst_memory, scales_mem);
       }
