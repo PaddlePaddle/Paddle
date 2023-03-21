@@ -210,7 +210,7 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "maximum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
