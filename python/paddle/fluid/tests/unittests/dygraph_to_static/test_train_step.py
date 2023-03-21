@@ -46,7 +46,7 @@ def train_step_tiny_model(net, x, loss_fn, opt):
 
 class TinyModel(paddle.nn.Layer):
     def __init__(self):
-        super(TinyModel, self).__init__()
+        super().__init__()
         self.layer1 = paddle.nn.Linear(10, 10)
 
     def forward(self, data):
