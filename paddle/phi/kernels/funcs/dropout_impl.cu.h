@@ -41,7 +41,7 @@ namespace funcs {
 template <typename T>
 struct DstFunctor {
   using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
+
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
                                const int64_t num)
@@ -67,17 +67,12 @@ struct DstFunctor {
   const float retain_prob_;
   const bool is_upscale_in_train_;
   const int64_t num_;
+  MT factor;
 };
 
 template <typename T>
 struct MaskFunctor {
-  const float retain_prob_;
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
-  HOSTDEVICE inline MaskFunctor(const float retain_prob)
-      : retain_prob_(retain_prob) {
-    factor = static_cast<MT>(1.0f / retain_prob_);
-  }
+  explicit MaskFunctor(const float retain_prob) : retain_prob_(retain_prob) {}
 
   HOSTDEVICE inline void operator()(T* dst, const float* rand, int num) const {
     static constexpr int kCount =
@@ -88,14 +83,14 @@ struct MaskFunctor {
       dst[i] = rand[i] < retain_prob_ ? static_cast<T>(1) : static_cast<T>(0);
     }
   }
+
+ private:
+  float retain_prob_;
 };
 
 template <typename T>
 struct DstMaskFunctor {
-  const float retain_prob_;
-  const bool is_upscale_in_train_;
   using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
       : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
@@ -122,6 +117,11 @@ struct DstMaskFunctor {
       }
     }
   }
+
+ private:
+  MT factor;
+  float retain_prob_;
+  bool is_upscale_in_train_;
 };
 
 template <typename T>
@@ -368,8 +368,14 @@ void DropoutFwGPUKernelDriver(
           out_dims, in_dims, x.dims().size());
 
       auto mask_functor = MaskFunctor<T>(1.0f - dropout_prob);
-      bool copy_in_kernel = GetSeedDataAndIncrement(
-            dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment, true);
+      bool copy_in_kernel = GetSeedDataAndIncrement(dev_ctx,
+                                                    seed,
+                                                    is_fix_seed,
+                                                    seed_val,
+                                                    offset,
+                                                    &seed_data,
+                                                    &increment,
+                                                    true);
       uint64_t* seed_ptr = copy_in_kernel ? seed->data<uint64_t>() : nullptr;
 
       DropOutNdForwardKernel<T>
@@ -381,14 +387,13 @@ void DropoutFwGPUKernelDriver(
                                                  increment,
                                                  main_offset,
                                                  dst_functor,
-                                                 mask_functor
-                                                 y_data,
+                                                 mask_functor y_data,
                                                  y->numel(),
                                                  broadcast_config,
                                                  seed_ptr);
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
-            dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
+          dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
 
 #define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T>
       PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
