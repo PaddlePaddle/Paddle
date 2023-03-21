@@ -7,6 +7,7 @@ set(PYTHON_TESTS_DIR
 
 add_subdirectory(cpp)
 add_subdirectory(legacy_test)
+add_subdirectory(custom_kernel)
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)
