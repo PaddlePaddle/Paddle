@@ -75,6 +75,8 @@ void GpuMemoryUsage(size_t* available, size_t* total) {
 }
 #endif
 
+void InitDevices() { MemoryUtils::Instance().InitDevices(); }
+
 }  // namespace memory_utils
 
 }  // namespace phi
