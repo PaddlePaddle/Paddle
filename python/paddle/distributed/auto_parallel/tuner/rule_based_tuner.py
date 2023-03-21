@@ -1112,6 +1112,13 @@ class RuleBasedTuner:
     def level(self):
         return self._level
 
+    def convert_process_mesh_to_key(self, process_mesh):
+        """Convert process mesh object to str."""
+        processes = ",".join([str(x) for x in process_mesh._process_ids])
+        topology = ",".join([str(x) for x in process_mesh._shape])
+        key = processes + ";" + topology
+        return key
+
     def gen_full_program(self):
         """Generate full program that contain backward and update phase program if mode is train."""
         self.full_main_program = self.dist_context.serial_main_program.clone()
