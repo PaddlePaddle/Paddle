@@ -117,6 +117,7 @@ class TestSumOp1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
@@ -215,6 +216,7 @@ class TestSumOpExclusive1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
@@ -306,6 +308,7 @@ class TestSumOpExclusiveFP16(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.init_dtype()
         self.enable_cinn = False
         self.attrs = {'axis': 2, "exclusive": True}
@@ -339,6 +342,7 @@ class TestSumOpReverseExclusive(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.attrs = {

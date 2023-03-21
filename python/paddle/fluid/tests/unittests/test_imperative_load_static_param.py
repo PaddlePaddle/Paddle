@@ -30,8 +30,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
         # static graph mode
         temp_dir = tempfile.TemporaryDirectory()
-        a = fluid.data(name="a", shape=[10, 10])
-        conv_in = fluid.data(name="conv_in", shape=[None, 10, 10, 10])
+        a = paddle.static.data(name="a", shape=[10, 10])
+        conv_in = paddle.static.data(name="conv_in", shape=[None, 10, 10, 10])
 
         fc_out1 = paddle.static.nn.fc(a, 10)
         fc_out2 = paddle.static.nn.fc(a, 20)
@@ -43,7 +43,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 
-        conv3d_in = fluid.data(
+        conv3d_in = paddle.static.data(
             name='conv3d_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
         conv3d_out_1 = paddle.static.nn.conv3d(
@@ -53,37 +53,43 @@ class TestDygraphLoadStatic(unittest.TestCase):
             input=conv3d_in, num_filters=2, filter_size=3, act="relu"
         )
 
-        batchnorm_in = fluid.data(
+        batchnorm_in = paddle.static.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
         batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
         batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
-        emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
+        emb_in = paddle.static.data(
+            name='emb_in', shape=[None, 10], dtype='int64'
+        )
         emb_out_1 = paddle.static.nn.embedding(emb_in, [1000, 100])
         emb_out_2 = paddle.static.nn.embedding(emb_in, [2000, 200])
 
-        layernorm = fluid.data(name="ln", shape=[None, 10], dtype='float32')
+        layernorm = paddle.static.data(
+            name="ln", shape=[None, 10], dtype='float32'
+        )
         layernorm_1 = paddle.static.nn.layer_norm(layernorm)
         layernorm_2 = paddle.static.nn.layer_norm(layernorm)
 
-        nce_in = fluid.data(name="nce_in", shape=[None, 100], dtype='float32')
-        nce_label = fluid.data(
+        nce_in = paddle.static.data(
+            name="nce_in", shape=[None, 100], dtype='float32'
+        )
+        nce_label = paddle.static.data(
             name="nce_label", shape=[None, 10], dtype='int64'
         )
         nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
         nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
 
-        prelu_in = fluid.data(
+        prelu_in = paddle.static.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
         )
         prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
         prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
 
-        bilinear_tensor_pro_x = fluid.data(
+        bilinear_tensor_pro_x = paddle.static.data(
             "t1", shape=[None, 5], dtype="float32"
         )
-        bilinear_tensor_pro_y = fluid.data(
+        bilinear_tensor_pro_y = paddle.static.data(
             "t2", shape=[None, 4], dtype="float32"
         )
 
@@ -98,7 +104,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             )
         )
 
-        conv2d_trans_in = fluid.data(
+        conv2d_trans_in = paddle.static.data(
             name="conv2d_trans_in", shape=[None, 10, 10, 10]
         )
 
@@ -109,7 +115,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
 
-        conv3d_trans_in = fluid.data(
+        conv3d_trans_in = paddle.static.data(
             name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
         conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
@@ -119,7 +125,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
 
-        groupnorm_in = fluid.data(
+        groupnorm_in = paddle.static.data(
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
         groupnorm_out1 = paddle.static.nn.group_norm(
@@ -129,7 +135,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         '''
-        spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
+        spec_norm = paddle.static.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
         spe_norm_out_1 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
         spe_norm_out_2 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
         '''

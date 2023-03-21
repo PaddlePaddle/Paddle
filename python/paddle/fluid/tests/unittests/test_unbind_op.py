@@ -27,10 +27,10 @@ class TestUnbind(unittest.TestCase):
     def test_unbind(self):
         paddle.enable_static()
 
-        x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
+        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = fluid.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -85,10 +85,10 @@ class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
         paddle.enable_static()
 
-        x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
+        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = fluid.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -235,7 +235,7 @@ class TestUnbindBF16Op(OpTest):
 class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = fluid.data(shape=[2, 3], dtype='float32', name='x')
+            x = paddle.static.data(shape=[2, 3], dtype='float32', name='x')
 
             def test_table_Variable():
                 tensor.unbind(input=x, axis=2.0)

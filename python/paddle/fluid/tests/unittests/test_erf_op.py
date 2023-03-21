@@ -27,7 +27,7 @@ class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
         self.prim_op_type = "prim"
-        self.enable_cinn = True
+        self.public_python_api = paddle.erf
         self.python_api = paddle.erf
         self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
