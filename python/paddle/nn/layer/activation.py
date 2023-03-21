@@ -1324,7 +1324,7 @@ class Softmax(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.softmax(x, self._axis, self._dtype, self._name)
+        return F.softmax(x, self._axis, name=self._name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
