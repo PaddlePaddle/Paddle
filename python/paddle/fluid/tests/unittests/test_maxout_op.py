@@ -152,17 +152,12 @@ class TestMaxOutOpFP16(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=0.5
-            )
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':

@@ -28,8 +28,11 @@ void MaxOutKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += x.dims().size();
   }
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::funcs::MaxOutFunctor<Context, MPType> maxout_forward;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  DenseTensor output_pos;
+  output_pos.Resize(out.dims());
+  dev_ctx.template Alloc<MT>(&output_pos);
+  phi::funcs::MaxOutFunctor<Context, T> maxout_forward;
   maxout_forward(dev_ctx, x, out, groups, axis);
 }
 
