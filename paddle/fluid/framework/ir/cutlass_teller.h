@@ -26,6 +26,7 @@ class CutlassTeller {
     return &global;
   }
 
+#if defined(PADDLE_WITH_CUTLASS)
   // Determine this NCHW conv2d_fusion can be computed by cutlass?
   // will not set or change any attribute in op_desc
   bool Conv2dFusionCanSupport(OpDesc *op_desc, Scope *scope, int device_id) {
@@ -70,10 +71,11 @@ class CutlassTeller {
       return false;
     }
 
+    // To prevent generating too many cutlass code,
+    // we only allow oc and ic is divisable by CUTLASS_NHWC_ALIGNMENT
     if (oc % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
       return false;
     }
-
     if (ic % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
       return false;
     }
@@ -108,7 +110,23 @@ class CutlassTeller {
       return {};
     }
   }
+#else
+  bool Conv2dFusionCanSupport(OpDesc *op_desc, Scope *scope, int device_id) {
+    return false;
+  }
 
+  bool Conv2dCanSupport(int oc,
+                        int kc,
+                        int kh,
+                        int kw,
+                        int groups,
+                        std::string activation,
+                        int device_id,
+                        bool has_residual = false) {
+    return false;
+  }
+  std::unordered_set<std::string> CbaAct(int device_id) { return {}; }
+#endif
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
   const std::unordered_set<int> cutlass_sm = {
       75,
