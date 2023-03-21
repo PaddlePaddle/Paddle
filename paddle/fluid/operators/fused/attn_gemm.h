@@ -73,7 +73,7 @@ class AttnMatMul {
                                     vectorize(weight->dims()),
                                     transA_,
                                     transB_,
-                                    paddle::phi::CppTypeToDataType<T>::Type(),
+                                    phi::CppTypeToDataType<T>::Type(),
                                     phi::funcs::MatmulFusedType::kMatmulBias,
                                     static_cast<const void*>(bias->data<T>()),
                                     nullptr);

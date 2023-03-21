@@ -101,7 +101,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                   vectorize(y->dims()),
                                   trans_x,
                                   trans_y,
-                                  paddle::phi::CppTypeToDataType<T>::Type(),
+                                  phi::CppTypeToDataType<T>::Type(),
                                   fused_type,
                                   static_cast<const void*>(bias->data<T>()),
                                   reserve_data);
