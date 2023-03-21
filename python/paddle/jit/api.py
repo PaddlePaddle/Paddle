@@ -55,7 +55,7 @@ from paddle.jit.translated_layer import (
     INFER_PARAMS_INFO_SUFFIX,
     INFER_PROPERTY_SUFFIX,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
@@ -1618,7 +1618,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)

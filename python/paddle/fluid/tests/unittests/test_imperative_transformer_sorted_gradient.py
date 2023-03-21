@@ -20,9 +20,9 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Layer, core
+from paddle.fluid import core
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
 

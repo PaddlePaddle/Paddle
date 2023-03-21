@@ -203,7 +203,7 @@ class StaticCode2:
         return __return_value_1
 
 
-class NetWithError(fluid.dygraph.layers.Layer):
+class NetWithError(paddle.nn.Layer):
     @to_static
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
@@ -240,7 +240,7 @@ class TestEnableDeclarative(unittest.TestCase):
             )
 
 
-class Net(fluid.dygraph.layers.Layer):
+class Net(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -335,7 +335,7 @@ obj = Obj()
 
 class Net2:
     def __init__(self):
-        super(Net2, self).__init__()
+        super().__init__()
         self.layer1 = paddle.nn.Linear(10, 10)
 
     def forward(self, data):

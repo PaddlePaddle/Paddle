@@ -529,7 +529,7 @@ void LayerNormKernel(const Context &dev_ctx,
   bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      paddle::experimental::CppTypeToDataType<U>::Type(),
+                      phi::CppTypeToDataType<U>::Type(),
                       phi::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }

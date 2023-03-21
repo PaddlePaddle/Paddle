@@ -3005,7 +3005,7 @@ class TestPow_ZeroDim(TestPow):
         self.shape = []
 
     def setUp(self):
-        super(TestPow_ZeroDim, self).setUp()
+        super().setUp()
         self.enable_cinn = False
 
 

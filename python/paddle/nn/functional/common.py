@@ -502,7 +502,7 @@ def interpolate(
 
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
-                        out_shape[i] = dim.numpy().item()
+                        out_shape[i] = dim.item()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -1692,7 +1692,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy().tolist()
+            pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}

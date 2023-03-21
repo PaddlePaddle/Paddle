@@ -393,7 +393,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+        "issubclass({}, paddle.nn.Layer)".format(class_src)
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
