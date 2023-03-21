@@ -104,6 +104,9 @@ class CutlassTeller {
       if (!cdba_act_set.count(activation)) {
         return false;
       }
+    } else {
+      // only support groups == 1 or conv2d_depthwise
+      return false;
     }
     return true;
   }
