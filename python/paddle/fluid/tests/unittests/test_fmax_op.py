@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -256,7 +255,7 @@ class TestFmaxBF16OP(OpTest):
             'X': np.random.randn(11, 17).astype(self.dtype),
             'Y': np.random.randn(11, 17).astype(self.dtype),
         }
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -268,9 +267,7 @@ class TestFmaxBF16OP(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place, ['X', 'Y'], 'Out'
-                )
+                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":
