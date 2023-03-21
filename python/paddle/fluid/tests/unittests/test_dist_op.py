@@ -191,10 +191,7 @@ class TestDistAPI(unittest.TestCase):
 
 class TestDistFP16OP(TestDistOp):
     def init_data_type(self):
-        self.data_type = np.float16
-
-    def test_check_grad(self):
-        self.check_grad(["X", "Y"], "Out")
+        self.data_type = 'float16'
 
 
 class TestDistFP16OPCase1(TestDistFP16OP):
