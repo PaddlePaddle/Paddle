@@ -157,11 +157,7 @@ GradNodePyLayer::operator()(
         if (ctx->forward_input_tensor_is_duplicable[i]) {
           grad_out.push_back(paddle::pybind::GetTensorListFromPyObject(obj));
         } else {
-          if (obj && obj != Py_None) {
-            grad_out.push_back({paddle::pybind::GetTensorFromPyObject(obj)});
-          } else {
-            grad_out.emplace_back();
-          }
+          grad_out.push_back({paddle::pybind::GetTensorFromPyObject(obj)});
         }
       }
     } else {
