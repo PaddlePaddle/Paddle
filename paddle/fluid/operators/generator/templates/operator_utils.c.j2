@@ -119,6 +119,34 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 {%- endmacro %}
 
 
+{% macro choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, kernel_name, is_first) %} {#inline#}
+  {%- set inputs_len = inputs_type | length -%}
+  {%- if is_first -%}
+if (
+  {%- else -%}
+else if (
+  {%- endif -%}
+      {%- for input_type in inputs_type -%}
+      {%- set kernel_arg_name = kernel_args[loop.index0] | to_opmaker_name_cstr -%}
+        {%- if loop.index0 != inputs_len - 1%}
+          {%- if kernel_args[loop.index0] in optional_inputs_name %}
+  ((ctx.HasInput({{kernel_arg_name}}) && {{input_type | assert_dense_or_sr}}({{kernel_arg_name}})) || (!ctx.HasInput({{kernel_arg_name}}))) &&
+          {% else %}
+  {{input_type | assert_dense_or_sr}}({{kernel_arg_name}}) &&
+          {% endif %}
+        {% else %} {# the last param #}
+          {% if kernel_args[loop.index0] in optional_inputs_name -%}
+  ((ctx.HasInput({{kernel_arg_name}}) && {{input_type | assert_dense_or_sr}}({{kernel_arg_name}})) || (!ctx.HasInput({{kernel_arg_name}}))))
+          {%- else -%}
+  {{input_type | assert_dense_or_sr}}({{kernel_arg_name}}))
+          {%- endif %}  {
+    return KernelSignature("{{kernel_name}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  }
+        {% endif %}
+      {% endfor %}
+{%- endmacro -%}
+
+
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(op) %}
 /*
@@ -132,6 +160,7 @@ All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgu
 
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
+  {% set optional_inputs_name = op["inputs"]| find_optinal_inputs_name %}
   {{get_input_list(op["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
@@ -144,26 +173,24 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   {% if kernel_num == 1 %}
   return KernelSignature("{{op["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
   {% elif kernel_num == 2 %}{# it has kernel for selected rows #}
-  {% set fun_name_1 = op["kernel"]["func"][1] %}
-  {% set index = op["kernel"]["dispatch"][fun_name_1][0] | find_first_selected_rows_param(fun_name_1) %}
-  const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[index] | to_opmaker_name_cstr}}) ? "{{op["kernel"]["func"][1]}}" : "{{op["kernel"]["func"][0]}}";
-  return KernelSignature(kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
-  {% elif kernel_num == 3 %}
-  {% set fun_name_1 = op["kernel"]["func"][1] %}
-  {% set fun_name_2 = op["kernel"]["func"][2] %}
-  {% set index_kernel_2 = op["kernel"]["dispatch"][fun_name_2][0] | find_first_selected_rows_param(fun_name_2) %}
-  {% set index_kernel_1 = op["kernel"]["dispatch"][fun_name_1][0] | find_first_selected_rows_param(fun_name_1) %}
-  if ( ctx.IsSelectedRowsInput({{kernel_args[index_kernel_2] | to_opmaker_name_cstr}}) ) {
-    const char* kernel_name = "{{op["kernel"]["func"][2]}}";
-    return KernelSignature(kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
-  } else if ( ctx.IsSelectedRowsInput({{kernel_args[index_kernel_1] | to_opmaker_name_cstr}}) ) {
-    const char* kernel_name = "{{op["kernel"]["func"][1]}}";
-    return KernelSignature(kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
-  } else {
-    const char* kernel_name = "{{op["kernel"]["func"][0]}}";
-    return KernelSignature(kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
-  }
-  return KernelSignature("unregistered", {}, {}, {});
+  {% set fun_name = op["kernel"]["func"][0] %}
+    {% set inputs_type = op["kernel"]["dispatch"][fun_name][0] %}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, true)}}
+    {%- set fun_name = op["kernel"]["func"][1] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+  else { return KernelSignature("unregistered", {}, {}, {}); }
+  {% elif kernel_num == 3 %}{# it has kernel for selected rows #}
+    {%- set fun_name = op["kernel"]["func"][0] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, true)}}
+    {%- set fun_name = op["kernel"]["func"][1] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+    {%- set fun_name = op["kernel"]["func"][2] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+  else { return KernelSignature("unregistered", {}, {}, {}); }
   {% else %} {# only support kernel_num <= 3 #}
   return KernelSignature("unregistered", {}, {}, {});
   {%endif%}
