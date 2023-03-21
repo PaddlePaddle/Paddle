@@ -994,7 +994,7 @@ def save_vars(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
-            save_path = str()
+            save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
