@@ -695,23 +695,19 @@ def find_files(pattern, root, recursive=False):
             break
 
 headers = (
-    # paddle level api headers
+    # paddle level api headers (high level api, for both training and inference)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
-    # phi level api headers (low level api)
+    # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels')) +  # phi kernels headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/sparse')) +  # phi sparse kernels headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/selected_rows')) +  # phi selected_rows kernels headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/strings')) +  # phi sparse kernels headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
     # phi profiler headers

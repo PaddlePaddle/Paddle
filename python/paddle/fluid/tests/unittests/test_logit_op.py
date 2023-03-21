@@ -90,7 +90,7 @@ class TestLogitAPI(unittest.TestCase):
         ref_out = logit(self.x, eps)
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = paddle.logit(x, eps)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -110,10 +110,10 @@ class TestLogitAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='X1', shape=[100], dtype='int32')
+            x = paddle.static.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, paddle.logit, x)
 
-            x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
+            x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, paddle.logit, x, dtype='int32')
 
 

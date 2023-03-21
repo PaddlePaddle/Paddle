@@ -364,7 +364,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             slice_ends.append(item[1])
             slices_axes.append(idx)
 
-        infer_flags = list(1 for i in range(len(slices_axes)))
+        infer_flags = [1 for i in range(len(slices_axes))]
         attrs = {
             "axes": slices_axes,
             "starts": slice_starts,

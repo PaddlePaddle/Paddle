@@ -95,7 +95,7 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestGroupOperators(unittest.TestCase):
+class TestPatternMatch(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
@@ -116,26 +116,15 @@ class TestGroupOperators(unittest.TestCase):
             DistributedContext,
         )
         from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
-            _PATTERNS,
+            GraphUtil,
             RuleBasedTuner,
-            convert_to_graph,
-            match,
         )
 
         dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
-        layers = tuner.cluster_operators(train_program.global_block().ops)
-        layer = layers[0]
-        graph = convert_to_graph(layer, train_program.global_block())
-        results = match(_PATTERNS["qkv"], graph)
-        shard_tensor_infos = _PATTERNS["qkv"].attrs["shard_spec"]
-        tensor_ids = shard_tensor_infos[0][0]
-        if results:
-            for result in results:
-                for node_id in result:
-                    if node_id in tensor_ids:
-                        print(graph.attrs["id_to_var"][result[node_id]])
-        print("shard_spec: ", shard_tensor_infos[0][1])
+        graph = GraphUtil.convert_to_graph(train_program.global_block())
+        results = GraphUtil.match_all_patterns(graph)
+        print(results)
 
 
 if __name__ == "__main__":

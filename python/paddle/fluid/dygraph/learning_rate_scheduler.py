@@ -95,8 +95,10 @@ class LearningRateDecay:
             if isinstance(value, Variable):
                 assert (
                     value.size == 1
-                ), "size of Variable in state_dict must be 1"
-                value = float(value)
+                ), "the size of Variable in state_dict must be 1, but its size is {} with shape {}".format(
+                    value.size, value.shape
+                )
+                value = value.item()
             state_dict[key] = value
 
         return state_dict

@@ -441,7 +441,9 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
+            index_1 = paddle.static.data(
+                name="index_1", shape=[1], dtype='uint8'
+            )
             index_2 = paddle.tensor.fill_constant(
                 shape=[1], dtype='int32', value=2
             )
@@ -540,7 +542,9 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
+            index_1 = paddle.static.data(
+                name="index_1", shape=[1], dtype='uint8'
+            )
             index_2 = paddle.full(shape=[], dtype='int32', fill_value=2)
             index_3 = paddle.full(shape=[], dtype='int64', fill_value=3)
 

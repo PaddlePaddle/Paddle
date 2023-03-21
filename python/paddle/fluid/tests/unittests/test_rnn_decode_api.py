@@ -186,16 +186,20 @@ class SeqPGAgent:
 
     def build_program(self, model_cls, alg_cls, model_hparams, alg_hparams):
         with fluid.program_guard(self.main_program, self.startup_program):
-            source = fluid.data(name="src", shape=[None, None], dtype="int64")
-            source_length = fluid.data(
+            source = paddle.static.data(
+                name="src", shape=[None, None], dtype="int64"
+            )
+            source_length = paddle.static.data(
                 name="src_sequence_length", shape=[None], dtype="int64"
             )
             # only for teacher-forcing MLE training
-            target = fluid.data(name="trg", shape=[None, None], dtype="int64")
-            target_length = fluid.data(
+            target = paddle.static.data(
+                name="trg", shape=[None, None], dtype="int64"
+            )
+            target_length = paddle.static.data(
                 name="trg_sequence_length", shape=[None], dtype="int64"
             )
-            label = fluid.data(
+            label = paddle.static.data(
                 name="label", shape=[None, None, 1], dtype="int64"
             )
             self.model = model_cls(**model_hparams)
@@ -204,7 +208,7 @@ class SeqPGAgent:
                 source, source_length, target, target_length
             )
             self.samples.stop_gradient = True
-            self.reward = fluid.data(
+            self.reward = paddle.static.data(
                 name="reward",
                 shape=[None, None],  # batch_size, seq_len
                 dtype=self.probs.dtype,

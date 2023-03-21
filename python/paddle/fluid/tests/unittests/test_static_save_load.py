@@ -881,7 +881,7 @@ class TestVariableInit(unittest.TestCase):
 
     def test_variable_init(self):
 
-        x = fluid.data(name="x", shape=[10, 10], dtype='float32')
+        x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
         y = paddle.static.nn.fc(x, 10)
         z = paddle.static.nn.fc(y, 10)
 

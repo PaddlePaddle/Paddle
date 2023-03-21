@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 #include "paddle/phi/core/compat/op_utils.h"
