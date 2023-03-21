@@ -281,61 +281,22 @@ class TestChannelShuffleFP16OP(OpTest):
         self.attrs = {'group': 2}
         self.outputs = {'Out': np.zeros((2, 16, 32, 32)).astype(self.dtype)}
 
-    def check_output(self):
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            x = fluid.layers.data(
-                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
-            )
-            out = fluid.layers.channel_shuffle(x=x, group=2)
-            exe = fluid.Executor(self.place)
-            exe.run(fluid.default_startup_program())
-
-            feed_dict = {'X': self.inputs['X']}
-            out_ref = np.transpose(
-                self.inputs['X'].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2)
-            )
-            out_ref = out_ref.reshape((2, 16, 32, 32))
-            outs = exe.run(program, feed=feed_dict, fetch_list=[out])
-
-            self.assertTrue(np.allclose(outs[0], out_ref, atol=1e-3, rtol=1e-3))
-
     def test_check_output(self):
-        if core.is_compiled_with_cuda() and core.is_float16_supported(
-            self.place
-        ):
-            self.check_output()
-
-    def check_grad(self, inputs, outputs):
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            x = fluid.layers.data(
-                name='X', shape=[2, 16, 32, 32], dtype=self.dtype
-            )
-            out = fluid.layers.channel_shuffle(x=x, group=2)
-            loss = fluid.layers.reduce_mean(out)
-            fluid.backward.append_backward(loss)
-            exe = fluid.Executor(self.place)
-            exe.run(fluid.default_startup_program())
-
-            feed_dict = {'X': inputs['X']}
-            outs = exe.run(program, feed=feed_dict, fetch_list=[out, 'X@GRAD'])
-            out_grad = np.zeros((2, 16, 32, 32)).astype(self.dtype)
-            out_grad_ref = np.transpose(
-                outs[1].reshape((2, 2, 8, 32, 32)), (0, 1, 3, 4, 2)
-            )
-            out_grad_ref = out_grad_ref.reshape((2, 16, 32, 32))
-            self.assertTrue(
-                np.allclose(out_grad, out_grad_ref, atol=1e-3, rtol=1e-3)
-            )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda() and core.is_float16_supported(
-            self.place
-        ):
-            self.check_grad(self.inputs, self.outputs)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad(['X'],
+                                'Out',
+                                max_relative_error=1e-3,
+                                )
 
-    def check_grad_ignore_order(self, inputs, outputs):
+    def test_check_grad_ignore_order(self):
         program = fluid.Program()
         with fluid.program_guard(program):
             x = fluid.layers.data(
