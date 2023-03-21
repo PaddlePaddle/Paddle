@@ -194,24 +194,12 @@ class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
         self.data_x_shape = [-1, 200, 3]
 
 
-class TestEmptyLikeOpFP16(unittest.TestCase):
-    def testemptylikefp16(OpTest):
-        def setUp(self):
-            paddle.enable_static()
-            input_x = (np.random.random([2, 3])).astype('int32')
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
-                dtype = 'float16'
-                out = paddle.empty_like(x, dtype=dtype)
-                if paddle.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
-                    )
-                if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=1e-3)
+class TestEmptyLikeFP16Op(TestEmptyLikeAPI):
+    def init_config(self):
+        self.x = np.random.random((200, 3)).astype("float16")
+        self.dtype = self.x.dtype
+        self.dst_shape = self.x.shape
+        self.dst_dtype = self.dtype
 
 
 @unittest.skipIf(
@@ -229,6 +217,10 @@ class TestEmptylikeBF16Op(OpTest):
         output = np.empty_like(x, dtype='float32')
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 class TestEmptyError(unittest.TestCase):

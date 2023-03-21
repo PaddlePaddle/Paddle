@@ -280,21 +280,14 @@ class TestEmptyAPI(unittest.TestCase):
         self.__check_out__(res_6, dtype)
 
 
-class TestEmptyOpFP16(unittest.TestCase):
-    def testemptyfp16(OpTest):
-        def setUp(self):
-            input_x = (np.random.random([500, 3])).astype('int32')
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
-                dtype = 'float16'
-                out = paddle.empty(x, dtype=dtype)
-                if paddle.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
-                    )
+class TestEmptyFP16Op(TestEmptyOp):
+    def init_config(self):
+        shape = [500, 3]
+        dtype = 'float16'
+        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
+        self.inputs = {}
+        self.outputs = {'Out': np.zeros(shape).astype(dtype)}
 
 
 @unittest.skipIf(
