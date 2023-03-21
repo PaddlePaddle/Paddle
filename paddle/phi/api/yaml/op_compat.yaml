@@ -1261,9 +1261,11 @@
 
 - op : nms
   inputs :
-    x : X
+    x : Boxes
   outpus :
-    out : Out
+    out : KeepBoxesIdxs
+  attrs :
+    threshold : iou_threshold
 
 - op : nonzero (where_index)
   inputs :

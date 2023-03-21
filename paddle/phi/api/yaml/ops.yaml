@@ -1021,7 +1021,7 @@
   backward : nll_loss_grad
 
 - op : nms
-  args : (Tensor x, float threshold)
+  args : (Tensor x, float threshold = 1.0f)
   output : Tensor(out)
   infer_meta :
     func : NMSInferMeta
