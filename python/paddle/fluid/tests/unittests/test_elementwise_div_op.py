@@ -33,6 +33,7 @@ class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
+        self.public_python_api = paddle.divide
         self.prim_op_type = "prim"
         self.init_args()
         self.init_dtype()

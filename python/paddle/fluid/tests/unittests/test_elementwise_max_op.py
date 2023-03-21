@@ -38,6 +38,7 @@ class TestElementwiseOp(OpTest):
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
@@ -163,6 +164,7 @@ class TestElementwiseBF16Op(OpTest):
         self.init_data()
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.dtype = np.uint16
@@ -273,6 +275,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
@@ -293,6 +296,7 @@ class TestElementwiseMaxFP16Op_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
@@ -313,6 +317,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
@@ -333,6 +338,7 @@ class TestElementwiseMaxFP16Op_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
@@ -353,6 +359,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
@@ -372,6 +379,7 @@ class TestElementwiseMaxFP16Op_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
@@ -391,6 +399,7 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float64)
@@ -411,6 +420,7 @@ class TestElementwiseMaxFP16Op_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float16)
@@ -431,6 +441,7 @@ class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float64)
@@ -444,6 +455,7 @@ class TestElementwiseFP16Op_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float16)
