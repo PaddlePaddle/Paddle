@@ -126,6 +126,7 @@ def layer_norm_wrapper(
 class TestLayerNormOpByOpTest(OpTest):
     def setUp(self):
         self.python_api = layer_norm_wrapper
+        self.public_python_api = layer_norm_wrapper
         self.op_type = "layer_norm"
         self.prim_op_type = "comp"
         self.python_out_sig = ["Y"]
