@@ -126,6 +126,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_convert_to_process_meshes)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
+  py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

@@ -39,19 +39,19 @@ namespace distributed {
 #ifdef _WIN32
 #define GENERATE_FUNC(type, func, ...)       \
   switch (type) {                            \
-    case experimental::DataType::FLOAT32:    \
+    case phi::DataType::FLOAT32:             \
       func<float>(__VA_ARGS__);              \
       break;                                 \
-    case experimental::DataType::FLOAT64:    \
+    case phi::DataType::FLOAT64:             \
       func<double>(__VA_ARGS__);             \
       break;                                 \
-    case experimental::DataType::FLOAT16:    \
+    case phi::DataType::FLOAT16:             \
       func<gloo::float16>(__VA_ARGS__);      \
       break;                                 \
-    case experimental::DataType::INT32:      \
+    case phi::DataType::INT32:               \
       func<int32_t>(__VA_ARGS__);            \
       break;                                 \
-    case experimental::DataType::INT64:      \
+    case phi::DataType::INT64:               \
       func<int64_t>(__VA_ARGS__);            \
       break;                                 \
     default:                                 \
@@ -64,31 +64,31 @@ namespace distributed {
 #else
 #define GENERATE_FUNC(type, func, args...)   \
   switch (type) {                            \
-    case experimental::DataType::FLOAT32:    \
+    case phi::DataType::FLOAT32:             \
       func<float>(args);                     \
       break;                                 \
-    case experimental::DataType::FLOAT64:    \
+    case phi::DataType::FLOAT64:             \
       func<double>(args);                    \
       break;                                 \
-    case experimental::DataType::FLOAT16:    \
+    case phi::DataType::FLOAT16:             \
       func<gloo::float16>(args);             \
       break;                                 \
-    case experimental::DataType::INT32:      \
+    case phi::DataType::INT32:               \
       func<int32_t>(args);                   \
       break;                                 \
-    case experimental::DataType::INT64:      \
+    case phi::DataType::INT64:               \
       func<int64_t>(args);                   \
       break;                                 \
-    case experimental::DataType::INT8:       \
+    case phi::DataType::INT8:                \
       func<int8_t>(args);                    \
       break;                                 \
-    case experimental::DataType::UINT8:      \
+    case phi::DataType::UINT8:               \
       func<uint8_t>(args);                   \
       break;                                 \
-    case experimental::DataType::BOOL:       \
+    case phi::DataType::BOOL:                \
       func<bool>(args);                      \
       break;                                 \
-    case experimental::DataType::BFLOAT16:   \
+    case phi::DataType::BFLOAT16:            \
       func<bfloat16>(args);                  \
       break;                                 \
     default:                                 \
@@ -285,7 +285,7 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
   const ReduceOp _reduce_op;
   uint32_t _tag;
 
-  gloo::AllreduceOptions::Func _get_function(const experimental::DataType type,
+  gloo::AllreduceOptions::Func _get_function(const phi::DataType type,
                                              const ReduceOp op) {
     gloo::AllreduceOptions::Func fn;
     GENERATE_FUNC(type, _get_function_impl, fn, op);
@@ -457,7 +457,7 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   int _dst;
   uint32_t _tag;
 
-  gloo::ReduceOptions::Func _get_function(const experimental::DataType type,
+  gloo::ReduceOptions::Func _get_function(const phi::DataType type,
                                           const ReduceOp op) {
     gloo::ReduceOptions::Func fn;
     GENERATE_FUNC(type, _get_function_impl, fn, op);

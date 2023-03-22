@@ -211,7 +211,7 @@ OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
   attrs_ = std::forward<std::vector<std::string>>(attrs);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::Inplace(
+OpMetaInfo& OpMetaInfo::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   inplace_map_ =
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
@@ -297,9 +297,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::Inplace(
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
-  info_ptr_->Inplace(
+  const std::vector<std::string>& inputs =
+      OpMetaInfoHelper::GetInputs(*info_ptr_);
+  const std::vector<std::string>& outputs =
+      OpMetaInfoHelper::GetOutputs(*info_ptr_);
+  for (const auto& pair : inplace_map) {
+    PADDLE_ENFORCE(
+        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` before "
+            "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
+            name_));
+    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
+                       outputs.cend(),
+                   phi::errors::PreconditionNotMet(
+                       "The register of operator %s's `SetInplaceMap` failed. "
+                       "Please make sure: 1. Call `Inputs` and `Outputs` "
+                       "before `SetInplaceMap`; 2. The values of inplace_map "
+                       "are inside `Outputs`",
+                       name_));
+  }
+  info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));
   return *this;
 }

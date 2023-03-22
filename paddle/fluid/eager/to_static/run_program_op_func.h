@@ -60,11 +60,6 @@ inline void run_program_ad_func(
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
-  VLOG(2) << "start run run_program";
-  // Call forward function
-  RunProgramAPI(x, params, out, step_scope, dout, attrs);
-  VLOG(2) << "start run run_program grad";
-
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
@@ -77,6 +72,13 @@ inline void run_program_ad_func(
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
       trace_backward, &p_autograd_x, &p_autograd_params);
+
+  VLOG(2) << "start run run_program with require_any_grad = "
+          << require_any_grad;
+  // Call forward function
+  // if require_any_grad is False, don't save any middle vars.
+  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);

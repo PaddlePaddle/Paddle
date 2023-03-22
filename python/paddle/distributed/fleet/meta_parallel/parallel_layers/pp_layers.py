@@ -433,9 +433,9 @@ class PipelineLayer(nn.Layer):
             return
 
         layers_desc = self._layers_desc
-        shared_layer_names = set(
+        shared_layer_names = {
             s.layer_name for s in layers_desc if isinstance(s, SharedLayerDesc)
-        )
+        }
         for key in shared_layer_names:
             shared_layers = []
             for idx, layer in enumerate(layers_desc):
@@ -445,9 +445,9 @@ class PipelineLayer(nn.Layer):
                 ):
                     shared_layers.append(idx)
 
-            shared_stages = set(
+            shared_stages = {
                 self.get_stage_from_index(idx) for idx in shared_layers
-            )
+            }
             self._dp_degree = self._topo.get_dim('data')
             self._mp_degree = self._topo.get_dim('model')
             self._sharding_degree = self._topo.get_dim('sharding')
@@ -502,7 +502,10 @@ class PipelineLayer(nn.Layer):
             if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad, group=comm['group']
+                        param.grad
+                        if not hasattr(param, "main_grad")
+                        else param.main_grad,
+                        group=comm['group'],
                     )
             else:
                 with paddle.framework.no_grad():
