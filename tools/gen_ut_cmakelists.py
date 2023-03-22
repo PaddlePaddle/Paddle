@@ -460,15 +460,21 @@ class CMakeGenerator:
         for c in conditions:
             cmd += f"if ({c})\n"
 
+        time_out_str = (
+            f' TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
+        )
+
         if launcher[-3:] == ".sh":
             run_type = _process_run_type(run_type)
             dist_ut_port = self.port_manager.process_dist_port_num(num_port)
             dist_ut_port = self.port_manager.gset_port(name, dist_ut_port)
+            print(name, time_out_str, file=open("/tmp/test.txt", "a"))
             cmd += f'''if({archs} AND {os_})
         bash_test_modules(
         {name}
         START_BASH
         {launcher}
+        {time_out_str}
         LABELS
         "RUN_TYPE={run_type}"
         ENVS
@@ -495,9 +501,6 @@ class CMakeGenerator:
             run_type_str = (
                 "" if len(run_type) == 0 else f' LABELS "RUN_TYPE={run_type}"'
             )
-        time_out_str = (
-            f' TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
-        )
         run_serial_str = (
             f' RUN_SERIAL {run_serial}' if len(run_serial) > 0 else ''
         )
