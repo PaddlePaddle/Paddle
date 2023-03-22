@@ -1,6 +1,8 @@
 
 # Compile
 
+git submodule update --init
+
 ## 1. compile llvm
 
 llvm commit id: 10939d1d580b9d3c9c2f3539c6bdb39f408179c0
@@ -20,26 +22,17 @@ cmake -GNinja \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_ENABLE_RTTI=ON \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+  -DPython3_EXECUTABLE=`which python` \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -DLLVM_ENABLE_ASSERTIONS=On
 ninja
-```
-
-## 2. compile googletest
-
-```
-git clone https://github.com/google/googletest.git
-cd googletest
-git checkout v1.13.0
-mkdir build && mkdir install
-cmake -B build/ -DCMAKE_INSTALL_PREFIX=install/ .
-cmake --build build/ -j 16
-cmake --install build/
 ```
 
 ## 2. compile infra
 
 ```bash
 mkdir build && cd build
-cmake .. -GNinja -DLLVM_PATH=...llvm-project/build -DGTEST_PATH=...googletest/install -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake .. -GNinja -DLLVM_PATH=...llvm-project/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja
 ```

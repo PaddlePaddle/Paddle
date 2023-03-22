@@ -16,6 +16,7 @@
 #include "IR/PatternMatch.h"
 #include "Pass/Pass.h"
 #include "Pass/PassManager.h"
+#include "Pass/PassRegistry.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
@@ -173,6 +174,11 @@ class TestPatternDriver : public infra::Pass {
   }
 };
 
+void RegisterPass() {
+  infra::PassRegistration<TestPass>();
+  infra::PassRegistration<TestPatternDriver>();
+}
+
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv, "...");
 
@@ -183,6 +189,8 @@ int main(int argc, char** argv) {
   mlir::OwningOpRef<mlir::ModuleOp> module = LoadMLIR(context, inputFilename);
   llvm::outs() << "src mod\n";
   module->dump();
+
+  RegisterPass();
 
   infra::PassManager pm(&context, opt_level);
   pm.EnableTiming();

@@ -1,0 +1,6 @@
+[submodule "paddle/infra/third_party/pybind11"]
+	path = paddle/infra/third_party/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "paddle/infra/third_party/googletest"]
+	path = paddle/infra/third_party/googletest
+	url = https://github.com/google/googletest.git

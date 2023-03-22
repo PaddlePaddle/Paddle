@@ -7,15 +7,18 @@ if(NOT IS_DIRECTORY ${LLVM_PATH})
     FATAL_ERROR "Please set LLVM_PATH, e.g. -DLLVM_PATH=llvm-project/build")
 endif()
 
-if(NOT IS_DIRECTORY ${GTEST_PATH})
-  message(
-    FATAL_ERROR "Please set GTEST_PATH, e.g. -DGTEST_PATH=goolgetest/install")
-endif()
-# list(APPEND CMAKE_MODULE_PATH ${GTEST_PATH}/lib/cmake/GTest)
-# find_package(GTest REQUIRED CONFIG PATHS ${GTEST_PATH}/lib/cmake/GTest NO_DEFAULT_PATH)
-# message(STATUS "Using GTEST in: " ${GTest_DIR})
+include(ExternalProject)
+ExternalProject_Add(
+  goolgetest
+  SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/googletest
+  BINARY_DIR ${CMAKE_SOURCE_DIR}/third_party/googletest/build
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/third_party/googletest/install)
+set(GTEST_PATH ${CMAKE_SOURCE_DIR}/third_party/googletest/install)
 include_directories(${GTEST_PATH}/include)
 link_directories(${GTEST_PATH}/lib)
+
+include_directories(${CMAKE_SOURCE_DIR}/third_party/pybind11/include)
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -std=c++17)
 
@@ -55,6 +58,12 @@ add_library(
   Rewrite/PatternApplicator.cc
   Transforms/GreedyPatternRewriteDriver.cc
   Pass/PassTiming.cc)
+
+# python and pybind11
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/pybind11)
+pybind11_add_module(pass_python python/pybind.cc)
+target_link_libraries(pass_python PUBLIC LLVMSupport MLIRSupport MLIRIR
+                                         pass_infra)
 
 add_executable(demo test/demo.cc)
 target_link_libraries(demo ${mlir_libs} pass_infra)
