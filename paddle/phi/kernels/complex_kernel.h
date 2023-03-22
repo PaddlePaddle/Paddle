@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace phi {
 
@@ -41,13 +43,16 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
+                         std::is_same<T, phi::dtype::complex<double>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
-  ConjKernel<T>(dev_ctx, x, &dense_out);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  ConjKernel<MPType>(dev_ctx, x, &dense_out);
   return dense_out;
 }
 
@@ -56,7 +61,9 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                         !std::is_same<T, phi::dtype::complex<double>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   return x;
@@ -67,13 +74,16 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
+                         std::is_same<T, phi::dtype::complex<double>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   RealAndImagInferMeta(x, &meta_out);
-  RealKernel<T>(dev_ctx, x, &dense_out);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  RealKernel<MPType>(dev_ctx, x, &dense_out);
   return dense_out;
 }
 
@@ -82,7 +92,9 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                         !std::is_same<T, phi::dtype::complex<double>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
   return x;
@@ -93,13 +105,16 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
+                         std::is_same<T, phi::dtype::complex<double>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value ||
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   RealAndImagInferMeta(x, &meta_out);
-  ImagKernel<T>(dev_ctx, x, &dense_out);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type
+  ImagKernel<MPType>(dev_ctx, x, &dense_out);
   return dense_out;
 }
 
@@ -108,10 +123,24 @@ template <
     typename T,
     typename Context,
     std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                         !std::is_same<T, phi::dtype::complex<double>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::float16>>::value &&
+                         std::is_same<T, phi::dtype::complex<phi::dtype::bfloat16>>::value,
                      bool> = true>
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
+
+template <>
+class MPTypeTrait<phi::dtype::complex<phi::dtype::float16>> {
+public:
+  using Type = phi::dtype::complex<float>;
+};
+
+template <>
+class MPTypeTrait<phi::dtype::complex<phi::dtype::bfloat16>> {
+public:
+  using Type = phi::dtype::complex<float>;
+};
 
 }  // namespace phi
