@@ -172,9 +172,6 @@ __global__ void VectorizedRandomGenerator(const size_t n,
         &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<uint8_t, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
-    if (fix > idx * kCount + 1) {
-      __syncthreads();
-    }
   }
   int remainder = n - fix;
   if (remainder > 0) {
@@ -190,7 +187,6 @@ __global__ void VectorizedRandomGenerator(const size_t n,
         &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<uint8_t, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
-    __syncthreads();
   }
 }
 
@@ -248,9 +244,6 @@ __global__ void DropOutNdForwardKernel(
         &mask_result[0], &dst_mask[0], Cast());
     kps::WriteData<uint8_t, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
-    if (fix > idx * kCount + 1) {
-      __syncthreads();
-    }
   }
   int remainder = n - fix;
   if (remainder > 0) {
@@ -265,7 +258,6 @@ __global__ void DropOutNdForwardKernel(
         &mask_result[0], &dst_mask[0], Cast());
     kps::WriteData<uint8_t, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
-    __syncthreads();
   }
   // Broadcast mask data and do elementwise operaiton with DstFunctor
   CUDA_KERNEL_LOOP(i, N) {
@@ -358,12 +350,10 @@ void DropoutFwGPUKernelDriver(
       auto dst_functor =
           DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
 
-      auto input_x_dims = x.dims();
-      auto mask_dims = mask->dims();
-      std::vector<int64_t> out_dims = phi::vectorize<int64_t>(input_x_dims);
-      std::vector<int64_t> in_dims = phi::vectorize<int64_t>(mask_dims);
-      reverse(out_dims.begin(), out_dims.end());
-      reverse(in_dims.begin(), in_dims.end());
+      std::vector<int64_t> out_dims = phi::vectorize<int64_t>(x.dims());
+      std::vector<int64_t> in_dims = phi::vectorize<int64_t>(mask->dims());
+      std::reverse(out_dims.begin(), out_dims.end());
+      std::reverse(in_dims.begin(), in_dims.end());
       kps::details::BroadcastConfig broadcast_config(
           out_dims, in_dims, x.dims().size());
 

@@ -67,18 +67,10 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
     dout_copy.Resize({M, N});
     if (kIsMultiPrecision) {
       *dbias_out = phi::Sum<T, Context>(
-          ctx,
-          dout_copy,
-          {0},
-          paddle::experimental::CppTypeToDataType<MT>::Type(),
-          false);
+          ctx, dout_copy, {0}, phi::CppTypeToDataType<MT>::Type(), false);
     } else {
       *dbias_out = phi::Sum<T, Context>(
-          ctx,
-          dout_copy,
-          {0},
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          false);
+          ctx, dout_copy, {0}, phi::CppTypeToDataType<T>::Type(), false);
     }
   }
 
@@ -141,12 +133,12 @@ void FusedLinearParamGradAdd(const Context &ctx,
       if (multi_precision) {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
-            paddle::experimental::CppTypeToDataType<MT>::Type(),
+            phi::CppTypeToDataType<MT>::Type(),
             phi::errors::InvalidArgument("Invaid data type error."));
       } else {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
+            phi::CppTypeToDataType<T>::Type(),
             phi::errors::InvalidArgument("Invaid data type error."));
       }
     } else {
