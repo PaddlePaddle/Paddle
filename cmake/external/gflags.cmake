@@ -93,7 +93,7 @@ endif()
 
 add_library(gflags STATIC IMPORTED GLOBAL)
 set_property(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
-add_dependencies(gflags extern_gflags ${LITE_FULL_SHARED})
+add_dependencies(gflags extern_gflags)
 
 # On Windows (including MinGW), the Shlwapi library is used by gflags if available.
 if(WIN32)

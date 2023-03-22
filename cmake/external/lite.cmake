@@ -202,9 +202,7 @@ function(external_lite_libs alias path)
     add_dependencies(${alias} ${LITE_PROJECT})
   endif()
 endfunction()
-set(LITE_FULL_SHARED
-    ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
-    CACHE FILEPATH "LITE_FULL_SHARED" FORCE)
+
 external_lite_libs(
   lite_full_shared
   ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
