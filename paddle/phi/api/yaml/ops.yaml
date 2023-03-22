@@ -1078,6 +1078,15 @@
     data_type : x
   backward: overlap_add_grad
 
+- op : p_norm
+  args : (Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
+  output : Tensor(out)
+  infer_meta :
+    func : PNormInferMeta
+  kernel :
+    func : p_norm
+  backward : p_norm_grad
+
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
   output : Tensor

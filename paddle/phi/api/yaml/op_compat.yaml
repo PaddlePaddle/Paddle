@@ -1290,6 +1290,13 @@
   outputs :
     out : Out
 
+- op : p_norm
+  backward: p_norm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : pad2d
   backward : pad2d_grad
   extra :
