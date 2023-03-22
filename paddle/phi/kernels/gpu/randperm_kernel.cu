@@ -85,9 +85,12 @@ __global__ void SwapRepeatKernel(keyT* key_out_data,
 }
 
 template <typename T, typename Context>
-void RandpermRawKernel(
-    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
+void RandpermKernel(const Context& dev_ctx,
+                    int n,
+                    DataType dtype,
+                    DenseTensor* out) {
   DenseTensor key;
+  int seed = 0;
   RandintKernel<int, Context>(dev_ctx,
                               std::numeric_limits<int>::min(),
                               std::numeric_limits<int>::max(),
@@ -151,24 +154,7 @@ void RandpermRawKernel(
       key_out.data<int>(), out_data, n, seed_offset.first, seed_offset.second);
 }
 
-template <typename T, typename Context>
-void RandpermKernel(const Context& dev_ctx,
-                    int n,
-                    DataType dtype,
-                    DenseTensor* out) {
-  RandpermRawKernel<T>(dev_ctx, n, dtype, 0, out);
-}
-
 }  // namespace phi
-
-PD_REGISTER_KERNEL(randperm_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RandpermRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 
 PD_REGISTER_KERNEL(randperm,
                    GPU,

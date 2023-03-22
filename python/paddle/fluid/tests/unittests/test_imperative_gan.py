@@ -25,7 +25,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
 
-class Discriminator(fluid.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(1, 32)
@@ -38,7 +38,7 @@ class Discriminator(fluid.Layer):
         return x
 
 
-class Generator(fluid.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(2, 64)
@@ -77,7 +77,7 @@ class TestDygraphGAN(unittest.TestCase):
             d_loss_real = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_real,
-                    label=fluid.layers.fill_constant(
+                    label=paddle.tensor.fill_constant(
                         shape=[2, 1], dtype='float32', value=1.0
                     ),
                 )
@@ -87,7 +87,7 @@ class TestDygraphGAN(unittest.TestCase):
             d_loss_fake = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake,
-                    label=fluid.layers.fill_constant(
+                    label=paddle.tensor.fill_constant(
                         shape=[2, 1], dtype='float32', value=0.0
                     ),
                 )
@@ -108,7 +108,7 @@ class TestDygraphGAN(unittest.TestCase):
             g_loss = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake,
-                    label=fluid.layers.fill_constant(
+                    label=paddle.tensor.fill_constant(
                         shape=[2, 1], dtype='float32', value=1.0
                     ),
                 )

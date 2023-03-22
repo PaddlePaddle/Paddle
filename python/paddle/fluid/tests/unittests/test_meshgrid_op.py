@@ -76,8 +76,8 @@ class TestMeshgridOp2(TestMeshgridOp):
 
 class TestMeshgridOp3(unittest.TestCase):
     def test_api(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,
@@ -112,8 +112,8 @@ class TestMeshgridOp3(unittest.TestCase):
 
 class TestMeshgridOp4(unittest.TestCase):
     def test_list_input(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,
@@ -149,8 +149,8 @@ class TestMeshgridOp4(unittest.TestCase):
 
 class TestMeshgridOp5(unittest.TestCase):
     def test_tuple_input(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,

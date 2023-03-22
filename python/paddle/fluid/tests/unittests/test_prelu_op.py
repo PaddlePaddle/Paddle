@@ -51,8 +51,8 @@ class TestFunctionalPReluAPI(unittest.TestCase):
 
     def static_check(self, weight_np):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, 'float32')
-            weight = paddle.fluid.data('Alpha', weight_np.shape, 'float32')
+            x = paddle.static.data('X', self.x_np.shape, 'float32')
+            weight = paddle.static.data('Alpha', weight_np.shape, 'float32')
             out = F.prelu(x, weight)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
@@ -80,18 +80,18 @@ class TestFunctionalPReluAPI(unittest.TestCase):
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            weight_fp32 = paddle.fluid.data(
+            weight_fp32 = paddle.static.data(
                 name='weight_fp32', shape=[1], dtype='float32'
             )
             # The input type must be Variable.
             self.assertRaises(TypeError, F.prelu, x=1, weight=weight_fp32)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[2, 3], dtype='float16'
             )
             F.prelu(x=x_fp16, weight=weight_fp32)
@@ -110,7 +110,7 @@ class TestNNPReluAPI(unittest.TestCase):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
         with paddle.static.program_guard(train_program, startup_program):
-            x = paddle.fluid.data(
+            x = paddle.static.data(
                 name='X', shape=self.x_np.shape, dtype='float32'
             )
             m = paddle.nn.PReLU()
@@ -463,7 +463,7 @@ class TestModeError(unittest.TestCase):
     def test_mode_error(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'any')
             except Exception as e:
@@ -472,7 +472,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error1(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'channel', data_format='N')
             except Exception as e:
@@ -481,7 +481,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error2(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = paddle.static.nn.prelu(x, 'channel', data_format='N')
             except ValueError as e:

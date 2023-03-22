@@ -36,7 +36,7 @@ class TRTReshapeTest(InferencePassTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
@@ -74,7 +74,7 @@ class TRTReshapeTest1(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
@@ -101,7 +101,7 @@ class TRTReshapeTest2(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = paddle.reshape(x=data, shape=self.reshape)
@@ -128,7 +128,7 @@ class TRTReshapeTest3(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             bn_out = nn.batch_norm(data, is_test=True)

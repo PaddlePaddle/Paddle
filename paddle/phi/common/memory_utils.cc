@@ -68,6 +68,15 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
   return MemoryUtils::Instance().DeviceMemoryStatCurrentValue(stat_type,
                                                               dev_id);
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void GpuMemoryUsage(size_t* available, size_t* total) {
+  return MemoryUtils::Instance().GpuMemoryUsage(available, total);
+}
+#endif
+
+void InitDevices() { MemoryUtils::Instance().InitDevices(); }
+
 }  // namespace memory_utils
 
 }  // namespace phi

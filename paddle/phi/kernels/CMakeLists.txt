@@ -29,6 +29,8 @@ set(COMMON_KERNEL_DEPS
     sparse_coo_tensor
     sparse_csr_tensor
     tensor_array
+    int_array
+    scalar
     kernel_context
     kernel_factory
     arg_map_context
@@ -47,7 +49,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
@@ -101,6 +103,7 @@ file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
+# fusion ops would be included here
 file(
   GLOB
   kernel_cu
@@ -174,6 +177,9 @@ set(ADD_PHI_KERNELS phi_cpu)
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
     add_library(phi_gpu ${kernel_cu})
+    if(WITH_CUTLASS)
+      add_dependencies(phi_gpu cutlass_codegen)
+    endif()
   elseif(WITH_ROCM)
     hip_add_library(phi_gpu STATIC ${kernel_cu})
   endif()

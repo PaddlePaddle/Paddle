@@ -185,7 +185,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   size_t numel = 0;
 
   if (size_of_dtype == -1) {
-    size_of_dtype = paddle::experimental::SizeOf(dtype);
+    size_of_dtype = phi::SizeOf(dtype);
   }
   GetMemSizeAndDtype(
       input, &numel, size_of_dtype, dev_ctx.GetPlace(), use_align, align_size);

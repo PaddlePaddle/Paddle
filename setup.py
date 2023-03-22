@@ -27,6 +27,7 @@ from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
+from setuptools.command.develop import develop as DevelopCommandBase
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
@@ -140,13 +141,6 @@ def get_header_install_dir(header):
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
             print('fluid/jit install_dir: ', install_dir)
-        if 'trace_event.h' in install_dir:
-            install_dir = re.sub(
-                'fluid/platform/profiler',
-                'phi/backends/custom',
-                install_dir,
-            )
-            print('trace_event.h install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
@@ -220,6 +214,55 @@ class InstallCommand(InstallCommandBase):
         )
         print("install_headers:", self.install_headers)
         return ret
+
+
+class DevelopCommand(DevelopCommandBase):
+    def run(self):
+        # copy proto and .so to python_source_dir
+        fluid_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/fluid/proto/'
+        )
+        fluid_proto_source_path = (
+            paddle_source_dir + '/python/paddle/fluid/proto/'
+        )
+        distributed_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        distributed_proto_source_path = (
+            paddle_source_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        os.system("rm -rf {}".format(fluid_proto_source_path))
+        shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
+        os.system("rm -rf {}".format(distributed_proto_source_path))
+        shutil.copytree(
+            distributed_proto_binary_path, distributed_proto_source_path
+        )
+        shutil.copy(
+            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
+            paddle_source_dir + '/python/paddle/fluid/',
+        )
+        dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
+        dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
+        for lib_so in os.listdir(dynamic_library_binary_path):
+            shutil.copy(
+                dynamic_library_binary_path + lib_so,
+                dynamic_library_source_path,
+            )
+        # write version.py and cuda_env_config_py to python_source_dir
+        write_version_py(
+            filename='{}/python/paddle/version/__init__.py'.format(
+                paddle_source_dir
+            )
+        )
+        write_cuda_env_config_py(
+            filename='{}/python/paddle/cuda_env.py'.format(paddle_source_dir)
+        )
+        write_parameter_server_version_py(
+            filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
+                paddle_source_dir
+            )
+        )
+        DevelopCommandBase.run(self)
 
 
 class EggInfo(egg_info):
@@ -828,18 +871,7 @@ def get_package_data_and_package_dir():
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
     if 'develop' in sys.argv:
-        package_dir = {
-            '': paddle_binary_dir.split('/')[-1] + '/python',
-            # '':'build/python',
-            # The paddle.fluid.proto will be generated while compiling.
-            # So that package points to other directory.
-            'paddle.fluid.proto.profiler': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/platform',
-            'paddle.fluid.proto': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/framework',
-            'paddle.fluid': paddle_binary_dir.split('/')[-1]
-            + '/python/paddle/fluid',
-        }
+        package_dir = {'': 'python'}
     else:
         package_dir = {
             '': env_dict.get("PADDLE_BINARY_DIR") + '/python',
@@ -1119,7 +1151,7 @@ def get_package_data_and_package_dir():
 
 def get_headers():
     headers = (
-        # paddle level api headers
+        # paddle level api headers (high level api, for both training and inference)
         list(find_files('*.h', paddle_source_dir + '/paddle'))
         + list(find_files('*.h', paddle_source_dir + '/paddle/phi/api'))
         + list(  # phi unify api header
@@ -1131,73 +1163,67 @@ def get_headers():
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
         )
-        + list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi')
-        )  # phi common headers
-        # phi level api headers (low level api)
+        # phi level api headers (low level api, for training only)
         + list(  # phi extension header
+            find_files('*.h', paddle_source_dir + '/paddle/phi')
+        )
+        + list(  # phi include header
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
             )
         )
-        + list(  # phi include headers
+        + list(  # phi backends headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/backends',
                 recursive=True,
             )
         )
-        + list(  # phi backends headers
+        + list(  # phi core headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/core', recursive=True
             )
         )
-        + list(  # phi core headers
+        + list(  # phi infermeta headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/infermeta',
                 recursive=True,
             )
         )
-        + list(  # phi infermeta headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels')
-        )
-        + list(  # phi kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/sparse')
-        )
-        + list(  # phi sparse kernels headers
+        + list(  # phi kernel headers
             find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/selected_rows'
+                '*.h',
+                paddle_source_dir + '/paddle/phi/kernels',
+                recursive=True,
             )
         )
-        + list(  # phi selected_rows kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/strings')
-        )
-        + list(  # phi sparse kernels headers
-            find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
-            )
-        )
-        + list(  # phi kernel primitive api headers
-            # capi headers
+        # phi capi headers
+        + list(
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        + list(  # phi capi headers
-            # profiler headers
-            find_files(
-                'trace_event.h',
-                paddle_source_dir + '/paddle/fluid/platform/profiler',
-            )
-        )
-        + list(  # phi profiler headers
-            # utils api headers
+        + list(  # utils api headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
         )
-    )  # paddle utils headers
+        + list(  # phi profiler headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/profiler',
+                recursive=True,
+            )
+        )
+        + list(  # phi init headers
+            find_files(
+                'init_phi.h',
+                paddle_source_dir + '/paddle/fluid/platform',
+                recursive=True,
+            )
+        )
+    )
 
     jit_layer_headers = [
         'layer.h',
@@ -1470,6 +1496,7 @@ def main():
     # preparing parameters for setup()
     paddle_version = env_dict.get("PADDLE_VERSION")
     package_name = env_dict.get("PACKAGE_NAME")
+
     write_version_py(
         filename='{}/python/paddle/version/__init__.py'.format(
             paddle_binary_dir
@@ -1534,6 +1561,7 @@ def main():
             'install': InstallCommand,
             'egg_info': EggInfo,
             'install_lib': InstallLib,
+            'develop': DevelopCommand,
         },
         entry_points={
             'console_scripts': [
