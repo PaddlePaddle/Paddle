@@ -26,6 +26,8 @@ from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 from paddle.utils import unique_name
 
+from ..functional import layer_norm
+
 __all__ = [
     'FakeQuantAbsMax',
     'FakeQuantMovingAverageAbsMax',
@@ -40,6 +42,7 @@ __all__ = [
     'QuantizedRowParallelLinear',
     'QuantizedColumnParallelLinear',
     'QuantizedMatmul',
+    'QuantizedLayerNorm',
 ]
 
 _logger = get_logger(
@@ -1056,6 +1059,60 @@ class QuantizedMatmul(Layer):
         quant_y = self._fake_quant_y(y)
 
         out = paddle.matmul(quant_x, quant_y, transpose_x, transpose_y, name)
+        return out
+
+
+class QuantizedLayerNorm(Layer):
+    """
+    The computational logic of QuantizedLayerNorm is the same with LayerNorm.
+    The only difference is that its input is fake quantized.
+    """
+
+    def __init__(
+        self,
+        layer,
+        # layer=None,
+        weight_bits=8,
+        activation_bits=8,
+        moving_rate=0.9,
+        weight_quantize_type='abs_max',
+        activation_quantize_type='abs_max',
+        weight_pre_layer=None,
+        act_pre_layer=None,
+        weight_quant_layer=None,
+        act_quant_layer=None,
+    ):
+        super().__init__()
+        self.epsilon = layer._epsilon
+        self.normalized_shape = layer._normalized_shape
+        self.weight = layer.weight
+        self.bias = layer.bias
+
+        # For FakeQuant
+        if act_quant_layer is not None:
+            self._fake_quant_x = act_quant_layer()
+        else:
+            self._fake_quant_x = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+        self._act_preprocess_x = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+
+    def forward(
+        self,
+        x,
+    ):
+        if self._act_preprocess_x is not None:
+            x = self._act_preprocess_x(x)
+        quant_x = self._fake_quant_x(x)
+
+        out = layer_norm(
+            quant_x, self.normalized_shape, self.weight, self.bias, self.epsilon
+        )
         return out
 
 
