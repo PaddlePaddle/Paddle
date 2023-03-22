@@ -27,8 +27,12 @@ class TestFetchLoDTensorArray(unittest.TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main_program, startup_program):
                 i = layers.zeros(shape=[1], dtype='int64')
-                img = fluid.data(name='image', shape=[-1, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+                img = paddle.static.data(
+                    name='image', shape=[-1, 784], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                )
                 loss = simple_fc_net_with_inputs(img, label, class_num=10)
                 loss = simple_fc_net()
                 opt = fluid.optimizer.SGD(learning_rate=0.001)

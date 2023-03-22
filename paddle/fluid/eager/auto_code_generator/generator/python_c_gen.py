@@ -58,7 +58,9 @@ atype_to_parsing_function = {
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
-        assert False, f"Unable to find {atype} in atype_to_parsing_function."
+        raise AssertionError(
+            f"Unable to find {atype} in atype_to_parsing_function."
+        )
 
     return atype_to_parsing_function[atype]
 

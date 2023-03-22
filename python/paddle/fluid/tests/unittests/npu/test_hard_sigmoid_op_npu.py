@@ -122,7 +122,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out = paddle.nn.functional.hardsigmoid(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -140,12 +140,12 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.hardsigmoid(x_fp16)

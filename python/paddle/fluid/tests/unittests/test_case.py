@@ -602,14 +602,16 @@ class TestMutiTask(unittest.TestCase):
         INPUT_SIZE = 784
         EPOCH_NUM = 2
 
-        x = fluid.data(
+        x = paddle.static.data(
             name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
         )
-        y = fluid.data(
+        y = paddle.static.data(
             name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
         )
 
-        switch_id = fluid.data(name='switch_id', shape=[1], dtype='int32')
+        switch_id = paddle.static.data(
+            name='switch_id', shape=[1], dtype='int32'
+        )
 
         one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
         adam = optimizer.Adam(learning_rate=0.001)
