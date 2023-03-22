@@ -22,8 +22,8 @@ class ValueImpl;
 class OpResultImpl;
 class OpOperandImpl;
 }  // namespace detail
-
 class Operation;
+
 ///
 /// \brief OpOperand
 ///
