@@ -29,6 +29,7 @@ class ElementwiseMulOp(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
@@ -127,6 +128,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.dtype = np.uint16
 
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -171,6 +173,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
             'Y': np.random.rand(1).astype(np.float64),
@@ -184,6 +187,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
             'Y': np.random.random((100,)).astype("float64"),
@@ -200,6 +204,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.init_dtype()
         self.init_kernel_type()
         self.init_axis()
@@ -358,6 +363,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
             'Y': np.random.rand(1, 1, 100).astype(np.float64),
@@ -371,6 +377,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(30, 3, 1, 5).astype(np.float64),
             'Y': np.random.rand(30, 1, 4, 1).astype(np.float64),
@@ -384,6 +391,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
         self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
         self.inputs = {
             'X': np.random.rand(10, 10).astype(np.float64),
             'Y': np.random.rand(2, 2, 10, 10).astype(np.float64),

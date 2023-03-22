@@ -23,8 +23,6 @@ from typing import Any, List
 
 import numpy
 
-from paddle.fluid.dygraph.layers import Layer
-
 from .convert_operators import (
     convert_enumerate,
     convert_len,
@@ -304,6 +302,8 @@ def convert_call(func):
             converted_call = None
 
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
+        from paddle.nn import Layer
+
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)

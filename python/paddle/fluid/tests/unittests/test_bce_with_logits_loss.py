@@ -52,10 +52,10 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        logit = paddle.fluid.data(
+        logit = paddle.static.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         feed_dict = {"logit": logit_np, "label": label_np}
@@ -63,12 +63,12 @@ def test_static(
         pos_weight = None
         weight = None
         if pos_weight_np is not None:
-            pos_weight = paddle.fluid.data(
+            pos_weight = paddle.static.data(
                 name='pos_weight', shape=pos_weight_np.shape, dtype='float64'
             )
             feed_dict["pos_weight"] = pos_weight_np
         if weight_np is not None:
-            weight = paddle.fluid.data(
+            weight = paddle.static.data(
                 name='weight', shape=weight_np.shape, dtype='float64'
             )
             feed_dict["weight"] = weight_np
