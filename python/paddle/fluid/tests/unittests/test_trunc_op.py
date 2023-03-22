@@ -91,35 +91,9 @@ class TestTruncAPI(unittest.TestCase):
             self.assertRaises(TypeError, paddle.trunc, x)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestTruncFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "trunc"
-        self.python_api = paddle.trunc
-        self.init_dtype_type()
-        self.__class__.op_type = self.op_type
-        np.random.seed(2021)
-        x = np.random.random((20, 20)).astype(np.float32)
-        out = np.trunc(x)
-        self.inputs = {'X': x.astype(self.dtype)}
-        self.outputs = {'Out': out}
-
+class TestTruncFP16OP(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.float16
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=False)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=True
-        )
 
 
 @unittest.skipIf(
@@ -127,14 +101,13 @@ class TestTruncFP16OP(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestTruncBF16(OpTest):
+class TestTruncBF16OP(OpTest):
     def setUp(self):
         self.op_type = "trunc"
         self.python_api = paddle.trunc
         self.init_dtype_type()
-        self.__class__.op_type = self.op_type
         np.random.seed(2021)
-        x = np.random.random((20, 20)).astype(np.float32)
+        x = np.random.random((20, 20)).astype(np.float64)
         out = np.trunc(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
@@ -144,13 +117,11 @@ class TestTruncBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=False)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=True
-        )
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
