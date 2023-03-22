@@ -48,6 +48,8 @@ Makefile
 .test_env/
 .cache/
 third_party/
+python/paddle/fluid/tests/unittests/collective/CMakeLists.txt
+python/paddle/fluid/tests/unittests/collective/*/CMakeLists.txt
 
 *~
 bazel-*
@@ -99,8 +101,3 @@ paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 python/paddle/fluid/incubate/fleet/parameter_server/pslib/ps_pb2.py
-
-# collective unit tests CMakeLists are not needed to be wrte manually
-python/paddle/fluid/tests/unittests/collective/CMakeLists.txt
-python/paddle/fluid/tests/unittests/collective/fleet/CMakeLists.txt
-python/paddle/fluid/tests/unittests/collective/multinode/CMakeLists.txt
