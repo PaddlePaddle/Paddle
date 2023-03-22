@@ -20,6 +20,7 @@ from utils import TOLERANCE
 import paddle
 import paddle.tensor as tensor
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 
 def generate_data(shape, dtype="float32"):
@@ -99,7 +100,7 @@ class TestCompositeMean(unittest.TestCase):
             # Ensure that reduce_mean in original block
             self.assertTrue('reduce_mean' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that reduce_mean is splitted into small ops
@@ -173,7 +174,7 @@ class TestCompositeMeanPrimBackward(unittest.TestCase):
             x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()

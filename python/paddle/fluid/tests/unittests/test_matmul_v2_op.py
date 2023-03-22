@@ -377,6 +377,8 @@ create_test_fp16_class(TestMatMulOp14)
 create_test_fp16_class(TestMatMulOp15)
 create_test_fp16_class(TestMatMulOp16)
 create_test_fp16_class(TestMatMulOp17)
+create_test_fp16_class(TestMatMulOpBroadcast1)
+create_test_fp16_class(TestMatMulOpBroadcast2)
 
 # --------------------test matmul bf16--------------------
 
@@ -462,8 +464,12 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+            input_x = paddle.static.data(
+                name="input_x", shape=[4, 3], dtype="float32"
+            )
+            input_y = paddle.static.data(
+                name="input_y", shape=[3, 4], dtype="float32"
+            )
 
             result = paddle.matmul(input_x, input_y)
 

@@ -176,7 +176,7 @@ class TestPadAPI(unittest.TestCase):
             mode = "constant"
             value = 0
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             result1 = F.pad(
                 x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
             )
@@ -454,7 +454,7 @@ class TestPad3dOpNpuError(unittest.TestCase):
         def test_value():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 1, 1, 1, 1], value=1, mode='constant')
             place = paddle.NPUPlace()
             exe = Executor(place)
@@ -463,7 +463,7 @@ class TestPad3dOpNpuError(unittest.TestCase):
         def test_mode_1():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 1, 1, 1, 1], mode='reflect')
             place = paddle.NPUPlace()
             exe = Executor(place)
@@ -472,7 +472,7 @@ class TestPad3dOpNpuError(unittest.TestCase):
         def test_mode_2():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 1, 1, 1, 1], mode='replicate')
             place = paddle.NPUPlace()
             exe = Executor(place)
@@ -481,7 +481,7 @@ class TestPad3dOpNpuError(unittest.TestCase):
         def test_mode_3():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 1, 1, 1, 1], mode='circular')
             place = paddle.CPUPlace()
             exe = Executor(place)

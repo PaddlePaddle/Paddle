@@ -405,14 +405,16 @@ class TestLinearInterpOpError(unittest.TestCase):
             with program_guard(Program(), Program()):
 
                 def input_shape_error():
-                    x1 = fluid.data(name="x1", shape=[1], dtype="float32")
+                    x1 = paddle.static.data(
+                        name="x1", shape=[1], dtype="float32"
+                    )
                     out1 = paddle.nn.Upsample(
                         size=[256], data_format='NCW', mode='linear'
                     )
                     out1_res = out1(x1)
 
                 def data_format_error():
-                    x2 = fluid.data(
+                    x2 = paddle.static.data(
                         name="x2", shape=[1, 3, 128], dtype="float32"
                     )
                     out2 = paddle.nn.Upsample(
@@ -421,7 +423,7 @@ class TestLinearInterpOpError(unittest.TestCase):
                     out2_res = out2(x2)
 
                 def out_shape_error():
-                    x3 = fluid.data(
+                    x3 = paddle.static.data(
                         name="x3", shape=[1, 3, 128], dtype="float32"
                     )
                     out3 = paddle.nn.Upsample(

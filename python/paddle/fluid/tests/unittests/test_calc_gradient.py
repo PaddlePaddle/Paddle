@@ -86,7 +86,7 @@ class TestDoubleGrad(unittest.TestCase):
 class TestGradientWithPrune(unittest.TestCase):
     def test_prune(self):
         with paddle.fluid.scope_guard(paddle.static.Scope()):
-            x = fluid.data(name='x', shape=[3], dtype='float32')
+            x = paddle.static.data(name='x', shape=[3], dtype='float32')
             x.stop_gradient = False
             x1, x2, x3 = paddle.split(x, axis=0, num_or_sections=3)
             y = x1 * 2
