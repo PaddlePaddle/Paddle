@@ -1624,6 +1624,23 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1732,11 +1749,9 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                if actual_np.dtype == np.uint16:
+                    if expect_np.dtype in [np.float32, np.float64]:
+                        actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1789,6 +1804,62 @@ class OpTest(unittest.TestCase):
                         )
                     self.op_test.disable_cal_ref_output()
 
+            def _compare_numpy(self, name, actual_np, expect_np):
+                if (
+                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
+                    == 0
+                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
+                    == 0
+                ):
+                    pass
+                else:
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
+                    self.op_test.assertTrue(
+                        np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                        ),
+                        "Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name,
+                    )
+
+            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16:
+                    self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16:
+                    self.rtol = 1.0e-3
+                else:
+                    self.rtol = 1.0e-5
+                if self.op_test.is_bfloat16_op():
+                    if actual_np.dtype == np.uint16:
+                        actual_np = convert_uint16_to_float(actual_np)
+                    if expect_np.dtype == np.uint16:
+                        expect_np = convert_uint16_to_float(expect_np)
+                return actual_np, expect_np
+
             def find_actual_value(self, name):
                 with fluid.dygraph.base.guard(place=place):
                     imperative_actual = find_imperative_actual(
@@ -1809,23 +1880,6 @@ class OpTest(unittest.TestCase):
                     )
                     return imperative_expect, imperative_expect_t
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    self.rtol = 1.0e-2
-                elif actual_np.dtype == np.float16:
-                    self.rtol = 1.0e-3
-                else:
-                    self.rtol = 1.0e-5
-                if self.op_test.is_bfloat16_op():
-                    if actual_np.dtype == np.uint16:
-                        actual_np = convert_uint16_to_float(actual_np)
-                    if expect_np.dtype == np.uint16:
-                        expect_np = convert_uint16_to_float(expect_np)
-                return actual_np, expect_np
-
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
                 with fluid.dygraph.base.guard(place=place):
@@ -1839,31 +1893,6 @@ class OpTest(unittest.TestCase):
                         + ") has different lod at "
                         + str(place)
                         + " in dygraph mode",
-                    )
-
-            def _compare_numpy(self, name, actual_np, expect_np):
-                if (
-                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
-                    == 0
-                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
-                    == 0
-                ):
-                    pass
-                else:
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                            equal_nan=equal_nan,
-                        ),
-                        "Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name,
                     )
 
             def _is_skip_name(self, name):

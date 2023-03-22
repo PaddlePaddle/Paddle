@@ -77,8 +77,13 @@ def _apply_collective_grads_eager(
     grad_vars = []
 
     for param in parameters:
+        g_var = None
         if param.trainable and (param._grad_ivar() is not None):
             g_var = param._grad_ivar()
+        if param.trainable and hasattr(param, "main_grad"):
+            assert param._grad_ivar() is None, "param.grad is not None"
+            g_var = param.main_grad
+        if g_var is not None:
             assert (
                 not g_var.is_sparse()
             ), "Now, it doesn't support sparse parameters"
