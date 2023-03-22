@@ -9,7 +9,7 @@ if sys.argv[-1] in sys.argv[:-1]:
     print(1)' $* $testlist`
 
     if [[ ! $res == 1 ]];then
-        num=`python tools/gen_ut_cmakelists.py -f $testlist -o|grep 'modified/new:'|wc -l`
+        num=`python tools/gen_ut_cmakelists.py -f $testlist -o true|grep 'modified/new:'|wc -l`
         if [[ $num -gt 0 ]];then
             echo $cmake is modified but $testlist is not. 1>&2
             changed_cmake_but_not_csv=1
