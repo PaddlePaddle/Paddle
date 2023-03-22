@@ -29,8 +29,7 @@ struct ZeroOrderFunctor {
  public:
   __device__ T operator()(const T& x, const T& y) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    return static_cast<T>((static_cast<MPType>(x) - static_cast<MPType>(y)) !=
-                          static_cast<MPType>(0));
+    return static_cast<T>(static_cast<MPType>(x - y) != static_cast<MPType>(0));
   }
 };
 
@@ -41,8 +40,7 @@ struct OtherOrderFunctor {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType mptx = static_cast<MPType>(x);
     MPType mpty = static_cast<MPType>(y);
-    MPType mp_order_ = static_cast<MPType>(p_order_);
-    return static_cast<T>(pow(abs(mptx - mpty), mp_order_));
+    return static_cast<T>(pow(abs(mptx - mpty), static_cast<MPType>(p_order_)));
   }
 
  private:
@@ -106,7 +104,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
   MPType min_val = static_cast<MPType>(1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    min_val = min(min_val, static_cast<MPType>(abs(x[i] - y[i])));
+    min_val = min(min_val, abs(static_cast<MPType>(x[i] - y[i])));
   }
 
   __syncthreads();
@@ -163,7 +161,7 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      T p_order = static_cast<T>(static_cast<MPType>(p));
+      T p_order = static_cast<T>(p);
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
