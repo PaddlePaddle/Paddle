@@ -269,7 +269,7 @@ if stop_gradient of y is true, dy is None who is matmul_grad's out_put, ddy is
 None, so dx = ddy * dout should be None.
 */
 void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
-                                  const AutogradMeta* fwd_in_other_meta,
+                                  const AutogradMeta* fwd_out_meta,
                                   size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
   PADDLE_ENFORCE_LE(
@@ -286,13 +286,13 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
   }
   auto& meta = metas[0];
   // Set Stop_gradient
-  if (fwd_in_meta && !fwd_in_meta->StopGradient() && fwd_in_other_meta) {
+  if (fwd_in_meta && !fwd_in_meta->StopGradient() && fwd_out_meta) {
     meta.SetStopGradient(false);
   } else {
     meta.SetStopGradient(true);
   }
   // Set Adj Edges
-  if (fwd_in_meta && !fwd_in_meta->StopGradient() && fwd_in_other_meta) {
+  if (fwd_in_meta && !fwd_in_meta->StopGradient() && fwd_out_meta) {
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(

@@ -1172,6 +1172,38 @@ class TestDygraphDoubleGradMatmul(TestCase):
                 )
     '''
 
+    def test_value_error(self):
+        def test():
+            import paddle
+            import paddle.nn as nn
+
+            model = nn.Sequential(nn.Linear(3, 4))
+
+            x = paddle.randn([4, 1])
+            y = paddle.randn([4, 1])
+            z = paddle.randn([4, 1])
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z.stop_gradient = False
+            out = model(paddle.concat((x, y, z), axis=1))
+
+            data = {
+                "x": x,
+                "y": y,
+                "z": z,
+                "u": out[:, 0:1],
+                "v": out[:, 1:2],
+                "w": out[:, 2:3],
+                "p": out[:, 3:4],
+            }
+
+            v = out[:, 1:2]
+            z = paddle.grad(v, x, create_graph=True)[0]
+            zz = paddle.grad(z, x, create_graph=True)[0]
+
+        with self.assertRaises(ValueError):
+            test()
+
 
 if __name__ == '__main__':
     unittest.main()
