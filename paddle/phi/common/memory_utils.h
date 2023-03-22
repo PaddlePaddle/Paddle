@@ -317,8 +317,10 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
         nullptr,
-        phi::errors::Unavailable("memory_method_ in MemoryUtils is not "
-                                 "initiazed yet. You need init it first."));
+        phi::errors::Unavailable(
+            "memory_method_ in MemoryUtils is not "
+            "initiazed yet. You need init it first. If you compiled with "
+            "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
  private:
