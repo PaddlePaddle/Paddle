@@ -47,6 +47,14 @@ class CutlassTeller {
       int kw = filter_tensor.dims()[3];
       auto act_type = op_desc->GetAttrIfExists<std::string>("activation");
       bool has_residual = op_desc->Input("ResidualData").size() >= 1UL;
+
+      // For convience, we only support EXPLICIT
+      auto padding_algorithm =
+          op_desc->GetAttrIfExists<std::string>("padding_algorithm");
+      if (padding_algorithm != "EXPLICIT") {
+        return false;
+      }
+
       if (!Conv2dCanSupport(
               oc, kc, kh, kw, groups, act_type, device_id, has_residual)) {
         return false;
