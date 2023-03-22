@@ -2052,10 +2052,7 @@ def assign(x, output=None):
             )
             if output is None:
                 output = helper.create_variable_for_type_inference(
-                    dtype=input.dtype,
-                    stop_gradient=False,
-                    shape=None,
-                    type=input.type,
+                    dtype=input.dtype
                 )
             helper.append_op(
                 type='assign', inputs={'X': [input]}, outputs={'Out': [output]}

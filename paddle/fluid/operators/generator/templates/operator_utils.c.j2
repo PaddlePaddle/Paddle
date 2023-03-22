@@ -392,6 +392,11 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
       {%- endif %}
 };
 
+{% if op["op_name"] is has_infer_var_type_func %}
+{% set infer_var_type_func_str = op["op_name"] | to_infer_var_type_func %}
+{{infer_var_type_func_str}}
+{% endif %}
+
 DECLARE_INFER_SHAPE_FUNCTOR({{op["op_name"]}}, {{op["op_name"] | to_pascal_case}}InferShapeFunctor,
                             PD_INFER_META(phi::{{op["infer_meta"]["func"]}}));
 {# inplace inferer #}
@@ -428,6 +433,9 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% endif %}
 {% if op is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
+{% endif %}
+{% if name is has_infer_var_type_func %}
+                  ops::{{name | to_pascal_case}}InferVarType,
 {% endif %}
 {% if "backward_composite" in op and op["backward_composite"] is not none %}
                   ops::{{op["backward_composite"] | to_composite_grad_opmaker_name}},

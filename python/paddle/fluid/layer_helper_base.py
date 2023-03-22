@@ -451,11 +451,7 @@ class LayerHelperBase:
             )
 
     def create_variable_for_type_inference(
-        self,
-        dtype,
-        stop_gradient=False,
-        shape=None,
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        self, dtype, stop_gradient=False, shape=None
     ):
         """Create a temporary variable that should be type inferred layer.
 
@@ -474,7 +470,7 @@ class LayerHelperBase:
             ),
             dtype=dtype,
             shape=shape,
-            type=type,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=stop_gradient,
         )

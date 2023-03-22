@@ -21,6 +21,7 @@ import yaml
 from filters import (
     cartesian_prod_mapping,
     to_composite_grad_opmaker_name,
+    to_infer_var_type_func,
     to_input_name,
     to_int_array_tensor_name,
     to_int_array_tensors_name,
@@ -34,6 +35,7 @@ from filters import (
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests_utils import (
+    has_infer_var_type_func,
     is_base_op,
     is_composite_op,
     is_initializer_list,
@@ -63,11 +65,13 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
+env.filters["to_infer_var_type_func"] = to_infer_var_type_func
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
+env.tests["has_infer_var_type_func"] = has_infer_var_type_func
 env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 

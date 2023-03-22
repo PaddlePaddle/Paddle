@@ -29,6 +29,24 @@ from type_mapping import (
     sr_output_types_map,
 )
 
+infer_var_type_func_map = {
+    "assign": '''
+class AssignInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+    '''
+}
+
+
+def to_infer_var_type_func(op_name):
+    assert (
+        op_name in infer_var_type_func_map
+    ), "op {} has not var_type_func.".format(op_name)
+    return infer_var_type_func_map[op_name]
+
 
 def quote(s):
     return '"{}"'.format(s)
