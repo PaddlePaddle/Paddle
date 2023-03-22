@@ -204,12 +204,6 @@ using CudaELUGradNegativeAlphaFunctor =
 DEFINE_ACTIVATION_CUDA_KERNEL(SoftRelu,
                               CudaSoftReluFunctor,
                               CudaSoftReluGradFunctor)
-DEFINE_ACTIVATION_CUDA_KERNEL(Softsign,
-                              phi::funcs::CudaSoftsignFunctor,
-                              phi::funcs::CudaSoftsignGradFunctor)
-DEFINE_ACTIVATION_CUDA_KERNEL(Relu6,
-                              phi::funcs::CudaRelu6Functor,
-                              phi::funcs::CudaRelu6GradFunctor)
 
 }  // namespace operators
 }  // namespace paddle
