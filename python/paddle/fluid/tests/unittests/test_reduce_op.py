@@ -377,6 +377,16 @@ class TestProdOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
+class TestProdOpFp16(TestProdOp):
+    def init_data_type(self):
+        self.data_type = "float16"
+
+
+class TestProdOpFp64(TestProdOp):
+    def init_data_type(self):
+        self.data_type = "float64"
+
+
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = paddle.prod
@@ -426,7 +436,6 @@ class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
-        self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(

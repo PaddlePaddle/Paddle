@@ -1096,6 +1096,7 @@ void prod_grad(const Tensor& x,
   }
 }
 
+template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     by_pass<T>(out_grad, x_grad);
