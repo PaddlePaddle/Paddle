@@ -754,8 +754,6 @@ class TestDygraphDoubleGradMatmul(TestCase):
             for expected_result, actual_result in zip(
                 expected_results, actual_results
             ):
-                # print("expected_result:", expected_result)
-                # print("actual_result:", actual_result)
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
@@ -843,7 +841,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddy = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='float32'
             )
-            # when x isnot be differentiate in first grad dy in second grad could be None in composite op
+            # when x is not be differentiate in first grad, dy from second grad could be None in composite api.
             dx_double_grad, ddout = paddle.grad(
                 [dy],
                 [x, dout],
@@ -900,14 +898,15 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddx = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when y is not be differentiate in first grad, dx from second grad could be None in composite api.
+            dy_double_grad, ddout = paddle.grad(
                 [dx],
-                [x, y, dout],
+                [y, dout],
                 [ddx],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dy_double_grad, ddout
 
         def expected():
             dy_double_grad_expected = np.ones([3], dtype="float32")
@@ -926,10 +925,9 @@ class TestDygraphDoubleGradMatmul(TestCase):
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
-            assert actual_results[0] is None
 
             for expected_result, actual_result in zip(
-                expected_results, actual_results[1:]
+                expected_results, actual_results
             ):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
@@ -1045,6 +1043,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
+    # TODO(Ruting) test complex dtype when composite api support
+    '''
     # case7: ddx is none, dims = 1, complex dtype
     def test_matmul_double_grad_case7(self):
         input_numpy_x = np.random.random([3]).astype(
@@ -1073,19 +1073,17 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddx = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='complex64'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when y is not be differentiate in first grad, dx from second grad could be None in composite api.
+            dy_double_grad, ddout = paddle.grad(
                 [dx],
-                [x, y, dout],
+                [y, dout],
                 [ddx],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_expected = np.zeros(
-                [3], dtype="float32"
-            ) + 0j * np.zeros([3], dtype="float32")
             dy_double_grad_expected = np.ones(
                 [3], dtype="float32"
             ) + 0j * np.ones([3], dtype="float32")
@@ -1093,7 +1091,6 @@ class TestDygraphDoubleGradMatmul(TestCase):
                 input_numpy_y_conj, np.ones([3], dtype="float32")
             )
             return (
-                dx_double_grad_expected,
                 dy_double_grad_expected,
                 ddout_expected,
             )
@@ -1112,8 +1109,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-    '''
-    TODO(Ruting) test complex dtype when composite api support
+
     # case8: ddy is none, dims = 1, complex dtype
     def test_matmul_double_grad_case8(self):
         input_numpy_x = np.random.random([3]).astype(

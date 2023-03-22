@@ -90,11 +90,9 @@ class TestDygraphTripleGradMatmul(TestCase):
 
         x_grad_ref = np.ones([3, 3]) * 0.0
         assert x.grad is None
-        # np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
         y_grad_ref = np.ones([3, 3]) * 0.0
         assert y.grad is None
-        # np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
         new_out_g_ref = np.ones([3, 3]) * 3.0
         np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
@@ -102,7 +100,6 @@ class TestDygraphTripleGradMatmul(TestCase):
         new_x_g_g_ref = np.ones([3, 3]) * 0.0
         new_y_g_g_ref = np.ones([3, 3]) * 3.0
         assert new_x_g_g.grad is None
-        # np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
         np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 

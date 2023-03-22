@@ -1002,8 +1002,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     meta_name = GetAutoGradMetaName(
                         special_GradOutMeta[forward_api_name][name]
                     )
-                    print("&&&&&&------forward api name:", forward_api_name)
-                    print("&&&&&&------meta name:", meta_name)
                     set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
                 else:
                     set_grad_out_meta = (
