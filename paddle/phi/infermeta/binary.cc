@@ -1287,6 +1287,22 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void FusedDropoutAddInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const Scalar& p,
+                              bool is_test,
+                              const std::string& mode,
+                              int seed,
+                              bool fix_seed,
+                              MetaTensor* out,
+                              MetaTensor* seed_offset) {
+  out->share_meta(x);
+  if (seed_offset) {
+    seed_offset->set_dims({2});
+    seed_offset->set_dtype(DataType::INT64);
+  }
+}
+
 // Used in FusedMatmulInferMeta
 static std::vector<int64_t> GetInputShape(phi::DDim dim,
                                           std::vector<int> shape,

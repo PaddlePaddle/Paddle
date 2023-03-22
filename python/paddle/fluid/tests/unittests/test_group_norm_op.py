@@ -364,11 +364,15 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
     paddle.enable_static()
 
     def test_case1(self):
-        data1 = fluid.data(name='data1', shape=[None, 3, 3, 4], dtype='float64')
+        data1 = paddle.static.data(
+            name='data1', shape=[None, 3, 3, 4], dtype='float64'
+        )
         out1 = paddle.static.nn.group_norm(
             input=data1, groups=2, data_layout="NHWC"
         )
-        data2 = fluid.data(name='data2', shape=[None, 4, 3, 3], dtype='float64')
+        data2 = paddle.static.data(
+            name='data2', shape=[None, 4, 3, 3], dtype='float64'
+        )
         out2 = paddle.static.nn.group_norm(
             input=data2, groups=2, data_layout="NCHW"
         )
@@ -399,7 +403,9 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
 class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
-        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+        data = paddle.static.data(
+            name='data', shape=[None, 3, 3, 4], dtype="float64"
+        )
 
         def attr_data_format():
             out = paddle.static.nn.group_norm(

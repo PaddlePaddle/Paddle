@@ -2072,9 +2072,9 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
 
-          x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
+          x = paddle.static.data(name="x", shape=[-1, 23, 48], dtype='float32')
           print(x.grad_name) # output is ``x@GRAD``
 
         """

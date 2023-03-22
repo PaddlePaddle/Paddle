@@ -43,7 +43,9 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         self.initParameters()
 
     def build_network(self, places):
-        input_data = fluid.data(shape=self.shape, dtype='float32', name="input")
+        input_data = paddle.static.data(
+            shape=self.shape, dtype='float32', name="input"
+        )
         loader = fluid.io.DataLoader.from_generator(
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )

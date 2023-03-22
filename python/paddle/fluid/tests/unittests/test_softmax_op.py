@@ -124,6 +124,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.init_kernel_type()
 
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
@@ -462,7 +463,7 @@ class TestSoftmaxAPI(unittest.TestCase):
 
     def test_static_check(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, 'float32')
+            x = paddle.static.data('X', self.x_np.shape, 'float32')
             out1 = self.softmax(x)
             m = paddle.nn.Softmax()
             out2 = m(x)
@@ -508,12 +509,12 @@ class TestSoftmaxAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, self.softmax, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(TypeError, self.softmax, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[2, 3], dtype='float16'
             )
             self.softmax(x_fp16)
