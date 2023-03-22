@@ -462,7 +462,7 @@ def squeeze2_composite(x, axis):
     if len(axis) == 0:
         dims = set(range(rank))
     else:
-        dims = set([ax % rank for ax in axis])
+        dims = {ax % rank for ax in axis}
     new_shape = []
     for d, s in enumerate(x.shape):
         if not (s == 1 and (d in dims)):

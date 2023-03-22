@@ -430,7 +430,7 @@ class DataParallelOptimizationPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            grad_names = set([grad.name for grad in group.gradients])
+            grad_names = {grad.name for grad in group.gradients}
             return len(vars_.intersection(grad_names)) > 0
 
         for i, op in enumerate(ops):

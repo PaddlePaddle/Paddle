@@ -2207,7 +2207,7 @@ def _get_output_names(cur_block, targets):
     """
 
     block = targets[0].block if targets else cur_block
-    current_output_names = set([out.name for out in targets])
+    current_output_names = {out.name for out in targets}
 
     # 1. If `targets` in cur_block or the ancestral block of `cur_block`
     if block.idx == cur_block.idx or _is_ancestor_block(block, cur_block):
@@ -2277,7 +2277,7 @@ def _find_op_path_(
         The forward op path of block corresponding to backward op.
     """
 
-    input_names = set([inp.name for inp in inputs])
+    input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
         op_path_dict = dict()
