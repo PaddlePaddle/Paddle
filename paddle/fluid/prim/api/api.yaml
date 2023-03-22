@@ -23,6 +23,7 @@
 - concat
 - elementwise_pow
 - floor
+- gather
 - gather_nd
 - log
 - max
