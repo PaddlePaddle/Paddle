@@ -147,6 +147,21 @@ class TestCumprodFP16Op(TestCumprod):
     def init_dtype(self):
         self.dtype = np.float16
 
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        self.out = np.cumprod(self.x, axis=dim)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim}
+
 
 # test float32 case.
 class TestCumprod_float32(TestCumprod):
@@ -186,7 +201,7 @@ class TestCumprodAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('X', self.shape, dtype=self.dtype)
+                x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
                 out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])
