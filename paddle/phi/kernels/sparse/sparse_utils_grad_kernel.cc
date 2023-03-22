@@ -48,7 +48,8 @@ PD_REGISTER_KERNEL(values_coo_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -92,7 +93,8 @@ PD_REGISTER_KERNEL(values_coo_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 PD_REGISTER_KERNEL(coo_to_dense_grad,
