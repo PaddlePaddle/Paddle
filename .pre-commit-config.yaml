@@ -102,14 +102,6 @@ repos:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
-# For CMake files
--   repo: local
-    hooks:
-    -   id: auto-generate-cmakelists
-        name: auto-generate-cmakelists
-        entry: bash ./tools/gen_ut_cmakelists.hook
-        language: system
-        files: unittests/collective/.*(testslist.csv|CMakeLists.txt)$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
