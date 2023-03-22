@@ -101,5 +101,27 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetSgdExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->IndicateVarDataType(ctx, "Param");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  const auto* param_var = ctx.InputVar("Param");
+  const auto* grad_var = ctx.InputVar("Grad");
+
+  // supported cases
+  bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                 grad_var->IsType<phi::SelectedRows>();
+  bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                              grad_var->IsType<phi::DenseTensor>();
+  if (!(dense_param_sparse_grad || dense_param_and_grad)) {
+    op_ptr->SetDnnFallback(true);
+  }
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle
