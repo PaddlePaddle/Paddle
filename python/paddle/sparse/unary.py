@@ -719,6 +719,7 @@ def isnan(x, name=None):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             format = "coo"
             np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
@@ -731,12 +732,12 @@ def isnan(x, name=None):
 
             sparse_out = paddle.sparse.isnan(sparse_x)
             print(sparse_out)
+            # Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
+            #        indices=[[0, 0, 1, 1],
+            #                 [1, 1, 1, 1],
+            #                 [0, 1, 0, 1]],
+            #        values=[False, False, False, True ])
 
-            #Tensor(shape=[2, 2, 2], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            # indices=[[0, 0, 1, 1],
-            #          [1, 1, 1, 1],
-            #          [0, 1, 0, 1]],
-            # values=[False, False, False, True ])
     """
     if in_dynamic_mode():
         return _C_ops.sparse_isnan(x)
