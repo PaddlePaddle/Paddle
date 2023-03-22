@@ -463,7 +463,6 @@ class TestCompositelayer_norm(unittest.TestCase):
                 self.compare_comp_forward()
 
 
-'''
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
@@ -763,7 +762,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
                     self.shape3s[t],
                 )
                 self.compare_backward()
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
