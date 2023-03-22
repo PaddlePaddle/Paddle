@@ -227,7 +227,7 @@ class TestKthvalueBP16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
         out, indices = cal_kthvalue(x, k=self.k, axis=self.axis, keepdim=True)
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_uint16(out), 'Indices': indices}
 
     def test_check_output(self):
         paddle.enable_static()
