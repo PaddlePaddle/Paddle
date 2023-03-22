@@ -30,6 +30,7 @@ class TestMeshgridOp(OpTest):
         self.op_type = "meshgrid"
         self.prim_op_type = "comp"
         self.python_api = meshgrid_wrapper
+        self.public_python_api = meshgrid_wrapper
         self.dtype = self.get_dtype()
         ins, outs = self.init_test_data()
         self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
