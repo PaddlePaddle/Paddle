@@ -28,6 +28,7 @@ class TestScatterOp(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 50)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 50)).astype("float32")
@@ -37,16 +38,19 @@ class TestScatterOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(
+            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+        )
 
 
 class TestScatterOp0(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -57,16 +61,19 @@ class TestScatterOp0(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(
+            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+        )
 
 
 class TestScatterOp1(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         zeros_np = np.zeros([2, 3]).astype('float32')
         index_np = np.array([1, 1]).astype("int32")
@@ -80,10 +87,12 @@ class TestScatterOp1(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(
+            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -93,6 +102,7 @@ class TestScatterOp2(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -104,13 +114,19 @@ class TestScatterOp2(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+            self.check_output_with_place(
+                place, atol=1e-3, check_eager=False, check_prim=True
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_eager=False,
+                check_prim=True,
             )
 
 
@@ -121,6 +137,7 @@ class TestScatterOp3(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         zeros_np = np.zeros([2, 3]).astype('float32')
         index_np = np.array([1, 1]).astype("int32")
@@ -136,13 +153,19 @@ class TestScatterOp3(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+            self.check_output_with_place(
+                place, atol=1e-3, check_eager=False, check_prim=True
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_eager=False,
+                check_prim=True,
             )
 
 
@@ -150,6 +173,7 @@ class TestScatterOp4(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int64")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -159,10 +183,12 @@ class TestScatterOp4(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -172,6 +198,7 @@ class TestScatterOp5(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int64")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -183,13 +210,19 @@ class TestScatterOp5(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+            self.check_output_with_place(
+                place, atol=1e-3, check_eager=False, check_prim=True
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=False
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_eager=False,
+                check_prim=True,
             )
 
 
@@ -197,6 +230,8 @@ class TestScatterOp6(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         ref_np = np.ones((3, 50)).astype("float32")
         index_np = np.array([[1], [2]]).astype("int32")
         updates_np = np.random.random((2, 50)).astype("float32")
@@ -206,10 +241,12 @@ class TestScatterOp6(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(
+            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+        )
 
 
 class TestScatterAPI(unittest.TestCase):

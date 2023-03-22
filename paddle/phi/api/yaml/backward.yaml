@@ -1217,6 +1217,7 @@
   kernel :
     func : scatter_grad
   no_need_buffer : updates
+  composite: scatter_grad(index, updates, out_grad, overwrite, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad
   forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
