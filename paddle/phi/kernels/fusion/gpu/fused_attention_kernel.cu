@@ -83,32 +83,40 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // if transpose_qkv_wb is True
   // y: qkv's weight: [dim_embed, 3 * dim_embed]
 
-  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
-
-  phi::fusion::DropoutParam dropout_param2(dropout_rate,
-                                           dropout_implementation,
-                                           is_test,
-                                           dropout_fix_seed,
-                                           nullptr,
-                                           dropout_seed);
-  const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
-
-  auto &dropout_implementation_1 = attn_dropout_implementation;
-  bool is_upscale_in_train_1 = (dropout_implementation_1 == "upscale_in_train");
-  phi::DenseTensor *seed_1 = nullptr;
-
   auto *x_p = const_cast<phi::DenseTensor *>(&x);
   auto *ln_scale_p = ln_scale.get_ptr();
   auto *ln_bias_p = ln_bias.get_ptr();
+
   auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
   auto *qkv_bias_p = qkv_bias.get_ptr();
   auto *cache_kv_p = cache_kv.get_ptr();
+
   auto *src_mask_p = src_mask.get_ptr();
   auto *out_linear_weight_p =
       const_cast<phi::DenseTensor *>(&out_linear_weight);
+
   auto *out_linear_bias_p = out_linear_bias.get_ptr();
+
   auto *ln_scale_2_p = ln_scale_2.get_ptr();
   auto *ln_bias_2_p = ln_bias_2.get_ptr();
+
+  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
+
+  const bool is_upscale_in_train =
+      (dropout_implementation == "upscale_in_train");
+  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                           0,
+                                           is_test,
+                                           is_upscale_in_train,
+                                           dropout_rate,
+                                           nullptr,
+                                           dropout_seed);
+
+  const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
+
+  bool is_upscale_in_train_1 =
+      (attn_dropout_implementation == "upscale_in_train");
+  phi::DenseTensor *seed_1 = nullptr;
 
   // get data ptr for qkv part.
   const auto input_x_dims = x_p->dims();
@@ -209,7 +217,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
       dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
 
   phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
-                                                   dropout_implementation_1,
+                                                   attn_dropout_implementation,
                                                    attn_dropout_rate,
                                                    is_upscale_in_train_1,
                                                    attn_dropout_fix_seed,

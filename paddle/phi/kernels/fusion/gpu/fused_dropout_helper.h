@@ -64,27 +64,6 @@ struct DropoutParam {
     seed_val = seed_val_;
   }
 
-  /**
-   * dropout_index: can be 0, 1, 2. 0 means there is only one dropout,
-   * 1 and 2 represent two dropout, the parameter name of dropout
-   * will be "dropout" + dropout_index + param name, such as dropout1_seed,
-   * dropout1_is_test.
-   */
-  DropoutParam(const float dropout_prob_,
-               const std::string dropout_implementation,
-               const bool is_test_,
-               const bool fix_seed_,
-               const phi::DenseTensor* tensor_seed_,
-               const int seed_val_) {
-    dropout_prob = dropout_prob_;
-    is_upscale_in_train = (dropout_implementation == "upscale_in_train");
-    is_test = is_test_;
-    fix_seed = fix_seed_;
-    tensor_seed = tensor_seed_;
-    seed_val = seed_val_;
-    this->tensor_seed = nullptr;
-  }
-
   int UpdateSeedAndIncrement(const phi::GPUContext& dev_ctx, const int offset) {
     uint64_t tmp_increment;
     phi::funcs::GetSeedDataAndIncrement(dev_ctx,
