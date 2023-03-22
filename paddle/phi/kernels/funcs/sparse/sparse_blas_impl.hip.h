@@ -14,6 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/backends/dynload/rocsparse.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/visit_type.h"
+
 namespace phi {
 namespace funcs {
 namespace sparse {
@@ -30,9 +40,9 @@ rocsparse_indextype GetGpuIndexType() {
 template <typename T>
 rocsparse_datatype GetGpuDataType() {
   if (std::is_same<T, float>::value) {
-    return rocsparse_datatype_f32r;
+    return rocsparse_datatype_f32_r;
   } else if (std::is_same<T, double>::value) {
-    return rocsparse_datatype_f64r;
+    return rocsparse_datatype_f64_r;
   }
 }
 
@@ -52,7 +62,7 @@ inline rocsparse_spmm_alg GetSpMMAlgorithm(const SparseCooTensor& x) {
 template <typename T, typename IntT>
 inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
-                                cusparseSpMatDescr_t* descriptor) {
+                                rocsparse_spmat_descr* descriptor) {
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
@@ -94,10 +104,12 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 
   if (batch_size > 1) {
 #if CUDA_VERSION >= 11080
+#if 0
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCooSetStridedBatch(
           *descriptor, batch_size, batch_nnz);
     });
+#endif
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
@@ -113,8 +125,8 @@ class RocSparseSpMatDescriptor {
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
-        mat_a.non_zero_indices().dtpe(), "Coo RocSparseSpMatDescriptor", ([&] {
-          CreateDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
+        x.non_zero_indices().dtype(), "Coo RocSparseSpMatDescriptor", ([&] {
+          CreateCooDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
     VLOG(6) << "Create coo rocsparse_spmat_descr " << &descriptor_;
   }
@@ -156,9 +168,9 @@ class RocSparseDnMatDescriptor {
     }
     int64_t ld = N;
     rocsparse_datatype ttype = GetGpuDataType<T>();
-    dev_ctx.CucsparseCall([&](rocsparse_handle handle) {
+    dev_ctx.CusparseCall([&](rocsparse_handle handle) {
       phi::dynload::rocsparse_create_dnmat_descr(
-          descriptor, M, N, ld, x.data(), ttype, rocsparse_order_row);
+          descriptor_, M, N, ld, x.data(), ttype, rocsparse_order_row);
     });
   }
 
@@ -210,16 +222,12 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   });
 
   // Allocate buffer
-  void* buffer;
-  hipMalloc(&buffer, buffer_size);
-  // does phi::memory_utils::Alloc() support hipMalloc()?
-#if 0
+
   phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
-      void* tmp_buffer_ptr = tmp_buffer->ptr();
-#endif
+  void* tmp_buffer_ptr = tmp_buffer->ptr();
   // Preprocess data
   dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
     phi::dynload::rocsparse_spmm(handle,
@@ -233,7 +241,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                  ttype,
                                  GetSpMMAlgorithm(mat_a),
                                  rocsparse_spmm_stage_preprocess,
-                                 buffer);
+                                 tmp_buffer_ptr);
   });
 
   // Performs the actual SpMM computation
@@ -249,9 +257,8 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                  ttype,
                                  GetSpMMAlgorithm(mat_a),
                                  rocsparse_spmm_stage_compute,
-                                 buffer);
+                                 tmp_buffer_ptr);
   });
-  hipFree(buffer);
 }
 }  // namespace sparse
 }  // namespace funcs

@@ -33,9 +33,12 @@ namespace dynload {
  *
  * note: default dynamic linked libs
  */
-#define PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP(__name) \
-  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
-  extern DynLoad__##__name __name
+#define ROCSPARSE_ROUTINE_EACH(__macro)   \
+  __macro(rocsparse_create_coo_descr);    \
+  __macro(rocsparse_destroy_spmat_descr); \
+  __macro(rocsparse_create_dnmat_descr);  \
+  __macro(rocsparse_destroy_dnmat_descr); \
+  __macro(rocsparse_spmm);
 
 #define ROCSPARSE_ROUTINE_EACH(__macro) __macro(rocsparse_spmm);
 
