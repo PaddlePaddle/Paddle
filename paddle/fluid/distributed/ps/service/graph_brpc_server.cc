@@ -510,7 +510,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   int sample_size = *reinterpret_cast<const int *>(request.params(2).c_str());
-  bool need_weight = *reinterpret_cast<const bool*>(request.params(3).c_str());
+  bool need_weight = *reinterpret_cast<const bool *>(request.params(3).c_str());
 
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
