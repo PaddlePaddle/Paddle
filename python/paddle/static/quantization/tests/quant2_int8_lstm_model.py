@@ -116,10 +116,9 @@ class TestLstmModelPTQ(unittest.TestCase):
             config.switch_ir_optim(True)
             config.enable_mkldnn()
             config.disable_mkldnn_fc_passes()  # fc passes caused dnnl error
+            config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
             config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
             if mode == "ptq":
-                # This pass to work properly, must be added before fc_fuse_pass
-                config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
                 config.enable_quantizer()
                 config.quantizer_config().set_quant_data(warmup_data)
                 config.quantizer_config().set_quant_batch_size(1)
@@ -244,7 +243,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         )
 
         (quant_hx_acc, quant_ctc_acc, quant_fps) = self.run_program(
-            quant_model + "_int8",
+            quant_model,
             infer_data,
             num_threads,
             mkldnn_cache_capacity,

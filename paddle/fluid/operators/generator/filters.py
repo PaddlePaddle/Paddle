@@ -65,6 +65,25 @@ def to_dense_input_type(s, optional=False):
         return dense_optional_input_types_map[s]
 
 
+def assert_dense_or_sr(input_type):
+    return (
+        "ctx.IsSelectedRowsInput"
+        if input_type == "selected_rows"
+        else "ctx.IsDenseTensorInput"
+    )
+
+
+def find_optinal_inputs_name(inputs):
+    optional_inputs_name = [
+        input["fluid_name"] for input in inputs if input["optional"] is True
+    ]
+    return optional_inputs_name
+
+
+def delete_last_underline(op_name):
+    return op_name if op_name[-1] != '_' else op_name[:-1]
+
+
 # ------------------------------ output  ----------------------------------
 def to_paddle_output_type(s):
     return output_type_map[s]
