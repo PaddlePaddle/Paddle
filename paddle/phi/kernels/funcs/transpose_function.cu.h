@@ -1480,10 +1480,9 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 
-    size_t key = phi::autotune::TransposeKey(
-        simplifier.GetSrcDims(),
-        simplifier.GetPerm(),
-        paddle::experimental::CppTypeToDataType<T>::Type());
+    size_t key = phi::autotune::TransposeKey(simplifier.GetSrcDims(),
+                                             simplifier.GetPerm(),
+                                             phi::CppTypeToDataType<T>::Type());
 
     tuner->Run(ctx,
                phi::autotune::AlgorithmType::kTranspose,
