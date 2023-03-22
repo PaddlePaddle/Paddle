@@ -414,6 +414,7 @@ class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.prim_op_type = "prim"
 
         self.init_data_type()
@@ -444,7 +445,8 @@ class TestProdOpFp64(TestProdOp):
 
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
-        self.python_api = paddle.prod
+        self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.op_type = "reduce_prod"
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random([]).astype("float64")}
@@ -465,6 +467,7 @@ class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
@@ -491,6 +494,7 @@ class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
