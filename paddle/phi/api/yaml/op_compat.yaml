@@ -759,6 +759,10 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
+- op : fused_transpose
+  extra :
+    attrs : [str data_format = "AnyLayout"]
+
 - op : gather
   backward : gather_grad
   extra :
@@ -1853,8 +1857,7 @@
     perm : axis
   extra :
     outputs : [XShape]
-    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
-              str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
