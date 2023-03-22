@@ -264,6 +264,10 @@ cc_library(
   fuse_relu_depthwise_conv_pass
   SRCS fuse_relu_depthwise_conv_pass.cc
   DEPS pass graph_pattern_detector)
+cc_library(
+  fused_feedforward_pass
+  SRCS fused_feedforward_pass.cc
+  DEPS pass graph_pattern_detector)
 
 set(GLOB_PASS_LIB
     ${INFER_IR_PASSES}

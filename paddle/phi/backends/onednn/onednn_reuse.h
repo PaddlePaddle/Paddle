@@ -60,6 +60,8 @@ static std::vector<int> TransposeToPermuteAxes(const std::vector<int>& axis) {
   return permute_axis;
 }
 
+// a trick is used here to fake transpose of out_md, so later it will be
+// "untransposed", leaving output data in plain format tag
 static std::vector<int64_t> FakeTransposeStrides(
     const std::vector<int64_t>& out_dims, const std::vector<int>& axis) {
   std::vector<int64_t> fake_strides(axis.size());
