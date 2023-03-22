@@ -583,17 +583,17 @@ class OpTest(unittest.TestCase):
                         if self.is_calc_ref and dtype == np.float16:
                             if isinstance(np_value[1], list):
                                 tensor.set_recursive_sequence_lengths(
-                                    np.array(np_value[1]).astype(np.float16)
+                                    np.array(np_value[1]).astype(np.float32)
                                 )
                             else:
                                 tensor.set_recursive_sequence_lengths(
-                                    np_value[1].astype(np.float16)
+                                    np_value[1].astype(np.float32)
                                 )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
                         if self.is_calc_ref and np_value.dtype == np.float16:
-                            tensor.set(np_value.astype(np.float16), place)
+                            tensor.set(np_value.astype(np.float32), place)
                         else:
                             tensor.set(np_value, place)
                     feed_map[name] = tensor
@@ -606,7 +606,7 @@ class OpTest(unittest.TestCase):
                         and self.inputs[var_name][1].dtype == np.float16
                     ):
                         tensor.set_recursive_sequence_lengths(
-                            self.inputs[var_name][1].astype(np.float16)
+                            self.inputs[var_name][1].astype(np.float32)
                         )
                     else:
                         tensor.set_recursive_sequence_lengths(
@@ -618,7 +618,7 @@ class OpTest(unittest.TestCase):
                         and self.inputs[var_name].dtype == np.float16
                     ):
                         tensor.set(
-                            self.inputs[var_name].astype(np.float16), place
+                            self.inputs[var_name].astype(np.float32), place
                         )
                     else:
                         tensor.set(self.inputs[var_name], place)
