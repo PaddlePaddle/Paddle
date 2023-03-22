@@ -519,7 +519,7 @@ PD_REGISTER_KERNEL(argsort,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
