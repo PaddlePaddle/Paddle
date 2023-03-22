@@ -567,6 +567,13 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
     mean and var are computed from groups
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     if data_layout == "NHWC":
         x = transpose(x, (0, 3, 1, 2))
     N, C, H, W = x.shape
@@ -575,12 +582,17 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     var_ = mean(x * x, axis=1, keepdim=True) - mean_ * mean_
     var_ = maximum(var_, zeros_like(var_))
     var_inv = 1 / sqrt(var_ + epsilon)
-    x = (x - mean_) * var_inv
-    x = reshape(x, (N, C, H, W)) * reshape(scale, (-1, 1, 1)) + reshape(
-        bias, (-1, 1, 1)
-    )
+    out = (x - mean_) * var_inv
+    out = reshape(out, (N, C, H, W))
+    if scale is not None:
+        out = out * reshape(scale, (-1, 1, 1))
+    if bias is not None:
+        out = out + reshape(bias, (-1, 1, 1))
     if data_layout == "NHWC":
-        x = transpose(out, (0, 2, 3, 1))
+        out = transpose(out, (0, 2, 3, 1))
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
-    return x, ret_mean_, ret_var_
+
+    if is_amp:
+        out = cast(out, "float16")
+    return out, ret_mean_, ret_var_
