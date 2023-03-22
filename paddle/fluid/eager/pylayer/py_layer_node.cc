@@ -155,9 +155,21 @@ GradNodePyLayer::operator()(
         grad_out.push_back({});
       } else {
         if (ctx->forward_input_tensor_is_duplicable[i]) {
-          grad_out.push_back(paddle::pybind::GetTensorListFromPyObject(obj));
+          grad_out.push_back(
+              paddle::pybind::GetTensorListFromPyObject(obj, true));
         } else {
-          grad_out.push_back({paddle::pybind::GetTensorFromPyObject(obj)});
+          if (paddle::pybind::PyCheckTensor(obj)) {
+            grad_out.push_back(
+                {paddle::pybind::UnSafeGetTensorFromPyObject(obj)});
+          } else if (obj == Py_None) {
+            VLOG(4) << "Got None for Tensor with pos: " << i;
+            grad_out.push_back({});
+          } else {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "argument must be "
+                "Tensor or None, but got %s",
+                reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+          }
         }
       }
     } else {
