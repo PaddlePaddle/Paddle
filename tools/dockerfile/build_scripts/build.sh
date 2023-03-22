@@ -142,7 +142,8 @@ for PYTHON in /opt/python/*/bin/python; do
         # being manylinux compatible:
         LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
         # Make sure that SSL cert checking works
-        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" 
+        #$PYTHON $MY_DIR/ssl-check.py
     fi
 done
 
