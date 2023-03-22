@@ -120,7 +120,7 @@ class TestMPBroadcastObj(TestDistMPTraning):
                 random.sample('zyxwvutsrqponmlkjihgfedcba', 5)
                 for i in range(batch_size)
             ]
-            batch = (img, img)
+            batch = (img, text)
 
             loss_a = self.train_batch(batch, model_a, optimizer_a, True)
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
