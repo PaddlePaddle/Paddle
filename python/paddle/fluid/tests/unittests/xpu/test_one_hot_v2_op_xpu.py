@@ -162,13 +162,13 @@ class TestOneHotOpApi(unittest.TestCase):
             [np.random.randint(0, depth - 1) for i in range(6)]
         ).reshape([6, 1])
         with fluid.dygraph.guard():
-            one_hot_label = fluid.one_hot(
-                input=fluid.dygraph.to_variable(label), depth=depth
+            one_hot_label = paddle.nn.functional.one_hot(
+                x=fluid.dygraph.to_variable(label), num_classes=depth
             )
 
     def _run(self, depth):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        one_hot_label = fluid.one_hot(input=label, depth=depth)
+        one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
         place = fluid.XPUPlace(0)
         label_data = np.array(
@@ -196,7 +196,9 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[4],
                     dtype="float32",
                 )
-                one_hot_label = fluid.one_hot(input=label, depth=4)
+                one_hot_label = paddle.nn.functional.one_hot(
+                    x=label, num_classes=4
+                )
 
             self.assertRaises(TypeError, test_bad_x)
 

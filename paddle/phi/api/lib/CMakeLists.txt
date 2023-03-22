@@ -1,23 +1,36 @@
-add_subdirectory(utils)
-
 if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -99,7 +112,7 @@ set(wrapped_infermeta_source_file
 
 # tensor and tensor operants file
 set(tensor_api_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_operants_gen.py)
 set(operants_base_file
@@ -289,7 +302,11 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_backends phi_enforce place init)
+  DEPS phi_backends phi_enforce place init phi_device_context)
+cc_library(
+  api_tensor_utils
+  SRCS tensor_utils.cc
+  DEPS phi_tensor_raw)
 
 cc_library(
   kernel_dispatch
@@ -323,6 +340,7 @@ cc_library(
        api_gen_utils
        phi_data_transform
        api_custom_impl
+       api_tensor_utils
        phi_profiler)
 cc_library(
   phi_bw_function_api

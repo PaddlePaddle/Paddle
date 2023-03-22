@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 
@@ -50,6 +49,19 @@ class TestFallback(unittest.TestCase):
         net_st = Net()
         output_dy = net_dy(self.x)
         output_st = paddle.jit.to_static(net_st)(self.x)
+        np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
+
+
+class TestLoad2(unittest.TestCase):
+    def test_name_load_nograd(self):
+        @paddle.no_grad()
+        def func(x):
+            x = paddle.shape(x)
+            return x
+
+        x = paddle.to_tensor([[3, 3], [1, 1]])
+        output_st = paddle.jit.to_static(func)(x)
+        output_dy = func(x)
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 

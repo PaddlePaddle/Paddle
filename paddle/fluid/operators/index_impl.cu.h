@@ -16,11 +16,11 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"

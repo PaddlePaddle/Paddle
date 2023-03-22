@@ -41,7 +41,12 @@ from paddle.fluid import core, framework
             {'Out': ['y']},
             set(),
             tuple(),
-            ('pow', 'scale', 'elementwise_mul'),
+            (
+                'elementwise_mul',
+                'fill_constant',
+                'elementwise_sub',
+                'elementwise_mul',
+            ),
         ),
         ('empty', {}, {'Out': ['y']}, set(), tuple(), tuple()),
     ),
@@ -75,7 +80,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
                 self.fwd, self.no_grad_var, self.grad_sub_block
             )[0]
         )
-        self.assertEquals(actual, self.desired_ops)
+        self.assertEqual(actual, self.desired_ops)
         core._set_prim_backward_enabled(False)
 
 

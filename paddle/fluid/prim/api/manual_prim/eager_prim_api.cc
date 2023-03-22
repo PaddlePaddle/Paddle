@@ -20,18 +20,17 @@ namespace paddle {
 namespace prim {
 
 template <>
-Tensor reshape<Tensor>(const Tensor& x, const IntArray& shape) {
-  VLOG(4) << "Eager Prim API reshape_ad_func call";
-  return ::reshape_ad_func(x, shape);
-}
-
-template <>
 Tensor full<Tensor>(const IntArray& shape,
                     const Scalar& value,
                     DataType dtype,
                     const Place& place) {
   VLOG(4) << "Eager Prim API full_ad_func call";
   return ::full_ad_func(shape, value, dtype, place);
+}
+
+template <>
+Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
+  return ::cast_ad_func(x, dtype);
 }
 }  // namespace prim
 }  // namespace paddle

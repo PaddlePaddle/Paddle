@@ -27,7 +27,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import global_var
-from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -145,7 +144,7 @@ class RunProgramOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         ]
 
     def get_param_grad_names(self):
@@ -395,7 +394,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',
@@ -463,7 +462,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         x = paddle.static.data(
             name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
-        emb = fluid.input.embedding(
+        emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(

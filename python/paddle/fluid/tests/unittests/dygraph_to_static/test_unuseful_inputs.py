@@ -33,7 +33,7 @@ def apply_to_static(support_to_static, model, image_shape=None):
 
 class Layer0(nn.Layer):
     def __init__(self, level):
-        super(Layer0, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 5)
         self._linear2 = nn.Linear(10, 5)
         self.layer1 = Layer1(level)
@@ -42,16 +42,16 @@ class Layer0(nn.Layer):
     def forward(self, x):
         out1 = self._linear1(x)
         out2 = self._linear2(x)
-        # out2.stop_gradient = True  如果stop_gradient不报错
+        # out2.stop_gradient = True not raise error
         a = [out1, out2]
         b = self.layer1(a)
-        # self.layer1(out1, out2)  也出错
+        # self.layer1(out1, out2) will raise error
         return b
 
 
 class Layer1(nn.Layer):
     def __init__(self, level):
-        super(Layer1, self).__init__()
+        super().__init__()
         self.level = level
         self._linear = nn.Linear(5, 2)
 

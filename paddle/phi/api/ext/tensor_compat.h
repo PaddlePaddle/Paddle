@@ -22,7 +22,6 @@ limitations under the License. */
 // cannot be included in paddle
 
 namespace paddle {
-using Tensor = experimental::Tensor;
 // using several Tensor initialize functions in paddle namespace
 using experimental::abs;
 using experimental::acos;

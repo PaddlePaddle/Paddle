@@ -26,6 +26,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
 
 DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -87,5 +88,8 @@ Event* PushEvent(const std::string& name,
 void PopEvent(const std::string& name,
               const EventRole role,
               const std::string attr = "none");
+
+void EnableOpInfoRecorder();
+void DisableOpInfoRecorder();
 
 }  // namespace phi

@@ -23,15 +23,14 @@
 
 DECLARE_bool(check_nan_inf);
 
-paddle::experimental::Tensor conv2d_ad_func(
-    const paddle::experimental::Tensor& input,
-    const paddle::experimental::Tensor& filter,
-    std::vector<int> strides,
-    std::vector<int> paddings,
-    std::string padding_algorithm,
-    std::vector<int> dilations,
-    int groups,
-    std::string data_format) {
+paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
+                              const paddle::Tensor& filter,
+                              std::vector<int> strides,
+                              std::vector<int> paddings,
+                              std::string padding_algorithm,
+                              std::vector<int> dilations,
+                              int groups,
+                              std::string data_format) {
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -41,8 +40,7 @@ paddle::experimental::Tensor conv2d_ad_func(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
     auto op_name = phi::TransToFluidOpName("conv2d");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{input}, {filter}};
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
@@ -71,8 +69,7 @@ paddle::experimental::Tensor conv2d_ad_func(
 
   if (egr::Controller::Instance().UseLayoutAutoTune()) {
     VLOG(5) << "Check and Prepare For LAYOUT";
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         tensors_vector = {{input}, {filter}};
 
     auto op_name = phi::TransToFluidOpName("conv2d");

@@ -21,7 +21,7 @@ from paddle.fluid import core
 
 
 def actual(primal, cotangent, axis, keep_dim):
-    core._set_prim_backward_enabled(False)
+    core.set_prim_eager_enabled(False)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
@@ -30,7 +30,7 @@ def actual(primal, cotangent, axis, keep_dim):
 
 
 def desired(primal, cotangent, axis, keep_dim):
-    core._set_prim_backward_enabled(True)
+    core.set_prim_eager_enabled(True)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
@@ -95,6 +95,18 @@ class TestSumGradComp(unittest.TestCase):
         np.testing.assert_allclose(
             actual=actual(self.primal, self.cotangent, [1, 3], False),
             desired=desired(self.primal, self.cotangent, [1, 3], False),
+            rtol=1e-6,
+            atol=0,
+        )
+
+    def test_sum_grad_comp_6(self):
+        self.primal = np.random.rand(3, 2, 5)
+        self.cotangent = np.random.rand(3, 1, 1)
+        paddle.disable_static()
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal, self.cotangent, [-2, -1], True),
+            desired=desired(self.primal, self.cotangent, [-2, -1], True),
             rtol=1e-6,
             atol=0,
         )

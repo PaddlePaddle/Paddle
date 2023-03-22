@@ -17,6 +17,10 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 namespace paddle {
@@ -109,6 +113,23 @@ class AssignGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class AssignCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
+
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Running assign_grad composite func";
+    prim::assign_grad<prim::DescTensor>(out_grad, dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
@@ -122,6 +143,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(assign,
                             PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(assign,
                   ops::AssignOp,
+                  ops::AssignCompositeGradOpMaker,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
                   ops::AssignOpProtoMaker,

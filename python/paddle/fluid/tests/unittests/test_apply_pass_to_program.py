@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.ir import apply_build_strategy
+from paddle.framework.ir import apply_build_strategy
 from paddle.nn import CrossEntropyLoss
 from paddle.vision.models import resnet50
 

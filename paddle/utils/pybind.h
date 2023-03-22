@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/optional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -23,10 +24,8 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* p_tensor_type;
-
 typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor tensor;
+  PyObject_HEAD paddle::Tensor tensor;
   // Weak references
   PyObject* weakrefs;
 } TensorObject;
@@ -39,11 +38,14 @@ typedef struct {
 bool PyCheckTensor(PyObject* obj);
 
 // Internal use only, to expose the Tensor type to Python.
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
+
+// Internal use only, switch tensor_operants_mode to phi
+void EnableTensorOperantsToPhiMode();
 
 }  // namespace pybind
 }  // namespace paddle
@@ -52,12 +54,12 @@ namespace pybind11 {
 namespace detail {
 
 template <>
-struct type_caster<paddle::experimental::Tensor> {
+struct type_caster<paddle::Tensor> {
  public:
-  PYBIND11_TYPE_CASTER(paddle::experimental::Tensor,
-                       _("paddle::experimental::Tensor"));
+  PYBIND11_TYPE_CASTER(paddle::Tensor, _("paddle::Tensor"));
 
   bool load(handle src, bool) {
+    paddle::pybind::EnableTensorOperantsToPhiMode();
     PyObject* obj = src.ptr();
     if (paddle::pybind::PyCheckTensor(obj)) {
       value = paddle::pybind::CastPyArg2Tensor(obj, 0);
@@ -66,12 +68,19 @@ struct type_caster<paddle::experimental::Tensor> {
     return false;
   }
 
-  static handle cast(const paddle::experimental::Tensor& src,
+  static handle cast(const paddle::Tensor& src,
                      return_value_policy /* policy */,
                      handle /* parent */) {
     return handle(paddle::pybind::ToPyObject(
         src, true /* return_py_none_if_not_initialize */));
   }
 };
+
+// Pybind11 bindings for optional types.
+// http://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
+template <typename T>
+struct type_caster<paddle::optional<T>> : optional_caster<paddle::optional<T>> {
+};
+
 }  // namespace detail
 }  // namespace pybind11

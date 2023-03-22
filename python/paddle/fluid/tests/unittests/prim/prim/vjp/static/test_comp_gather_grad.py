@@ -31,7 +31,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x, index, axis):
@@ -113,9 +113,15 @@ class TestGatherGradComp(unittest.TestCase):
 
     def test_cinn(self):
         paddle.disable_static()
+        use_cinn = True
+        if isinstance(
+            framework._current_expected_place(), framework.core.CPUPlace
+        ):
+            # TODO(jiabin): CINN will crashed in this case open it when fixed
+            use_cinn = False
         dy_res = self.train(use_prim=False, use_cinn=False)
-        # TODO(jiabin): CINN will crashed in this case open it when fixed
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
+
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(

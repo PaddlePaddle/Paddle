@@ -39,7 +39,7 @@ class TESS(AudioClassificationDataset):
        mode (str, optional): It identifies the dataset mode (train or dev). Defaults to train.
        n_folds (int, optional): Split the dataset into n folds. 1 fold for dev dataset and n-1 for train dataset. Defaults to 5.
        split (int, optional): It specify the fold of dev dataset. Defaults to 1.
-       feat_type (str, optional): It identifies the feature type that user wants to extrace of an audio file. Defaults to raw.
+       feat_type (str, optional): It identifies the feature type that user wants to extract of an audio file. Defaults to raw.
        archive(dict): it tells where to download the audio archive. Defaults to None.
 
     Returns:

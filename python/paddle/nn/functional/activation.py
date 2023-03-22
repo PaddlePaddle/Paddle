@@ -594,8 +594,8 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
-        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
+        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
+        upper (float, optional): The upper bound of uniform distribution. Default: 0.3333333333333333.
         training (bool, optional): Current mode is in training or others.  Default is True.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1664,7 +1664,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     Parameters:
         x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch
             of independent distributions and the last dimension represents
-            a vector of probabilities with datatype float32, float64.
+            a vector of probabilities with datatype float16, float32, float64.
         temperature (float, optional): non-negative scalar temperature.
             Default is 1.0.
         hard (bool, optional): if True, the returned samples will be discretized as
@@ -1705,7 +1705,9 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
         )
 
     helper = LayerHelper("gumbel_softmax", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'gumbel_softmax'
+    )
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='gumbel_softmax',

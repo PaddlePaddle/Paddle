@@ -120,10 +120,10 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
             in_np1 = np.random.random([3, 40, 40]).astype("float32")
             in_np2 = np.transpose(in_np1, (0, 2, 1))
 
-            input1 = fluid.data(
+            input1 = paddle.static.data(
                 name="input1", shape=[3, 40, 40], dtype="float32"
             )
-            input2 = fluid.data(
+            input2 = paddle.static.data(
                 name="input2", shape=[3, 40, 40], dtype="float32"
             )
             res1 = paddle.nn.functional.local_response_norm(
@@ -144,10 +144,10 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
     def check_static_4d_input(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input1 = fluid.data(
+            input1 = paddle.static.data(
                 name="input1", shape=[3, 3, 40, 40], dtype="float32"
             )
-            input2 = fluid.data(
+            input2 = paddle.static.data(
                 name="input2", shape=[3, 40, 40, 3], dtype="float32"
             )
 
@@ -173,10 +173,10 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
     def check_static_5d_input(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input1 = fluid.data(
+            input1 = paddle.static.data(
                 name="input1", shape=[3, 3, 3, 40, 40], dtype="float32"
             )
-            input2 = fluid.data(
+            input2 = paddle.static.data(
                 name="input2", shape=[3, 3, 40, 40, 3], dtype="float32"
             )
             res1 = paddle.nn.functional.local_response_norm(
@@ -280,13 +280,17 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_datatype():
-                x = fluid.data(name='x', shape=[3, 4, 5, 6], dtype="int32")
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="int32"
+                )
                 paddle.nn.functional.local_response_norm(x, size=5)
 
             self.assertRaises(TypeError, test_datatype)
 
             def test_dataformat():
-                x = fluid.data(name='x', shape=[3, 4, 5, 6], dtype="float32")
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="float32"
+                )
                 paddle.nn.functional.local_response_norm(
                     x, size=5, data_format="NCTHW"
                 )
@@ -294,7 +298,7 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dataformat)
 
             def test_dim():
-                x = fluid.data(name='x', shape=[3, 4], dtype="float32")
+                x = paddle.static.data(name='x', shape=[3, 4], dtype="float32")
                 paddle.nn.functional.local_response_norm(x, size=5)
 
             self.assertRaises(ValueError, test_dim)
@@ -327,6 +331,32 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
 
                 res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
+
+    def test_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([3, 3, 112, 112]).astype("float16")
+
+                x = paddle.static.data(
+                    name="x", shape=[3, 3, 112, 112], dtype="float16"
+                )
+
+                m = paddle.nn.LocalResponseNorm(size=5)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0].shape, input.shape)
 
 
 if __name__ == "__main__":

@@ -13,11 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/selected_rows_impl.h"
-
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 

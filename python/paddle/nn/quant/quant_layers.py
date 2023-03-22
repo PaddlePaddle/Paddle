@@ -533,18 +533,18 @@ class QuantizedConv2D(Layer):
     ):
         super().__init__()
         # For Conv2D
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._padding_mode = getattr(layer, '_padding_mode')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._padding_mode = layer._padding_mode
         if self._padding_mode != 'zeros':
-            self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice'
+            self._reversed_padding_repeated_twice = (
+                layer._reversed_padding_repeated_twice
             )
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
 
         # For FakeQuant
         self._conv2d_quant_axis = 0
@@ -654,14 +654,14 @@ class QuantizedConv2DTranspose(Layer):
         """
         super().__init__()
         # For Conv2DTranspose
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._output_padding = getattr(layer, 'output_padding')
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._output_padding = layer.output_padding
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
         # For FakeQuant
         self._conv2d_transpose_quant_axis = 1
         if weight_quant_layer is not None:
@@ -748,9 +748,9 @@ class QuantizedLinear(Layer):
     ):
         super().__init__()
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, 'name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer.name
         # For FakeQuant
         self._linear_quant_axis = 1
 
@@ -829,15 +829,15 @@ class QuantizedColumnParallelLinear(Layer):
             act_quant_layer is None
         ), "When quantizing ColumnParallelLinear, act_quant_layer should be None."
 
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, '_name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer._name
         # For FakeQuant
         self._linear_quant_axis = 1
 
-        self.is_mp = getattr(layer, 'is_mp')
-        self.model_parallel_group = getattr(layer, 'model_parallel_group')
-        self.gather_output = getattr(layer, 'gather_output')
+        self.is_mp = layer.is_mp
+        self.model_parallel_group = layer.model_parallel_group
+        self.gather_output = layer.gather_output
 
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type,
@@ -923,15 +923,15 @@ class QuantizedRowParallelLinear(Layer):
         ), "When quantizing RowParallelLinear, act_quant_layer cannot defined by yourself."
 
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, '_name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer._name
         # For FakeQuant
         self._linear_quant_axis = 1
 
-        self.input_is_parallel = getattr(layer, 'input_is_parallel')
-        self.is_mp = getattr(layer, 'is_mp')
-        self.model_parallel_group = getattr(layer, 'model_parallel_group')
+        self.input_is_parallel = layer.input_is_parallel
+        self.is_mp = layer.is_mp
+        self.model_parallel_group = layer.model_parallel_group
 
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type,

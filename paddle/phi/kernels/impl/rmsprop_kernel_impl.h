@@ -16,13 +16,35 @@
 
 #include <math.h>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/rmsprop_kernel.h"
-
 namespace phi {
+
+template <typename T, typename Context>
+struct RmsFunctor {
+  RmsFunctor(const Context &ctx,
+             const DenseTensor &param,
+             const DenseTensor &mean_square,
+             const DenseTensor &grad,
+             const DenseTensor &moment,
+             const DenseTensor &learning_rate,
+             const paddle::optional<DenseTensor> &mean_grad_opt,
+             const paddle::optional<DenseTensor> &master_param,
+             float epsilon_t,
+             float decay_t,
+             float momentum_t,
+             bool centered,
+             bool multi_precision,
+             DenseTensor *param_out,
+             DenseTensor *moment_out,
+             DenseTensor *mean_square_out,
+             DenseTensor *mean_grad_out,
+             DenseTensor *master_param_outs);
+};
 
 template <typename T>
 struct DenseRmspropGradFunctor {
@@ -47,7 +69,8 @@ struct SparseRmspropGradFunctor {
   HOSTDEVICE inline T operator()(int64_t idx) const {
     auto row_idx =
         phi::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
-    return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_] : 0;
+    return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_]
+                        : static_cast<T>(0);
   }
 
   const T *grad_;
@@ -56,19 +79,21 @@ struct SparseRmspropGradFunctor {
   int64_t row_count_;
 };
 
-template <typename T, typename GradFunctor>
+template <typename T, typename MT, typename GradFunctor>
 struct UncenteredRmspropFunctor {
   UncenteredRmspropFunctor(T *param,
-                           T *ms,
-                           T *mom,
-                           const T *lr,
-                           T rho,
-                           T epsilon,
-                           T momentum,
+                           MT *ms,
+                           MT *mom,
+                           const MT *lr,
+                           MT *master_p,
+                           MT rho,
+                           MT epsilon,
+                           MT momentum,
                            const GradFunctor &grad_functor)
       : param_(param),
         ms_(ms),
         mom_(mom),
+        master_p_(master_p),
         lr_(lr),
         rho_(rho),
         epsilon_(epsilon),
@@ -76,38 +101,46 @@ struct UncenteredRmspropFunctor {
         grad_functor_(grad_functor) {}
 
   HOSTDEVICE inline void operator()(int64_t idx) const {
-    T g = grad_functor_(idx);
-    T ms_out = rho_ * ms_[idx] + (1 - rho_) * g * g;
-    T mom_out = momentum_ * mom_[idx] + lr_[0] * g / sqrt(ms_out + epsilon_);
-    param_[idx] -= mom_out;
+    MT g = static_cast<MT>(grad_functor_(idx));
+    MT l_rho = static_cast<MT>(1) - rho_;
+    MT ms_out = rho_ * ms_[idx] + l_rho * g * g;
+    MT mom_out = momentum_ * mom_[idx] +
+                 static_cast<MT>(lr_[0]) * g / sqrt(ms_out + epsilon_);
+    MT p = master_p_ ? master_p_[idx] : static_cast<MT>(param_[idx]);
+    MT p_m = p - mom_out;
+    param_[idx] = static_cast<T>(p_m);
     ms_[idx] = ms_out;
     mom_[idx] = mom_out;
+    if (master_p_) master_p_[idx] = p_m;
   }
 
   T *param_;
-  T *ms_;
-  T *mom_;
-  const T *lr_;
-  T rho_;
-  T epsilon_;
-  T momentum_;
+  MT *ms_;
+  MT *mom_;
+  MT *master_p_;
+  const MT *lr_;
+  MT rho_;
+  MT epsilon_;
+  MT momentum_;
   GradFunctor grad_functor_;
 };
 
-template <typename T, typename GradFunctor>
+template <typename T, typename MT, typename GradFunctor>
 struct CenteredRmspropFunctor {
   CenteredRmspropFunctor(T *param,
-                         T *ms,
-                         T *mom,
-                         T *mean_grad,
-                         const T *lr,
-                         T rho,
-                         T epsilon,
-                         T momentum,
+                         MT *ms,
+                         MT *mom,
+                         MT *mean_grad,
+                         const MT *lr,
+                         MT *master_param,
+                         MT rho,
+                         MT epsilon,
+                         MT momentum,
                          const GradFunctor &grad_functor)
       : param_(param),
         ms_(ms),
         mom_(mom),
+        master_p_(master_param),
         mean_grad_(mean_grad),
         lr_(lr),
         rho_(rho),
@@ -116,25 +149,32 @@ struct CenteredRmspropFunctor {
         grad_functor_(grad_functor) {}
 
   HOSTDEVICE inline void operator()(int64_t idx) const {
-    T g = grad_functor_(idx);
-    T ms_out = rho_ * ms_[idx] + (1 - rho_) * g * g;
-    T mg_out = rho_ * mean_grad_[idx] + (1 - rho_) * g;
-    T mom_out = momentum_ * mom_[idx] +
-                lr_[0] * g / sqrt(ms_out - mg_out * mg_out + epsilon_);
-    param_[idx] -= mom_out;
+    MT g = static_cast<MT>(grad_functor_(idx));
+    MT l_rho = static_cast<MT>(1) - rho_;
+    MT ms_out = rho_ * ms_[idx] + l_rho * g * g;
+    MT mg_out = rho_ * mean_grad_[idx] + l_rho * g;
+    MT mom_out =
+        momentum_ * mom_[idx] +
+        static_cast<MT>(lr_[0]) * g / sqrt(ms_out - mg_out * mg_out + epsilon_);
+
+    MT p = master_p_ ? master_p_[idx] : static_cast<MT>(param_[idx]);
+    MT p_m = p - mom_out;
+    param_[idx] = static_cast<T>(p_m);
     ms_[idx] = ms_out;
     mom_[idx] = mom_out;
     mean_grad_[idx] = mg_out;
+    if (master_p_) master_p_[idx] = p_m;
   }
 
   T *param_;
-  T *ms_;
-  T *mom_;
-  T *mean_grad_;
-  const T *lr_;
-  T rho_;
-  T epsilon_;
-  T momentum_;
+  MT *ms_;
+  MT *mom_;
+  MT *master_p_;
+  MT *mean_grad_;
+  const MT *lr_;
+  MT rho_;
+  MT epsilon_;
+  MT momentum_;
   GradFunctor grad_functor_;
 };
 
@@ -146,120 +186,35 @@ void RmspropDenseKernel(const Context &ctx,
                         const DenseTensor &moment,
                         const DenseTensor &learning_rate,
                         const paddle::optional<DenseTensor> &mean_grad_opt,
+                        const paddle::optional<DenseTensor> &master_param,
                         float epsilon_t,
                         float decay_t,
                         float momentum_t,
                         bool centered,
+                        bool multi_precision,
                         DenseTensor *param_out,
                         DenseTensor *moment_out,
                         DenseTensor *mean_square_out,
-                        DenseTensor *mean_grad_out) {
-  auto epsilon = static_cast<T>(epsilon_t);
-  auto rho = static_cast<T>(decay_t);
-  auto momentum = static_cast<T>(momentum_t);
-
-  auto &p_tensor = param;
-  auto &ms_tensor = mean_square;
-  auto &lr_tensor = learning_rate;
-  auto &mom_tensor = moment;
-
-  PADDLE_ENFORCE_EQ(p_tensor.IsSharedBufferWith(*param_out),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Param and ParamOut must be the same Tensor"));
-  PADDLE_ENFORCE_EQ(mom_tensor.IsSharedBufferWith(*moment_out),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Moment and MomentOut must be the same Tensor"));
-  PADDLE_ENFORCE_EQ(
-      ms_tensor.IsSharedBufferWith(*mean_square_out),
-      true,
-      phi::errors::InvalidArgument(
-          "MeanSquare and MeanSquareOut must be the same Tensor"));
-  size_t limit = static_cast<size_t>(ms_tensor.numel());
-  auto &grad_tensor = grad;
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
-    auto &place = *ctx.eigen_device();
-    auto lr_value = lr_tensor.data<T>()[0];
-
-    auto p = EigenVector<T>::Flatten(p_tensor);
-    auto ms = EigenVector<T>::Flatten(ms_tensor);
-    auto g = EigenVector<T>::Flatten(grad_tensor);
-    auto mom = EigenVector<T>::Flatten(mom_tensor);
-
-    auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto mom_out = EigenVector<T>::Flatten(*moment_out);
-    auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
-
-    ms_out.device(place) = rho * ms + (1 - rho) * g * g;
-    if (centered) {
-      auto mg_tensor = mean_grad_opt.get_ptr();
-      auto mg = EigenVector<T>::Flatten(*mg_tensor);
-      if (mg_tensor) {
-        PADDLE_ENFORCE_EQ(
-            mg_tensor->Holder(),
-            mean_grad_out->Holder(),
-            phi::errors::InvalidArgument(
-                "MeanGrad and MeanGradOut must be the same Tensor"));
-      } else {
-        PADDLE_ENFORCE_EQ(
-            mg_tensor,
-            mean_grad_out,
-            phi::errors::InvalidArgument(
-                "MeanGrad and MeanGradOut must be the same Tensor"));
-      }
-      auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
-
-      mg_out.device(place) = rho * mg + (1 - rho) * g;
-      mom_out.device(place) =
-          momentum * mom +
-          lr_value * g / (ms_out - mg_out.square() + epsilon).sqrt();
-    } else {
-      mom_out.device(place) =
-          momentum * mom + lr_value * g / (ms_out + epsilon).sqrt();
-    }
-    p_out.device(place) = p - mom_out;
-  } else {
-    DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
-    funcs::ForRange<Context> for_range(ctx, limit);
-    if (centered) {
-      auto mg_tensor = mean_grad_opt.get_ptr();
-      if (mg_tensor) {
-        PADDLE_ENFORCE_EQ(
-            mg_tensor->Holder(),
-            mean_grad_out->Holder(),
-            phi::errors::InvalidArgument(
-                "MeanGrad and MeanGradOut must be the same Tensor"));
-      } else {
-        PADDLE_ENFORCE_EQ(
-            mg_tensor,
-            mean_grad_out,
-            phi::errors::InvalidArgument(
-                "MeanGrad and MeanGradOut must be the same Tensor"));
-      }
-
-      for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
-          ctx.template Alloc<T>(param_out),
-          ctx.template Alloc<T>(mean_square_out),
-          ctx.template Alloc<T>(moment_out),
-          ctx.template Alloc<T>(mean_grad_out),
-          lr_tensor.data<T>(),
-          rho,
-          epsilon,
-          momentum,
-          grad_func));
-    } else {
-      for_range(UncenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
-          ctx.template Alloc<T>(param_out),
-          ctx.template Alloc<T>(mean_square_out),
-          ctx.template Alloc<T>(moment_out),
-          lr_tensor.data<T>(),
-          rho,
-          epsilon,
-          momentum,
-          grad_func));
-    }
-  }
+                        DenseTensor *mean_grad_out,
+                        DenseTensor *master_param_outs) {
+  RmsFunctor<T, Context> functor(ctx,
+                                 param,
+                                 mean_square,
+                                 grad,
+                                 moment,
+                                 learning_rate,
+                                 mean_grad_opt,
+                                 master_param,
+                                 epsilon_t,
+                                 decay_t,
+                                 momentum_t,
+                                 centered,
+                                 multi_precision,
+                                 param_out,
+                                 moment_out,
+                                 mean_square_out,
+                                 mean_grad_out,
+                                 master_param_outs);
 }
 
 template <typename T, typename Context>
@@ -270,17 +225,21 @@ void RmspropSparseKernel(const Context &ctx,
                          const DenseTensor &moment,
                          const DenseTensor &learning_rate,
                          const paddle::optional<DenseTensor> &mean_grad_opt,
+                         const paddle::optional<DenseTensor> &master_param,
                          float epsilon_t,
                          float decay_t,
                          float momentum_t,
                          bool centered,
+                         bool multi_precision,
                          DenseTensor *param_out,
                          DenseTensor *moment_out,
                          DenseTensor *mean_square_out,
-                         DenseTensor *mean_grad_out) {
-  auto epsilon = static_cast<T>(epsilon_t);
-  auto rho = static_cast<T>(decay_t);
-  auto momentum = static_cast<T>(momentum_t);
+                         DenseTensor *mean_grad_out,
+                         DenseTensor *master_param_outs) {
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto epsilon = static_cast<MPDType>(epsilon_t);
+  auto rho = static_cast<MPDType>(decay_t);
+  auto momentum = static_cast<MPDType>(momentum_t);
 
   auto &p_tensor = param;
   auto &ms_tensor = mean_square;
@@ -318,6 +277,10 @@ void RmspropSparseKernel(const Context &ctx,
   SparseRmspropGradFunctor<T> grad_func(
       merged_tensor.data<T>(), rows, row_numel, row_count);
 
+  MPDType *master_out_data =
+      multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+                      : nullptr;
+
   if (centered) {
     auto mg_tensor = mean_grad_opt.get_ptr();
     if (mg_tensor) {
@@ -334,22 +297,24 @@ void RmspropSparseKernel(const Context &ctx,
               "MeanGrad and MeanGradOut must be the same Tensor"));
     }
 
-    for_range(CenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
+    for_range(CenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
         ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<T>(mean_square_out),
-        ctx.template Alloc<T>(moment_out),
-        ctx.template Alloc<T>(mean_grad_out),
-        lr_tensor.data<T>(),
+        ctx.template Alloc<MPDType>(mean_square_out),
+        ctx.template Alloc<MPDType>(moment_out),
+        ctx.template Alloc<MPDType>(mean_grad_out),
+        lr_tensor.data<MPDType>(),
+        master_out_data,
         rho,
         epsilon,
         momentum,
         grad_func));
   } else {
-    for_range(UncenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
+    for_range(UncenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
         ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<T>(mean_square_out),
-        ctx.template Alloc<T>(moment_out),
-        lr_tensor.data<T>(),
+        ctx.template Alloc<MPDType>(mean_square_out),
+        ctx.template Alloc<MPDType>(moment_out),
+        lr_tensor.data<MPDType>(),
+        master_out_data,
         rho,
         epsilon,
         momentum,

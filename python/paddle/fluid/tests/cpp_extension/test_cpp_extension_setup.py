@@ -149,6 +149,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         self._test_extension_function_mixed()
         self._test_extension_class()
         self._test_nullable_tensor()
+        self._test_optional_tensor()
         # Custom op
         self._test_static()
         self._test_dynamic()
@@ -220,6 +221,21 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         x = custom_cpp_extension.nullable_tensor(True)
         assert x is None, "Return None when input parameter return_none = True"
         x = custom_cpp_extension.nullable_tensor(False).numpy()
+        x_np = np.ones(shape=[2, 2])
+        np.testing.assert_array_equal(
+            x,
+            x_np,
+            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+        )
+
+    def _test_optional_tensor(self):
+        import custom_cpp_extension
+
+        x = custom_cpp_extension.optional_tensor(True)
+        assert (
+            x is None
+        ), "Return None when input parameter return_option = True"
+        x = custom_cpp_extension.optional_tensor(False).numpy()
         x_np = np.ones(shape=[2, 2])
         np.testing.assert_array_equal(
             x,

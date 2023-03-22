@@ -141,7 +141,122 @@ class AutoTuneBase {
   }
 };
 
-// To init the auto_tuner object.
+template <typename T, typename ReturnType, typename... Args>
+class MatmulAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
+ public:
+  static MatmulAutoTuner<T, ReturnType, Args...>* Instance(
+      ReturnType (*func)(Args...)) {
+    static std::once_flag matmul_init_flag;
+    static std::unique_ptr<MatmulAutoTuner<T, ReturnType, Args...>> instance;
+    std::call_once(matmul_init_flag, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance.reset(new MatmulAutoTuner<T, ReturnType, Args...>);
+      instance->AddCallBack(func);
+    });
+    return instance.get();
+  }
+
+  template <typename Context>
+  void Run(const Context& ctx, const size_t key, Args... args) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetMatmul();
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        auto best_idx = this->PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        this->kernels_[0].Run(args...);
+      }
+    }
+  }
+};
+
+template <typename T, typename ReturnType, typename... Args>
+class GatherGemmScatterAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, T, T, Args...>> {
+ public:
+  static GatherGemmScatterAutoTuner<T, ReturnType, Args...>* Instance(
+      ReturnType (*func)(T, T, Args...)) {
+    static std::once_flag gather_gemm_scatter_init_flag;
+    static std::unique_ptr<GatherGemmScatterAutoTuner<T, ReturnType, Args...>>
+        instance;
+    std::call_once(gather_gemm_scatter_init_flag, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance.reset(new GatherGemmScatterAutoTuner<T, ReturnType, Args...>);
+      instance->AddCallBack(func);
+    });
+    return instance.get();
+  }
+
+  void Run(const phi::GPUContext& ctx,
+           const size_t key,
+           T const alpha,
+           T const beta,
+           Args... args) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetGatherGemmScatter<T>();
+
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(alpha, beta, args...);
+
+    } else {
+      // Set alpha to 0 and beta to 1 to avoid changing the value of d when
+      // picking the best kernel
+      auto best_idx =
+          PickBestKernel(ctx, static_cast<T>(0), static_cast<T>(1), args...);
+      cache.Set(key, best_idx);
+      this->kernels_[best_idx].Run(alpha, beta, args...);
+    }
+  }
+
+ protected:
+  size_t PickBestKernel(const phi::GPUContext& ctx,
+                        const T& alpha,
+                        const T& beta,
+                        Args&... args) {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    constexpr size_t NO_KERNEL_WORKS = -1;
+    size_t best_idx = NO_KERNEL_WORKS;
+    float min_time = std::numeric_limits<float>::max();
+
+    // Time cost test estabulished in default stream.
+    for (int i = 0; i < this->kernels_.size(); ++i) {
+      float time = 0;
+      // Some kernels may require more shared memory than available, skip these
+      // kernels.
+      try {
+        time = this->RunAndMeasureKernel(ctx, i, alpha, beta, args...);
+        if (time < min_time) {
+          min_time = time;
+          best_idx = i;
+        }
+      } catch (const std::runtime_error& error) {
+        VLOG(3) << "the kernels_[" << i << "] get error:" << error.what();
+      }
+    }
+    if (best_idx == NO_KERNEL_WORKS) {
+      LOG(ERROR) << "No kernel works!\n";
+      exit(-1);
+    }
+    VLOG(3) << "best kernel idx is " << best_idx;
+    return best_idx;
+  }
+};
+template <typename T, typename ReturnType, typename... Args>
+static GatherGemmScatterAutoTuner<T, ReturnType, Args...>*
+MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
+  return GatherGemmScatterAutoTuner<T, ReturnType, Args...>::Instance(func);
+}
+
+// Define the auto_tuner inital object.
 #define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
   template <typename T, typename ReturnType, typename... Args>           \
   class name##AutoTuner                                                  \
@@ -161,7 +276,7 @@ class AutoTuneBase {
     }                                                                    \
   };
 
-// To init auto_tuner inital function.
+// Define the auto_tuner inital function.
 #define DEFINE_AUTOTUNER_FN(name)                                    \
   template <typename T, typename ReturnType, typename... Args>       \
   static name##AutoTuner<T, ReturnType, Args...>* Make##name##Tuner( \
@@ -169,10 +284,12 @@ class AutoTuneBase {
     return name##AutoTuner<T, ReturnType, Args...>::Instance(func);  \
   }
 
-#define DEFINE_AUTOTUNER(name) \
-  DEFINE_AUTOTUNER_COMMON_OBJ(name) DEFINE_AUTOTUNER_FN(name)
+#define DEFINE_AUTOTUNER(name)      \
+  DEFINE_AUTOTUNER_COMMON_OBJ(name) \
+  DEFINE_AUTOTUNER_FN(name)
 
 DEFINE_AUTOTUNER(Transpose)
+DEFINE_AUTOTUNER_FN(Matmul)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT
 #undef DEFINE_AUTOTUNER_FN

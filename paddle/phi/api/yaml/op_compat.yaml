@@ -60,6 +60,21 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : all (reduce_all)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  manual_signature : [all]
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : allclose
   inputs :
     {x : Input, y : Other}
@@ -163,13 +178,45 @@
 
 - op : bicubic_interp (bicubic_interp_v2)
   backward : bicubic_interp_grad (bicubic_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear_interp (bilinear_interp_v2)
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bitwise_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_not
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
+- op : bitwise_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
 
 - op : bmm
   inputs :
@@ -266,7 +313,7 @@
   backward : conv2d_grad
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
-             str mkldnn_data_type = "float32", bool force_fp32_output = false,
+             bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
@@ -340,6 +387,17 @@
     axis : dim
   outputs :
     out : Out
+
+- op : cumsum
+  backward: cumsum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int
+      tensor_name: AxisTensor
 
 - op : data_norm
   backward : data_norm_grad
@@ -489,6 +547,12 @@
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
 
+- op : equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : equal_all
   inputs :
     {x : X, y : Y}
@@ -531,6 +595,13 @@
       tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : expand_as (expand_as_v2)
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    out : Out
 
 - op : expm1
   backward : expm1_grad
@@ -649,6 +720,19 @@
 
 - op : frobenius_norm
   backward : frobenius_norm_grad
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    frobenius_norm : GetReduceExpectedKernelType
+    frobenius_norm_grad : GetReduceGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -701,6 +785,18 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : greater_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : greater_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : grid_sample(grid_sampler)
   backward : grid_sample_grad (grid_sampler_grad)
   inputs :
@@ -709,6 +805,16 @@
     out : Output
   extra :
     attrs : [bool use_cudnn = true]
+
+- op : group_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    mean : Mean
+    variance : Variance
 
 - op : gru
   backward : gru_grad
@@ -720,11 +826,6 @@
     x : X
   outputs :
     out : Out
-
-- op : hard_swish
-  backward : hard_swish_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : hardshrink (hard_shrink)
   backward : hardshrink_grad (hard_shrink_grad)
@@ -739,6 +840,15 @@
     x : X
   outputs :
     out : Out
+
+- op : hardswish (hard_swish)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : hard_swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -785,6 +895,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
+- op : instance_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    saved_mean : SavedMean
+    saved_variance : SavedVariance
+
 - op : inverse
   inputs :
     x : Input
@@ -827,6 +947,14 @@
     x : X
   outputs :
     out : Out
+
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  complex_promote : [X, Y]
 
 - op : kthvalue
   inputs :
@@ -871,6 +999,18 @@
   outputs :
     out : Out
 
+- op : less_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : less_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : lgamma
   inputs :
     x : X
@@ -879,6 +1019,10 @@
 
 - op : linear_interp (linear_interp_v2)
   backward : linear_interp_grad (linear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1101,6 +1245,10 @@
 
 - op : nearest_interp (nearest_interp_v2)
   backward : nearest_interp_grad (nearest_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1110,6 +1258,18 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : nonzero (where_index)
+  inputs :
+    condition : Condition
+  outputs :
+    out : Out
+
+- op : not_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : numel(size)
   inputs :
@@ -1230,10 +1390,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_all
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_amax
   backward : reduce_amax_grad
@@ -1484,14 +1640,13 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
-  backward : softplus_grad
+  backward : softplus_grad, softplus_double_grad
   inputs :
     x : X
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
-             float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : softshrink
   backward : softshrink_grad
@@ -1684,6 +1839,10 @@
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

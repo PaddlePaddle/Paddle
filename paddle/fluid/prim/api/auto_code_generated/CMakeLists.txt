@@ -28,7 +28,7 @@ set(prim_api_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 )
 set(static_prim_api_template_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/template/static_prim_api.cc.tpl"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/template/static_prim_api.cc.j2"
 )
 set(eager_prim_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/eager_gen.py)
@@ -93,7 +93,7 @@ set(tmp_eager_tensor_operants_h_path ${eager_tensor_operants_h_path}.tmp)
 set(tmp_static_tensor_operants_cc_path ${static_tensor_operants_cc_path}.tmp)
 set(tmp_static_tensor_operants_h_path ${static_tensor_operants_h_path}.tmp)
 set(tensor_api_yaml_path
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_api.yaml)
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
 
 message("Prim tensor operants code generator")
 execute_process(
