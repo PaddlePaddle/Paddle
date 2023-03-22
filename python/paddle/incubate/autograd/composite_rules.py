@@ -370,7 +370,7 @@ def bernoulli(shape, dtype, p, seed=0):
     return cast(
         greater_equal(
             uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
-            fill_constant(x.shape if len(x.shape) == 0 else [1], new_dtype, p),
+            fill_constant(shape if len(shape) == 0 else [1], new_dtype, p),
         ),
         dtype,
     )
