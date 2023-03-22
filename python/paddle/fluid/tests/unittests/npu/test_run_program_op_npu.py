@@ -289,7 +289,7 @@ class TestRunProgramOpWithFC(RunProgramNPUOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',

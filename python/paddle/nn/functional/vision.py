@@ -86,17 +86,13 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
 
     if in_dygraph_mode():
         _out_shape = (
-            out_shape.numpy().tolist()
-            if isinstance(out_shape, Variable)
-            else out_shape
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
         theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_dynamic_mode():
         _out_shape = (
-            out_shape.numpy().tolist()
-            if isinstance(out_shape, Variable)
-            else out_shape
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
         return _legacy_C_ops.affine_grid(
             theta,
@@ -320,7 +316,7 @@ def grid_sample(
             'use_cudnn',
             use_cudnn,
         )
-        out = getattr(_legacy_C_ops, 'grid_sampler')(x, grid, *attrs)
+        out = _legacy_C_ops.grid_sampler(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')

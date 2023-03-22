@@ -35,7 +35,7 @@ class TestSoftmax2DAPI(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             m = paddle.nn.Softmax2D()
             out = m(x)
             exe = paddle.static.Executor(self.place)
@@ -111,7 +111,7 @@ class TestSoftmax2DError(unittest.TestCase):
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [5, 5], 'float32')
+            x = paddle.static.data('X', [5, 5], 'float32')
             m = paddle.nn.Softmax2D()
             self.assertRaises(AssertionError, m, x)
 

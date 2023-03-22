@@ -63,11 +63,9 @@ class TestNanInfEnv(TestNanInf):
         super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
-        self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")
-        self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
-        self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
-            "elementwise_add:fc_0.tmp_1"
-        )
+        self.env["PADDLE_INF_NAN_SKIP_OP"] = "mul"
+        self.env["PADDLE_INF_NAN_SKIP_ROLE"] = "loss"
+        self.env["PADDLE_INF_NAN_SKIP_VAR"] = "elementwise_add:fc_0.tmp_1"
 
 
 class TestNanInfCheckResult(unittest.TestCase):
@@ -99,7 +97,7 @@ class TestNanInfCheckResult(unittest.TestCase):
             out = paddle.log(x)
             sys.stdout.flush()
             if add_assert:
-                assert False
+                raise AssertionError()
         except Exception as e:
             # Cannot catch the log in CUDA kernel.
             err_str_list = (

@@ -28,12 +28,7 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {
-    std::vector<int32_t> tmp;
-    tmp.reserve(axes.GetData().size());
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
-                  [&tmp](const int64_t& t) { tmp.push_back(t); });
-    out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
+    out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
   }
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);

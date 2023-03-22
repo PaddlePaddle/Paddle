@@ -166,7 +166,7 @@ class TestCumprodAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                x = paddle.static.data('X', self.shape, dtype=self.dtype)
                 out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])

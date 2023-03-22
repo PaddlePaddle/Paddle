@@ -656,7 +656,7 @@ class TestAdamOpV2(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
+                data = paddle.static.data(name="data", shape=shape)
                 conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
@@ -982,8 +982,8 @@ class TestAdamOptimizer(unittest.TestCase):
             trainable=True,
         )
         with fluid.program_guard(main):
-            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, weight_attr=weight_attr)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

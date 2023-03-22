@@ -1057,7 +1057,6 @@ def _custom_api_content(op_name):
 
         def {op_name}({inputs}):
             # prepare inputs and outputs
-            ins = {ins}
             attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
@@ -1075,6 +1074,11 @@ def _custom_api_content(op_name):
                     ctx.add_outputs(outs[out_name])
                 core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
+                ins = {{}}
+                for key, value in dict({ins}).items():
+                    # handle optional inputs
+                    if value is not None:
+                        ins[key] = value
                 helper = LayerHelper("{op_name}", **locals())
                 for out_name in out_names:
                     outs[out_name] = helper.create_variable(dtype='float32')
@@ -1160,6 +1164,7 @@ def _write_setup_file(
     file_path,
     build_dir,
     include_dirs,
+    library_dirs,
     extra_cxx_cflags,
     extra_cuda_cflags,
     link_args,
@@ -1181,6 +1186,7 @@ def _write_setup_file(
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
+                library_dirs={library_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
@@ -1199,6 +1205,7 @@ def _write_setup_file(
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
+        library_dirs=list2str(library_dirs),
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),
