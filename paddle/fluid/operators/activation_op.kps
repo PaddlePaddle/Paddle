@@ -234,23 +234,6 @@ PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
                           plat::float16,
                           plat::bfloat16) {}
 
-PD_REGISTER_STRUCT_KERNEL(softsign,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SoftsignCudaKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
-PD_REGISTER_STRUCT_KERNEL(softsign_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SoftsignGradCudaKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
-
 #ifdef PADDLE_WITH_XPU_KP
 REGISTER_OP_KERNEL(
     brelu,
