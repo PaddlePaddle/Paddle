@@ -47,7 +47,7 @@ class TestNanInf(unittest.TestCase):
         print(err)
 
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find('There are NAN or INF'.encode()) != -1
+        assert (out + err).find(b'There are NAN or INF') != -1
 
     def test_nan_inf_in_static_mode(self):
         self._python_interp += " check_nan_inf_base.py"
