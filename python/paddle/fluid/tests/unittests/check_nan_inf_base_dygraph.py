@@ -96,7 +96,7 @@ def run_check():
     if paddle.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            assert False
+            raise AssertionError()
         except Exception as e:
             print(e)
             print(type(e))
@@ -105,7 +105,7 @@ def run_check():
             assert type(e) == OSError or type(e) == RuntimeError
     try:
         check(use_cuda=False)
-        assert False
+        raise AssertionError()
     except Exception as e:
         print(e)
         print(type(e))
