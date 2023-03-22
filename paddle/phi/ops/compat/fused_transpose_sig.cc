@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,20 +16,21 @@
 
 namespace phi {
 
-KernelSignature IndexAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "index_add", {"X", "Index", "AddValue"}, {"axis"}, {"Out"});
-}
-
-KernelSignature IndexAddGradOpArgumentMapping(
+KernelSignature FusedTransposeOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_add_grad",
-                         {"Index", "AddValue", "Out@GRAD"},
-                         {"axis"},
-                         {"X@GRAD", "AddValue@GRAD"});
+  return KernelSignature("fused_transpose",
+                         {"X"},
+                         {"axis",
+                          "fused_squeeze2_axes",
+                          "fused_unsqueeze2_axes",
+                          "fused_reshape2_shape",
+                          "scale",
+                          "shift",
+                          "output_data_type"},
+                         {"Out"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(index_add, phi::IndexAddOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(index_add_grad, phi::IndexAddGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_transpose,
+                           phi::FusedTransposeOpArgumentMapping);

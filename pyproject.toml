@@ -32,10 +32,16 @@ select = [
     # Pyflakes
     "F401",
 
+    # Comprehensions
+    "C400",
+    "C401",
+    "C402",
+
     # Pyupgrade
     "UP001",
     "UP003",
     "UP004",
+    "UP005",
     "UP007",
     "UP008",
     "UP010",
@@ -43,6 +49,7 @@ select = [
     "UP013",
     "UP014",
     "UP017",
+    "UP018",
     "UP019",
     "UP020",
     "UP021",
@@ -61,6 +68,7 @@ select = [
     # Bugbear
     "B009",
     "B010",
+    "B011",
 ]
 unfixable = [
     "NPY001"

@@ -34,7 +34,7 @@ except ModuleNotFoundError:
 class RegisterPassHelper:
     _register_helpers = list()
 
-    def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
+    def __init__(self, pass_pairs, pass_type='', input_specs=dict()):
         self._pass_type = pass_type
         self._pass_pairs = pass_pairs
         self._input_specs = input_specs

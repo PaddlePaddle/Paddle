@@ -290,6 +290,7 @@
   kernel :
     func : cos_grad
   backward : cos_double_grad
+  composite : cos_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : cos_triple_grad
@@ -688,6 +689,17 @@
     func : imag_grad
     data_type : complex(out_grad)
 
+- backward_op : index_add_grad
+  forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis=0) -> Tensor(out)
+  args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
+  output : Tensor(x_grad), Tensor(add_value_grad)
+  infer_meta :
+    func : IndexAddGradInferMeta
+  kernel :
+    func : index_add_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -1027,6 +1039,16 @@
     func : overlap_add_grad
     data_type : x
 
+- backward_op : p_norm_grad
+  forward : p_norm(Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param: [x]
+  kernel :
+    func : p_norm_grad
+
 - backward_op : pixel_shuffle_grad
   forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
   args : (Tensor out_grad, int upscale_factor, str data_format)
@@ -1355,6 +1377,7 @@
   kernel :
     func : sin_grad
   backward : sin_double_grad
+  composite : sin_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_triple_grad

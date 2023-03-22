@@ -27,7 +27,10 @@ using string::PrettyLogDetail;
 
 void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"transpose2", 2}, {"fused_elementwise_mul", 1}, {"elementwise_mul", 1}};
+      {"fused_transpose", 2},
+      {"transpose2", 2},
+      {"fused_elementwise_mul", 1},
+      {"elementwise_mul", 1}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseUnsqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
@@ -117,5 +120,6 @@ REGISTER_PASS(operator_unsqueeze2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(operator_unsqueeze2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("unsqueeze2", 0)
-            .GE("transpose2", 0));
+            .EQ("unsqueeze2", 0)
+            .EQ("fused_transpose", 0)
+            .EQ("transpose2", 0));
