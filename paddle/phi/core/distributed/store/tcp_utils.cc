@@ -172,7 +172,7 @@ SocketType tcp_listen(const std::string host,
   PADDLE_ENFORCE_GT(sockfd,
                     0,
                     phi::errors::InvalidArgument(
-                        "Bind network on %s:%s failedd.", node, port));
+                        "Bind network on %s:%s failed.", node, port));
 
   ::listen(sockfd, LISTENQ);
 

@@ -170,6 +170,5 @@ void PsroiPoolKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     psroi_pool, CPU, ALL_LAYOUT, phi::PsroiPoolKernel, float, double) {
-  kernel->InputAt(2).SetDataType(
-      paddle::experimental::CppTypeToDataType<int>::Type());
+  kernel->InputAt(2).SetDataType(phi::CppTypeToDataType<int>::Type());
 }

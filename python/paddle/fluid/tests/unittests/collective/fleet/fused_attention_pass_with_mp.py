@@ -35,7 +35,7 @@ class MultiHeadAttentionWithMP(paddle.nn.Layer):
         pre_ln=True,
         attn_dropout=True,
     ):
-        super(MultiHeadAttentionWithMP, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = embed_dim
         self.vdim = embed_dim

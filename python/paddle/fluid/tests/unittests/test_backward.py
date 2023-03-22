@@ -226,10 +226,16 @@ class SimpleNet(BackwardNet):
 
     def build_model(self):
         # stop_gradient = True in input
-        x = fluid.data(name='x_no_grad', shape=self.shape, dtype='int64')
-        x2 = fluid.data(name='x2_no_grad', shape=self.shape, dtype='int64')
-        x3 = fluid.data(name='x3_no_grad', shape=self.shape, dtype='int64')
-        label = fluid.data(
+        x = paddle.static.data(
+            name='x_no_grad', shape=self.shape, dtype='int64'
+        )
+        x2 = paddle.static.data(
+            name='x2_no_grad', shape=self.shape, dtype='int64'
+        )
+        x3 = paddle.static.data(
+            name='x3_no_grad', shape=self.shape, dtype='int64'
+        )
+        label = paddle.static.data(
             name='label_no_grad', shape=[self.shape[0], 1], dtype='float32'
         )
         # shared layer, the grad of 'w2v' will be summed and renamed.
@@ -283,7 +289,7 @@ class TestSimpleNet(TestBackward):
 
 class TestGradientsError(unittest.TestCase):
     def test_error(self):
-        x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
+        x = paddle.static.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
         conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
         y = F.relu(conv)
@@ -309,7 +315,9 @@ class TestSimpleNetWithErrorParamList(TestBackward):
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, "test")
         # The type of parameter_list's member must be Variable or str
-        test = fluid.data(name='test', shape=[None, 90], dtype='float32')
+        test = paddle.static.data(
+            name='test', shape=[None, 90], dtype='float32'
+        )
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, [test, "test", 3])
 
@@ -322,15 +330,17 @@ class TestSimpleNetWithErrorNoGradSet(TestBackward):
         with self.assertRaises(TypeError):
             self._check_error_no_grad_set(self.net, "test")
         # The type of no_grad_set's member must be Variable or str
-        test = fluid.data(name='test', shape=[None, 90], dtype='float32')
+        test = paddle.static.data(
+            name='test', shape=[None, 90], dtype='float32'
+        )
         with self.assertRaises(TypeError):
             self._check_error_no_grad_set(self.net, [test, "test", 3])
 
 
 class TestAppendBackwardWithError(unittest.TestCase):
     def build_net(self):
-        x = fluid.data(name='x', shape=[None, 13], dtype='int64')
-        y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+        y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = paddle.static.nn.embedding(x, size=[100, 256])
         y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
         loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)

@@ -462,7 +462,7 @@ class PassAutoScanTest(AutoScanTest):
                     min_success_num, successful_ran_programs
                 )
             )
-            assert False
+            raise AssertionError()
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
@@ -470,7 +470,7 @@ class PassAutoScanTest(AutoScanTest):
                     max_duration
                 )
             )
-            assert False
+            raise AssertionError()
 
     def run_test(self, quant=False, prog_configs=None):
         status = True

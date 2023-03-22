@@ -145,18 +145,9 @@ void MultinomialKernel(const Context& dev_ctx,
     int64_t in_data_numel = x.numel();
     int64_t out_data_numel = out->numel();
 
-    // Just use to PADDLE_ENFORCE error message
-    T* cpu_in_data = new T[in_data_numel];
-
-#ifdef PADDLE_WITH_HIP
-    hipMemcpy(
-        cpu_in_data, in_data, in_data_numel * sizeof(T), hipMemcpyDeviceToHost);
-#else
-    cudaMemcpy(cpu_in_data,
-               in_data,
-               in_data_numel * sizeof(T),
-               cudaMemcpyDeviceToHost);
-#endif
+    phi::DenseTensor cpu_tensor;
+    phi::Copy<Context>(dev_ctx, x, phi::CPUPlace(), false, &cpu_tensor);
+    T* cpu_in_data = cpu_tensor.data<T>();
     for (size_t i = 0; i < num_distributions; ++i) {
       int zero_num = 0;
       for (size_t j = 0; j < num_categories; ++j) {
