@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
+
+import numpy as np
+
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle import _C_ops, _legacy_C_ops
@@ -321,6 +324,34 @@ class Tracer(core.Tracer):
                     type, inputs, outputs, attrs, stop_gradient, inplace_map
                 )
         else:
+            # this block is used to convert attrs according to the opproto
+            # since `trace` handles AttributeMap directly, without other
+            # modification to the passed attribute map, so we change it before
+            # `trace`
+            try:
+                proto = framework.OpProtoHolder.instance().get_op_proto(type)
+                attr_types = {}
+                for attr in proto.attrs:
+                    attr_types[attr.name] = attr.type
+            except:
+                # this op has no opproto
+                proto = None
+                attr_types = {}
+                pass
+            if proto is not None:
+                for attr in proto.attrs:
+                    attr_name = attr.name
+                    type_index = attr_types[attr_name]
+                    if (attr_name not in attrs) or (attrs[attr_name] is None):
+                        continue
+                    attr_val = attrs[attr_name]
+                    if type_index == core.AttrType.SCALAR:
+                        attrs[attr_name] = core.Scalar(attr_val)
+                    elif type_index == core.AttrType.SCALARS:
+                        if len(attr_val) > 0:
+                            attr_val = np.array(attr_val).ravel().tolist()
+                            attr_val = [core.Scalar(x) for x in attr_val]
+                            attrs[attr_name] = attr_val
             self.trace(
                 type,
                 inputs,

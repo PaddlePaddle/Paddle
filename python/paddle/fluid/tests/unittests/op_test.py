@@ -37,6 +37,7 @@ from paddle.fluid.framework import (
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
     _test_eager_guard,
+    canonicalize_attrs,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
@@ -964,7 +965,7 @@ class OpTest(unittest.TestCase):
                 self.op_type,
                 eager_tensor_inputs,
                 eager_tensor_outputs,
-                attrs_outputs,
+                canonicalize_attrs(attrs_outputs, op_proto),
             )
             if not kernel_sig:
                 return None
