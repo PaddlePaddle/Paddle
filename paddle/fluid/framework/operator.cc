@@ -1406,7 +1406,8 @@ bool OperatorWithKernel::SupportsMKLDNN(const phi::DataType data_type) const {
           [data_type](OpKernelMap::const_reference kern_pair) {
             return platform::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
-                   kern_pair.first.data_type_ == TransToProtoVarType(data_type);
+                   kern_pair.first.data_type_ ==
+                       paddle::framework::TransToProtoVarType(data_type);
           });
     }
   }

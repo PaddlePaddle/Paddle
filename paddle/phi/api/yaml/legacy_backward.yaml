@@ -43,7 +43,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
-  composite : add_grad(x, y, out_grad, axis)
+  composite : add_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -94,6 +94,7 @@
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
+  composite: assign_grad(out_grad, x_grad)
   invoke : assign(out_grad)
 
 - backward_op : assign_out__grad
@@ -130,6 +131,7 @@
     func : batch_norm_grad
     data_type : out_grad
   optional : mean_out, variance_out, reserve_space
+  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics)
   backward : batch_norm_double_grad
 
 - backward_op : bce_loss_grad
@@ -157,7 +159,7 @@
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   invoke : cast (out_grad, x.dtype())
-  composite: cast_grad(x, out_grad)
+  composite: cast_grad(x, out_grad, x_grad)
   no_need_buffer : x
 
 - backward_op : channel_shuffle_grad
@@ -358,7 +360,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
-  composite : divide_grad(x, y, out, out_grad, axis)
+  composite : divide_grad(x, y, out, out_grad, axis, x_grad, y_grad)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -400,7 +402,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
-  composite : elementwise_pow_grad(x, y, out_grad, axis)
+  composite : elementwise_pow_grad(x, y, out_grad, axis, x_grad, y_grad)
   kernel :
     func : elementwise_pow_grad
 
@@ -439,7 +441,7 @@
     func : expand_grad
   no_need_buffer : x
   backward : expand_double_grad
-  composite: expand_grad(x, out_grad, shape, x_grad_p)
+  composite: expand_grad(x, out_grad, shape, x_grad)
 
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)
@@ -514,7 +516,7 @@
   kernel :
     data_type: x
     func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, overwrite)
+  composite : gather_grad(x, index, out_grad, axis, overwrite, x_grad)
   no_need_buffer : x
 
 - backward_op : group_norm_grad
@@ -532,7 +534,7 @@
 
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -571,17 +573,6 @@
     param : [residual, residual]
   kernel :
     func : huber_loss_grad
-
-- backward_op : index_add_grad
-  forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
-  args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
-  output : Tensor(x_grad), Tensor(add_value_grad)
-  infer_meta :
-    func : IndexAddGradInferMeta
-  kernel :
-    func : index_add_grad
-    data_type : out_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : instance_norm_double_grad
   forward : instance_norm_grad(Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
@@ -627,6 +618,7 @@
   kernel :
     func : layer_norm_grad
     data_type : out_grad
+  composite : layer_norm_grad(x, scale, bias, mean,varience, out_grad, epsilon, begin_norm_axis, x_grad, scale_grad, bias_grad)
   no_need_buffer : bias
   optional : scale, bias
 
@@ -689,7 +681,7 @@
     param : [x, y, grad_out]
   kernel :
     func : matmul_double_grad
-  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x=false, transpose_y=false)
+  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y, x_grad, y_grad, grad_out_grad)
   backward : matmul_triple_grad
   optional : grad_x_grad, grad_y_grad
 
@@ -724,6 +716,7 @@
     param: [x]
   kernel :
     func : max_grad
+  composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : max_pool2d_with_index_grad
   forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive) -> Tensor(out), Tensor(mask)
@@ -858,16 +851,6 @@
     param : [x]
   kernel :
     func : norm_grad
-
-- backward_op : p_norm_grad
-  forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : p_norm_grad
 
 - backward_op : pad3d_double_grad
   forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode, float pad_value, str data_format) -> Tensor(grad_x)
@@ -1131,7 +1114,7 @@
     param : [input]
   kernel :
     func : slice_grad
-  composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis)
+  composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis, input_grad)
   backward : slice_double_grad
   no_need_buffer : input
 
@@ -1144,6 +1127,7 @@
     param : [out]
   kernel :
     func : softmax_grad
+  composite : softmax_grad(out, out_grad, axis, x_grad)
 
 - backward_op : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
@@ -1213,7 +1197,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
-  composite : subtract_grad(x, y, out_grad, axis)
+  composite : subtract_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -1303,7 +1287,7 @@
   kernel :
     func : transpose_grad
   backward : transpose_double_grad
-  composite: transpose_grad(out_grad, perm)
+  composite: transpose_grad(out_grad, perm, x_grad)
 
 - backward_op : triangular_solve_grad
   forward : triangular_solve (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular) -> Tensor(out)

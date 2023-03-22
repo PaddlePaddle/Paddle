@@ -186,7 +186,9 @@ def register_distributed_operator_impl(op_type, dist_impl):
         dist_impl.type = op_type
         dist_op_impl_container.register_impl(dist_impl)
     else:
-        assert False, "Must register distributed operator registry first."
+        raise AssertionError(
+            "Must register distributed operator registry first."
+        )
 
 
 def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
@@ -270,7 +272,8 @@ def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     return best_compatible_impl
 
 
-def is_parameter_related(varname, block):
+def is_parameter_related(varname, block, dist_context=None):
+    # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are be renamed
     if ".subprog_" in varname:
         varname = varname[: varname.index(".subprog_")]
     if ".cast_fp" in varname:
@@ -279,10 +282,17 @@ def is_parameter_related(varname, block):
         varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
-    # if "@RESHARD" in varname:
-    #     varname = varname[: varname.index("@RESHARD")]
-    assert block._find_var_recursive(varname)
+    assert block._find_var_recursive(
+        varname
+    ), "cannot find var {} in cur block".format(varname)
     var = block._var_recursive(varname)
+    # NOTE(hack method): to find the param which is resharded
+    if dist_context and "@RESHARD" in varname:
+        varname = varname[: varname.index("@RESHARD")]
+        serial_program = dist_context.serial_main_program
+        var = serial_program.global_block()._find_var_recursive(varname)
+        if var is None:
+            return False
     return var.is_parameter
 
 
@@ -430,9 +440,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )
-        allreduce_op._set_attr(
-            'op_namescope', str('/') + ParallelMode.DataParallel
-        )
+        allreduce_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
         added_ops.append(allreduce_op)
 
         if dist_ctx.gradient_scale:
@@ -442,9 +450,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
                 outputs={'Out': grad_var},
                 attrs={'scale': 1.0 / dp_degree, OP_ROLE_KEY: OpRole.Backward},
             )
-            scale_op._set_attr(
-                'op_namescope', str('/') + ParallelMode.DataParallel
-            )
+            scale_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
             added_ops.append(scale_op)
 
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)

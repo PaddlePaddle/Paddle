@@ -144,7 +144,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                        T* y) {
   impl_->BlasAXPBY(dev_id_,
                    stream,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
                    reinterpret_cast<void*>(const_cast<T*>(x)),

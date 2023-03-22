@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -147,11 +147,11 @@ class TestElementwiseFminOp(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -160,7 +160,6 @@ class TestElementwiseFminOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -170,7 +169,6 @@ class TestElementwiseFminOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
-            check_eager=True,
         )
 
 
@@ -194,11 +192,11 @@ class TestElementwiseFmin2Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -207,7 +205,6 @@ class TestElementwiseFmin2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -217,7 +214,6 @@ class TestElementwiseFmin2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
-            check_eager=True,
         )
 
 
@@ -240,11 +236,11 @@ class TestElementwiseFmin3Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":

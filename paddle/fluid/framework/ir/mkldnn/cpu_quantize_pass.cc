@@ -1305,7 +1305,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
-  QuantizeImmutable(graph, "transpose2", "X");
+  QuantizeImmutable(graph, "fused_transpose", "X");
   QuantizeImmutable(graph, "slice", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");

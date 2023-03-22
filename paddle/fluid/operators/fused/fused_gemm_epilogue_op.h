@@ -408,8 +408,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
     // Note (Ming Huang): The initialization of ReseveSpace is happened in the
     // dev_ctx.Alloc. Therefore, we set real date type up here.
     if (activation == "relu") {
-      paddle::experimental::DataType rs_type =
-          paddle::experimental::DataType::BOOL;
+      phi::DataType rs_type = phi::DataType::BOOL;
       size_t reserve_space_size =
           phi::product(reserve_space->dims()) * SizeOf(rs_type);
       dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
@@ -573,12 +572,12 @@ static constexpr auto BoolToCuBlasEnum(bool transpose) {
 
 static cublasLtEpilogue_t GetEpilogueGradType(
     const std::string& activation_grad) {
-  if (activation_grad == "relu_grad") {
+  if (activation_grad == "none") {
+    return CUBLASLT_EPILOGUE_DEFAULT;
+  } else if (activation_grad == "relu_grad") {
     return CUBLASLT_EPILOGUE_DRELU;
   } else if (activation_grad == "gelu_grad") {
     return CUBLASLT_EPILOGUE_DGELU;
-  } else if (activation_grad == "none") {
-    return CUBLASLT_EPILOGUE_DEFAULT;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "
@@ -588,7 +587,7 @@ static cublasLtEpilogue_t GetEpilogueGradType(
   }
 }
 
-template <typename T, bool TransX, bool TransY>
+template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           const phi::DenseTensor* dout,
                                           const phi::DenseTensor* x,
@@ -601,8 +600,12 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           phi::DenseTensor* dx,
                                           phi::DenseTensor* dy,
                                           phi::DenseTensor* dbias,
-                                          bool use_addto) {
+                                          bool use_addto_dx,
+                                          bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  static_assert(std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value);
+  static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
   cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
@@ -620,8 +623,8 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
   cudaStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);
-  MT beta_dx = use_addto ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
-  MT beta_dy = static_cast<MT>(0.0);
+  MT beta_dx = use_addto_dx ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
+  MT beta_dy = use_addto_dy ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
 
   cublasLtMatrixLayout_t dout_desc = nullptr, dout_trans_desc = nullptr;
   cublasLtMatrixLayout_t x_desc = nullptr, x_trans_desc = nullptr;
@@ -688,7 +691,11 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kXGradBTrans);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dx_desc, mat_type, x_col, x_row, x_col));
+        &dx_desc,
+        phi::backends::gpu::ToCudaDataType<DXT>(),
+        x_col,
+        x_row,
+        x_col));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &dx_operation_desc, compute_type, scale_type));
@@ -736,7 +743,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-    auto* dx_data = dev_ctx.Alloc<T>(dx, dx->numel() * sizeof(T));
+    auto* dx_data = dev_ctx.Alloc<DXT>(dx, dx->numel() * sizeof(DXT));
     const auto* y_data = y->data<T>();
     const auto* dout_data = dout->data<T>();
     const auto* a_data = kXGradAIsDZ ? dout_data : y_data;
@@ -807,7 +814,11 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kYGradBTrans);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dy_desc, mat_type, y_col, y_row, y_col));
+        &dy_desc,
+        phi::backends::gpu::ToCudaDataType<DYT>(),
+        y_col,
+        y_row,
+        y_col));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &dy_operation_desc, compute_type, scale_type));
@@ -844,7 +855,8 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
             sizeof(epiloque_func_for_dy)));
 
     if (dbias) {
-      auto* dbias_data = dev_ctx.Alloc<T>(dbias, dbias->numel() * sizeof(T));
+      auto* dbias_data =
+          dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
               dy_operation_desc,
@@ -857,7 +869,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto* dy_data = dev_ctx.Alloc<T>(dy, dy->numel() * sizeof(T));
+    auto* dy_data = dev_ctx.Alloc<DYT>(dy, dy->numel() * sizeof(DYT));
     const auto* dout_data = dout->data<T>();
     const auto* x_data = x->data<T>();
     const auto* a_data = kYGradAIsDZ ? dout_data : x_data;
@@ -898,7 +910,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DXT = T, typename DYT = T>
 void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       const phi::DenseTensor* dout,
                                       const phi::DenseTensor* x,
@@ -913,70 +925,79 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       phi::DenseTensor* dx,
                                       phi::DenseTensor* dy,
                                       phi::DenseTensor* dbias,
-                                      bool use_addto = false) {
+                                      bool use_addto_dx = false,
+                                      bool use_addto_dy = false) {
   VLOG(10) << "M=" << M << ", K=" << K << ", N=" << N << ", trans_x=" << trans_x
            << ", trans_y=" << trans_y
            << ", activation_grad=" << activation_grad;
 
   if (trans_x) {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, true, true>(dev_ctx,
-                                                          dout,
-                                                          x,
-                                                          y,
-                                                          reserve_space,
-                                                          M,
-                                                          N,
-                                                          K,
-                                                          activation_grad,
-                                                          dx,
-                                                          dy,
-                                                          dbias,
-                                                          use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, true>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, true, false>(dev_ctx,
-                                                           dout,
-                                                           x,
-                                                           y,
-                                                           reserve_space,
-                                                           M,
-                                                           N,
-                                                           K,
-                                                           activation_grad,
-                                                           dx,
-                                                           dy,
-                                                           dbias,
-                                                           use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, false>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     }
   } else {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, false, true>(dev_ctx,
-                                                           dout,
-                                                           x,
-                                                           y,
-                                                           reserve_space,
-                                                           M,
-                                                           N,
-                                                           K,
-                                                           activation_grad,
-                                                           dx,
-                                                           dy,
-                                                           dbias,
-                                                           use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, true>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, false, false>(dev_ctx,
-                                                            dout,
-                                                            x,
-                                                            y,
-                                                            reserve_space,
-                                                            M,
-                                                            N,
-                                                            K,
-                                                            activation_grad,
-                                                            dx,
-                                                            dy,
-                                                            dbias,
-                                                            use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, false>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     }
   }
 }

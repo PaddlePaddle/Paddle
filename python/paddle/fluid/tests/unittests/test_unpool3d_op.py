@@ -403,7 +403,7 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                         ]
                     ]
                 ).astype("float32")
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name='x', shape=[1, 1, 2, 4, 4], dtype='float32'
                 )
                 output, indices = F.max_pool3d(
