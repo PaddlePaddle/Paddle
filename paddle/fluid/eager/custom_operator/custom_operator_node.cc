@@ -191,6 +191,8 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
 
   for (auto it : fwd_ins) {
+    // NOTE(HongyuJia): returned tensor maybe un-defined tensor when inputs
+    // optional<Tensor>
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpNode::Recover(&(it.second));
   }
