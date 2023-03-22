@@ -1282,7 +1282,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto tmp = out_grad_data * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
           auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
-          auto part2 = out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {

@@ -313,7 +313,7 @@
   backward : conv2d_grad
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
-             str mkldnn_data_type = "float32", bool force_fp32_output = false,
+             bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
