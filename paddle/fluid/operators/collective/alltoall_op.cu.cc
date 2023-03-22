@@ -99,7 +99,7 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16
+                          plat::bfloat16,
 #endif
                           int,
                           int64_t,
