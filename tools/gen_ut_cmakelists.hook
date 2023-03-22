@@ -1,6 +1,7 @@
 
 set -e
 
+changed_cmake_but_not_csv=0
 for cmake in `echo $*`; do
     testlist=`dirname $cmake`/testslist.csv
     res=`python3 -c 'import sys
@@ -8,10 +9,18 @@ if sys.argv[-1] in sys.argv[:-1]:
     print(1)' $* $testlist`
 
     if [[ ! $res == 1 ]];then
-        echo $cmake is modified but $testlist is not. 1>&2
-        exit 1
+        num=`python tools/gen_ut_cmakelists.py -f $testlist|grep 'modified/new:'|wc -l`
+        if [[ $num -gt 0 ]];then
+            echo $cmake is modified but $testlist is not. 1>&2
+            changed_cmake_but_not_csv=1
+        fi
+
     fi
 done
+
+if [[ $changed_cmake_but_not_csv == 1 ]]; then
+exit 1
+fi
 
 tests=""
 for name in `echo $*`; do
@@ -19,6 +28,10 @@ if [[ $(basename $name) == "testslist.csv" ]];then
 tests="$tests $name"
 fi
 done
+
+if [[ -z $testslist ]]; then
+exit 0
+fi
 
 python tools/gen_ut_cmakelists.py -f $tests
 lists=`python tools/gen_ut_cmakelists.py -f $tests |grep 'modified/new:'|cut -f 2 -d :`
