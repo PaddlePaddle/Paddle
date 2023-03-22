@@ -99,14 +99,6 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
-file(
-  GLOB
-  kernel_h
-  "*.h"
-  "elementwise_raw_kernels/*.h"
-  "selected_rows/*.h"
-  "sparse/*.h"
-  "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
