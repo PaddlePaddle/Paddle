@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 namespace fusion {
@@ -102,7 +103,7 @@ void EmbeddingWithEltwiseAddXpuKernel(
 
     r = xpu::cast(ctx.x_context(),
                   out_fp32_t.data<float>(),
-                  reinterpret_cast<float16*>(out->data<T>()),
+                  reinterpret_cast<XPUTypeFP16*>(out->data<T>()),
                   out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {

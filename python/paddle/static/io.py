@@ -994,7 +994,7 @@ def save_vars(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
-            save_path = str()
+            save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
@@ -1721,7 +1721,7 @@ def get_program_persistable_vars(program):
             import paddle.static.io as io
             import paddle.fluid as fluid
             paddle.enable_static()
-            data = fluid.data(name="img", shape=[64, 784])
+            data = paddle.static.data(name="img", shape=[64, 784])
             w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = io.get_program_persistable_vars(  fluid.default_main_program() )

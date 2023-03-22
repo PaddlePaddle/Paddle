@@ -35,8 +35,10 @@ class FleetTest(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
-        image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        image = paddle.static.data(
+            name='img', shape=[None, 28, 28], dtype='float32'
+        )
+        label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         feeder = fluid.DataFeeder(
             feed_list=[image, label], place=fluid.CPUPlace()
         )
