@@ -258,16 +258,12 @@ class TestFmaxBF16OP(OpTest):
         self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":
