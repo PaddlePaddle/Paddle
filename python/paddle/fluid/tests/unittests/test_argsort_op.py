@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -522,8 +523,10 @@ class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'argsort'
         self.dtype = np.uint16
-        self.inputs = {'X': np.random.randn(11, 17).astype(self.dtype)}
-        self.outputs = {'Out': np.argsort(self.inputs['X'])}
+        x = np.random.randn(11, 17).astype('float32')
+        out = np.argsort(x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
