@@ -618,8 +618,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        # make sure all status of is_test are False in train mode.
-        program = _change_is_test_status(main_program.clone(), is_test=False)
+        program = main_program.clone(for_test=False)
         if self._hooker:
             program = self._hooker.before_append_backward(program)
         targets = []
