@@ -29,11 +29,13 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
             conv_out = paddle.static.nn.conv2d(
                 input=data_reshape,
@@ -144,11 +146,13 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
             conv_out = paddle.static.nn.conv2d(
                 input=data_reshape,
@@ -243,11 +247,13 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
             conv_out = paddle.static.nn.conv2d_transpose(
                 input=data_reshape,

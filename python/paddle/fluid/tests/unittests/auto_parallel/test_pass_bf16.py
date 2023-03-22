@@ -36,7 +36,8 @@ def apply_pass(use_bf16=False):
     if use_bf16:
         amp = strategy.amp
         amp.enable = True
-        amp.enable_bf16 = True
+        amp.dtype = "bfloat16"
+        amp.level = "o1"
     return strategy
 
 

@@ -40,7 +40,7 @@ namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_tensor;
-  tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
+  tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
   auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
@@ -352,7 +352,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
     }
 
@@ -403,7 +403,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  epsilon,
                                  conv_type());
 
-      if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      if (tensor_type == phi::DataType::FLOAT16) {
         ConvertTensorType<float, float16>(conv_weight_tensor);
         ConvertTensorType<float, float16>(eltwise_y_in_tensor);
       }
@@ -444,7 +444,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                    epsilon,
                                    conv_type());
 
-        if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+        if (tensor_type == phi::DataType::FLOAT16) {
           ConvertTensorType<float, float16>(conv_weight_tensor);
           ConvertTensorType<float, float16>(conv_bias_tensor);
         }
@@ -662,7 +662,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
       ConvertTensorType<float16, float>(eltwise_y_in_tensor);
     }
@@ -721,7 +721,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  conv_type());
     }
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float, float16>(conv_weight_tensor);
       ConvertTensorType<float, float16>(eltwise_y_in_tensor);
     }

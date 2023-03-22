@@ -95,7 +95,7 @@ class TestPool1D_API(unittest.TestCase):
     def check_adaptive_max_static_results(self, place):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                input = fluid.data(
+                input = paddle.static.data(
                     name="input", shape=[2, 3, 32], dtype="float32"
                 )
                 result = F.adaptive_max_pool1d(input, output_size=16)

@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
@@ -74,6 +73,11 @@ static T* DynLoad(void* handle, std::string name) {
 
 inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
+  return var_name.rfind(suffix) != std::string::npos;
+}
+
+inline static bool IsOptionalVar(const std::string& var_name) {
+  std::string suffix = kOptionalSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
@@ -142,57 +146,79 @@ static void RunKernelFunc(
   paddle::CustomOpKernelContext kernel_ctx;
   for (auto& in_name : inputs) {
     VLOG(3) << "Custom Operator: input name - " << in_name;
-    if (detail::IsDuplicableVar(in_name)) {
-      // return const std::vector<const phi::DenseTensor*>
-      auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
-      PADDLE_ENFORCE_NE(vec_x.empty(),
-                        true,
-                        platform::errors::NotFound(
-                            "Input vector<tensor> (%s) is empty.", in_name));
+    if (detail::IsDuplicableVar(in_name)) {  // inputs vector<Tensor>
       std::vector<paddle::Tensor> custom_vec_in;
-      for (size_t i = 0; i < vec_x.size(); ++i) {
-        auto* x = vec_x[i];
-        PADDLE_ENFORCE_NOT_NULL(
-            x,
-            platform::errors::NotFound(
-                "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
-                i,
-                in_name));
-        PADDLE_ENFORCE_EQ(x->IsInitialized(),
+      if (ctx.HasInputs(in_name)) {  // general inputs
+        // return const std::vector<const phi::DenseTensor*>
+        auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
+        PADDLE_ENFORCE_NE(vec_x.empty(),
                           true,
-                          platform::errors::InvalidArgument(
-                              "The %d-th tensor in input vector<tensor> (%s) "
-                              "is not initialized.",
-                              i,
-                              in_name));
-        paddle::Tensor custom_t;
-        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
-        custom_vec_in.emplace_back(custom_t);
+                          platform::errors::NotFound(
+                              "Input vector<tensor> (%s) is empty.", in_name));
+        for (size_t i = 0; i < vec_x.size(); ++i) {
+          auto* x = vec_x[i];
+          PADDLE_ENFORCE_NOT_NULL(
+              x,
+              platform::errors::NotFound(
+                  "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
+                  i,
+                  in_name));
+          PADDLE_ENFORCE_EQ(x->IsInitialized(),
+                            true,
+                            platform::errors::InvalidArgument(
+                                "The %d-th tensor in input vector<tensor> (%s) "
+                                "is not initialized.",
+                                i,
+                                in_name));
+          paddle::Tensor custom_t;
+          custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
+          custom_vec_in.emplace_back(custom_t);
+        }
+      } else {  // optional inputs, `custom_vec_in` is empty
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                  "find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: KernelFunc's vector input " << in_name
+                << " is optional dtype with None input";
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
-    } else {
-      auto* x = ctx.Input<phi::DenseTensor>(in_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          x,
-          platform::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
-      PADDLE_ENFORCE_EQ(x->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Input tensor (%s) is not initialized.", in_name));
-      paddle::Tensor custom_in;
-      custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+    } else {                        // inputs Tensor
+      if (ctx.HasInput(in_name)) {  // general inputs
+        auto* x = ctx.Input<phi::DenseTensor>(in_name);
+        PADDLE_ENFORCE_NOT_NULL(x,
+                                platform::errors::NotFound(
+                                    "Input tensor (%s) is nullptr.", in_name));
+        PADDLE_ENFORCE_EQ(
+            x->IsInitialized(),
+            true,
+            platform::errors::InvalidArgument(
+                "Input tensor (%s) is not initialized.", in_name));
+        paddle::Tensor custom_in;
+        custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (custom_in.is_gpu_pinned()) {
-        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
-        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
-        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
-        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
-      } else {
-        kernel_ctx.EmplaceBackInput(std::move(custom_in));
-      }
+        if (custom_in.is_gpu_pinned()) {
+          VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+          auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+          auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+          kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+        } else {
+          kernel_ctx.EmplaceBackInput(std::move(custom_in));
+        }
 #else
-      kernel_ctx.EmplaceBackInput(std::move(custom_in));
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
 #endif
+      } else {  // optional inputs
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                  "find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: KernelFunc's input " << in_name
+                << " is optional dtype with None input";
+        kernel_ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+      }
     }
   }
 
@@ -285,7 +311,7 @@ static void RunKernelFunc(
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 
-    // handle inplace case
+    // handle inplace map
     kernel_ctx.MapPlainOutputs(inputs, outputs, inplace_map);
     func(&kernel_ctx);
     kernel_ctx.AssignInplaceOutputs();
@@ -338,21 +364,41 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
   VLOG(3) << "Custom Operator: InferShape - get input ddim.";
   for (auto& in_name : inputs) {
     if (detail::IsDuplicableVar(in_name)) {
-      OP_INOUT_CHECK(ctx->HasInputs(in_name), "Input", in_name, "Custom");
-      auto vec_ddim = ctx->GetInputsDim(in_name);
       std::vector<std::vector<int64_t>> vec_shape;
-      vec_shape.reserve(vec_ddim.size());
-      std::transform(vec_ddim.begin(),
-                     vec_ddim.end(),
-                     std::back_inserter(vec_shape),
-                     [&](const DDim& ddim) -> std::vector<int64_t> {
-                       return phi::vectorize(ddim);
-                     });
+      if (ctx->HasInputs(in_name)) {  // general inputs
+        auto vec_ddim = ctx->GetInputsDim(in_name);
+        vec_shape.reserve(vec_ddim.size());
+        std::transform(vec_ddim.begin(),
+                       vec_ddim.end(),
+                       std::back_inserter(vec_shape),
+                       [&](const DDim& ddim) -> std::vector<int64_t> {
+                         return phi::vectorize(ddim);
+                       });
+
+      } else {  // optional inputs, `vec_shape` is empty
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferShapeFunc "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: InferShapeFunc's vector input " << in_name
+                << " is optional dtype with None input";
+      }
       vec_input_shapes.emplace_back(vec_shape);
     } else {
-      OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
-      auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(phi::vectorize(ddim));
+      if (ctx->HasInput(in_name)) {  // general inputs
+        auto ddim = ctx->GetInputDim(in_name);
+        input_shapes.emplace_back(phi::vectorize(ddim));
+      } else {  // optional inputs
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferShapeFunc "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        input_shapes.emplace_back(std::vector<int64_t>());
+        VLOG(3) << "Custom Operator: InferShapeFunc's input " << in_name
+                << " is optional dtype with None input";
+      }
     }
   }
 
@@ -469,11 +515,13 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
 
   void Make() override {
     for (auto& in_name : inputs_) {
+      auto input_var_builder =
+          AddInput(in_name, "The input " + in_name + "of Custom operator.");
       if (detail::IsDuplicableVar(in_name)) {
-        AddInput(in_name, "The input " + in_name + "of Custom operator.")
-            .AsDuplicable();
-      } else {
-        AddInput(in_name, "The input " + in_name + "of Custom operator.");
+        input_var_builder.AsDuplicable();
+      }
+      if (detail::IsOptionalVar(in_name)) {
+        input_var_builder.AsDispensable();
       }
     }
     for (auto& out_name : outputs_) {
@@ -894,16 +942,37 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           for (auto& in_name : op_inputs) {
             if (detail::IsDuplicableVar(in_name)) {
               std::vector<DataType> vec_custom_dtype;
-              for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-                auto dtype = ctx->GetInputDataType(in_name, i);
-                vec_custom_dtype.emplace_back(
-                    paddle::framework::TransToPhiDataType(dtype));
+              if (ctx->HasInput(in_name)) {  // general inputs
+                for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
+                  auto dtype = ctx->GetInputDataType(in_name, i);
+                  vec_custom_dtype.emplace_back(
+                      paddle::framework::TransToPhiDataType(dtype));
+                }
+              } else {  // optional inputs, `vec_custom_dtype` is empty
+                PADDLE_ENFORCE(
+                    detail::IsOptionalVar(in_name),
+                    phi::errors::NotFound("Your custom operator's InferDtypeFn "
+                                          "cannot find input parameter `%s`",
+                                          in_name));
+                VLOG(3) << "Custom Operator: InferDtypeFn's vector input "
+                        << in_name << " is optional dtype with None input";
               }
               vec_input_dtypes.emplace_back(vec_custom_dtype);
             } else {
-              auto dtype = ctx->GetInputDataType(in_name);
-              input_dtypes.emplace_back(
-                  paddle::framework::TransToPhiDataType(dtype));
+              if (ctx->HasInput(in_name)) {  // general inputs
+                auto dtype = ctx->GetInputDataType(in_name);
+                input_dtypes.emplace_back(
+                    paddle::framework::TransToPhiDataType(dtype));
+              } else {  // optional inputs
+                PADDLE_ENFORCE(
+                    detail::IsOptionalVar(in_name),
+                    phi::errors::NotFound("Your custom operator's InferDtypeFn "
+                                          "cannot find input parameter `%s`",
+                                          in_name));
+                input_dtypes.emplace_back(DataType::UNDEFINED);
+                VLOG(3) << "Custom Operator: InferDtypeFn's input " << in_name
+                        << " is optional dtype with None input";
+              }
             }
           }
 
@@ -1048,7 +1117,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
                       "to the output shape. Otherwise, Please set the forward "
-                      "input as the grad operator's input or  set the "
+                      "input as the grad operator's input or set the "
                       "InferShapeFn of custom grad operator by "
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);

@@ -46,7 +46,8 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import ParamBase, _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, layers, to_variable
+from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
@@ -165,8 +166,9 @@ def sync_params_buffers(
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, (ParamBase, core.eager.Tensor)):
-            if is_model_parallel and param.is_distributed:
-                continue
+            if is_model_parallel:
+                if hasattr(param, "is_distributed") and param.is_distributed:
+                    continue
 
             # NOTE(shenliang03): Support situations that do not require synchronization parameters,
             # such as moe's expert parameters

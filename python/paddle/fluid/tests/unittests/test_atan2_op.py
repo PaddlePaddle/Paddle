@@ -103,8 +103,8 @@ class TestAtan2API(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                X1 = paddle.fluid.data('X1', self.shape, dtype=self.dtype)
-                X2 = paddle.fluid.data('X2', self.shape, dtype=self.dtype)
+                X1 = paddle.static.data('X1', self.shape, dtype=self.dtype)
+                X2 = paddle.static.data('X2', self.shape, dtype=self.dtype)
                 out = paddle.atan2(X1, X2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
@@ -163,8 +163,8 @@ class TestAtan2Error(unittest.TestCase):
         paddle.enable_static()
 
         def test_mismatch_numel():
-            X = paddle.fluid.data('X', (1,), dtype=np.float64)
-            Y = paddle.fluid.data('Y', (0,), dtype=np.float64)
+            X = paddle.static.data('X', (1,), dtype=np.float64)
+            Y = paddle.static.data('Y', (0,), dtype=np.float64)
             out = paddle.atan2(X, Y)
 
         self.assertRaises(ValueError, test_mismatch_numel)

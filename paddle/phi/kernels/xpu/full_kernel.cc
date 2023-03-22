@@ -19,12 +19,10 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 

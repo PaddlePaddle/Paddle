@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -39,13 +38,13 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
             self._beta2_pow_acc_str, param_and_grad[0]
         )
 
-        beta_1 = layers.fill_constant(
+        beta_1 = paddle.tensor.fill_constant(
             dtype='float32', shape=[1], value=self._beta1, name='lamb_beta_1'
         )
-        beta_2 = layers.fill_constant(
+        beta_2 = paddle.tensor.fill_constant(
             dtype='float32', shape=[1], value=self._beta2, name='lamb_beta_2'
         )
-        epsilon = layers.fill_constant(
+        epsilon = paddle.tensor.fill_constant(
             dtype='float32', shape=[1], value=self._epsilon, name='epsilon'
         )
 

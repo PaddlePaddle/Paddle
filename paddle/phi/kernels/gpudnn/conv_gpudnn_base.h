@@ -148,19 +148,18 @@ struct ConvArgsBase {
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ", data=" << paddle::experimental::CppTypeToDataType<T>::Type()
+             << ", data=" << phi::CppTypeToDataType<T>::Type()
              << ", group=" << group
              << ", data layout=" << static_cast<int64_t>(data_layout);
 
-    return phi::autotune::ConvCacheKey(
-        x_shape,
-        w_shape,
-        p,
-        s,
-        d,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        group,
-        static_cast<int64_t>(data_layout));
+    return phi::autotune::ConvCacheKey(x_shape,
+                                       w_shape,
+                                       p,
+                                       s,
+                                       d,
+                                       phi::CppTypeToDataType<T>::Type(),
+                                       group,
+                                       static_cast<int64_t>(data_layout));
   }
 };
 
