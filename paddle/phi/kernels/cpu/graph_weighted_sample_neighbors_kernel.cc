@@ -162,7 +162,7 @@ void SampleNeighbors(const T* row,
 }
 
 template <typename T, typename Context>
-void GraphSampleNeighborsKernel(
+void GraphWeightedSampleNeighborsKernel(
     const Context& dev_ctx,
     const DenseTensor& row,
     const DenseTensor& col_ptr,
