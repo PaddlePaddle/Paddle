@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -241,29 +241,31 @@ class TestElementwiseFmax3Op(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
 class TestFmaxBF16OP(OpTest):
     def setUp(self):
         self.op_type = "elementwise_fmax"
         self.python_api = paddle.fmax
         self.dtype = np.uint16
+        x = np.random.randn(11, 17).astype('float32')
+        y = np.random.randn(11, 17).astype('float32')
+        out = np.fmax(x, y)
         self.inputs = {
-            'X': np.random.randn(11, 17).astype(self.dtype),
-            'Y': np.random.randn(11, 17).astype(self.dtype),
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
         }
-        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":
