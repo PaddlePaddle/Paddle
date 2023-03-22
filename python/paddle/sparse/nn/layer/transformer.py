@@ -16,14 +16,14 @@
 
 import collections
 
-import sparse_mask
-
 import paddle
 from paddle import tensor
 from paddle.nn.layer.transformer import (
     _convert_attention_mask,
     _convert_param_attr_to_list,
 )
+
+from . import sparse_mask
 
 __all__ = []
 
