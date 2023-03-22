@@ -1110,15 +1110,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float32', 'float64'],
+                ['float16', 'bfloat16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float32 or float64.',
+                'If dtype is not None, it only support float16, bfloat16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())
