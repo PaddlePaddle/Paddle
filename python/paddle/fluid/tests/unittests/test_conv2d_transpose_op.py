@@ -968,6 +968,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
         self.need_check_grad = False
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
