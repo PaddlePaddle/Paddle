@@ -29,7 +29,7 @@ tests="$tests $name"
 fi
 done
 
-if [[ -z $testslist ]]; then
+if [[ -z $tests ]]; then
 exit 0
 fi
 
