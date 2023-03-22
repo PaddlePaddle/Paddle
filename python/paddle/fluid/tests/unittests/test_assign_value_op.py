@@ -14,8 +14,8 @@
 
 import unittest
 
+import eager_op_test
 import numpy as np
-import op_test
 
 import paddle
 import paddle.fluid as fluid
@@ -24,7 +24,7 @@ import paddle.fluid.framework as framework
 paddle.enable_static()
 
 
-class TestAssignValueOp(op_test.OpTest):
+class TestAssignValueOp(eager_op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
         self.inputs = {}

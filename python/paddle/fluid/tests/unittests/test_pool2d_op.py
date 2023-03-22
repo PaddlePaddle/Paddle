@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):

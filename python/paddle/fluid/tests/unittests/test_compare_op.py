@@ -14,9 +14,9 @@
 
 import unittest
 
+import eager_op_test
 import numpy
 import numpy as np
-import op_test
 
 import paddle
 import paddle.fluid as fluid
@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 
 
 def create_test_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)

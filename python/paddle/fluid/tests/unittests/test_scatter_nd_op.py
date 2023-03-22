@@ -122,14 +122,12 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True
-            )
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -196,14 +194,12 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True
-            )
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -273,14 +269,12 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True
-            )
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):

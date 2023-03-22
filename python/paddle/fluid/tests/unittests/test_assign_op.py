@@ -14,9 +14,9 @@
 
 import unittest
 
+import eager_op_test
 import gradient_checker
 import numpy as np
-import op_test
 from decorator_helper import prog_scope
 
 import paddle
@@ -26,7 +26,7 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 
 
-class TestAssignOp(op_test.OpTest):
+class TestAssignOp(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -48,7 +48,7 @@ class TestAssignOp(op_test.OpTest):
         paddle.disable_static()
 
 
-class TestAssignFP16Op(op_test.OpTest):
+class TestAssignFP16Op(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign

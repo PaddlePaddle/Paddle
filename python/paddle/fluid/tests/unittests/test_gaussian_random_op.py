@@ -19,7 +19,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_uint16_to_float,
+)
 from paddle.tensor import random
 
 

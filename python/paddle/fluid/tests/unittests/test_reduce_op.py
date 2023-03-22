@@ -254,7 +254,6 @@ class TestMaxOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
             check_prim=True,
             only_check_prim=True,
         )
@@ -295,7 +294,6 @@ class TestMaxOp_ZeroDim(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
             check_prim=True,
             only_check_prim=True,
         )
@@ -318,14 +316,13 @@ class TestMaxOp_FP32(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
             check_prim=True,
             only_check_prim=True,
         )
@@ -920,7 +917,6 @@ class TestReduceMaxOpMultiAxises(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
             check_prim=True,
             only_check_prim=True,
         )

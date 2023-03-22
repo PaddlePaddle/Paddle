@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
