@@ -1262,7 +1262,7 @@
 - op : nms
   inputs :
     x : Boxes
-  outpus :
+  outputs :
     out : KeepBoxesIdxs
   attrs :
     threshold : iou_threshold
