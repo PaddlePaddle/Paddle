@@ -15,30 +15,12 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
-class TestApiDataError(unittest.TestCase):
-    def test_fluid_data(self):
-        with program_guard(Program(), Program()):
-
-            # 1. The type of 'name' in fluid.data must be str.
-            def test_name_type():
-                fluid.data(name=1, shape=[2, 25], dtype="bool")
-
-            self.assertRaises(TypeError, test_name_type)
-
-            # 2. The type of 'shape' in fluid.data must be list or tuple.
-            def test_shape_type():
-                fluid.data(name='data1', shape=2, dtype="bool")
-
-            self.assertRaises(TypeError, test_shape_type)
-
-
 class TestApiStaticDataError(unittest.TestCase):
-    def test_fluid_dtype(self):
+    def test_dtype(self):
         with program_guard(Program(), Program()):
             x1 = paddle.static.data(name="x1", shape=[2, 25])
             self.assertEqual(x1.dtype, core.VarDesc.VarType.FP32)
@@ -50,16 +32,16 @@ class TestApiStaticDataError(unittest.TestCase):
             x3 = paddle.static.data(name="x3", shape=[2, 25])
             self.assertEqual(x3.dtype, core.VarDesc.VarType.FP64)
 
-    def test_fluid_data(self):
+    def test_error(self):
         with program_guard(Program(), Program()):
 
-            # 1. The type of 'name' in fluid.data must be str.
+            # 1. The type of 'name' in paddle.static.data must be str.
             def test_name_type():
                 paddle.static.data(name=1, shape=[2, 25], dtype="bool")
 
             self.assertRaises(TypeError, test_name_type)
 
-            # 2. The type of 'shape' in fluid.data must be list or tuple.
+            # 2. The type of 'shape' in paddle.static.data must be list or tuple.
             def test_shape_type():
                 paddle.static.data(name='data1', shape=2, dtype="bool")
 
@@ -84,10 +66,7 @@ class TestApiErrorWithDynamicMode(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):
             paddle.disable_static()
-            self.assertRaises(AssertionError, fluid.data, 'a', [2, 25])
-            self.assertRaises(
-                AssertionError, paddle.static.data, 'c', shape=[2, 25]
-            )
+            self.assertRaises(AssertionError, paddle.static.data, 'a', [2, 25])
             paddle.enable_static()
 
 

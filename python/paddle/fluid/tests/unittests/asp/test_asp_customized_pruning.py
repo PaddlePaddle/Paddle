@@ -196,10 +196,12 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
         self.customer_prefix = "customer_layer"
 
         def build_model():
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )

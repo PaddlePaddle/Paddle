@@ -720,9 +720,15 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def set_program_and_run(self, main_program, case_num):
         with fluid.program_guard(main_program):
             x = [
-                fluid.data(name='x0', shape=self.shape, dtype="float32"),
-                fluid.data(name='x1', shape=self.shape, dtype="float32"),
-                fluid.data(name='x2', shape=self.shape, dtype="float32"),
+                paddle.static.data(
+                    name='x0', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x1', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x2', shape=self.shape, dtype="float32"
+                ),
             ]
 
             for each_x in x:

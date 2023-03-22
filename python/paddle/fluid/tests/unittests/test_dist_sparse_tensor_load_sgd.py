@@ -46,7 +46,9 @@ class TestSparseLoadProgram(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 with fluid.unique_name.guard():
-                    inputs = fluid.data('input', shape=[None, 1], dtype="int64")
+                    inputs = paddle.static.data(
+                        'input', shape=[None, 1], dtype="int64"
+                    )
                     emb = fluid.layers.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )

@@ -76,7 +76,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
@@ -129,7 +129,7 @@ class TestAssignOApi(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
