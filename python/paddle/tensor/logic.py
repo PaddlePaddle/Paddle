@@ -736,13 +736,13 @@ def not_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "not_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "not_equal",
         )
         helper = LayerHelper("not_equal", **locals())
