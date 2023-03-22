@@ -115,7 +115,7 @@ void EmplaceDeviceContexts(
       phi::errors::InvalidArgument("The number of platform places should "
                                    "be larger than 0. But received %d.",
                                    places.size()));
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       emplace_devices_context_func,
       nullptr,
       phi::errors::Unimplemented(
