@@ -319,6 +319,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.python_api = paddle.logcumsumexp
         input, attrs = self.input_and_attrs()
         self.attrs = attrs
+        if "dtype" in attrs:
+            del attrs["dtype"]
         output = np_logcumsumexp(input, **attrs)
         self.inputs = {'X': convert_float_to_uint16(input)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
