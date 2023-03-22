@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 
 
 def get_cuda_version():
@@ -81,7 +81,7 @@ def run_ground_truth(x, dy, dweight, dbias, multi_precision):
 
 
 def run_fused_linear_param_grad_add(x, dy, dweight, dbias, multi_precision):
-    dweight_new, dbias_new = _legacy_C_ops.fused_linear_param_grad_add(
+    dweight_new, dbias_new = _C_ops.fused_linear_param_grad_add(
         x, dy, dweight, dbias, multi_precision
     )
     if dweight is not None:
