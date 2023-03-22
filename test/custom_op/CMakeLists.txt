@@ -54,6 +54,7 @@ if(WITH_TESTING)
   py_test(test_custom_simple_slice SRCS test_custom_simple_slice.py)
   py_test(test_custom_tanh_double_grad SRCS test_custom_tanh_double_grad.py)
   py_test(test_custom_inplace SRCS test_custom_inplace.py)
+  py_test(test_custom_optional SRCS test_custom_optional.py)
 
   # other tests
   py_test(test_sysconfig SRCS test_sysconfig.py)
