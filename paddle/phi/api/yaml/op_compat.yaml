@@ -313,7 +313,7 @@
   backward : conv2d_grad
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
-             str mkldnn_data_type = "float32", bool force_fp32_output = false,
+             bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
@@ -455,6 +455,12 @@
 - op : digamma
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op : dirichlet
+  inputs :
+    alpha : Alpha
   outputs :
     out : Out
 
@@ -876,6 +882,12 @@
   outputs :
     out : Out
 
+- op : index_add
+  inputs :
+    {x : X, index : Index, add_value : AddValue}
+  outputs :
+    out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
@@ -1279,6 +1291,13 @@
 
 - op : overlap_add
   backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : p_norm
+  backward: p_norm_grad
   inputs :
     x : X
   outputs :

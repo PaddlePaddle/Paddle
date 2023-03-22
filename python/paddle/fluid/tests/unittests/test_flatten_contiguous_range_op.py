@@ -23,6 +23,7 @@ import paddle
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.python_api = paddle.flatten
+        self.public_python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.prim_op_type = "comp"

@@ -2,6 +2,12 @@
 - subtract
 - multiply
 - divide
+- less_equal
+- less_than
+- equal
+- not_equal
+- greater_equal
+- greater_than
 - bitwise_and
 - bitwise_not
 - bitwise_or
@@ -29,7 +35,14 @@
 - tile
 - transpose
 - pad
+- sqrt
 - cumsum
 - put_along_axis
+- equal
 - greater_than
 - less_equal
+- sin
+- cos
+- where
+- reshape
+- split

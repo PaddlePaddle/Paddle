@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.common_ops_import import fill_constant
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -852,6 +851,90 @@ def full_like(x, fill_value, dtype=None, name=None):
             inputs={'X': [x]},
             attrs={'value': fill_value, "dtype": dtype},
             outputs={'Out': [out]},
+        )
+        out.stop_gradient = True
+        return out
+
+
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        if isinstance(shape, (list, tuple)):
+            shape = paddle.utils.convert_shape_to_list(shape)
+
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if out is None:
+            out = _C_ops.full(shape, float(value), dtype, place)
+            out.stop_gradient = True
+            return out
+
+        if out is not None:
+            # final state mode is support out is not None.
+            _C_ops.full_(out, shape, float(value), dtype, place)
+            out.stop_gradient = True
+            return out
+    else:
+        attrs = {'force_cpu': force_cpu}
+        dtype = convert_dtype(dtype)
+        if not isinstance(value, Variable):
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+                attrs['str_value'] = str(int(value))
+                attrs['value'] = int(value)
+            else:
+                attrs['str_value'] = str(float(value))
+                attrs['value'] = float(value)
+
+        helper = LayerHelper("fill_constant", **locals())
+        inputs = {}
+        if isinstance(value, Variable):
+            if convert_dtype(value.dtype) != dtype:
+                value = paddle.cast(value, dtype)
+            inputs['ValueTensor'] = value
+
+        paddle.utils.check_shape(shape)
+        check_dtype(
+            dtype,
+            'dtype',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'uint8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'fill_constant',
+        )
+        check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+
+        if out is not None:
+            check_variable_and_dtype(
+                out, 'out', [convert_dtype(dtype)], 'fill_constant'
+            )
+
+        helper = LayerHelper("fill_constant", **locals())
+        paddle.utils.get_shape_tensor_inputs(
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
+        )
+
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        attrs['dtype'] = out.dtype
+        helper.append_op(
+            type='fill_constant',
+            inputs=inputs,
+            outputs={'Out': [out]},
+            attrs=attrs,
+            stop_gradient=True,
         )
         out.stop_gradient = True
         return out

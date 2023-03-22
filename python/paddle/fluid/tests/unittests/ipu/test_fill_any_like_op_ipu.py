@@ -69,7 +69,7 @@ class TestCase1(TestBase):
 class TestError(TestBase):
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.fluid.data('x', [-1, 3, 13], 'float32')
+        x = paddle.static.data('x', [-1, 3, 13], 'float32')
         x_fill = paddle.full_like(x, **self.attrs)
         out = paddle.add(x_fill, x_fill)
         self.fetch_list = [out.name]

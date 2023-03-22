@@ -41,12 +41,16 @@ class TestWhileOp(unittest.TestCase):
         paddle.tensor.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        array_len = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=1
+        )
         array_len.stop_gradient = True
         cond = paddle.less_than(x=i, y=array_len)
-        j = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        j = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
         j.stop_gradient = True
-        array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+        array_len2 = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=3
+        )
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
         while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -112,7 +116,9 @@ class TestWhileOp(unittest.TestCase):
 
     def test_exceptions(self):
         i = layers.zeros(shape=[2], dtype='int64')
-        array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
+        array_len = paddle.tensor.fill_constant(
+            shape=[2], dtype='int64', value=1
+        )
         cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)

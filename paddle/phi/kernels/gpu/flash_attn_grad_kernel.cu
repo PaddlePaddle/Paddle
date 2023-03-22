@@ -67,10 +67,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   int num_splits = 0;  // 0 for an internal heuristic, which is optimal
   bool zero_tensors = false;
 
-  std::vector<int64_t> seed_offset_vec;
-  phi::TensorToVector<int64_t>(seed_offset, ctx, &seed_offset_vec);
-  uint64_t seed = seed_offset_vec[0];
-  uint64_t offset = seed_offset_vec[1];
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
+  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
 
   int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
   DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
@@ -188,12 +187,10 @@ void FlashAttnGradKernel(const Context& ctx,
 
   float scale = 1.0f / std::sqrt(head_size);
 
-  DenseTensor q_t_s =
-      Reshape<T, Context>(ctx, q, {total_q, num_heads, head_size});
-  DenseTensor k_t_s =
-      Reshape<T, Context>(ctx, k, {total_k, num_heads, head_size});
-  DenseTensor v_t_s =
-      Reshape<T, Context>(ctx, v, {total_k, num_heads, head_size});
+  DenseTensor q_t_s, k_t_s, v_t_s;
+  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
+  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
 
   DenseTensor cu_seqlens_q;
   DenseTensor cu_seqlens_k;

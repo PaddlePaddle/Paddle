@@ -448,14 +448,6 @@
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
 
-- op : dirichlet
-  args: (Tensor alpha)
-  output: Tensor(out)
-  infer_meta:
-    func: DirichletInferMeta
-  kernel:
-    func: dirichlet
-
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
@@ -838,17 +830,6 @@
   kernel :
     func : increment
   inplace : (x -> out)
-
-- op : index_add
-  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : IndexAddInferMeta
-  kernel :
-    func : index_add
-    data_type : x
-  inplace : (x -> out)
-  backward : index_add_grad
 
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
@@ -1242,15 +1223,6 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
   output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
-
-- op : p_norm
-  args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
-  output : Tensor(out)
-  infer_meta :
-    func : PNormInferMeta
-  kernel :
-    func : p_norm
-  backward : p_norm_grad
 
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
