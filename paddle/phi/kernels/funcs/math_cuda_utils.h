@@ -30,16 +30,6 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-__device__ T max(T a, T b) {
-  return a > b ? a : b;
-}
-
-template <typename T>
-__device__ T min(T a, T b) {
-  return a < b ? a : b;
-}
-
-template <typename T>
 __device__ __forceinline__ T FromFloat(float a);
 
 template <typename T>
@@ -272,9 +262,9 @@ template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
-    val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+    val = std::max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
-    val = max(val, __shfl_xor(val, mask, warpSize));
+    val = std::max(val, __shfl_xor(val, mask, warpSize));
 #endif
   return val;
 }
@@ -285,11 +275,12 @@ __inline__ __device__ phi::dtype::float16 WarpReduceMax(phi::dtype::float16 val,
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
   __half val_ret = val.to_half();
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val_ret = max(val_ret, __shfl_xor_sync(lane_mask, val_ret, mask, warpSize));
+    val_ret =
+        std::max(val_ret, __shfl_xor_sync(lane_mask, val_ret, mask, warpSize));
 #else
   float val_ret = static_cast<float>(val);
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val_ret = max(val_ret, __shfl_xor(val_ret, mask, warpSize));
+    val_ret = std::max(val_ret, __shfl_xor(val_ret, mask, warpSize));
 #endif
   return static_cast<phi::dtype::float16>(val_ret);
 }
@@ -309,9 +300,9 @@ template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
-    val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+    val = std::min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
-    val = min(val, __shfl_xor(val, mask, warpSize));
+    val = std::min(val, __shfl_xor(val, mask, warpSize));
 #endif
   return val;
 }
@@ -322,11 +313,12 @@ __inline__ __device__ phi::dtype::float16 WarpReduceMin(phi::dtype::float16 val,
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
   __half val_ret = val.to_half();
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val_ret = min(val_ret, __shfl_xor_sync(lane_mask, val_ret, mask, warpSize));
+    val_ret =
+        std::min(val_ret, __shfl_xor_sync(lane_mask, val_ret, mask, warpSize));
 #else
   float val_ret = static_cast<float>(val);
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val_ret = min(val_ret, __shfl_xor(val_ret, mask, warpSize));
+    val_ret = std::min(val_ret, __shfl_xor(val_ret, mask, warpSize));
 #endif
   return static_cast<phi::dtype::float16>(val_ret);
 }
@@ -368,7 +360,7 @@ __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : T(-1e10f);
+  val = (lane < block_span) ? shared[lane] : (T)-1e10f;
   val = WarpReduceMax(val, mask);
 
   return val;
@@ -416,7 +408,7 @@ __inline__ __device__ T BlockReduceMin(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : T(1e10f);
+  val = (lane < block_span) ? shared[lane] : (T)1e10f;
   val = WarpReduceMin(val, mask);
 
   return val;

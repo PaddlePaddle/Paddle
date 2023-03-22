@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/dist_kernel.h"
+#include <algorithm>
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -24,16 +26,6 @@
 namespace phi {
 
 #define FULL_MASK 0xffffffff
-
-template <typename T>
-__device__ T max(T a, T b) {
-  return a > b ? a : b;
-}
-
-template <typename T>
-__device__ T min(T a, T b) {
-  return a < b ? a : b;
-}
 
 template <typename T>
 struct ZeroOrderFunctor {
@@ -85,10 +77,10 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = T(-1e10f);
+  T max_val = (T)-1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    max_val = max(max_val, abs(x[i] - y[i]));
+    max_val = std::max(max_val, abs(x[i] - y[i]));
   }
 
   __syncthreads();
@@ -103,10 +95,10 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = T(1e10f);
+  T min_val = (T)1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    min_val = min(min_val, abs(x[i] - y[i]));
+    min_val = std::min(min_val, abs(x[i] - y[i]));
   }
 
   __syncthreads();
