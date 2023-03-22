@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
 
 
 def fully_connected_naive(input, weights, bias_data):

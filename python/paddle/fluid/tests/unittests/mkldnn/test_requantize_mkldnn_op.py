@@ -19,7 +19,7 @@ from mkldnn_op_test import format_reorder
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestReQuantizeOp(OpTest):
