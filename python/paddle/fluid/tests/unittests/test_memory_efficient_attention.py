@@ -85,7 +85,7 @@ def create_attn_bias(
         if bias_type is ab.BlockDiagonalCausalMask:
             block_diag = block_diag.make_causal()
         return block_diag
-    assert False, f"Unsupported bias type: {bias_type}"
+    raise AssertionError(f"Unsupported bias type: {bias_type}")
 
 
 def _rand_seqlens(
