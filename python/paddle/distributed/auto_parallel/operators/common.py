@@ -186,7 +186,9 @@ def register_distributed_operator_impl(op_type, dist_impl):
         dist_impl.type = op_type
         dist_op_impl_container.register_impl(dist_impl)
     else:
-        assert False, "Must register distributed operator registry first."
+        raise AssertionError(
+            "Must register distributed operator registry first."
+        )
 
 
 def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
