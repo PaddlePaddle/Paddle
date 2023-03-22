@@ -61,6 +61,14 @@ class TestRollOpCase2(TestRollOp):
         self.axis = [-1, -2]
 
 
+class TestRollOpCase3(TestRollOp):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+        self.x_shape = (3, 2)
+        self.shifts = [1, 1]
+        self.axis = [-1, 1]
+
+
 class TestRollFP16OP(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -75,6 +83,14 @@ class TestRollFP16OpCase2(TestRollOp):
         self.x_shape = (100, 10, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
+
+
+class TestRollFP16OpCase3(TestRollOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.x_shape = (3, 2)
+        self.shifts = [1, 1]
+        self.axis = [-1, 1]
 
 
 @unittest.skipIf(
@@ -108,6 +124,26 @@ class TestRollBF16OpCase2(TestRollOp):
         self.x_shape = (10, 5, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestRollBF16OpCase3(TestRollOp):
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+        self.x_shape = (3, 2)
+        self.shifts = [1, 1]
+        self.axis = [-1, 1]
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
