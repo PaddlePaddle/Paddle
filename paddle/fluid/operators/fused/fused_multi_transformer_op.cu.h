@@ -1871,20 +1871,20 @@ class CublasFusedMLP {
     const auto *x_data = x->data<T>();
     const auto *w_data = weight->data<T>();
 
-    auto algo =
-        phi::GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
-                                                           operation_desc_,
-                                                           w_desc_,
-                                                           x_desc_,
-                                                           out_desc_,
-                                                           alpha,
-                                                           beta,
-                                                           w_data,
-                                                           x_data,
-                                                           out_data,
-                                                           stream,
-                                                           workspace->ptr(),
-                                                           workspace_size);
+    auto algo = phi::funcs::GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+        lt_handle,
+        operation_desc_,
+        w_desc_,
+        x_desc_,
+        out_desc_,
+        alpha,
+        beta,
+        w_data,
+        x_data,
+        out_data,
+        stream,
+        workspace->ptr(),
+        workspace_size);
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmul(lt_handle,

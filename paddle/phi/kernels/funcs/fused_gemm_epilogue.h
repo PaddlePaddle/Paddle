@@ -41,6 +41,7 @@ limitations under the License. */
 DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
+namespace funcs {
 
 class GemmEpilogueAlgoCache {
  public:
@@ -966,6 +967,7 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
   }
 }
 
+}  // namespace funcs
 }  // namespace phi
 #endif
 #endif

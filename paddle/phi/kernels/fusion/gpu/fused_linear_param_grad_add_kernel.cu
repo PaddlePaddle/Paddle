@@ -41,7 +41,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
 
   const bool fuse_bias_grad = kIsMultiPrecision && dweight_out;
   if (dweight_out) {
-    phi::ComputeFusedGemmEpilogueBackward<T, T, MT>(
+    phi::funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
         ctx,
         &dout,
         &x,

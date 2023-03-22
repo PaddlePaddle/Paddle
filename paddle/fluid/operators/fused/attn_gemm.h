@@ -129,21 +129,21 @@ class AttnMatMul {
                        bool fused = false) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     if (compute_bias_ && fused) {
-      phi::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
-                                               d_output,
-                                               input,
-                                               weight,
-                                               nullptr,
-                                               bsz_seq_,      // M
-                                               output_size_,  // N
-                                               input_size_,   // K
-                                               transA_,
-                                               transB_,
-                                               "none",
-                                               d_input,
-                                               d_weight,
-                                               d_bias,
-                                               use_addto);
+      phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                                      d_output,
+                                                      input,
+                                                      weight,
+                                                      nullptr,
+                                                      bsz_seq_,      // M
+                                                      output_size_,  // N
+                                                      input_size_,   // K
+                                                      transA_,
+                                                      transB_,
+                                                      "none",
+                                                      d_input,
+                                                      d_weight,
+                                                      d_bias,
+                                                      use_addto);
       return;
     }
 #endif

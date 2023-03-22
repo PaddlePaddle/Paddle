@@ -151,20 +151,20 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
             << ", activation=" << activation_grad
             << ", reserve_space=" << reserve_space;
 
-    phi::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
-                                             dout,
-                                             x,
-                                             y,
-                                             reserve_space,
-                                             M,
-                                             N,
-                                             K,
-                                             trans_x,
-                                             trans_y,
-                                             activation_grad,
-                                             dx,
-                                             dy,
-                                             dbias);
+    phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
+                                                    dout,
+                                                    x,
+                                                    y,
+                                                    reserve_space,
+                                                    M,
+                                                    N,
+                                                    K,
+                                                    trans_x,
+                                                    trans_y,
+                                                    activation_grad,
+                                                    dx,
+                                                    dy,
+                                                    dbias);
   }
 };
 #endif
