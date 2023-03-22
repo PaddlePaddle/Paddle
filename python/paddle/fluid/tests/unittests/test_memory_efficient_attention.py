@@ -54,7 +54,6 @@ def create_attn_bias(
     requires_grad: bool,
     fmt: str,
 ):
-
     if bias_type is None or isinstance(None, bias_type):
         return None
     r = random.Random(
