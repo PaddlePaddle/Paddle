@@ -304,7 +304,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                     ring_id
                 )
             else:
-                assert False, "no cuda device found"
+                raise AssertionError("no cuda device found")
         else:
             return gp
 

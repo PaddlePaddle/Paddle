@@ -609,8 +609,7 @@ paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
     return ::pybind11::handle(obj).cast<paddle::CustomOpKernelContext>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be "
-        "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
+        "argument (position %d) must be CustomOpKernelContext, "
         "but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
@@ -1533,7 +1532,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
-    return paddle::experimental::DataType::UNDEFINED;
+    return phi::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

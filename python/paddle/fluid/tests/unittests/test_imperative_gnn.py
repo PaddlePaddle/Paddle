@@ -30,7 +30,7 @@ def gen_data():
     pass
 
 
-class GraphConv(fluid.Layer):
+class GraphConv(paddle.nn.Layer):
     def __init__(self, name_scope, in_features, out_features):
         super().__init__(name_scope)
 
@@ -51,7 +51,7 @@ class GraphConv(fluid.Layer):
         return paddle.matmul(adj, support) + self.bias
 
 
-class GCN(fluid.Layer):
+class GCN(paddle.nn.Layer):
     def __init__(self, name_scope, num_hidden):
         super().__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)

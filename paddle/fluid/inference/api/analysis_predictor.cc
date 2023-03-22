@@ -190,7 +190,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
-        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        t->numel() * phi::SizeOf(t->dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
@@ -1740,7 +1740,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1796,7 +1797,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2419,6 +2421,9 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(pad3d);
+#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -2546,6 +2551,8 @@ USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(set_value)
+USE_TRT_CONVERTER(index_select);
+USE_TRT_CONVERTER(temporal_shift)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

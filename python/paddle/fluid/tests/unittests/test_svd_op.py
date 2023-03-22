@@ -307,7 +307,7 @@ class TestSvdAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 a = np.random.rand(5, 5)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
