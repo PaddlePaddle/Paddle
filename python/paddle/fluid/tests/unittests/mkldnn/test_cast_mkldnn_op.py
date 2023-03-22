@@ -26,10 +26,11 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 )
 class TestCastBF16ToFP32MKLDNNOp(OpTest):
     def init_data(self):
-        self.out = np.random.random(size=[10, 10]).astype("float32")
+        self.out = np.random.random(size=self.shape).astype("float32")
         self.x = convert_float_to_uint16(self.out)
 
     def setUp(self):
+        self.init_shape()
         self.init_data()
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
@@ -58,6 +59,9 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
             user_defined_grad_outputs=[self.outputs['Out']],
         )
 
+    def init_shape(self):
+        self.shape = [10, 10]
+
 
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def init_data(self):
@@ -75,6 +79,11 @@ class TestCastFP32ToFP32MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def init_data(self):
         self.x = np.random.random(size=[7, 15]).astype("float32")
         self.out = self.x
+
+
+class TestCastBF16ToFP32MKLDNNOp_ZeroDim(TestCastBF16ToFP32MKLDNNOp):
+    def init_shape(self):
+        self.shape = []
 
 
 if __name__ == '__main__':
