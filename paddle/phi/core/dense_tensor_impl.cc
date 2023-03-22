@@ -28,7 +28,7 @@ DenseTensor::DenseTensor() {
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+DenseTensor::DenseTensor(phi::DataType dtype) {
   meta_.dtype = dtype;
   meta_.offset = 0;
 }
@@ -62,7 +62,7 @@ const Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
+phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
 
@@ -80,18 +80,15 @@ void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<phi::Allocation>& holder,
-    paddle::experimental::DataType type) {
+    const std::shared_ptr<phi::Allocation>& holder, phi::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::experimental::DataType type) {
-  meta_.dtype = type;
-}
+void DenseTensor::set_type(phi::DataType type) { meta_.dtype = type; }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -123,7 +120,7 @@ void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 const phi::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -167,9 +164,7 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
-                   requested_size));
+      mutable_data(place, phi::CppTypeToDataType<T>::Type(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {

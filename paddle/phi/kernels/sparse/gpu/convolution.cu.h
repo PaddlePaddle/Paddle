@@ -300,7 +300,7 @@ int ProductRuleBook(const Context& dev_ctx,
                     SparseCooTensor* out,
                     std::vector<int>* h_counter,
                     std::vector<int>* h_offsets) {
-  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
+  auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
   const auto& indices = x.indices();
   const IntT* indices_ptr = indices.data<IntT>();
