@@ -3143,10 +3143,10 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
   output->set_layout(query.layout());
 
   logsumexp->set_dims(phi::make_ddim(logsumexp_dims));
-  logsumexp->set_dtype(paddle::experimental::DataType::FLOAT32);
+  logsumexp->set_dtype(phi::DataType::FLOAT32);
 
   seed_and_offset->set_dims(phi::make_ddim(seed_and_offset_dims));
-  seed_and_offset->set_dtype(paddle::experimental::DataType::INT64);
+  seed_and_offset->set_dtype(phi::DataType::INT64);
 }
 
 }  // namespace phi
