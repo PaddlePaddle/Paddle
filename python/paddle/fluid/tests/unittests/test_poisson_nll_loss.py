@@ -73,14 +73,6 @@ class TestPoissonNLLLossBasicCase(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    def test_api(self):
-        pass
-
-
-class TestPoissonNLLLossStaticCase(TestPoissonNLLLossBasicCase):
-    def setUp(self, dtype="float32"):
-        super().setUp(dtype)
-
     def test_static_case(
         self,
         dtype="float32",
@@ -130,11 +122,6 @@ class TestPoissonNLLLossStaticCase(TestPoissonNLLLossBasicCase):
         )
         for r in res:
             np.allclose(out_ref, r, rtol=1e-5)
-
-
-class TestPoissonNLLLossDynamicCase(TestPoissonNLLLossBasicCase):
-    def setUp(self, dtype="float32"):
-        super().setUp(dtype)
 
     def test_dynamic_case(
         self,
@@ -197,65 +184,50 @@ class TestPoissonNLLLossDynamicCase(TestPoissonNLLLossBasicCase):
             np.allclose(out_ref, r.numpy(), rtol=1e-5)
         paddle.enable_static()
 
-
-class TestPoissonNLLLossErrReductionCase(TestPoissonNLLLossDynamicCase):
     def test_api(self):
+        pass
+
+
+class TestPoissonNLLLossErrCase(TestPoissonNLLLossBasicCase):
+    def test_err_reduction(self):
         self.test_dynamic_case(type="test_err_reduction")
 
-
-class TestPoissonNLLLossErrEpsilonCase(TestPoissonNLLLossDynamicCase):
-    def test_api(self):
+    def test_err_epsilon(self):
         self.test_dynamic_case(type="test_err_epsilon")
 
-
-class TestPoissonNLLLossDynamicFloat32Case(TestPoissonNLLLossDynamicCase):
     def test_api(self):
+        self.test_err_reduction()
+        self.test_err_epsilon()
+
+
+class TestPoissonNLLLossFloat32Case(TestPoissonNLLLossBasicCase):
+    def test_api(self):
+        self.test_static_case(dtype="float32")
         self.test_dynamic_case(dtype="float32")
 
 
-class TestPoissonNLLLossDynamicFloat64Case(TestPoissonNLLLossDynamicCase):
+class TestPoissonNLLLossFloat64Case(TestPoissonNLLLossBasicCase):
     def test_api(self):
+        self.test_static_case(dtype="float64")
         self.test_dynamic_case(dtype="float64")
 
 
-class TestPoissonNLLLossStaticFloat32Case(TestPoissonNLLLossStaticCase):
+class TestPoissonNLLLossNoLoginputCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
-        self.test_static_case(dtype="float32")
-
-
-class TestPoissonNLLLossStaticFloat64Case(TestPoissonNLLLossStaticCase):
-    def test_api(self):
-        self.test_static_case(dtype="float64")
-
-
-class TestPoissonNLLLossDynamicNoLoginputCase(TestPoissonNLLLossDynamicCase):
-    def test_api(self):
+        self.test_static_case(log_input=False)
         self.test_dynamic_case(log_input=False)
 
 
-class TestPoissonNLLLossStaticNoLoginputCase(TestPoissonNLLLossStaticCase):
+class TestPoissonNLLLossFulllossCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
-        self.test_static_case(log_input=False)
-
-
-class TestPoissonNLLLossDynamicFulllossCase(TestPoissonNLLLossDynamicCase):
-    def test_api(self):
+        self.test_static_case(full=True)
         self.test_dynamic_case(full=True)
 
 
-class TestPoissonNLLLossStaticFulllossCase(TestPoissonNLLLossStaticCase):
-    def test_api(self):
-        self.test_static_case(full=True)
-
-
-class TestPoissonNLLLossDynamicSumReductionCase(TestPoissonNLLLossDynamicCase):
-    def test_api(self):
-        self.test_dynamic_case(reduction="sum")
-
-
-class TestPoissonNLLLossStaticSumReductionCase(TestPoissonNLLLossStaticCase):
+class TestPoissonNLLLossSumReductionCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
         self.test_static_case(reduction="sum")
+        self.test_dynamic_case(reduction="sum")
 
 
 if __name__ == "__main__":
