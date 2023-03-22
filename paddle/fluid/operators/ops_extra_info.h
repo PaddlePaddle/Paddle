@@ -107,7 +107,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_y", ExtraAttrProperty::ONEDNN},
         {"Scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
-        {"fused_squeeze2_axes", ExtraAttrProperty::ONEDNN},
         {"fused_unsqueeze2_axes", ExtraAttrProperty::ONEDNN},
         {"fused_reshape2_shape", ExtraAttrProperty::ONEDNN},
         // ONEDNN pass dedicated attributes
@@ -115,9 +114,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"Sum_scale", ExtraAttrProperty::ONEDNN},
-        {"scale", ExtraAttrProperty::ONEDNN},
-        {"shift", ExtraAttrProperty::ONEDNN},
-        {"output_data_type", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},

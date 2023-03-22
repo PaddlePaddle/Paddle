@@ -552,24 +552,24 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
-struct QuantTranspose2 : public PatternBase {
-  QuantTranspose2(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "quant_transpose2") {}
+struct QuantTranspose : public PatternBase {
+  QuantTranspose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_transpose") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& transpose_type);
 
   PATTERN_DECL_NODE(quant_in);
   PATTERN_DECL_NODE(quant_op);
   PATTERN_DECL_NODE(quant_out);
-  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(transpose_op);
 };
 
-struct Transpose2Dequant : public PatternBase {
-  Transpose2Dequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "transpose2_dequant") {}
-  PDNode* operator()();
+struct TransposeDequant : public PatternBase {
+  TransposeDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose_dequant") {}
+  PDNode* operator()(const std::string& transpose_type);
 
-  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(transpose_op);
   PATTERN_DECL_NODE(dequant_in);
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);

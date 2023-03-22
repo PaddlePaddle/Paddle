@@ -979,7 +979,8 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
-PDNode *patterns::QuantTranspose2::operator()() {
+PDNode *patterns::QuantTranspose::operator()(
+    const std::string &transpose_type) {
   auto *quant_in = pattern->NewNode(quant_in_repr())
                        ->AsInput()
                        ->assert_is_op_input("quantize", "Input");
@@ -989,19 +990,20 @@ PDNode *patterns::QuantTranspose2::operator()() {
                         ->AsIntermediate()
                         ->assert_has_n_outputs(1)
                         ->assert_is_op_output("quantize")
-                        ->assert_is_op_input("transpose2", "X");
-  auto *transpose2_op =
-      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+                        ->assert_is_op_input(transpose_type, "X");
+  auto *transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op(transpose_type);
 
   quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
-  transpose2_op->LinksFrom({quant_out});
+  transpose_op->LinksFrom({quant_out});
 
-  return transpose2_op;
+  return transpose_op;
 }
 
-PDNode *patterns::Transpose2Dequant::operator()() {
-  auto *transpose2_op =
-      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+PDNode *patterns::TransposeDequant::operator()(
+    const std::string &transpose_type) {
+  auto *transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op(transpose_type);
   auto dequant_in = pattern->NewNode(dequant_in_repr())
                         ->AsIntermediate()
                         ->assert_has_n_inputs(1)
@@ -1012,7 +1014,7 @@ PDNode *patterns::Transpose2Dequant::operator()() {
                          ->AsOutput()
                          ->assert_is_op_output("dequantize", "Output");
 
-  transpose2_op->LinksTo({dequant_in});
+  transpose_op->LinksTo({dequant_in});
   dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
   return dequant_out;
 }
