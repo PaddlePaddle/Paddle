@@ -679,6 +679,16 @@
     func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : huber_loss_grad
+  forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
+  args : (Tensor residual, Tensor out_grad, float delta)
+  output : Tensor(input_grad), Tensor(label_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [residual, residual]
+  kernel :
+    func : huber_loss_grad
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)

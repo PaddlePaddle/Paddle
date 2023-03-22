@@ -683,6 +683,15 @@
   kernel :
     func : histogram
 
+- op : huber_loss
+  args : (Tensor input, Tensor label, float delta)
+  output : Tensor(out), Tensor(residual)
+  infer_meta :
+    func : HuberLossInferMeta
+  kernel :
+    func : huber_loss
+  backward : huber_loss_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
