@@ -1096,6 +1096,7 @@
     func : PReluInferMeta
   kernel :
     func : prelu
+    data_type : x
   backward : prelu_grad
 
 - op : put_along_axis

@@ -1092,6 +1092,7 @@
     param: [x, alpha]
   kernel :
     func : prelu_grad
+    data_type : x
 
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
