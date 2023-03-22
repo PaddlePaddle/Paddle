@@ -974,9 +974,9 @@ class DistributedContext:
 
     def validate_dist_attr_for_program(self):
         if not self._is_initialized:
-            assert (
-                False
-            ), "Program must be initialized before validating its distributed attributes"
+            raise AssertionError(
+                "Program must be initialized before validating its distributed attributes"
+            )
         for block in self.serial_main_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
@@ -988,13 +988,13 @@ class DistributedContext:
                 if (dist_tensor is not None) and (
                     not dist_tensor.validate_dist_attr()
                 ):
-                    assert (
-                        False
-                    ), "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name,
-                        dist_tensor.serial_tensor.desc.id(),
-                        dist_tensor.serial_tensor.desc.original_id(),
-                        dist_tensor.dist_attr,
+                    raise AssertionError(
+                        "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
+                            dist_tensor.serial_tensor.name,
+                            dist_tensor.serial_tensor.desc.id(),
+                            dist_tensor.serial_tensor.desc.original_id(),
+                            dist_tensor.dist_attr,
+                        )
                     )
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
@@ -1004,13 +1004,13 @@ class DistributedContext:
                     dist_op.serial_op.type
                 )
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
-                    assert (
-                        False
-                    ), "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
-                        dist_op.serial_op.type,
-                        dist_op.serial_op.desc.id(),
-                        dist_op.serial_op.desc.original_id(),
-                        dist_op.dist_attr,
+                    raise AssertionError(
+                        "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
+                            dist_op.serial_op.type,
+                            dist_op.serial_op.desc.id(),
+                            dist_op.serial_op.desc.original_id(),
+                            dist_op.dist_attr,
+                        )
                     )
         return True
 

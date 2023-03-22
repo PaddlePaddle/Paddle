@@ -166,8 +166,9 @@ def sync_params_buffers(
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, (ParamBase, core.eager.Tensor)):
-            if is_model_parallel and param.is_distributed:
-                continue
+            if is_model_parallel:
+                if hasattr(param, "is_distributed") and param.is_distributed:
+                    continue
 
             # NOTE(shenliang03): Support situations that do not require synchronization parameters,
             # such as moe's expert parameters
