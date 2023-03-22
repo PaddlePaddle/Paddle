@@ -141,7 +141,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         paddle.enable_static()
         OUTPUT_NUM = 32
         with new_program_scope():
-            x = fluid.data(name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32'
+            )
             y = paddle.static.nn.fc(
                 x,
                 OUTPUT_NUM,

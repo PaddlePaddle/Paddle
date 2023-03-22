@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -1206,6 +1207,7 @@ set(TEST_CINN_OPS
     test_elementwise_div_op
     test_elementwise_mul_op
     test_gather_nd_op
+    test_squeeze2_op
     test_elementwise_pow_op
     test_elementwise_max_op
     test_transpose_op

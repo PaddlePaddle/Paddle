@@ -235,7 +235,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
     def test_check_api(self):
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = paddle.nn.functional.gumbel_softmax(x, hard=True)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -284,7 +284,7 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
         def test_dtype():
             with paddle.static.program_guard(paddle.static.Program()):
-                x_int32 = paddle.fluid.data(
+                x_int32 = paddle.static.data(
                     name='x_int32', shape=[2, 3], dtype='int32'
                 )
                 paddle.nn.functional.gumbel_softmax(x_int32)

@@ -42,7 +42,7 @@ def test_list_append_in_if(x):
         a.append(x)
     else:
         a.append(
-            fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int64")
+            paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int64")
         )
     # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
     return a[0]
@@ -51,7 +51,7 @@ def test_list_append_in_if(x):
 def test_list_append_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
     a = []
@@ -88,7 +88,7 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     a = []
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
     for i in range(iter_num):
@@ -99,7 +99,7 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
 
 def test_list_append_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
     a = []
@@ -112,7 +112,7 @@ def test_list_append_in_while_loop(x, iter_num):
 
 def test_list_append_in_while_loop_with_stack(x, iter_num):
     x = fluid.dygraph.to_variable(x)
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
     a = []
@@ -159,11 +159,11 @@ def test_list_pop_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
         b.append(x + 1)
-        a.append(fluid.layers.fill_constant(shape=[1], value=1, dtype="int64"))
+        a.append(paddle.tensor.fill_constant(shape=[1], value=1, dtype="int64"))
     else:
         a.append(x + 1)
         b.append(x - 1)
-        a.append(fluid.layers.fill_constant(shape=[2], value=2, dtype="int64"))
+        a.append(paddle.tensor.fill_constant(shape=[2], value=2, dtype="int64"))
     item1 = a.pop(1)
     return item1, b[-1]
 
@@ -171,7 +171,7 @@ def test_list_pop_in_if(x):
 def test_list_pop_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
 
@@ -189,7 +189,7 @@ def test_list_pop_in_for_loop(x, iter_num):
 
 def test_list_pop_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
-    iter_num = fluid.layers.fill_constant(
+    iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
     a = []
