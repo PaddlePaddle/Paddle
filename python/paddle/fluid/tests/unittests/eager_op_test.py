@@ -972,7 +972,11 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_outputs,
                 attrs_outputs,
             )
-            if not kernel_sig:
+            if not kernel_sig or (
+                len(kernel_sig[0]) == 0
+                and len(kernel_sig[1]) == 0
+                and len(kernel_sig[2]) == 0
+            ):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
