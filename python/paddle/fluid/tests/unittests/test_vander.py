@@ -42,7 +42,7 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
         out_ref = ref_vander(self.x, N, increasing)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.vander(x, N, increasing)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -90,10 +90,10 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.vander, 1)
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(ValueError, paddle.vander, x)
-            x1 = paddle.fluid.data('X1', [10], 'int32')
-            self.assertRaises(ValueError, paddle.vander, x1, n=-1)
+            x1 = paddle.static.data('X1', [10], 'int32')
+            self.assertRaises(ValueError, paddle.vander, x1, N=-1)
 
 
 if __name__ == "__main__":
