@@ -458,6 +458,12 @@
   outputs :
     out : Out
 
+- op : dirichlet
+  inputs :
+    alpha : Alpha
+  outputs :
+    out : Out
+
 - op : dist
   inputs :
     {x : X, y : Y}
@@ -876,6 +882,12 @@
   outputs :
     out : Out
 
+- op : index_add
+  inputs :
+    {x : X, index : Index, add_value : AddValue}
+  outputs :
+    out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
@@ -1279,6 +1291,13 @@
 
 - op : overlap_add
   backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : p_norm
+  backward: p_norm_grad
   inputs :
     x : X
   outputs :
