@@ -193,6 +193,20 @@ class TestUnpoolOpException(unittest.TestCase):
             ).astype("int32")
             F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
+        def x_rank_error():
+            data = paddle.rand(shape=[1, 1, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+
+        def indices_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 3, 3]
+            ).astype("int32")
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
             indices = paddle.reshape(
@@ -231,6 +245,16 @@ class TestUnpoolOpException(unittest.TestCase):
             ValueError,
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The x should have \[N, C, H, W\] format",
+            x_rank_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The indices should have \[N, C, H, W\] format",
+            indices_rank_error,
         )
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
@@ -387,7 +411,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
         ).astype("float32")
 
-        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
         output, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, return_mask=True
         )

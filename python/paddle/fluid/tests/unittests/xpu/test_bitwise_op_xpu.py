@@ -300,7 +300,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.bool
+            self.dtype = np.bool_
             self.x_shape = [2, 3, 4, 5]
 
 

@@ -446,8 +446,8 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
-    paddle::framework::MixVector<size_t> mix_vector(&selected_lod[1]);
-    paddle::framework::MixVector<size_t> mixv_abs(&abs_lod[level]);
+    phi::MixVector<size_t> mix_vector(&selected_lod[1]);
+    phi::MixVector<size_t> mixv_abs(&abs_lod[level]);
     size_t* selected_offsets = mix_vector.CUDAMutableData(context.GetPlace());
 
     if (num_seqs == 1) {

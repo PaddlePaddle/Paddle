@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -269,13 +269,15 @@ class TestDataNormOp(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
@@ -331,13 +333,15 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
@@ -388,13 +392,15 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
@@ -450,13 +456,15 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithSlotDim(OpTest):
@@ -506,23 +514,47 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpErrorr(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4], dtype="int32")
             # self.assertRaises(TypeError, fluid.data_norm, x2)
             paddle.static.nn.data_norm(
                 input=x2, param_attr={}, enable_scale_and_shift=True
             )
+
+            # Test input with dimension 1
+            paddle.enable_static()
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            self.assertRaises(ValueError, paddle.static.nn.data_norm, x3)
+
+            # The size of input in data_norm should not be 0.
+            def test_0_size():
+                paddle.enable_static()
+                x = paddle.static.data(name='x', shape=[0, 3], dtype='float32')
+                out = paddle.static.nn.data_norm(x, slot_dim=1)
+                cpu = fluid.core.CPUPlace()
+                exe = fluid.Executor(cpu)
+                exe.run(fluid.default_startup_program())
+                test_program = fluid.default_main_program().clone(for_test=True)
+                exe.run(
+                    test_program,
+                    fetch_list=out,
+                    feed={'x': np.ones([0, 3]).astype('float32')},
+                )
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

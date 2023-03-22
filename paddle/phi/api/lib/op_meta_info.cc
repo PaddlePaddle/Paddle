@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -95,6 +94,10 @@ std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
   return rlt;
 }
 
+Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
+  return inputs_.at(idx);
+}
+
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }
@@ -129,6 +132,71 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
   return output_range_.at(idx);
 }
 
+// handle inplace mechanism
+// Find out non-inplace output tensors.
+void CustomOpKernelContext::MapPlainOutputs(
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
+  for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
+    auto& input = inputs[in_idx];
+    if (inplace_map.find(input) == inplace_map.end()) {
+      continue;
+    }
+    auto out_iter = find(outputs.begin(), outputs.end(), inplace_map.at(input));
+    PADDLE_ENFORCE(
+        out_iter != outputs.end(),
+        phi::errors::NotFound("Can't find the mapped value of %s, please check "
+                              "the input of `Inplace` again and make "
+                              "sure you registered your op accurately. ",
+                              input));
+    inplace_tensor_map_[in_idx] = distance(outputs.begin(), out_iter);
+  }
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    if (std::any_of(
+            inplace_tensor_map_.begin(),
+            inplace_tensor_map_.end(),
+            [i](std::unordered_map<size_t, size_t>::const_reference pair) {
+              return pair.second == i;
+            })) {
+      continue;
+    }
+    size_t output_start_idx = output_range_[i].first;
+    size_t output_end_idx = output_range_[i].second;
+    for (size_t idx = output_start_idx; idx < output_end_idx; ++idx) {
+      plain_outputs_.push_back(&outputs_[idx]);
+    }
+  }
+  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+}
+// Assign input tensor to inplace output tensors.
+void CustomOpKernelContext::AssignInplaceOutputs() {
+  for (auto pair : inplace_tensor_map_) {
+    size_t in_start_idx = input_range_[pair.first].first;
+    size_t in_end_idx = input_range_[pair.first].second;
+    size_t out_start_idx = output_range_[pair.second].first;
+    size_t out_end_idx = output_range_[pair.second].second;
+    size_t assign_tensor_size = in_end_idx - in_start_idx;
+    PADDLE_ENFORCE(
+        assign_tensor_size == out_end_idx - out_start_idx,
+        phi::errors::OutOfRange("When assigning inplaced tensor, Input vector "
+                                "size %d mismatch output vector size %d",
+                                in_end_idx - in_start_idx,
+                                out_end_idx - out_start_idx));
+    for (size_t i = 0; i < assign_tensor_size; ++i) {
+      AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
+    }
+    VLOG(4)
+        << "Custom opertor update inplace input-output tensor successfully.";
+  }
+}
+std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
+  return &plain_outputs_;
+}
+std::unordered_map<size_t, size_t>
+CustomOpKernelContext::GetInplaceTensorMap() {
+  return inplace_tensor_map_;
+}
 ////////////////////// Op Meta Info //////////////////////
 
 OpMetaInfo& OpMetaInfo::Inputs(std::vector<std::string>&& inputs) {
@@ -141,6 +209,12 @@ OpMetaInfo& OpMetaInfo::Outputs(std::vector<std::string>&& outputs) {
 }
 OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
   attrs_ = std::forward<std::vector<std::string>>(attrs);
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetInplaceMap(
+    std::unordered_map<std::string, std::string>&& inplace_map) {
+  inplace_map_ =
+      std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
@@ -223,6 +297,34 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
+    std::unordered_map<std::string, std::string>&& inplace_map) {
+  const std::vector<std::string>& inputs =
+      OpMetaInfoHelper::GetInputs(*info_ptr_);
+  const std::vector<std::string>& outputs =
+      OpMetaInfoHelper::GetOutputs(*info_ptr_);
+  for (const auto& pair : inplace_map) {
+    PADDLE_ENFORCE(
+        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` before "
+            "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
+            name_));
+    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
+                       outputs.cend(),
+                   phi::errors::PreconditionNotMet(
+                       "The register of operator %s's `SetInplaceMap` failed. "
+                       "Please make sure: 1. Call `Inputs` and `Outputs` "
+                       "before `SetInplaceMap`; 2. The values of inplace_map "
+                       "are inside `Outputs`",
+                       name_));
+  }
+  info_ptr_->SetInplaceMap(
+      std::forward<std::unordered_map<std::string, std::string>>(inplace_map));
+  return *this;
+}
+
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
   info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
   return *this;
@@ -243,17 +345,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
           "`X` by default."));
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
-}
-
-/////////////////////// Op register API /////////////////////////
-
-void RegisterAllCustomOperator() {
-  auto& op_meta_info_map = OpMetaInfoMap::Instance();
-  framework::RegisterOperatorWithMetaInfoMap(op_meta_info_map);
-}
-
-void LoadCustomOperatorLib(const std::string& dso_name) {
-  paddle::framework::LoadOpMetaInfoAndRegisterOp(dso_name);
 }
 }  // namespace paddle
 

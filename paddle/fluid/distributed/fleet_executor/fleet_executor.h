@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -45,7 +46,8 @@ class FleetExecutor final {
             int64_t num_micro_batches,
             const std::vector<TaskNode*>& task_nodes,
             const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
-            const std::vector<std::string>& inference_root_scope_vars = {});
+            const std::vector<std::string>& inference_root_scope_vars = {},
+            const std::vector<framework::Scope*>& micro_scope_list = {});
   void Run(const std::string& carrier_id);
 
  private:
@@ -57,7 +59,8 @@ class FleetExecutor final {
       const platform::Place& place,
       int64_t num_micro_batches,
       const framework::ProgramDesc& program_desc,
-      const std::vector<std::string>& inference_root_scope_vars = {});
+      const std::vector<std::string>& inference_root_scope_vars = {},
+      const std::vector<framework::Scope*>& micro_scope_list = {});
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;
   std::unordered_set<std::string> carrier_ids_;

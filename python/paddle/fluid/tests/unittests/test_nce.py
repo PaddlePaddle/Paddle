@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.initializer as initializer
 from paddle.fluid import Program, program_guard
 
 
@@ -187,8 +186,10 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         custom_dist,
         is_sparse,
     ):
-        input = fluid.layers.data(name="input", shape=[10], dtype="float32")
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        input = paddle.static.data(
+            name="input", shape=[-1, 10], dtype="float32"
+        )
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
         w_param = (
             fluid.default_main_program()
@@ -197,7 +198,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -207,7 +208,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -288,7 +289,7 @@ class TestNCE_OpError(unittest.TestCase):
             input1 = fluid.create_lod_tensor(
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace()
             )
-            label1 = fluid.layers.data(
+            label1 = paddle.static.data(
                 name='label1', shape=[-1, 4], dtype="int64"
             )
             # the input(input) of nce layer must be Variable.
@@ -296,7 +297,7 @@ class TestNCE_OpError(unittest.TestCase):
                 TypeError, paddle.static.nn.nce, input1, label1, 5
             )
 
-            input2 = fluid.layers.data(
+            input2 = paddle.static.data(
                 name='input2', shape=[-1, 4], dtype="float32"
             )
             label2 = fluid.create_lod_tensor(
@@ -307,10 +308,10 @@ class TestNCE_OpError(unittest.TestCase):
                 TypeError, paddle.static.nn.nce, input2, label2, 5
             )
 
-            input3 = fluid.layers.data(
+            input3 = paddle.static.data(
                 name='input3', shape=[-1, 4], dtype="float16"
             )
-            label3 = fluid.layers.data(
+            label3 = paddle.static.data(
                 name='label3', shape=[-1, 1], dtype="int64"
             )
             # the data type of input(input) must be float32 or float64.
@@ -318,15 +319,22 @@ class TestNCE_OpError(unittest.TestCase):
                 TypeError, paddle.static.nn.nce, input3, label3, 5
             )
 
-            input4 = fluid.layers.data(
+            input4 = paddle.static.data(
                 name='input4', shape=[-1, 4], dtype="float32"
             )
-            label4 = fluid.layers.data(
+            label4 = paddle.static.data(
                 name='label4', shape=[-1, 1], dtype="int32"
             )
             # the data type of input(label) must be int64.
             self.assertRaises(
                 TypeError, paddle.static.nn.nce, input4, label4, 5
+            )
+
+            input5 = paddle.static.data(name='x', shape=[1], dtype='float32')
+            label5 = paddle.static.data(name='label', shape=[1], dtype='int64')
+
+            self.assertRaises(
+                ValueError, paddle.static.nn.nce, input5, label5, 1
             )
 
 

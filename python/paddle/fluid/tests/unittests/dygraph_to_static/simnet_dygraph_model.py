@@ -15,11 +15,10 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-from paddle.fluid.dygraph import Layer
+from paddle.common_ops_import import Variable
 from paddle.jit.api import to_static
-from paddle.static import Variable
+from paddle.nn import Layer
 
 
 class EmbeddingLayer:
@@ -48,7 +47,8 @@ class EmbeddingLayer:
             sparse=True,
             padding_idx=self.padding_idx,
             weight_attr=attr.ParamAttr(
-                name=self.name, initializer=fluid.initializer.Xavier()
+                name=self.name,
+                initializer=paddle.nn.initializer.XavierUniform(),
             ),
         )
 
@@ -96,7 +96,7 @@ class ConcatLayer:
         """
         operation
         """
-        concat = fluid.layers.concat(inputs, axis=self.axis)
+        concat = paddle.concat(inputs, axis=self.axis)
         return concat
 
 
@@ -213,7 +213,7 @@ class ConstantLayer:
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = fluid.layers.fill_constant(shape, dtype, value)
+        constant = paddle.tensor.fill_constant(shape, dtype, value)
         return constant
 
 

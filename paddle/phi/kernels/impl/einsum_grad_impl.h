@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"

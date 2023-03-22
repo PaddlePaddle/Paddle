@@ -84,13 +84,17 @@ class TestArgsortOpCPU(unittest.TestCase):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.layers.data(
-                name="x", shape=self.input_shape, dtype=self.dtype
+            x = paddle.static.data(
+                name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
             x.stop_gradient = False
-            label = fluid.layers.data(
-                name="label", shape=self.input_shape, dtype=self.dtype
+            x.desc.set_need_check_feed(False)
+            label = paddle.static.data(
+                name="label",
+                shape=[-1] + list(self.input_shape),
+                dtype=self.dtype,
             )
+            label.desc.set_need_check_feed(False)
             self.index = paddle.argsort(
                 x=x, axis=self.axis, descending=self.descending
             )
@@ -388,7 +392,7 @@ class TestArgsort(unittest.TestCase):
 
     def test_api(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
 
@@ -493,6 +497,19 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         out = paddle.argsort(var_x, axis=self.axis, descending=True)
         self.assertEqual((out.numpy() == np.array([1, 2, 3, 0])).all(), True)
         paddle.enable_static()
+
+
+class TestArgsortOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((2, 8)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
+            out = paddle.argsort(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == "__main__":

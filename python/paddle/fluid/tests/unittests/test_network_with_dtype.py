@@ -30,8 +30,8 @@ class TestNetWithDtype(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-            y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype=self.dtype)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype=self.dtype)
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

@@ -120,13 +120,14 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
                 name='repeats_',
                 shape=[4],
                 dtype='int32',
-                append_batch_size=False,
             )
+            index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -140,13 +141,14 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 2:
         repeats = np.array([1, 2, 1]).astype('int32')
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype="float32")
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
                 name='repeats_',
                 shape=[3],
                 dtype='int32',
-                append_batch_size=False,
             )
+            index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -162,7 +164,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         repeats = 2
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -173,7 +176,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 3 zero_dim:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[])
+            x = paddle.static.data(name='x', shape=[-1], dtype="float32")
+            x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -182,6 +186,26 @@ class TestIndexSelectAPI(unittest.TestCase):
                 return_numpy=False,
             )
         expect_out = np.repeat(self.data_zero_dim_x, repeats)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        # case 4 negative axis:
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[4],
+                dtype='int32',
+            )
+            index.desc.set_need_check_feed(False)
+            z = paddle.repeat_interleave(x, index, axis=-1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'repeats_': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):

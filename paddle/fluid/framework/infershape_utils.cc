@@ -117,6 +117,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_type == proto::VarType::SPARSE_COO;
   }
 
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    auto var_types = ctx_.GetOutputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SPARSE_COO;
+                       });
+  }
+
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
     return var_type == proto::VarType::SPARSE_CSR;
@@ -609,7 +618,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiScalarFromVar(*var)));
+                  std::move(framework::MakePhiScalarFromVar(*var)));
             } else {
               phi::Scalar tensor_scalar(-1);
               tensor_scalar.SetFromTensor(true);
@@ -661,10 +670,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             }
             if (infershape_inputs.size() != 1) {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiIntArrayFromVarList(vars)));
+                  std::move(framework::MakePhiIntArrayFromVarList(vars)));
             } else {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiIntArrayFromVar(*vars[0])));
+                  std::move(framework::MakePhiIntArrayFromVar(*vars[0])));
             }
           } else {
             // If is not in runtime, we will set default value(-1) for IntArray

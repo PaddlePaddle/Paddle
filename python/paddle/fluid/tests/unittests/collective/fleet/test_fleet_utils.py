@@ -20,9 +20,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.incubate.fleet.utils.utils as utils
 from paddle.dataset.common import download
-from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
 
 
 class TestFleetUtils(unittest.TestCase):
@@ -199,11 +198,11 @@ class TestFleetUtils(unittest.TestCase):
                 os.path.join(self.train_dir, "join_main_program.pbtxt"),
             )
             is_text = True
-            program = utils.load_program(program_path, is_text)
+            fleet_util = FleetUtil()
+            program = fleet_util.load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)
             output_filename_1 = "draw_prog_1"
             output_filename_2 = "draw_prog_2"
-            fleet_util = FleetUtil()
             fleet_util.draw_from_program_file(
                 program_path, is_text, output_dir, output_filename_1
             )

@@ -44,9 +44,7 @@ def create_model(data, rank):
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    np_weight_part
-                )
+                initializer=paddle.nn.initializer.Assign(np_weight_part)
             ),
             bias_attr=False,
         )
@@ -55,7 +53,7 @@ def create_model(data, rank):
             data,
             size=OUT_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
+                initializer=paddle.nn.initializer.Assign(np_weight)
             ),
             bias_attr=False,
         )
@@ -67,7 +65,7 @@ def create_model(data, rank):
 class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
         )
 

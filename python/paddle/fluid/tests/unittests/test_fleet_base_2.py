@@ -39,13 +39,11 @@ class TestFleetBase(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "1"
 
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32'
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_slot = paddle.static.data(
+            name="slot", shape=[-1, 1], dtype='int64'
         )
-        input_slot = paddle.fluid.layers.data(
-            name="slot", shape=[1], dtype='int64'
-        )
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         emb = paddle.fluid.layers.embedding(
             input=input_slot, size=[10, 9], is_sparse=True
@@ -73,7 +71,6 @@ class TestFleetBase(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        pe = fluid.ParallelExecutor(use_cuda=False, loss_name=avg_cost.name)
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program()
         )

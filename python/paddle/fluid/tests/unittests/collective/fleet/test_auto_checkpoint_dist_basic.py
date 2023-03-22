@@ -20,10 +20,10 @@ from test_auto_checkpoint import AutoCheckPointACLBase
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.incubate.distributed.fleet.role_maker as role_maker
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
-from paddle.fluid.incubate.fleet.collective import fleet
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
+from paddle.incubate.distributed.fleet.collective import fleet
 
 paddle.enable_static()
 logger = get_logger()

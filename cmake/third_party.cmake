@@ -301,7 +301,7 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
-if(WITH_PYTHON)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
   include(external/pybind11) # download pybind11
   list(APPEND third_party_deps extern_pybind)
@@ -320,9 +320,7 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
-     OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6
-         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.8))
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   endif()
@@ -446,7 +444,8 @@ endif()
 
 if(WITH_DISTRIBUTE
    AND NOT WITH_PSLIB
-   AND NOT WITH_PSCORE)
+   AND NOT WITH_PSCORE
+   AND NOT WITH_RPC)
   include(external/snappy)
   list(APPEND third_party_deps extern_snappy)
 
@@ -532,6 +531,11 @@ if(WITH_GPU
     include(external/cutlass) # download, build, install cusparselt
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
+  endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.2)
+    include(external/flashattn)
+    list(APPEND third_party_deps extern_flashattn)
+    set(WITH_FLASHATTN ON)
   endif()
 endif()
 

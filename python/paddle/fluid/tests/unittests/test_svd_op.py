@@ -307,7 +307,7 @@ class TestSvdAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 a = np.random.rand(5, 5)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
@@ -319,6 +319,16 @@ class TestSvdAPI(unittest.TestCase):
                     fetch_list=[s],
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
+
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in svd should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+                paddle.linalg.svd(x, full_matrices=False)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

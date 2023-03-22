@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -124,10 +124,10 @@ class TestFoldOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y')
 
 
 class TestFoldshape(TestFoldOp):
@@ -179,7 +179,7 @@ class TestFoldOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def test_input_shape():
-                # input_shpae must be 3-D
+                # input_shape must be 3-D
                 x = paddle.randn(shape=[2, 3, 6, 7], dtype="float32")
                 out = fold(x, output_sizes=[2, 3], kernel_sizes=[2, 2])
 

@@ -46,7 +46,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of SyncBatchNorm must be float16 or float32
             # float16 only can be set on GPU place and NPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 

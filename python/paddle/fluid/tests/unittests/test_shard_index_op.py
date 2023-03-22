@@ -15,11 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 def common_setup(self, index_num, nshards, shard_id, ignore_value):
     self.op_type = 'shard_index'
+    self.python_api = paddle.tensor.shard_index
     x_lod = [[i for i in range(10)]]
     N = sum(x_lod[0])
     x = [np.random.randint(0, index_num - 1) for i in range(N)]

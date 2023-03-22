@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from testsuite import create_op
 
 import paddle
@@ -52,8 +52,8 @@ class TestGroupNormOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[2, 100, 3, 5], dtype='int32'
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                 )
                 groups = 2
                 paddle.static.nn.group_norm(x2, groups)
@@ -94,8 +94,8 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
-        atol = 0.0
-        inplace_atol = 0.0
+        atol = 0
+        inplace_atol = 0
         place = core.CPUPlace()
 
         self.check_output_with_place(place, atol=atol)
@@ -161,12 +161,129 @@ class TestGroupNormOp(OpTest):
         pass
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestGroupNormFP16OP(TestGroupNormOp):
+    def test_check_output(self):
+        atol = 1e-3
+        inplace_atol = 1e-3
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
+
+    def init_test_case(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestGroupNormBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "group_norm"
+        self.data_format = "NCHW"
+        self.dtype = np.uint16
+        self.shape = (2, 100, 3, 5)
+        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
+        self.compare_between_place = False
+        self.init_test_case()
+
+        input = np.random.random(self.shape).astype(np.float32)
+        if self.data_format == "NHWC":
+            input = np.transpose(input, (0, 2, 3, 1))
+        scale = np.random.random([self.shape[1]]).astype(np.float32)
+        bias = np.random.random([self.shape[1]]).astype(np.float32)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+            'Scale': convert_float_to_uint16(scale),
+            'Bias': convert_float_to_uint16(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+        self.attrs['data_layout'] = self.data_format
+
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
+
+    def init_test_case(self):
+        pass
+
+
 class TestGroupNormOp1(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
 
 
+class TestGroupNormFP16Op1(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.dtype = np.float16
+
+
+class TestGroupNormBF16Op1(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+
+
 class TestGroupNormOp2(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+
+
+class TestGroupNormFP16Op2(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+        self.dtype = np.float16
+
+
+class TestGroupNormBF16Op2(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 4
 
@@ -244,12 +361,18 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
+    paddle.enable_static()
+
     def test_case1(self):
-        data1 = fluid.data(name='data1', shape=[None, 3, 3, 4], dtype='float64')
+        data1 = paddle.static.data(
+            name='data1', shape=[None, 3, 3, 4], dtype='float64'
+        )
         out1 = paddle.static.nn.group_norm(
             input=data1, groups=2, data_layout="NHWC"
         )
-        data2 = fluid.data(name='data2', shape=[None, 4, 3, 3], dtype='float64')
+        data2 = paddle.static.data(
+            name='data2', shape=[None, 4, 3, 3], dtype='float64'
+        )
         out2 = paddle.static.nn.group_norm(
             input=data2, groups=2, data_layout="NCHW"
         )
@@ -280,7 +403,9 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
 class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
-        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+        data = paddle.static.data(
+            name='data', shape=[None, 3, 3, 4], dtype="float64"
+        )
 
         def attr_data_format():
             out = paddle.static.nn.group_norm(

@@ -163,7 +163,7 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
-        default_initializer=fluid.initializer.ConstantInitializer(0.25),
+        default_initializer=paddle.nn.initializer.Constant(0.25),
     )
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -184,7 +184,7 @@ class TestModeError(unittest.TestCase):
     def test_mode_error(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'any')
             except Exception as e:
@@ -193,7 +193,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error1(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'channel', data_format='N')
             except Exception as e:
@@ -202,7 +202,7 @@ class TestModeError(unittest.TestCase):
     def test_data_format_error2(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = paddle.static.nn.prelu(x, 'channel', data_format='N')
             except ValueError as e:

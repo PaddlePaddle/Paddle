@@ -288,6 +288,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("execution_stream",
                     &OperatorDistAttr::execution_stream,
                     &OperatorDistAttr::set_execution_stream)
+      .def_property("stream_priority",
+                    &OperatorDistAttr::stream_priority,
+                    &OperatorDistAttr::set_stream_priority)
       .def_property("scheduling_priority",
                     &OperatorDistAttr::scheduling_priority,
                     &OperatorDistAttr::set_scheduling_priority)

@@ -46,6 +46,11 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_and'
 
+            # special range for bool dtype
+            if self.dtype == np.dtype(np.bool_):
+                self.low = 0
+                self.high = 2
+
             x = np.random.randint(
                 self.low, self.high, self.x_shape, dtype=self.dtype
             )
@@ -62,7 +67,7 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -76,7 +81,7 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
 
     class XPUTestLogicalAndCase1(XPUTestLogicalAndBase):
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -102,6 +107,11 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_or'
 
+            # special range for bool dtype
+            if self.dtype == np.dtype(np.bool_):
+                self.low = 0
+                self.high = 2
+
             x = np.random.randint(
                 self.low, self.high, self.x_shape, dtype=self.dtype
             )
@@ -118,7 +128,7 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -132,7 +142,7 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
 
     class XPUTestLogicalOrCase1(XPUTestLogicalOrBase):
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -158,6 +168,11 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_xor'
 
+            # special range for bool dtype
+            if self.dtype == np.dtype(np.bool_):
+                self.low = 0
+                self.high = 2
+
             x = np.random.randint(
                 self.low, self.high, self.x_shape, dtype=self.dtype
             )
@@ -174,7 +189,7 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int64
+            self.dtype = self.in_type
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -188,7 +203,7 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
 
     class XPUTestLogicalXorCase1(XPUTestLogicalXorBase):
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -214,6 +229,11 @@ class XPUTestLogicalNot(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_not'
 
+            # special range for bool dtype
+            if self.dtype == np.dtype(np.bool_):
+                self.low = 0
+                self.high = 2
+
             x = np.random.randint(
                 self.low, self.high, self.x_shape, dtype=self.dtype
             )
@@ -224,7 +244,7 @@ class XPUTestLogicalNot(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int32
+            self.dtype = self.in_type
             self.x_shape = [2, 3, 4, 5]
             self.low = -100
             self.high = 100

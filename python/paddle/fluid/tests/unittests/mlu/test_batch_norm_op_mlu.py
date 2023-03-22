@@ -745,7 +745,7 @@ class TestBatchNormOpError(unittest.TestCase):
 
             # the input dtype of batch_norm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
 
 
@@ -761,7 +761,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, batch_norm, x2)
 
 
@@ -803,7 +803,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -820,7 +820,7 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
+            x = paddle.static.data(name='x', shape=x.shape, dtype=x.dtype)
             # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
             batch_norm = paddle.nn.BatchNorm(7, data_layout="NHWC")

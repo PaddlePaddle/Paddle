@@ -25,7 +25,7 @@ from paddle.framework import core
 paddle.enable_static()
 
 
-@unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
+@unittest.skip(reason="Skip unsupported ut, need paddle support can 5.0.4+")
 class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -75,7 +75,7 @@ class TestCase1(TestTakeAlongAxisOp):
         self.axis_type = "int64"
 
 
-@unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
+@unittest.skip(reason="Skip unsupported ut, need paddle support can 5.0.4+")
 class TestTakeAlongAxisAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -89,8 +89,8 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
-            index = paddle.fluid.data('Index', self.index_shape, "int64")
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
@@ -114,7 +114,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
+@unittest.skip(reason="Skip unsupported ut, need paddle support can 5.0.4+")
 class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
     def setUp(self):
         np.random.seed(0)

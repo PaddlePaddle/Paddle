@@ -18,8 +18,6 @@ from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import Variable, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
-__all__ = ['check_finite_and_unscale', 'update_loss_scaling']
-
 
 def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """

@@ -26,7 +26,7 @@ from paddle.fluid.core import AnalysisConfig
 class TRTDynamicShapeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 16, 16], dtype="float32"
             )
             out = paddle.static.nn.conv2d(

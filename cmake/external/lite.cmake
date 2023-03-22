@@ -84,7 +84,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   if(WITH_ARM)
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
-    message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=OFF
         -DLITE_WITH_CUDA=OFF
@@ -137,6 +137,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   else()
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=ON
         -DLITE_WITH_CUDA=OFF
@@ -188,8 +189,7 @@ endif()
 
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
 message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
-include_directories(${LITE_SOURCE_DIR})
-include_directories(${LITE_BINARY_DIR})
+include_directories(${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/include)
 if(LITE_WITH_XPU)
   include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xdnn/include/)
   include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xre/include/)

@@ -23,8 +23,6 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import AutoMixedPrecisionLists
 
-__all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -432,6 +430,18 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
 
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
+    amp_lists.unsupported_list -= {
+        "conditional_block_grad",
+        "conditional_block",
+        "conditional_block_infer",
+        "select_input",
+        "while",
+        "while_grad",
+        "cast",
+        "tensor_array_to_tensor",
+        "lod_array_length",
+        "write_to_array",
+    }
     global_block = program.global_block()
     keep_fp32_ops = set()
     to_fp16_var_names = set()
@@ -456,7 +466,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 for in_var_name in op.input(in_name):
                     in_var = None
                     try:
-                        in_var = block.var(in_var_name)
+                        in_var = block._var_recursive(in_var_name)
                     except ValueError as e:
                         _logger.debug(
                             "-- {}, try to get it in the global block --".format(
@@ -493,7 +503,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 for out_var_name in op.output(out_name):
                     out_var = None
                     try:
-                        out_var = block.var(out_var_name)
+                        out_var = block._var_recursive(out_var_name)
                     except ValueError as e:
                         _logger.debug(
                             "-- {}, try to get it in the global block --".format(

@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
@@ -149,16 +148,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=0.002, check_eager=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.05, check_eager=True
-            )
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestScaleBF16Op(OpTest):
@@ -176,7 +169,12 @@ class TestScaleBF16Op(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.8,
+            check_eager=True,
+        )
 
 
 @unittest.skipIf(
@@ -247,7 +245,7 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -278,7 +276,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

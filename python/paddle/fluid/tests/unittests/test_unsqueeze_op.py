@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -107,6 +106,22 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+# axis is empty, x is ND
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = ()
+        self.new_shape = ()
+
+
+# axis is empty, x is 0D
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = ()
+        self.new_shape = (10, 2, 5)
 
 
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
@@ -329,7 +344,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.unsqueeze(data, [0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -360,7 +375,7 @@ class TestUnsqueezeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.unsqueeze(data, [0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

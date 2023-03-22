@@ -85,20 +85,20 @@ class TestCorrelationOp(unittest.TestCase):
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
         x_type = 'float32'
-        x1 = fluid.layers.data(
+        x1 = paddle.static.data(
             name='x1',
             shape=x_shape,
             dtype=x_type,
-            append_batch_size=False,
-            stop_gradient=False,
         )
-        x2 = fluid.layers.data(
+        x1.desc.set_need_check_feed(False)
+        x1.stop_gradient = False
+        x2 = paddle.static.data(
             name='x2',
             shape=x_shape,
             dtype=x_type,
-            append_batch_size=False,
-            stop_gradient=False,
         )
+        x2.desc.set_need_check_feed(False)
+        x2.stop_gradient = False
 
         x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
         x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
@@ -135,7 +135,7 @@ class TestCorrelationOp(unittest.TestCase):
         np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
 
-class Net(fluid.dygraph.Layer):
+class Net(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

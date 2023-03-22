@@ -671,9 +671,8 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
+      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
         op->SetAttr("use_mkldnn", true);
-      }
     }
   }
 #else

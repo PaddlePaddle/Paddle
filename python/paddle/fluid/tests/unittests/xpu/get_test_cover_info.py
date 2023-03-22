@@ -228,7 +228,8 @@ def get_xpu_op_support_types(op_name, dev_id=0):
         op_name_type = op_name + "_" + stype
         if op_name_type in ops:
             support_types.append(stype)
-
+    if len(support_types) == 0:
+        print("WARNING: support_types is EMPTY for op", op_name)
     return support_types
 
 

@@ -142,7 +142,7 @@ class TestLU_UnpackOp(OpTest):
                 place = fluid.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = fluid.CUDAPlace(0)
-                xv = paddle.fluid.data(
+                xv = paddle.static.data(
                     name="input", shape=self.x_shape, dtype=self.dtype
                 )
                 lu, p = paddle.linalg.lu(xv)
@@ -195,6 +195,19 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
     def config(self):
         self.x_shape = [2, 10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
+        self.dtype = "float64"
+
+
+# batchsize = 0
+class TestLU_UnpackOp4(TestLU_UnpackOp):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.x_shape = [10, 12]
         self.unpack_ludata = True
         self.unpack_pivots = True
         self.dtype = "float64"
@@ -265,7 +278,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     sP, sL, sU = scipy_lu_unpack(a)
 
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     lu, p = paddle.linalg.lu(x)

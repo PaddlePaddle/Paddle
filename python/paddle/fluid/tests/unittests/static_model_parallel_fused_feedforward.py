@@ -30,11 +30,9 @@ OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+        initializer=paddle.nn.initializer.Assign(weight)
     )
-    bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias)
-    )
+    bias_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(bias))
     return weight_attr, bias_attr
 
 
@@ -104,7 +102,7 @@ class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, seq_len, IN_SIZE], dtype=DTYPE
         )
 

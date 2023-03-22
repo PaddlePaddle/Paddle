@@ -20,7 +20,7 @@ import numpy as np
 sys.path.append("../")
 from op_test import OpTest
 
-import paddle.fluid as fluid
+import paddle
 
 
 class TestSequenceUnpadOp(OpTest):
@@ -91,29 +91,29 @@ class TestSequenceUnpadOpError(unittest.TestCase):
     def test_error(self):
         def test_x_variable():
             x = np.random.random((10, 5)).astype("float64")
-            len = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x, length=len)
+            len = paddle.static.data(name='length2', shape=[10], dtype='int64')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x, length=len)
 
         self.assertRaises(TypeError, test_x_variable)
 
         def test_length_variable():
-            x1 = fluid.data(name='x1', shape=[10, 5], dtype='float32')
+            x1 = paddle.static.data(name='x1', shape=[10, 5], dtype='float32')
             len1 = np.random.random((10)).astype("int64")
-            fluid.layers.sequence_pad(x=x1, length=len1)
+            paddle.static.nn.sequence_lod.sequence_pad(x=x1, length=len1)
 
         self.assertRaises(TypeError, test_length_variable)
 
         def test_x_dtype():
-            x2 = fluid.data(name='x2', shape=[10, 5], dtype='float16')
-            len2 = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x2, length=len2)
+            x2 = paddle.static.data(name='x2', shape=[10, 5], dtype='float16')
+            len2 = paddle.static.data(name='length2', shape=[10], dtype='int64')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x2, length=len2)
 
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_length_dtype():
-            x3 = fluid.data(name='x3', shape=[10, 5], dtype='float64')
-            len3 = fluid.data(name='length3', shape=[10], dtype='int32')
-            fluid.layers.sequence_pad(x=x3, length=len3)
+            x3 = paddle.static.data(name='x3', shape=[10, 5], dtype='float64')
+            len3 = paddle.static.data(name='length3', shape=[10], dtype='int32')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x3, length=len3)
 
         self.assertRaises(TypeError, test_length_dtype)
 

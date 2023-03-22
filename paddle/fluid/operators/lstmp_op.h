@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::Transform;
+using phi::Transform;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -70,7 +70,7 @@ class _ClipGradFunctor {
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
-                             framework::Vector<size_t> index,
+                             phi::Vector<size_t> index,
                              phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
@@ -158,7 +158,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     phi::DenseTensor ordered_c0;
     phi::DenseTensor ordered_h0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (cell_t0) {
       // Since the batch computing for LSTMP reorders the input sequence
@@ -350,7 +350,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     // initialization.
     phi::DenseTensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(

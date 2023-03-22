@@ -17,8 +17,8 @@ limitations under the License. */
 #include <limits>
 #include <random>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {

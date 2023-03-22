@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,23 +91,12 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
-        {"fuse_activation_type", ExtraAttrProperty::ONEDNN},
-        {"fuse_activation_alpha", ExtraAttrProperty::ONEDNN},
-        {"fuse_activation_beta", ExtraAttrProperty::ONEDNN},
-        {"fuse_activation_scale", ExtraAttrProperty::ONEDNN},
-        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
         {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_X", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Y", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
@@ -128,6 +117,9 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"Sum_scale", ExtraAttrProperty::ONEDNN},
+        {"scale", ExtraAttrProperty::ONEDNN},
+        {"shift", ExtraAttrProperty::ONEDNN},
+        {"output_data_type", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},
@@ -224,10 +216,7 @@ class ExtraInfoUtils {
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
-      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}},
-                                  {"matmul_v2", {"ResidualData"}}};
+      g_extra_input_names_map_ = {{"conv2d_transpose", {"Bias"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

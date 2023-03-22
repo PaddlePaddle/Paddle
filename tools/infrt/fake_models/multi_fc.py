@@ -21,8 +21,8 @@ size = 2
 num_layers = 4
 paddle.enable_static()
 
-a = fluid.layers.data(name="A", shape=[-1, size], dtype='float32')
-label = fluid.layers.data(name="label", shape=[size], dtype='float32')
+a = paddle.static.data(name="A", shape=[-1, size], dtype='float32')
+label = paddle.static.data(name="label", shape=[-1, size], dtype='float32')
 
 fc_out = paddle.static.nn.fc(
     x=a,

@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import textwrap
 import threading
 import warnings
@@ -166,47 +167,41 @@ def custom_write_stub(resource, pyfile):
     """
     _stub_template = textwrap.dedent(
         """
+        {custom_api}
+
         import os
         import sys
         import types
         import paddle
+        import importlib.util
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         so_path = os.path.join(cur_dir, "{resource}")
 
-        def inject_ext_module(module_name, api_names):
-            if module_name in sys.modules:
-                return sys.modules[module_name]
-
-            new_module = types.ModuleType(module_name)
-            for api_name in api_names:
-                setattr(new_module, api_name, eval(api_name))
-
-            return new_module
-
         def __bootstrap__():
             assert os.path.exists(so_path)
+            if os.name == 'nt' or sys.platform.startswith('darwin'):
+                # Cpp Extension only support Linux now
+                mod = types.ModuleType(__name__)
+            else:
+                try:
+                    spec = importlib.util.spec_from_file_location(__name__, so_path)
+                    assert spec is not None
+                    mod = importlib.util.module_from_spec(spec)
+                    assert isinstance(spec.loader, importlib.abc.Loader)
+                    spec.loader.exec_module(mod)
+                except ImportError:
+                    mod = types.ModuleType(__name__)
 
             # load custom op shared library with abs path
-            new_custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            m = inject_ext_module(__name__, new_custom_ops)
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+            for custom_ops in custom_ops:
+                setattr(mod, custom_ops, eval(custom_ops))
 
         __bootstrap__()
 
-        {custom_api}
-
         """
     ).lstrip()
-
-    # Parse registering op information
-    _, op_info = CustomOpInfo.instance().last()
-    so_path = op_info.so_path
-
-    new_custom_ops = load_op_meta_info_and_register_op(so_path)
-    assert len(new_custom_ops) > 0, (
-        "Required at least one custom operators, but received len(custom_op) =  %d"
-        % len(new_custom_ops)
-    )
 
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
@@ -214,8 +209,20 @@ def custom_write_stub(resource, pyfile):
     resource = filename + "_pd_" + ext
 
     api_content = []
-    for op_name in new_custom_ops:
-        api_content.append(_custom_api_content(op_name))
+    if CustomOpInfo.instance().empty():
+        print("Received len(custom_op) =  0, using cpp extension only")
+    else:
+        # Parse registering op information
+        _, op_info = CustomOpInfo.instance().last()
+        so_path = op_info.so_path
+
+        new_custom_ops = load_op_meta_info_and_register_op(so_path)
+        for op_name in new_custom_ops:
+            api_content.append(_custom_api_content(op_name))
+        print(
+            "Received len(custom_op) =  %d, using custom operator"
+            % len(new_custom_ops)
+        )
 
     with open(pyfile, 'w') as f:
         f.write(
@@ -256,6 +263,11 @@ class CustomOpInfo:
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
 
+    def empty(self):
+        if self.op_info_map:
+            return False
+        return True
+
 
 VersionFields = collections.namedtuple(
     'VersionFields',
@@ -278,7 +290,7 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        from paddle.fluid.layers.utils import flatten
+        from paddle.utils import flatten
 
         md5 = hashlib.md5()
         for field in version_field._fields:
@@ -532,6 +544,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
+    include_dirs.extend(find_python_includes())
 
     kwargs['include_dirs'] = include_dirs
 
@@ -774,6 +787,22 @@ def find_paddle_includes(use_cuda=False):
     return include_dirs
 
 
+def find_python_includes():
+    """
+    Return necessary include dir path of Python.h.
+    """
+    # sysconfig.get_path('include') gives us the location of Python.h
+    # Explicitly specify 'posix_prefix' scheme on non-Windows platforms to workaround error on some MacOS
+    # installations where default `get_path` points to non-existing `/Library/Python/M.m/include` folder
+    python_include_path = sysconfig.get_path(
+        'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
+    )
+    if python_include_path is not None:
+        assert isinstance(python_include_path, str)
+        return [python_include_path]
+    return []
+
+
 def find_clang_cpp_include(compiler='clang'):
     std_v1_includes = None
     try:
@@ -949,10 +978,32 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
 
+    if os.name == 'nt' or sys.platform.startswith('darwin'):
+        # Cpp Extension only support Linux now
+        return _generate_python_module(
+            module_name, op_names, build_directory, verbose
+        )
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, ext_path)
+        assert spec is not None
+        module = importlib.util.module_from_spec(spec)
+        assert isinstance(spec.loader, importlib.abc.Loader)
+        spec.loader.exec_module(module)
+    except ImportError:
+        log_v('using custom operator only')
+        return _generate_python_module(
+            module_name, op_names, build_directory, verbose
+        )
+
     # generate Python api in ext_path
-    return _generate_python_module(
+    op_module = _generate_python_module(
         module_name, op_names, build_directory, verbose
     )
+    for op_name in op_names:
+        # Mix use of Cpp Extension and Custom Operator
+        setattr(module, op_name, getattr(op_module, op_name))
+
+    return module
 
 
 def _generate_python_module(
@@ -1109,6 +1160,7 @@ def _write_setup_file(
     file_path,
     build_dir,
     include_dirs,
+    library_dirs,
     extra_cxx_cflags,
     extra_cuda_cflags,
     link_args,
@@ -1130,6 +1182,7 @@ def _write_setup_file(
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
+                library_dirs={library_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
@@ -1148,6 +1201,7 @@ def _write_setup_file(
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
+        library_dirs=list2str(library_dirs),
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),

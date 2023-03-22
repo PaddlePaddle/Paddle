@@ -44,9 +44,9 @@ def create_test_class(op_type, typename, callback):
         def test_errors(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                a = fluid.layers.data(name='a', shape=[2], dtype='float32')
-                b = fluid.layers.data(name='b', shape=[2], dtype='float32')
-                c = fluid.layers.data(name='c', shape=[2], dtype='int16')
+                a = paddle.static.data(name='a', shape=[-1, 2], dtype='float32')
+                b = paddle.static.data(name='b', shape=[-1, 2], dtype='float32')
+                c = paddle.static.data(name='c', shape=[-1, 2], dtype='int16')
                 d = fluid.create_lod_tensor(np.array([[-1]]), [[1]], self.place)
 
                 op = eval("fluid.layers.%s" % self.op_type)
@@ -134,8 +134,8 @@ def create_test_class(op_type, typename, callback):
         def test_attr_name(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[4], dtype=typename)
-                y = fluid.layers.data(name='y', shape=[4], dtype=typename)
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype=typename)
+                y = paddle.static.data(name='y', shape=[-1, 4], dtype=typename)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x=x, y=y, name="name_%s" % (self.op_type))
             self.assertEqual("name_%s" % (self.op_type) in out.name, True)

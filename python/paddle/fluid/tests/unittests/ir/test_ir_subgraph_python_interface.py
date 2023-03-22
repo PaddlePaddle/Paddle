@@ -16,7 +16,6 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.framework import IrGraph, Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTestTool
@@ -28,10 +27,12 @@ paddle.enable_static()
 class TestQuantizationSubGraph(unittest.TestCase):
     def build_graph_with_sub_graph(self):
         def linear_fc(num):
-            data = fluid.layers.data(
-                name='image', shape=[1, 32, 32], dtype='float32'
+            data = paddle.static.data(
+                name='image', shape=[-1, 1, 32, 32], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             hidden = data
             for _ in range(num):
                 hidden = paddle.static.nn.fc(
@@ -53,8 +54,12 @@ class TestQuantizationSubGraph(unittest.TestCase):
             return linear_fc(5)
 
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
 

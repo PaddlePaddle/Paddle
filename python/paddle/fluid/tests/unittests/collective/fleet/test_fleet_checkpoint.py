@@ -17,11 +17,11 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.incubate.distributed.fleet.role_maker as role_maker
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
-from paddle.fluid.incubate.fleet.collective import fleet
+from paddle.incubate.distributed.fleet.collective import fleet
 
 
 class FleetTest(unittest.TestCase):
@@ -35,8 +35,10 @@ class FleetTest(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
-        image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        image = paddle.static.data(
+            name='img', shape=[None, 28, 28], dtype='float32'
+        )
+        label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         feeder = fluid.DataFeeder(
             feed_list=[image, label], place=fluid.CPUPlace()
         )
@@ -134,4 +136,5 @@ class FleetTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

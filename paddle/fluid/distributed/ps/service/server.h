@@ -68,7 +68,7 @@ class PSServer {
 
   virtual int32_t Configure(
       const PSParameter &config,
-      PSEnvironment &env,
+      PSEnvironment &env,  // NOLINT
       size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
@@ -154,14 +154,14 @@ typedef std::function<void(void *)> PServerCallBack;
 
 class PServerClosure : public google::protobuf::Closure {
  public:
-  PServerClosure(PServerCallBack callback) : _callback(callback) {}
+  explicit PServerClosure(PServerCallBack callback) : _callback(callback) {}
   virtual ~PServerClosure() {}
   virtual void set_promise_value(int value) {
     for (auto &promise : _promises) {
       promise->set_value(value);
     }
   }
-  void add_promise(std::shared_ptr<std::promise<int32_t>> &promise) {
+  void add_promise(const std::shared_ptr<std::promise<int32_t>> &promise) {
     _promises.push_back(promise);
   }
 
@@ -181,12 +181,12 @@ class PsBaseService : public PsService {
     _config = _server->Config();
     return 0;
   }
-  virtual void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override = 0;
+  void service(::google::protobuf::RpcController *controller,
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override = 0;
 
-  virtual void set_response_code(PsResponseMessage &response,
+  virtual void set_response_code(PsResponseMessage &response,  // NOLINT
                                  int err_code,
                                  const char *err_msg) {
     response.set_err_msg(err_msg);

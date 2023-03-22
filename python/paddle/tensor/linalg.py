@@ -18,13 +18,13 @@ import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
 from ..framework import LayerHelper, in_dygraph_mode
-from ..static import Variable
 from .creation import full
 from .logic import logical_not
 from .manipulation import cast
@@ -99,6 +99,7 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -596,7 +597,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just suport axis type int or list (length of list <=1) if p = 0, found {}".format(
+                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
                     axis
                 )
             )
@@ -1296,7 +1297,7 @@ def t(input, name=None):
             "tensor.transpose() instead." % len(input.shape)
         )
     if in_dygraph_mode():
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             return input
         # 2-D tensor
         perm = [1, 0]
@@ -1313,7 +1314,7 @@ def t(input, name=None):
         helper = LayerHelper('t', **locals())
         out = helper.create_variable_for_type_inference(input.dtype)
         input_shape = helper.create_variable_for_type_inference(input.dtype)
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             out = input
         else:
             helper.append_op(
@@ -1333,8 +1334,8 @@ def cross(x, y, axis=9, name=None):
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
     Args:
-        x (Tensor): The first input tensor.
-        y (Tensor): The second input tensor.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1367,6 +1368,18 @@ def cross(x, y, axis=9, name=None):
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
         helper = LayerHelper("cross", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         attrs = dict()
@@ -1557,30 +1570,29 @@ def bmm(x, y, name=None):
             #          [60., 60.]]])
 
     """
-    x_shape = x.shape
-    y_shape = y.shape
-    if not len(x_shape) == len(y_shape) == 3:
-        raise ValueError(
-            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
-                x_shape, y_shape
-            )
-        )
-    if x_shape[2] != y_shape[1]:
-        raise ValueError(
-            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
-        )
-    if x_shape[0] != y_shape[0]:
-        raise ValueError(
-            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
-        )
-
     if in_dygraph_mode():
         return _C_ops.bmm(x, y)
     else:
+        x_shape = x.shape
+        y_shape = y.shape
+        if not len(x_shape) == len(y_shape) == 3:
+            raise ValueError(
+                "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
+                    x_shape, y_shape
+                )
+            )
+        if x_shape[2] != y_shape[1]:
+            raise ValueError(
+                "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
+                    x_shape, y_shape
+                )
+            )
+        if x_shape[0] != y_shape[0]:
+            raise ValueError(
+                "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
+                    x_shape, y_shape
+                )
+            )
         helper = LayerHelper('bmm', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -1922,6 +1934,7 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
+
     if in_dygraph_mode():
         return _C_ops.svd(x, full_matrices)
     else:
@@ -2324,6 +2337,7 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
+
     if in_dygraph_mode():
         return _C_ops.eig(x)
     else:
@@ -3172,11 +3186,24 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64):
-        pass
-    else:
+    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
+        )
+
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+
+    if y.ndim < 2:
+        raise ValueError(
+            f"The shape of y should be (*, M, K), but received ndim is [{y.ndim} < 2]"
+        )
+
+    if x.shape[-2] != y.shape[-2]:
+        raise ValueError(
+            f"x with shape (*, M = {x.shape[-2]}, N) and y with shape (*, M = {y.shape[-2]}, K) should have same M."
         )
 
     if rcond is None:
