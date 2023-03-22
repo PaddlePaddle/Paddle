@@ -100,10 +100,14 @@ void FusedAttentionGradKernel(
   using U = phi::fusion::LayerNormParamType<T>;
 
   const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
-  phi::fusion::DropoutParam dropout_param2(dropout_rate,
-                                           dropout_implementation,
+
+  const bool is_upscale_in_train =
+      (dropout_implementation == "upscale_in_train");
+  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                           0,
                                            is_test,
-                                           dropout_fix_seed,
+                                           is_upscale_in_train,
+                                           dropout_rate,
                                            nullptr,
                                            dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
@@ -113,11 +117,11 @@ void FusedAttentionGradKernel(
   phi::DenseTensor *seed_1 = nullptr;
 
   // get inputs.
-  auto *d_y = const_cast<phi::DenseTensor *>(&out_grad);
+  auto *d_y = &out_grad;
   auto *d_y_data = d_y->data<T>();
 
   // fw input
-  auto *input_x = const_cast<phi::DenseTensor *>(&x);
+  auto *input_x = &x;
   auto *ln_scale_p = ln_scale.get_ptr();
   auto *ln_scale_2_p = ln_scale_2.get_ptr();
   auto *x_data = input_x->data<T>();
@@ -127,10 +131,9 @@ void FusedAttentionGradKernel(
       (ln_scale_2_p == nullptr ? nullptr : ln_scale_2_p->data<U>());
   // fw parameters.
   auto *src_mask_p = src_mask.get_ptr();
-  auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
+  auto *qkv_weight_p = &qkv_weight;
   auto *qkv_bias_p = qkv_bias.get_ptr();
-  auto *out_linear_weight_p =
-      const_cast<phi::DenseTensor *>(&out_linear_weight);
+  auto *out_linear_weight_p = &out_linear_weight;
   auto *out_linear_bias_p = out_linear_bias.get_ptr();
   auto *qkv_weight_data = qkv_weight_p->data<T>();
   auto *qkv_bias_data =
@@ -140,17 +143,16 @@ void FusedAttentionGradKernel(
       (out_linear_bias_p == nullptr) ? nullptr : out_linear_bias_p->data<T>();
 
   // fw output
-  auto *fmha_out_p = const_cast<phi::DenseTensor *>(&fmha_out);
-  auto *transpose_out_2_p = const_cast<phi::DenseTensor *>(&transpose_out_2);
-  auto *qk_out_p = const_cast<phi::DenseTensor *>(&qk_out);
-  auto *softmax_out_p = const_cast<phi::DenseTensor *>(&softmax_out);
-  auto *attn_dropout_mask_out_p =
-      const_cast<phi::DenseTensor *>(&attn_dropout_mask_out);
-  auto *attn_dropout_out_p = const_cast<phi::DenseTensor *>(&attn_dropout_out);
+  auto *fmha_out_p = &fmha_out;
+  auto *transpose_out_2_p = &transpose_out_2;
+  auto *qk_out_p = &qk_out;
+  auto *softmax_out_p = &softmax_out;
+  auto *attn_dropout_mask_out_p = &attn_dropout_mask_out;
+  auto *attn_dropout_out_p = &attn_dropout_out;
   auto *src_mask_out_p = src_mask_out.get_ptr();
   auto *ln_mean_2_p = ln_mean_2.get_ptr();
   auto *ln_var_2_p = ln_var_2.get_ptr();
-  auto *dropout_mask_out_p = const_cast<phi::DenseTensor *>(&dropout_mask_out);
+  auto *dropout_mask_out_p = &dropout_mask_out;
   auto *bias_dropout_residual_out_p = bias_dropout_residual_out.get_ptr();
   auto *fmha_out_data = fmha_out_p->data<T>();
   auto *transpose_out_2_data = transpose_out_2_p->data<T>();
