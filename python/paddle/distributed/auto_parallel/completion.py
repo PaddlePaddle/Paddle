@@ -723,6 +723,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.inputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
             # Step 4: set the process meshes of the outputs in while_op to the process meshes of the outside output nodes
             while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
@@ -749,6 +757,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.outputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
         # Amend the process meshes related to array
         for array_node_list in self._array_nodes.values():

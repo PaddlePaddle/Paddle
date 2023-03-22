@@ -77,11 +77,12 @@ void StackRawKernel(const Context& ctx,
 
   // Split x dim from axis to matrix of shape [x_row, x_col], and the output
   // tensor's shape is [x_row, out_col].
-  int64_t x_row = 1;
+  int64_t x_row = 1, x_row_bak = 1;
   for (int i = 0; i < axis; ++i) {
     x_row *= x[0]->dims()[i];
   }
-  int64_t x_col = x[0]->numel() / x_row;
+  x_row_bak = x_row == 0 ? 1 : x_row;
+  int64_t x_col = x[0]->numel() / x_row_bak;
   int64_t out_col = x_col * num;
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {

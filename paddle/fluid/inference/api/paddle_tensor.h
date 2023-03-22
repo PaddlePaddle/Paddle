@@ -56,6 +56,7 @@ enum DataType {
   INT32,
   UINT8,
   INT8,
+  FLOAT64,
   FLOAT32,
   FLOAT16,
   BOOL,

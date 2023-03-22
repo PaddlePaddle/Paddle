@@ -492,7 +492,7 @@ class ShardingPass(PassBase):
                     },
                 )
                 new_op._set_attr(
-                    'op_namescope', str('/') + ParallelMode.DataParallel
+                    'op_namescope', '/' + ParallelMode.DataParallel
                 )
                 param_dist_attr = (
                     self._dist_context.get_tensor_dist_attr_for_program(param)
@@ -545,7 +545,7 @@ class ShardingPass(PassBase):
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
                     op._set_attr(
-                        'op_namescope', str('/') + ParallelMode.DataParallel
+                        'op_namescope', '/' + ParallelMode.DataParallel
                     )
 
             # NOTE:
@@ -843,9 +843,7 @@ class ShardingPass(PassBase):
                 },
             )
             self.op_to_stream_idx[new_op] = comm_stream_idx
-            new_op._set_attr(
-                'op_namescope', str('/') + ParallelMode.DataParallel
-            )
+            new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
             if self.enable_overlap:
                 new_op.dist_attr.execution_stream = comm_stream
                 new_op.dist_attr.scheduling_priority = (
@@ -1374,7 +1372,7 @@ class ShardingPass(PassBase):
                             },
                         )
                         new_op._set_attr(
-                            'op_namescope', str('/') + ParallelMode.DataParallel
+                            'op_namescope', '/' + ParallelMode.DataParallel
                         )
 
                         if self.enable_overlap:
@@ -1424,7 +1422,7 @@ def _insert_init_and_broadcast_op(
             OP_ROLE_KEY: op_role,
         },
     )
-    new_op._set_attr('op_namescope', str('/') + ParallelMode.DataParallel)
+    new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op,
         broadcast_var_dist_attr.process_mesh,
@@ -1484,7 +1482,7 @@ def _insert_reduce_op(
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context
     )
-    new_op._set_attr('op_namescope', str('/') + ParallelMode.DataParallel)
+    new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     return new_op
 
 
@@ -1611,7 +1609,9 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
     for input_name in op.input_arg_names:
-        if not is_parameter_related(input_name, op.block):
+        # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are renamed,
+        # to solve the param@RESHARD cannot be identifed.
+        if not is_parameter_related(input_name, op.block, dist_context):
             dist_attr = dist_context.get_op_dist_attr_for_program(op)
             process_mesh = dist_attr.process_mesh
             input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
