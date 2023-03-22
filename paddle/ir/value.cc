@@ -19,8 +19,6 @@ ir::Type Value::type() const { return impl_->type(); }
 
 void Value::SetType(ir::Type type) { impl_->SetType(type); }
 
-OpOperand &Value::first_user() { return impl_->first_user_; }
-
 ir::OpOperand *&OpOperand::back_user_addr() { impl_->back_user_addr_; }
 
 }  // namespace ir
