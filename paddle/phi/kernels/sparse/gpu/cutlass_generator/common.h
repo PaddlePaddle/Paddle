@@ -126,9 +126,9 @@ namespace sparse {
       ReductionDevice reduction_op;                                           \
       cutlass::TensorRef<typename Gemm::ElementAccumulator,                   \
                          cutlass::layout::RowMajor>                           \
-          ref_workspace(reinterpret_cast<typename Gemm::ElementAccumulator*>( \
-                            workspace.get()),                                 \
-                        problem_size_real.n());                               \
+          ref_workspace(                                                      \
+              reinterpret_cast<typename Gemm::ElementAccumulator*>(d),        \
+              problem_size_real.n());                                         \
       cutlass::TensorRef<typename Gemm::Base::ElementC,                       \
                          typename Gemm::Base::LayoutC>                        \
           ref_c(reinterpret_cast<typename Gemm::Base::ElementC* const>(d),    \
@@ -143,7 +143,9 @@ namespace sparse {
           static_cast<size_t>(problem_size_real.m() * problem_size_real.n()), \
           ref_workspace,                                                      \
           ref_d,                                                              \
-          ref_c);                                                             \
+          ref_c,                                                              \
+          {static_cast<const cutlass_type>(static_cast<const float>(alpha)),  \
+           static_cast<const cutlass_type>(static_cast<const float>(beta))}); \
       status = reduction_op.initialize(reduction_args);                       \
       status = reduction_op(dev_ctx.stream());                                \
     }                                                                         \
