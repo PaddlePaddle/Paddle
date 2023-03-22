@@ -865,17 +865,6 @@
   optional : master_param, skip_update
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
-- op : layer_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
-  output : Tensor(out), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : LayerNormInferMeta
-  kernel :
-    func : layer_norm
-    data_type : x
-  backward : layer_norm_grad
-  optional : scale, bias
-
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
