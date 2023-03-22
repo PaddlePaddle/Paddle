@@ -19,10 +19,6 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle.vision.models import resnet18
-
-# TODO(SigureMo): remove this before merge
-# paddle.set_device('cpu')
 
 
 def reset_seed():
@@ -384,26 +380,6 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
                 step_size_down=5,
             ),
         )
-        self.loss_fn = loss_fn_tiny_model
-        self.train_step_func = train_step_tiny_model
-        self.steps = 3
-
-
-class TestTrainStepResNet18Sgd(TestTrainStepTinyModel):
-    def setUp(self):
-        self.input = paddle.randn([64, 3, 224, 224])
-        self.net_creator = resnet18
-        self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
-        self.loss_fn = loss_fn_tiny_model
-        self.train_step_func = train_step_tiny_model
-        self.steps = 3
-
-
-class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
-    def setUp(self):
-        self.input = paddle.randn([64, 3, 224, 224])
-        self.net_creator = resnet18
-        self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
