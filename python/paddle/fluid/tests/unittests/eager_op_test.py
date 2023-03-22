@@ -972,11 +972,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_outputs,
                 attrs_outputs,
             )
-            if not kernel_sig or (
-                len(kernel_sig[0]) == 0
-                and len(kernel_sig[1]) == 0
-                and len(kernel_sig[2]) == 0
-            ):
+            if not kernel_sig:
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
@@ -1525,6 +1521,9 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
 
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1622,6 +1621,23 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1730,11 +1746,9 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                if actual_np.dtype == np.uint16:
+                    if expect_np.dtype in [np.float32, np.float64]:
+                        actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1787,6 +1801,62 @@ class OpTest(unittest.TestCase):
                         )
                     self.op_test.disable_cal_ref_output()
 
+            def _compare_numpy(self, name, actual_np, expect_np):
+                if (
+                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
+                    == 0
+                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
+                    == 0
+                ):
+                    pass
+                else:
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
+                    self.op_test.assertTrue(
+                        np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                        ),
+                        "Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name,
+                    )
+
+            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16:
+                    self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16:
+                    self.rtol = 1.0e-3
+                else:
+                    self.rtol = 1.0e-5
+                if self.op_test.is_bfloat16_op():
+                    if actual_np.dtype == np.uint16:
+                        actual_np = convert_uint16_to_float(actual_np)
+                    if expect_np.dtype == np.uint16:
+                        expect_np = convert_uint16_to_float(expect_np)
+                return actual_np, expect_np
+
             def find_actual_value(self, name):
                 with fluid.dygraph.base.guard(place=place):
                     imperative_actual = find_imperative_actual(
@@ -1807,23 +1877,6 @@ class OpTest(unittest.TestCase):
                     )
                     return imperative_expect, imperative_expect_t
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    self.rtol = 1.0e-2
-                elif actual_np.dtype == np.float16:
-                    self.rtol = 1.0e-3
-                else:
-                    self.rtol = 1.0e-5
-                if self.op_test.is_bfloat16_op():
-                    if actual_np.dtype == np.uint16:
-                        actual_np = convert_uint16_to_float(actual_np)
-                    if expect_np.dtype == np.uint16:
-                        expect_np = convert_uint16_to_float(expect_np)
-                return actual_np, expect_np
-
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
                 with fluid.dygraph.base.guard(place=place):
@@ -1837,31 +1890,6 @@ class OpTest(unittest.TestCase):
                         + ") has different lod at "
                         + str(place)
                         + " in dygraph mode",
-                    )
-
-            def _compare_numpy(self, name, actual_np, expect_np):
-                if (
-                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
-                    == 0
-                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
-                    == 0
-                ):
-                    pass
-                else:
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                            equal_nan=equal_nan,
-                        ),
-                        "Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name,
                     )
 
             def _is_skip_name(self, name):
@@ -2040,6 +2068,9 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(
@@ -2199,6 +2230,9 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -2235,6 +2269,9 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
@@ -2331,19 +2368,30 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
+            self.enable_cal_ref_output()
+            numeric_grads = self._get_gradient(
+                inputs_to_check,
+                place,
                 output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
+                no_grad_set,
+                user_defined_grad_outputs,
             )
-            for input_to_check in inputs_to_check
-        ]
+            self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
 
         analytic_grads = self._get_gradient(
             inputs_to_check,
@@ -2442,6 +2490,9 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
