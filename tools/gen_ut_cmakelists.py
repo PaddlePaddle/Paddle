@@ -375,11 +375,12 @@ class DistUTPortManager:
 
 
 class CMakeGenerator:
-    def __init__(self, current_dirs, ignore_dirs):
+    def __init__(self, current_dirs, only_check, ignore_dirs):
         self.processed_dirs = set()
         self.port_manager = DistUTPortManager(ignore_dirs)
         self.current_dirs = _norm_dirs(current_dirs)
         self.modified_or_created_files = []
+        self._only_check = only_check
 
     def prepare_dist_ut_port(self):
         for c in self._find_root_dirs():
@@ -580,8 +581,11 @@ class CMakeGenerator:
             self.modified_or_created_files.append(
                 f"{current_work_dir}/CMakeLists.txt"
             )
-            with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
-                print(cmds, end="", file=cmake_file)
+            if not self._only_check:
+                with open(
+                    f"{current_work_dir}/CMakeLists.txt", "w"
+                ) as cmake_file:
+                    print(cmds, end="", file=cmake_file)
 
 
 if __name__ == "__main__":
@@ -613,6 +617,14 @@ if __name__ == "__main__":
         nargs='*',
         help="To keep dist ports the same with old version cmake, old cmakelists.txt files are needed to parse dist_ports. If a directories are newly created and there is no cmakelists.txt file, the directory path must be specified by this option. The dirs are not recursive.",
     )
+    parser.add_argument(
+        "--only-check-changed",
+        '-o',
+        type=lambda x: x.lower() not in ["false", "0", "off"],
+        required=False,
+        default=False,
+        help="Only check wheather the CMake files should be rewriten, do not write it enven if it should be write",
+    )
     args = parser.parse_args()
 
     assert not (
@@ -630,7 +642,9 @@ if __name__ == "__main__":
     if len(args.dirpaths) >= 1:
         current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
-    cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
+    cmake_generator = CMakeGenerator(
+        current_work_dirs, args.only_check_changed, args.ignore_cmake_dirs
+    )
     cmake_generator.prepare_dist_ut_port()
     created = cmake_generator.parse_csvs()
 
