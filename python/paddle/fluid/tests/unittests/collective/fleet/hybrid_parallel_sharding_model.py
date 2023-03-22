@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
 )
@@ -58,7 +57,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
         return logits
 
 
-class SimpleMPNet(fluid.dygraph.Layer):
+class SimpleMPNet(paddle.nn.Layer):
     def __init__(
         self,
         vocab_size,
@@ -124,7 +123,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         return x
 
 
-class SimpleDPNet(fluid.dygraph.Layer):
+class SimpleDPNet(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):

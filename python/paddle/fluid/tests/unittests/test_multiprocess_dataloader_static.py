@@ -52,10 +52,12 @@ def simple_fc_net_static():
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.data(
+            image = paddle.static.data(
                 name='image', shape=[None, IMAGE_SIZE], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = image
             param_attr = fluid.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.8)
@@ -192,10 +194,10 @@ class TestStaticDataLoader(unittest.TestCase):
 class TestStaticDataLoaderReturnList(unittest.TestCase):
     def run_single_place(self, num_workers):
         scope = fluid.Scope()
-        image = fluid.data(
+        image = paddle.static.data(
             name='image', shape=[None, IMAGE_SIZE], dtype='float32'
         )
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         with fluid.scope_guard(scope):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
@@ -215,10 +217,10 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
 
     def run_multi_place(self, num_workers):
         scope = fluid.Scope()
-        image = fluid.data(
+        image = paddle.static.data(
             name='image', shape=[None, IMAGE_SIZE], dtype='float32'
         )
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         with fluid.scope_guard(scope):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(

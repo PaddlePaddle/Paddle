@@ -263,7 +263,7 @@ def train(use_cuda, save_dirname, is_local=True):
                             )
                         return
 
-                if math.isnan(float(out[0])):
+                if math.isnan(float(out)):
                     sys.exit("got NaN loss, training failed.")
 
     if is_local:

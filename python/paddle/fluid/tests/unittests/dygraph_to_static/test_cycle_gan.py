@@ -61,7 +61,7 @@ IMAGE_SIZE = 64
 SEED = 2020
 
 
-class Cycle_Gan(fluid.dygraph.Layer):
+class Cycle_Gan(paddle.nn.Layer):
     def __init__(self, input_channel, istrain=True):
         super().__init__()
 
@@ -151,7 +151,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
         return rec_A, fake_pool_rec_A
 
 
-class build_resnet_block(fluid.dygraph.Layer):
+class build_resnet_block(paddle.nn.Layer):
     def __init__(self, dim, use_bias=False):
         super().__init__()
 
@@ -185,7 +185,7 @@ class build_resnet_block(fluid.dygraph.Layer):
         return out_res + inputs
 
 
-class build_generator_resnet_9blocks(fluid.dygraph.Layer):
+class build_generator_resnet_9blocks(paddle.nn.Layer):
     def __init__(self, input_channel):
         super().__init__()
 
@@ -267,7 +267,7 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         return y
 
 
-class build_gen_discriminator(fluid.dygraph.Layer):
+class build_gen_discriminator(paddle.nn.Layer):
     def __init__(self, input_channel):
         super().__init__()
 
@@ -330,7 +330,7 @@ class build_gen_discriminator(fluid.dygraph.Layer):
         return y
 
 
-class conv2d(fluid.dygraph.Layer):
+class conv2d(paddle.nn.Layer):
     """docstring for Conv2D"""
 
     def __init__(
@@ -398,7 +398,7 @@ class conv2d(fluid.dygraph.Layer):
         return conv
 
 
-class DeConv2D(fluid.dygraph.Layer):
+class DeConv2D(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

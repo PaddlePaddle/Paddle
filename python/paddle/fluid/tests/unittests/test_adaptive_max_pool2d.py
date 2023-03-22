@@ -122,7 +122,9 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             out_1 = paddle.nn.functional.adaptive_max_pool2d(
                 x=x, output_size=[3, 3]
@@ -225,7 +227,9 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[3, 3])
             out_1 = adaptive_max_pool(x=x)

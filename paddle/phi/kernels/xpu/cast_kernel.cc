@@ -29,7 +29,7 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
   auto* in_data = x.data<T>();
   auto numel = x.numel();
@@ -44,10 +44,10 @@ void CastKernel(const Context& dev_ctx,
           numel);
       break;
     case phi::DataType::FLOAT16:
-      r = xpu::cast<XPUInTDType, float16>(
+      r = xpu::cast<XPUInTDType, XPUTypeFP16>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
-          reinterpret_cast<float16*>(
+          reinterpret_cast<XPUTypeFP16*>(
               dev_ctx.template Alloc<phi::dtype::float16>(out)),
           numel);
       break;

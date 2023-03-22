@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/builtin_dialect.h"
+#include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_type.h"
 
 namespace ir {
@@ -24,6 +25,7 @@ BuiltinDialect::BuiltinDialect(ir::IrContext *context)
 void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
   RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
+  RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
 }
 
 }  // namespace ir

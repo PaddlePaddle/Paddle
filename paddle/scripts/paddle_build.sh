@@ -3464,8 +3464,9 @@ function build_pr_and_develop() {
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
+        
         git checkout -b develop_base_pr upstream/$BRANCH
-        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi

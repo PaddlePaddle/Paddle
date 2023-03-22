@@ -27,6 +27,7 @@ np.random.seed(1024)
 class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
+        self.public_python_api = paddle.index_select
         self.op_type = "index_select"
         self.prim_op_type = "comp"
         self.init_dtype_type()
@@ -95,6 +96,9 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
 
 
 # no scatter op (the backward op of index_select/gather) for bf16
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "paddle is not compiled with cuda"
+)
 class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select

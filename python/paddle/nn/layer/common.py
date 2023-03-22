@@ -15,9 +15,9 @@
 # TODO: define the common classes to build a neural network
 import paddle
 from paddle import in_dynamic_mode
-from paddle.nn import Layer
 
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
