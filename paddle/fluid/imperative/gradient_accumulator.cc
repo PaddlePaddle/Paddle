@@ -127,7 +127,7 @@ TType* GetInnerMutableTensor(framework::Variable* dst) {
 }
 
 template <typename TType>
-TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
+TType* GetInnerMutableTensor(paddle::Tensor* dst) {
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
   return dst_tensor;
 }
@@ -138,7 +138,7 @@ const TType& GetInnerTensor(const framework::Variable& src) {
 }
 
 template <typename TType>
-TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
+TType& GetInnerTensor(const paddle::Tensor& src) {
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
@@ -150,7 +150,7 @@ TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
 }
 
 template <typename TType>
-TType* GetEmptyInnerTensor(paddle::experimental::Tensor* dst) {
+TType* GetEmptyInnerTensor(paddle::Tensor* dst) {
   PADDLE_ENFORCE_EQ(
       dst->defined(),
       false,
@@ -361,8 +361,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 template void TensorAdd<framework::Variable>(const framework::Variable& src,
                                              framework::Variable* dst);
-template void TensorAdd<paddle::experimental::Tensor>(
-    const paddle::experimental::Tensor& src, paddle::experimental::Tensor* dst);
+template void TensorAdd<paddle::Tensor>(const paddle::Tensor& src,
+                                        paddle::Tensor* dst);
 
 template <typename VarType>
 void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
@@ -405,8 +405,8 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 template void SelectedRowsAddToTensor(const framework::Variable& src,
                                       framework::Variable* dst);
-template void SelectedRowsAddToTensor(const paddle::experimental::Tensor& src,
-                                      paddle::experimental::Tensor* dst);
+template void SelectedRowsAddToTensor(const paddle::Tensor& src,
+                                      paddle::Tensor* dst);
 
 template <typename VarType>
 void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
@@ -458,10 +458,9 @@ template void SelectedRowsAddTensor(
     const framework::Variable& src_selected_rows_var,
     const framework::Variable& src_tensor_var,
     framework::Variable* dst_tensor_var);
-template void SelectedRowsAddTensor(
-    const paddle::experimental::Tensor& src_selected_rows_var,
-    const paddle::experimental::Tensor& src_tensor_var,
-    paddle::experimental::Tensor* dst_tensor_var);
+template void SelectedRowsAddTensor(const paddle::Tensor& src_selected_rows_var,
+                                    const paddle::Tensor& src_tensor_var,
+                                    paddle::Tensor* dst_tensor_var);
 
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
@@ -523,9 +522,8 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
       framework::DataTypeToString(data_type)));
 }
 
-template std::shared_ptr<paddle::experimental::Tensor> SelectedRowsMerge(
-    const paddle::experimental::Tensor& src1,
-    const paddle::experimental::Tensor& src2);
+template std::shared_ptr<paddle::Tensor> SelectedRowsMerge(
+    const paddle::Tensor& src1, const paddle::Tensor& src2);
 template std::shared_ptr<paddle::imperative::VariableWrapper> SelectedRowsMerge(
     const framework::Variable& src1, const framework::Variable& src2);
 

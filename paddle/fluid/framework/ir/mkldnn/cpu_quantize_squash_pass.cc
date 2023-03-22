@@ -54,6 +54,34 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .AddInput("Filter")
       .IsTensor()
       .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("fused_conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
       .AddInput("Bias")
       .IsTensor()
       .End()
@@ -113,8 +141,7 @@ bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
   bool is_input_signed =
       dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
 
-  /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
-   kernel will support two different input data types */
+  // BinaryOneDNN doesn't support two different input data types
   bool is_next_op_concat_or_elementwise =
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
@@ -545,11 +572,17 @@ void CPUQuantizeSquashPass::ScaleQuantSquash(Graph* graph) const {
                   found_scale_quant_squash_count);
 }
 
-// squash quantize if is before bfloat16 conv2d
+// squash quantize if is before bfloat16 conv2d or fused_conv2d
 void CPUQuantizeSquashPass::QuantizeBf16Conv(Graph* graph) const {
+  QuantizeBf16ConvImpl(graph, "conv2d");
+  QuantizeBf16ConvImpl(graph, "fused_conv2d");
+}
+
+void CPUQuantizeSquashPass::QuantizeBf16ConvImpl(
+    Graph* graph, const std::string& conv_type) const {
   GraphPatternDetector gpd;
   patterns::QuantConv pattern{gpd.mutable_pattern(), "quant_conv"};
-  pattern();
+  pattern(conv_type);
 
   int found_quant_conv_squash_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -577,8 +610,9 @@ void CPUQuantizeSquashPass::QuantizeBf16Conv(Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_quant_conv_squash_count);
-  PrettyLogDetail("---    squashed %d quantize with bfloat16 conv2d op",
-                  found_quant_conv_squash_count);
+  PrettyLogDetail("---    squashed %d quantize with bfloat16 %s op",
+                  found_quant_conv_squash_count,
+                  conv_type);
 }
 
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {

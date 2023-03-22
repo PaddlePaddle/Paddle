@@ -14,12 +14,12 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.common_ops_import import dygraph_utils
 from paddle.distributed import collective
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _varbase_creator, in_dygraph_mode
 from paddle.nn import Layer
+from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
@@ -46,15 +46,7 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                return _legacy_C_ops.c_identity(
-                    tensor,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    group.id,
-                    'use_model_parallel',
-                    True,
-                )
+                return tensor
 
             @staticmethod
             def backward(ctx, dy):
@@ -257,15 +249,7 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(
-                    dy,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    ctx.ring_id,
-                    'use_model_parallel',
-                    True,
-                )
+                return dy
 
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel

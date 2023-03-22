@@ -29,7 +29,7 @@ if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
 
-class SimpleConv(fluid.dygraph.Layer):
+class SimpleConv(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

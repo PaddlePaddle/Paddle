@@ -27,7 +27,6 @@ class RecomputeOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = [
             "LarsOptimizer",
             "LambOptimizer",
-            "GraphExecutionOptimizer",
             "DGCOptimizer",
         ]
         self.meta_optimizers_black_list = []

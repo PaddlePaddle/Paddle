@@ -60,31 +60,6 @@ size_t GenKey(Args&&... args) {
   return seed;
 }
 
-struct MatmulHashValueType {
-  uint64_t data[8];
-};
-
-struct MatmulCacheKey {
- public:
-  MatmulCacheKey() {}
-  MatmulCacheKey(const std::vector<int64_t>& x_dims,
-                 const std::vector<int64_t>& y_dims,
-                 const bool trans_x,
-                 const bool trans_y,
-                 phi::DataType dtype) {
-    key = GenKey(x_dims,
-                 y_dims,
-                 static_cast<int64_t>(trans_x),
-                 static_cast<int64_t>(trans_y),
-                 static_cast<int64_t>(dtype));
-  }
-  size_t GetKey() const { return key; }
-  size_t GetSubKey(int64_t idx) const { return GenKey(key, idx); }
-
- private:
-  size_t key;
-};
-
 struct ConvCacheKey {
   ConvCacheKey() {}
   ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
@@ -249,22 +224,22 @@ class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
     return ret;
   }
 
-  void SetSubKey(const KeyT& sub_key, const MatmulHashValueType* algo) {
+  void SetSubKey(const KeyT& sub_key, void* algo) {
     std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
-    sub_hash_[sub_key] = *algo;
+    sub_hash_[sub_key] = algo;
   }
 
-  MatmulHashValueType* GetSubKey(const KeyT& sub_key) {
+  void* GetSubKey(const KeyT& sub_key) {
     std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
     PADDLE_ENFORCE_NE(
         sub_hash_.find(sub_key),
         sub_hash_.end(),
         phi::errors::PreconditionNotMet("The key does not exist."));
-    return &(sub_hash_[sub_key]);
+    return sub_hash_[sub_key];
   }
 
  private:
-  std::unordered_map<KeyT, MatmulHashValueType> sub_hash_;
+  std::unordered_map<KeyT, void*> sub_hash_;
 };
 
 }  // namespace autotune

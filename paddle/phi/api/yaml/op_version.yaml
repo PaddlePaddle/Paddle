@@ -102,6 +102,14 @@
           comment : In order to force fill output variable to gpu memory.
           default : "false"
 
+- op : p_norm
+  version :
+    - checkpoint : Upgrade p_norm, add 1 attribute [asvector].
+      action :
+        - add_attr : asvector
+          comment : Compute as vector when axis is None and input is matrix.
+          default : "false"
+
 - op : pixel_shuffle
   version :
     - checkpoint : Compatible upgrade of pixel_shuffle, add a new attribute [data_format]
