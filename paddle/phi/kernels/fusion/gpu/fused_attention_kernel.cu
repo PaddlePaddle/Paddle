@@ -83,17 +83,16 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // if transpose_qkv_wb is True
   // y: qkv's weight: [dim_embed, 3 * dim_embed]
 
-  auto *x_p = const_cast<phi::DenseTensor *>(&x);
+  auto *x_p = &x;
   auto *ln_scale_p = ln_scale.get_ptr();
   auto *ln_bias_p = ln_bias.get_ptr();
 
-  auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
+  auto *qkv_weight_p = &qkv_weight;
   auto *qkv_bias_p = qkv_bias.get_ptr();
   auto *cache_kv_p = cache_kv.get_ptr();
 
   auto *src_mask_p = src_mask.get_ptr();
-  auto *out_linear_weight_p =
-      const_cast<phi::DenseTensor *>(&out_linear_weight);
+  auto *out_linear_weight_p = &out_linear_weight;
 
   auto *out_linear_bias_p = out_linear_bias.get_ptr();
 
