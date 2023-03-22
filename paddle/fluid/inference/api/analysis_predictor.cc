@@ -2433,6 +2433,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(where);
+USE_TRT_CONVERTER(bitwise_not);
 USE_TRT_CONVERTER(one_hot);
 USE_TRT_CONVERTER(one_hot_v2);
 USE_TRT_CONVERTER(swish);
