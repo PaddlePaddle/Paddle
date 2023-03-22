@@ -161,7 +161,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
       {"depthwise_conv2d", "fused_conv2d"},
       {"matmul", "fused_matmul"},
       {"matmul_v2", "fused_matmul"},
-      {"softplus", "fused_softplus"}};
+      {"softplus", "fused_softplus"},
+      {"transpose2", "fused_transpose"}};
 
   if (op->Type() == "matmul") {
     op->SetAttr("trans_x", op->GetAttr("transpose_X"));
@@ -173,6 +174,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
   if (it != fused_ops.end()) {
     op->SetType(it->second);
     VLOG(3) << "Converted " << it->first << " to " << it->second;
+  } else {
+    VLOG(3) << "Fused op for " << op->Type() << " is not implemented yet.";
   }
 }
 
