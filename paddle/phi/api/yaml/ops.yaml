@@ -384,6 +384,14 @@
     func : digamma
   backward : digamma_grad
 
+- op : dirichlet
+  args: (Tensor alpha)
+  output: Tensor(out)
+  infer_meta:
+    func: DirichletInferMeta
+  kernel:
+    func: dirichlet
+
 - op : dist
   args : (Tensor x, Tensor y, float p = 2.0)
   output : Tensor
