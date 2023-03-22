@@ -176,7 +176,10 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   void* FindTensor() const;
 
-  void SetPlace(PlaceType place, int device = -1);
+  void SetPlace(PlaceType place,
+                int device = -1,
+                const std::string device_type = "");
+
   void SetName(const std::string& name);
 
   template <typename T>
@@ -195,6 +198,7 @@ class PD_INFER_DECL Tensor {
   const void* device_contexs_{nullptr};
   PlaceType place_;
   int device_;
+  std::string device_type_;
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
   bool is_ort_tensor_{false};

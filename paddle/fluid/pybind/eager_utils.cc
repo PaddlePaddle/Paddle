@@ -1532,7 +1532,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
-    return paddle::experimental::DataType::UNDEFINED;
+    return phi::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

@@ -36,7 +36,9 @@ class TestDeg2radAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
+            x = paddle.static.data(
+                name='input', dtype=self.x_dtype, shape=self.x_shape
+            )
             out = paddle.deg2rad(x)
 
             place = (

@@ -136,8 +136,8 @@ class TestIndexSampleShape(unittest.TestCase):
             low=0, high=x_shape[1], size=index_shape
         ).astype(index_type)
 
-        x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
-        index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
+        x = paddle.static.data(name='x', shape=[-1, 5], dtype='float64')
+        index = paddle.static.data(name='index', shape=[-1, 3], dtype='int32')
         output = paddle.index_sample(x=x, index=index)
 
         place = fluid.CPUPlace()
