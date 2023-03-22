@@ -882,6 +882,12 @@
   outputs :
     out : Out
 
+- op : index_add
+  inputs :
+    {x : X, index : Index, add_value : AddValue}
+  outputs :
+    out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
