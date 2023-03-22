@@ -184,14 +184,14 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
@@ -232,7 +232,7 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Input'],
                 'Output',
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -243,7 +243,7 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Filter'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -308,14 +308,14 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_data_format(self):
@@ -507,7 +507,7 @@ class TestConv2DOp(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -522,7 +522,7 @@ class TestConv2DOp(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -827,7 +827,7 @@ class TestConv2DOp_v2(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -840,7 +840,7 @@ class TestConv2DOp_v2(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 

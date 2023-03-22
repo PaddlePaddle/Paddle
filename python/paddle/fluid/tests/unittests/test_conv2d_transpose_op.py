@@ -229,24 +229,20 @@ class TestConv2DTransposeOp(OpTest):
                     ['Filter'],
                     'Output',
                     max_relative_error=0.02,
-                    no_grad_set=set(['Input']),
+                    no_grad_set={'Input'},
                 )
             else:
-                self.check_grad(
-                    ['Filter'], 'Output', no_grad_set=set(['Input'])
-                )
+                self.check_grad(['Filter'], 'Output', no_grad_set={'Input'})
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
             if self.use_cudnn:
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
             else:
-                self.check_grad(
-                    ['Input'], 'Output', no_grad_set=set(['Filter'])
-                )
+                self.check_grad(['Input'], 'Output', no_grad_set={'Filter'})
 
     def test_check_grad(self):
         if self.need_check_grad:
@@ -254,13 +250,13 @@ class TestConv2DTransposeOp(OpTest):
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
                     place,
-                    set(['Input', 'Filter']),
+                    {'Input', 'Filter'},
                     'Output',
                     max_relative_error=0.02,
                 )
             else:
                 self.check_grad(
-                    set(['Input', 'Filter']), 'Output', max_relative_error=0.02
+                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
                 )
 
     def init_test_case(self):

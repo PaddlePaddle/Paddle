@@ -618,7 +618,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -642,7 +642,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['x@GRAD'])
+        self.no_grad_set = {'x@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
 
 
@@ -748,7 +748,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 ):
     def init_test_case(self):
         self.use_global_stats = True
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 

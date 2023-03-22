@@ -887,7 +887,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 def is_cuda_file(path):
 
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
@@ -1273,7 +1273,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 

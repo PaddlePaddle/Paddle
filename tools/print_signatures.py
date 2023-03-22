@@ -192,7 +192,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             api_info_dict[fc_id]["all_names"].add(full_name)
         else:
             api_info_dict[fc_id] = {
-                "all_names": set([full_name]),
+                "all_names": {full_name},
                 "id": fc_id,
                 "object": obj,
                 "type": type(obj).__name__,

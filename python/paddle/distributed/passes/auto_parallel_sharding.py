@@ -969,7 +969,7 @@ class ShardingPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            var_names = set([var.name for var in group.vars])
+            var_names = {var.name for var in group.vars}
             return len(vars_.intersection(var_names)) > 0
 
         # analyze groups
@@ -1790,7 +1790,7 @@ def group_param(sharding_info, fuse_size):
 class ShardingInfo:
     def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
-        self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
+        self.params_grads = {p.name: (p, g) for p, g in params_grads}
         assert len(self.params_grads) == len(
             set(self.params_grads)
         ), "found duplicated param in params_grads"
@@ -1831,8 +1831,8 @@ class ShardingInfo:
     # and sharding should only broadcast the casted fp16 param
     # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
-        broadcast_vars = set([])
-        fp16_params = set([])
+        broadcast_vars = set()
+        fp16_params = set()
         fp16_to_fp32 = {}
 
         param_usage = {x: 0 for x in self.param_names}
