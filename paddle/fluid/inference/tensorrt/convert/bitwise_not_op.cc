@@ -43,7 +43,8 @@ class BitwiseNotConverter : public OpConverter {
 
       // set up a elementwise -1 tensor, can not get the dims info for
       // dynamic_shape so just let it broadcaste
-      nvinfer1::Dims neg_one_tensor_dims{.nbDims = input_dims.nbDims, .d = {}};
+      nvinfer1::Dims neg_one_tensor_dims;
+      neg_one_tensor_dims.nbDims = input_dims.nbDims;
       for (int i = 0; i < input_dims.nbDims; ++i) {
         neg_one_tensor_dims.d[i] = 1;
       }
