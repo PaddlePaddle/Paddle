@@ -25,6 +25,7 @@ from paddle.fluid import Program, core, program_guard
 class TestSplitOp(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -67,6 +68,7 @@ class TestSplitOp(OpTest):
 class TestSplitOp_2(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -190,6 +192,7 @@ class TestSplitOp_SectionsTensor(OpTest):
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -284,8 +287,8 @@ class TestSplitAPI(unittest.TestCase):
         positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
         positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
-        x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
-        x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
+        x_1 = paddle.static.data(shape=[4, 5, 6], dtype='int32', name='x_1')
+        x_2 = paddle.static.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = paddle.split(
             x=x_1,

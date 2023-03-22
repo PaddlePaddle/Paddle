@@ -41,7 +41,7 @@ class TestNanmeanAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_shape)
+            x = paddle.static.data('X', self.x_shape)
             out1 = paddle.nanmean(x)
             out2 = paddle.tensor.nanmean(x)
             out3 = paddle.tensor.math.nanmean(x)
@@ -90,7 +90,7 @@ class TestNanmeanAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.nanmean, x)
 
     def test_api_dygraph_grad(self):

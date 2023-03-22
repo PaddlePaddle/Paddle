@@ -28,7 +28,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TensorRTSubgraphPassFcTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             fc_out = paddle.static.nn.fc(x=[data], activation=None, size=1000)
@@ -55,10 +55,10 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
             concat_out = paddle.concat([data1, data2], axis=2)
@@ -85,7 +85,7 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
 class TensorRTSubgraphPassSplitTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = paddle.split(data, axis=-1, num_or_sections=2)
@@ -111,7 +111,7 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
 class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = paddle.split(data, axis=-1, num_or_sections=2)
@@ -139,7 +139,7 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
 class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = paddle.split(data, axis=-1, num_or_sections=2)
@@ -175,7 +175,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
 class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
@@ -212,7 +212,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
 class TensorRTSubgraphPassTransposeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             transpose_out = self.append_transpose(data)
@@ -242,7 +242,7 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             out = paddle.static.nn.layer_norm(
@@ -273,7 +273,7 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             out = paddle.static.nn.layer_norm(
@@ -359,10 +359,10 @@ class TensorRTSubgraphPassLayerNormBeginNormAxis3Test(
 class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)
@@ -414,10 +414,12 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
 class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(name="data2", shape=[64, 64], dtype="float32")
+            data2 = paddle.static.data(
+                name="data2", shape=[64, 64], dtype="float32"
+            )
             eltwise_out = self.append_eltwise(data1, data2)
             out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {

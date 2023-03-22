@@ -196,7 +196,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             startup = fluid.Program()
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
-                    data = fluid.data(name="data", shape=shape)
+                    data = paddle.static.data(name="data", shape=shape)
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
@@ -453,8 +453,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             startup = fluid.Program()
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
-                    x = fluid.data(name='x', shape=[None, 10], dtype='float32')
-                    y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=[None, 1], dtype='float32'
+                    )
 
                     weight_attr1 = paddle.framework.ParamAttr(
                         name="linear_0.w_0"

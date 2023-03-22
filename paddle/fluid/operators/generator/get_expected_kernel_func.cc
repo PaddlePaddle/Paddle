@@ -32,8 +32,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     const framework::ExecutionContext& ctx) {
   // native reduce kernels don't support bf16
   // so oneDNN kernel is enforced in that case
-  if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
-      experimental::DataType::BFLOAT16)
+  if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
     return true;
 
   if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {

@@ -56,7 +56,7 @@ class TestSplitsAPI(unittest.TestCase):
         paddle.enable_static()
         for func, func_type in test_list:
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
+                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = func(x, self.num_or_sections)
                 exe = paddle.static.Executor(self.place)
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -170,7 +170,7 @@ class TestSplitsError(unittest.TestCase):
         paddle.enable_static()
         for func, _ in test_list:
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', [5], 'float32')
+                x = paddle.static.data('X', [5], 'float32')
                 self.assertRaises(ValueError, func, x, self.num_or_sections)
 
     def test_dygraph_error(self):
