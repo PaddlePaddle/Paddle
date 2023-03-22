@@ -68,9 +68,9 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   // CPU LoDTensor to GPU LoDTensor
   CUDAPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
-  gpu_ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          gpu_place, gpu_ctx.stream()));
+  gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, gpu_ctx.stream())
+                           .get());
   gpu_ctx.PartialInitWithAllocator();
   framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
 

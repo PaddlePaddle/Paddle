@@ -472,8 +472,9 @@ template <>
 void TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>() {
   auto* context = new phi::GPUContext(paddle::platform::CUDAPlace());
   context->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          paddle::platform::CUDAPlace(), context->stream()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
+          .get());
   context->PartialInitWithAllocator();
 
   ConcatCase1<phi::GPUContext, paddle::platform::CUDAPlace>(context);

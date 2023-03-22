@@ -182,9 +182,9 @@ void GPUContextResource::InitGpuProperties() {
 }
 
 void GPUContextResource::InitGpuEigenDevice() {
-  auto* allocator =
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place_);
+  auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
+                        .GetAllocator(place_)
+                        .get();
   eigen_stream_.reset(new internal::EigenGpuStreamDevice());
   eigen_stream_->Reinitialize(stream_, allocator, place_);
   gpu_eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
@@ -435,9 +435,9 @@ void GPUContextResource::ReBindSparseHandle(gpuStream_t stream) const {
 void GPUContextResource::ReBindEigenDevice(gpuStream_t stream,
                                            GPUPlace place) const {
   if (eigen_stream_) {
-    auto* allocator =
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            place_);
+    auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
+                          .GetAllocator(place_)
+                          .get();
     eigen_stream_->Reinitialize(stream, allocator, place);
   }
 }

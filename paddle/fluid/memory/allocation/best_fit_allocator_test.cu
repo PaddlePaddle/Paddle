@@ -43,9 +43,9 @@ TEST(BestFitAllocator, concurrent_cuda) {
 
   platform::CUDAPlace gpu(0);
   phi::GPUContext dev_ctx(gpu);
-  dev_ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          gpu, dev_ctx.stream()));
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu, dev_ctx.stream())
+                           .get());
   dev_ctx.PartialInitWithAllocator();
 
   auto th_main = [&](std::random_device::result_type seed) {

@@ -73,9 +73,9 @@ TEST(TensorCopy, Tensor) {
     // CPU phi::DenseTensor to GPU phi::DenseTensor
     auto gpu_place = new platform::CUDAPlace(0);
     phi::GPUContext gpu_ctx(*gpu_place);
-    gpu_ctx.SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            *gpu_place, gpu_ctx.stream()));
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(*gpu_place, gpu_ctx.stream())
+                             .get());
     gpu_ctx.PartialInitWithAllocator();
     TensorCopy(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
@@ -170,9 +170,9 @@ TEST(TensorFromVector, Tensor) {
     gpu_tensor.Resize(phi::make_ddim({3, 3}));
     auto gpu_place = new paddle::platform::CUDAPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
-    gpu_ctx.SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            *gpu_place, gpu_ctx.stream()));
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(*gpu_place, gpu_ctx.stream())
+                             .get());
     gpu_ctx.PartialInitWithAllocator();
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     // Copy from GPU to CPU tensor for comparison
@@ -238,9 +238,9 @@ TEST(TensorToVector, Tensor) {
     phi::DenseTensor gpu_tensor;
     paddle::platform::CUDAPlace place;
     phi::GPUContext gpu_ctx(place);
-    gpu_ctx.SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            place, gpu_ctx.stream()));
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place, gpu_ctx.stream())
+                             .get());
     gpu_ctx.PartialInitWithAllocator();
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
 
@@ -285,9 +285,9 @@ TEST(TensorToVector, Tensor_bool) {
     phi::DenseTensor gpu_tensor;
     paddle::platform::CUDAPlace place;
     phi::GPUContext gpu_ctx(place);
-    gpu_ctx.SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            place, gpu_ctx.stream()));
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place, gpu_ctx.stream())
+                             .get());
     gpu_ctx.PartialInitWithAllocator();
     paddle::framework::TensorFromVector<bool>(src_vec, gpu_ctx, &gpu_tensor);
 
@@ -523,9 +523,9 @@ TEST(Tensor, FromAndToStream) {
 
     auto gpu_place = new platform::CUDAPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
-    gpu_ctx.SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            *gpu_place, gpu_ctx.stream()));
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(*gpu_place, gpu_ctx.stream())
+                             .get());
     gpu_ctx.PartialInitWithAllocator();
 
     TensorCopy(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);

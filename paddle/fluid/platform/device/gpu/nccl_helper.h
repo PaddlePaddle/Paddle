@@ -125,21 +125,25 @@ struct NCCLContext {
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
     ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            CUDAPlace(dev_id), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(CUDAPlace(dev_id)));
+            .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace()));
+            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
   }
 

@@ -14,8 +14,12 @@
 
 #pragma once
 
+#include <future>  // NOLINT
+#include <unordered_map>
+
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
@@ -128,6 +132,24 @@ struct MemoryInterface {
    * @brief init devices info and device context
    */
   void (*init_devices)();
+
+  /**
+   * @brief create device_context by places and put them into
+   * place_to_device_context
+   *
+   * @param place_to_device_context the destination that device_context will be
+   * stored
+   * @param places the places that are related to device_context
+   * @param disable_setting_default_stream_for_allocator whether set default
+   * stream for allocator
+   * @param stream_priority set stream priority
+   */
+  void (*emplace_device_contexts)(
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          place_to_device_context,
+      const std::vector<phi::Place>& places,
+      bool disable_setting_default_stream_for_allocator,
+      int stream_priority);
 };
 
 class MemoryUtils {
@@ -271,6 +293,26 @@ class MemoryUtils {
     memory_method_->init_devices();
   }
 
+  void EmplaceDeviceContexts(
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          place_to_device_context,
+      const std::vector<phi::Place>& places,
+      bool disable_setting_default_stream_for_allocator,
+      int stream_priority) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->emplace_device_contexts,
+        nullptr,
+        phi::errors::Unavailable(
+            "emplace_device_contexts method in memory_method_ is not "
+            "initiazed yet. You need init it first."));
+    memory_method_->emplace_device_contexts(
+        place_to_device_context,
+        places,
+        disable_setting_default_stream_for_allocator,
+        stream_priority);
+  }
+
   void CheckMemoryMethod() {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
@@ -333,6 +375,13 @@ void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
 void InitDevices();
+
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority);
 
 class Buffer {
  public:

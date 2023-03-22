@@ -132,9 +132,9 @@ void Compare2(f::Scope* scope,
 TEST(copy_cross_scope, CUDA_fp32) {
   f::Scope scope;
   phi::GPUContext ctx(p::CUDAPlace(0));
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          p::CUDAPlace(0), ctx.stream()));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(p::CUDAPlace(0), ctx.stream())
+                       .get());
   ctx.PartialInitWithAllocator();
   Compare1<float>(&scope, ctx, "copy_cross_scope");
 }
@@ -142,9 +142,9 @@ TEST(copy_cross_scope, CUDA_fp32) {
 TEST(copy_cross_scope_to_main_scope, CUDA_fp32) {
   f::Scope scope;
   phi::GPUContext ctx(p::CUDAPlace(0));
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          p::CUDAPlace(0), ctx.stream()));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(p::CUDAPlace(0), ctx.stream())
+                       .get());
   ctx.PartialInitWithAllocator();
   Compare2<float>(&scope, ctx, "copy_cross_scope");
 }

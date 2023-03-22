@@ -245,9 +245,9 @@ TEST(SENDANDRECV, GPU) {
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
   phi::GPUContext ctx(place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place, ctx.stream()));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
   ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);

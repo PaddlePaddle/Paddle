@@ -156,7 +156,8 @@ void TensorCopyImpl(const TENSOR& src,
     auto npu_pinned_allocator =
         static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
             paddle::memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(npu_pinned_place));
+                .GetAllocator(npu_pinned_place)
+                .get());
     phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,

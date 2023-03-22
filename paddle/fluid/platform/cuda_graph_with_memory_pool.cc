@@ -113,8 +113,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
       pool_id);
-  dev_ctx->SetCUDAGraphAllocator(
-      memory::allocation::AllocatorFacade::Instance().GetAllocator(place));
+  dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
+                                     .GetAllocator(place)
+                                     .get());
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
@@ -133,8 +134,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
       auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
       auto capturing_stream = capturing_dev_ctx->stream();
       capturing_dev_ctx->SetCUDAGraphAllocator(
-          memory::allocation::AllocatorFacade::Instance().GetAllocator(
-              place, capturing_stream));
+          memory::allocation::AllocatorFacade::Instance()
+              .GetAllocator(place, capturing_stream)
+              .get());
       VLOG(4) << "set CUDAGraphAllocator for dev_ctx: " << capturing_dev_ctx
               << " with stream: " << capturing_stream;
       cuda_graph_event->Wait(platform::kCUDA, capturing_dev_ctx);

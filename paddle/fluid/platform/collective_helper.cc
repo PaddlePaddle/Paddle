@@ -210,21 +210,25 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
     ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<phi::GPUContext> dev_ctx(
       new phi::GPUContext(CUDAPlace(dev_id)));
-  dev_ctx->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          CUDAPlace(dev_id), dev_ctx->stream()));
+  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
+                            .get());
   dev_ctx->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          paddle::platform::CPUPlace()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
-          CUDAPlace(dev_id)));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(CUDAPlace(dev_id))
+          .get());
   dev_ctx->SetHostZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
-          paddle::platform::CPUPlace()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx->SetPinnedAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          paddle::platform::CUDAPinnedPlace()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx->PartialInitWithAllocator();
 
   std::shared_ptr<platform::CudaEventObject> compute_event(
@@ -351,18 +355,21 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
     BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<XPUDeviceContext> dev_ctx(
       new XPUDeviceContext(XPUPlace(dev_id)));
-  dev_ctx->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          XPUPlace(dev_id)));
+  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(XPUPlace(dev_id))
+                            .get());
   dev_ctx->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          paddle::platform::CPUPlace()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
-          XPUPlace(dev_id)));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(XPUPlace(dev_id))
+          .get());
   dev_ctx->SetHostZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
-          paddle::platform::CPUPlace()));
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .get());
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);

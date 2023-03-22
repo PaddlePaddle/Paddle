@@ -41,7 +41,7 @@ using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
 // NOTE(yy): To create a stable ABI and make compilation faster. Here we use
 // a Pimpl trick;
 class AllocatorFacadePrivate;
-class AllocatorFacade : public phi::AllocatorFacadeInterface {
+class AllocatorFacade {
  public:
   using Allocation = phi::Allocation;
   AllocatorFacade(const AllocatorFacade& o) = delete;
@@ -52,11 +52,12 @@ class AllocatorFacade : public phi::AllocatorFacadeInterface {
 
   AllocatorFacadePrivate* GetPrivate() const;
 
-  phi::Allocator* GetAllocator(const platform::Place& place);
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
-  phi::Allocator* GetZeroAllocator(const platform::Place& place);
+  const std::shared_ptr<Allocator>& GetZeroAllocator(
+      const platform::Place& place);
 
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
@@ -83,8 +84,8 @@ class AllocatorFacade : public phi::AllocatorFacadeInterface {
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
   void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
-  phi::Allocator* GetAllocator(const platform::Place& place,
-                               gpuStream_t stream);
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
+                                                 gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
 #endif

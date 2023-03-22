@@ -20,9 +20,9 @@ TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = paddle::platform::CPUPlace();
   auto gpu_place = paddle::platform::CUDAPlace(0);
   phi::GPUContext context(gpu_place);
-  context.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          gpu_place, context.stream()));
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
   context.PartialInitWithAllocator();
 
   auto kernel_fp16 = phi::KernelKey(

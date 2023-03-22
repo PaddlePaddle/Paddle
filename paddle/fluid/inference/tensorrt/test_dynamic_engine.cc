@@ -36,18 +36,21 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            platform::CUDAPlace(0), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0)));
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {
@@ -164,18 +167,21 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            platform::CUDAPlace(0), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0)));
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {
@@ -329,18 +335,21 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            platform::CUDAPlace(0), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0)));
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {
@@ -534,18 +543,21 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            platform::CUDAPlace(0), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0)));
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {
@@ -739,18 +751,21 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            platform::CUDAPlace(0), ctx_->stream()));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CPUPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0)));
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-            paddle::platform::CUDAPinnedPlace()));
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {

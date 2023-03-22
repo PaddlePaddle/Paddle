@@ -1029,10 +1029,10 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
   return m_;
 }
 
-phi::Allocator* AllocatorFacade::GetAllocator(const platform::Place& place) {
-  return GetPrivate()
-      ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
-      .get();
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place) {
+  return GetPrivate()->GetAllocator(
+      place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 void* AllocatorFacade::GetBasePtr(
@@ -1052,9 +1052,9 @@ void* AllocatorFacade::GetBasePtr(
   return GetPrivate()->GetBasePtr(allocation);
 }
 
-phi::Allocator* AllocatorFacade::GetZeroAllocator(
+const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
     const platform::Place& place) {
-  return GetPrivate()->GetAllocator(place, /* zero size */ 0).get();
+  return GetPrivate()->GetAllocator(place, /* zero size */ 0);
 }
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
@@ -1136,8 +1136,8 @@ void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
   GetPrivate()->RecordStream(allocation, stream);
 }
 
-phi::Allocator* AllocatorFacade::GetAllocator(const platform::Place& place,
-                                              gpuStream_t stream) {
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place, gpuStream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
@@ -1146,14 +1146,11 @@ phi::Allocator* AllocatorFacade::GetAllocator(const platform::Place& place,
   }
 
   if (platform::is_gpu_place(place) && FLAGS_use_system_allocator == false) {
-    return m
-        ->GetAllocator(place,
-                       stream,
-                       /*create_if_not_found=*/true)
-        .get();
+    return m->GetAllocator(place,
+                           stream,
+                           /*create_if_not_found=*/true);
   }
-  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
-      .get();
+  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 gpuStream_t AllocatorFacade::GetStream(

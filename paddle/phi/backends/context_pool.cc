@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -35,13 +36,9 @@ DeviceContextPool& DeviceContextPool::Instance() {
   return *pool;
 }
 
-EmplaceDevicesContextFunc DeviceContextPool::emplace_devices_context_func_ =
-    nullptr;
-
 /*! \brief  Create should only called by Init function */
 DeviceContextPool& DeviceContextPool::Init(
-    const std::vector<phi::Place>& places, EmplaceDevicesContextFunc func) {
-  emplace_devices_context_func_ = func;
+    const std::vector<phi::Place>& places) {
   if (pool == nullptr) {
     pool = new DeviceContextPool(places);
   }
@@ -102,46 +99,12 @@ void DeviceContextPool::SetDeviceContexts(
   external_device_contexts_ = dev_ctxs;
 }
 
-void EmplaceDeviceContexts(
-    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-        place_to_device_context,
-    const std::vector<phi::Place>& places,
-    bool disable_setting_default_stream_for_allocator,
-    int stream_priority,
-    EmplaceDevicesContextFunc emplace_devices_context_func) {
-  PADDLE_ENFORCE_GT(
-      places.size(),
-      0,
-      phi::errors::InvalidArgument("The number of platform places should "
-                                   "be larger than 0. But received %d.",
-                                   places.size()));
-  PADDLE_ENFORCE_NE(
-      emplace_devices_context_func,
-      nullptr,
-      phi::errors::Unimplemented(
-          "The param emplace_devices_context_func is nullptr. Please "
-          "pass emplace_devices_context_func for initializing device contexts "
-          "if you call DeviceContextPool::Init"));
-  std::set<Place> set;
-  for (auto& p : places) {
-    set.insert(p);
-  }
-
-  for (auto& p : set) {
-    (*emplace_devices_context_func)(
-        place_to_device_context,
-        p,
-        disable_setting_default_stream_for_allocator,
-        stream_priority);
-  }
-}
-
 DeviceContextPool::DeviceContextPool(const std::vector<phi::Place>& places) {
-  EmplaceDeviceContexts(&device_contexts_,
-                        places,
-                        /*disable_setting_default_stream_for_allocator=*/false,
-                        /*stream_priority=*/0,
-                        emplace_devices_context_func_);
+  phi::memory_utils::EmplaceDeviceContexts(
+      &device_contexts_,
+      places,
+      /*disable_setting_default_stream_for_allocator=*/false,
+      /*stream_priority=*/0);
 }
 
 }  // namespace phi

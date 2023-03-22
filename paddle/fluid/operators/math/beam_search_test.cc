@@ -152,9 +152,9 @@ void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
 
   auto* place = new paddle::platform::CUDAPlace();
   auto* context = new phi::GPUContext(*place);
-  context->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          *place, context->stream()));
+  context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(*place, context->stream())
+                            .get());
   context->PartialInitWithAllocator();
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);

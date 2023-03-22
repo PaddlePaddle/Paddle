@@ -21,9 +21,9 @@ limitations under the License. */
 TEST(selected_rows_functor, cpu_add) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -113,9 +113,9 @@ TEST(selected_rows_functor, cpu_add) {
 TEST(selected_rows_functor, cpu_add_to) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -205,9 +205,9 @@ TEST(selected_rows_functor, cpu_add_to) {
 TEST(selected_rows_functor, cpu_merge_average_float) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -243,9 +243,9 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 TEST(selected_rows_functor, cpu_merge_add_float) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -282,9 +282,9 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 TEST(selected_rows_functor, cpu_merge_add_int) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, int> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -321,9 +321,9 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 TEST(selected_rows_functor, cpu_merge_add_multi) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> set_const;
 
   int64_t height = 10;
@@ -373,9 +373,9 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> set_const;
 
   int64_t height = 10;
@@ -431,9 +431,9 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 TEST(selected_rows_functor, cpu_sum_to) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
-  ctx.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          cpu_place));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;

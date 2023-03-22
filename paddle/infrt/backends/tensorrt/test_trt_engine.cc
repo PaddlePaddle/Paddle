@@ -175,9 +175,9 @@ TEST(trt, run_fc_static) {
   phi::GPUPlace place;
   phi::GPUContext context;
   context.PartialInitWithoutAllocator();
-  context.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place, context.stream()));
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place, context.stream())
+                           .get());
   context.PartialInitWithAllocator();
 
   phi::DenseTensorMeta meta(
@@ -221,9 +221,9 @@ TEST(trt, run_conv_static) {
   phi::GPUPlace place;
   phi::GPUContext context;
   context.PartialInitWithoutAllocator();
-  context.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place, context.stream()));
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place, context.stream())
+                           .get());
   context.PartialInitWithAllocator();
 
   phi::DenseTensorMeta meta(
@@ -265,9 +265,9 @@ TEST(trt, run_static) {
   phi::GPUPlace place;
   phi::GPUContext context;
   context.PartialInitWithoutAllocator();
-  context.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place, context.stream()));
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place, context.stream())
+                           .get());
   context.PartialInitWithAllocator();
 
   phi::DenseTensorMeta meta(
@@ -351,9 +351,9 @@ TEST(trt, run_dynamic) {
   phi::GPUPlace place;
   phi::GPUContext context;
   context.PartialInitWithoutAllocator();
-  context.SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
-          place, context.stream()));
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place, context.stream())
+                           .get());
   context.PartialInitWithAllocator();
 
   phi::DenseTensorMeta meta(

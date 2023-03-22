@@ -18,16 +18,6 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-using gpuStream_t = cudaStream_t;
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-using gpuStream_t = hipStream_t;
-#endif
-
 #include "paddle/phi/common/place.h"
 
 namespace phi {
@@ -114,19 +104,6 @@ class Allocator {
   virtual AllocationPtr Allocate(size_t bytes_size) = 0;
 
   virtual bool IsAllocThreadSafe() const { return false; }
-};
-
-class AllocatorFacadeInterface {
- public:
-  virtual ~AllocatorFacadeInterface() = default;
-  virtual Allocator* GetAllocator(const phi::Place& place) = 0;
-  virtual Allocator* GetZeroAllocator(const phi::Place& place) = 0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  virtual Allocator* GetAllocator(const phi::Place& place,
-                                  gpuStream_t stream) = 0;
-  virtual void SetDefaultStream(const phi::GPUPlace& place,
-                                gpuStream_t stream) = 0;
-#endif
 };
 
 }  // namespace phi
