@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
-
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -665,10 +664,11 @@ class FMHARef {
           qk_out_tensor.dims() == src_mask_out_tensor.dims()) {
         VLOG(4) << "Special case when dy is not needed and dx doesn't "
                    "reduce";
-        paddle::framework::TensorCopy(*src_mask_out_grad_tensor,
-                                      dev_ctx_.GetPlace(),
-                                      dev_ctx_,
-                                      qk_out_grad_tensor);
+        phi::Copy(dev_ctx_,
+                  *src_mask_out_grad_tensor,
+                  dev_ctx_.GetPlace(),
+                  false,
+                  qk_out_grad_tensor);
       } else {
         PADDLE_THROW(errors::InvalidArgument(
             "Only used for the backward elementwise_add op when"
