@@ -112,62 +112,52 @@ namespace sparse {
     gemm_op(dev_ctx.stream());                                                 \
     if (Config::Mode != cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel) \
       return;                                                                  \
-    fuck = 0;                                                                  \
     using ReductionOp = cutlass::reduction::thread::ReduceAdd<                 \
         typename Gemm::ElementAccumulator,                                     \
         typename Gemm::EpilogueOutputOp::ElementAccumulator,                   \
         Gemm::EpilogueOutputOp::kCount>;                                       \
-    fuck2 = 0;                                                                 \
                                                                                \
     using ReductionKernel = cutlass::reduction::kernel::ReduceSplitK<          \
         cutlass::MatrixShape<4, 32 * Gemm::EpilogueOutputOp::kCount>,          \
         typename Gemm::EpilogueOutputOp,                                       \
         ReductionOp>;                                                          \
-    fuck3 = 0;                                                                 \
                                                                                \
     cutlass::gemm::threadblock::GemmSplitKHorizontalThreadblockSwizzle         \
         threadblock_swizzle;                                                   \
-    fuck4 = 0;                                                                 \
     typename cutlass::gemm::GemmCoord grid_shape =                             \
         threadblock_swizzle.get_tiled_shape(problem_size_real,                 \
                                             {Gemm::ThreadblockShape::kM,       \
                                              Gemm::ThreadblockShape::kN,       \
                                              Gemm::ThreadblockShape::kK},      \
                                             split_k_slices);                   \
-    fuck5 = 0;                                                                 \
                                                                                \
     cutlass::TensorRef<typename Gemm::ElementAccumulator,                      \
                        cutlass::layout::RowMajor>                              \
-        ref_workspace(                                                         \
-            static_cast<typename Gemm::ElementAccumulator*>(workspace),        \
-            problem_size_real.n());                                            \
-    fuck6 = 0;                                                                 \
-    cutlass::TensorRef<Gemm const, Gemm::Base::LayoutC> ref_C(                 \
-        reinterpret_cast<const cutlass_type* const>(c),                        \
-        cutlass::layout::RowMajor);                                            \
-    fuck7 = 0;                                                                 \
-    cutlass::TensorRef<typename cutlass_type, cutlass::layout::RowMajor>       \
-        ref_D(reinterpret_cast<cutlass_type* const>(d),                        \
-              cutlass::layout::RowMajor);                                      \
-    fuck8 = 0;                                                                 \
+        ref_workspace(reinterpret_cast<typename Gemm::ElementAccumulator*>(    \
+                          workspace.get()),                                    \
+                      problem_size_real.n());                                  \
+    cutlass::TensorRef<const typename Gemm::Base::ElementC,                    \
+                       typename Gemm::Base::LayoutC>                           \
+        ref_C(reinterpret_cast<const typename Gemm::Base::ElementC* const>(c), \
+              problem_size_real.n());                                          \
+    cutlass::TensorRef<typename Gemm::Base::ElementC,                          \
+                       typename Gemm::Base::LayoutC>                           \
+        ref_D(reinterpret_cast<typename Gemm::Base::ElementC* const>(d),       \
+              problem_size_real.n());                                          \
     int64_t partition_stride =                                                 \
         int64_t(problem_size_real.m()) * int64_t(problem_size_real.n());       \
-    fuck9 = 0;                                                                 \
     typename ReductionKernel::Params reduction_params_;                        \
-    fuck10 = 0;                                                                \
     reduction_params_ =                                                        \
         typename ReductionKernel::Params(problem_size_real.mn(),               \
                                          grid_shape.k(),                       \
                                          partition_stride,                     \
                                          ref_workspace,                        \
                                          ref_D,                                \
-                                         ref_C.non_const_ref(),                \
-                                         {alpha, beta});                       \
+                                         ref_C.non_const_ref());               \
                                                                                \
-    fuck11 = 0;                                                                \
     dim3 block = ReductionKernel::block_shape();                               \
-    dim3 grid = ReductionKernel::grid_shape(gemm_params_.problem_size.mn());   \
-    Kernel<ReductionKernel>                                                    \
+    dim3 grid = ReductionKernel::grid_shape(problem_size_real.mn());           \
+    cutlass::Kernel<ReductionKernel>                                           \
         <<<grid, block, 0, dev_ctx.stream()>>>(reduction_params_);             \
   }
 
