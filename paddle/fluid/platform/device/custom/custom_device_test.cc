@@ -241,8 +241,8 @@ void TestCustomCCL(const paddle::platform::Place& place) {
 }
 
 TEST(CustomDevice, Tensor) {
-  InitDevice();
   paddle::framework::InitMemoryMethod();
+  InitDevice();
   auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
   for (const auto& dev_type : dev_types) {
     std::cout << "Test on " << dev_type << std::endl;
