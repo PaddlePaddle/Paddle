@@ -232,7 +232,7 @@ def monkey_patch_varbase():
         """
         Run backward of current Graph which starts from current Tensor.
 
-        The new gradient will accumulat on previous gradient.
+        The new gradient will accumulate on previous gradient.
 
         You can clear gradient by ``Tensor.clear_grad()`` .
 
@@ -240,11 +240,11 @@ def monkey_patch_varbase():
             grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
             the initial gradient values of the current Tensor would be Tensor filled with 1.0;
             if `grad_tensor` is not None, it must have the same length as the current Tensor.
-            Teh default value is None.
+            The default value is None.
 
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
         Returns:
             NoneType: None

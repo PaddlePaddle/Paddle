@@ -829,9 +829,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                         backward_input_pos,
                     ]
                 else:
-                    assert (
-                        False
-                    ), f"Cannot find {backward_input_name} in forward position map"
+                    raise AssertionError(
+                        f"Cannot find {backward_input_name} in forward position map"
+                    )
 
         for backward_output in backward_returns_list:
             backward_output_name = backward_output[0]
