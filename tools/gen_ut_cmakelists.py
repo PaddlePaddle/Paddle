@@ -469,7 +469,6 @@ class CMakeGenerator:
             run_type = _process_run_type(run_type)
             dist_ut_port = self.port_manager.process_dist_port_num(num_port)
             dist_ut_port = self.port_manager.gset_port(name, dist_ut_port)
-            print(name, time_out_str, file=open("/tmp/test.txt", "a"))
             cmd += f'''if({archs} AND {os_})
         bash_test_modules(
         {name}
