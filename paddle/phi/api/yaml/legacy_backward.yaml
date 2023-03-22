@@ -727,6 +727,7 @@
     param: [x]
   kernel :
     func : max_grad
+  composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : max_pool2d_with_index_grad
   forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive) -> Tensor(out), Tensor(mask)
