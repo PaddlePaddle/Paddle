@@ -2421,7 +2421,7 @@ class OpTest(unittest.TestCase):
             for input_to_check in inputs_to_check
         ]
 
-        if self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
