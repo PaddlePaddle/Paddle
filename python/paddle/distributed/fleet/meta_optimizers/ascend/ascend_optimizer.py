@@ -116,10 +116,9 @@ class AscendIRParser:
             )
             op_parser.apply(op)
         else:
-            assert (
-                False
-            ), "Op[%s] has not been registered, so we have to skip it" % (
-                op.type
+            raise AssertionError(
+                'Op[%s] has not been registered, so we have to skip it'
+                % op.type
             )
 
     def _parse_program(
