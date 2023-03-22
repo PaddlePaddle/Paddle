@@ -14,4 +14,4 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/scope_guard.h"
+#include "paddle/phi/core/scope_guard.h"
