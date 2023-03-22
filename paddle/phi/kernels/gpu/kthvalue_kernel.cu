@@ -21,17 +21,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
-#define WARP_SIZE 32
-#define MAX_NUM_THREADS 1024
-
-inline static size_t divide_round_up(size_t n, size_t q) {
-  return n % q == 0 ? n / q : n / q + 1;
-}
-
-inline static size_t round_up(size_t n, size_t q) {
-  return divide_round_up(n, q) * q;
-}
-
 namespace phi {
 inline int getBlockSize(int col) {
   if (col > 512)
@@ -163,21 +152,6 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   return true;
 }
 
-template <typename T>
-void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
-                          const T* input_data,
-                          const int64_t num_cols,
-                          const int64_t num_rows,
-                          const int k,
-                          T* out_data,
-                          int64_t* indices_data) {
-  int num_threads = std::min(
-      static_cast<int>(round_up(static_cast<int>(num_cols), WARP_SIZE)),
-      MAX_NUM_THREADS);
-  phi::funcs::GatherKthValue<T><<<num_rows, num_threads, 0, dev_ctx.stream()>>>(
-      input_data, k, num_rows, num_cols, out_data, indices_data);
-}
-
 template <typename T, typename Context>
 void KthvalueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -213,13 +187,13 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     const T* input_data = x.data<T>();
-    LaunchGatherKthValue<T>(dev_ctx,
-                            input_data,
-                            input_width,
-                            input_height,
-                            k,
-                            output_data,
-                            indices_data);
+    funcs::LaunchGatherKthValue<T>(dev_ctx,
+                                   input_data,
+                                   input_width,
+                                   input_height,
+                                   k,
+                                   output_data,
+                                   indices_data);
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(
@@ -275,13 +249,13 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
-    LaunchGatherKthValue<T>(dev_ctx,
-                            tran_input_data,
-                            input_width,
-                            input_height,
-                            k,
-                            tran_output_data,
-                            tran_indices_data);
+    funcs::LaunchGatherKthValue<T>(dev_ctx,
+                                   tran_input_data,
+                                   input_width,
+                                   input_height,
+                                   k,
+                                   tran_output_data,
+                                   tran_indices_data);
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(dev_ctx,

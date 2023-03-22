@@ -32,6 +32,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define FINAL_MASK 0xffffffff
+#define WARP_SIZE 32
+#define MAX_NUM_THREADS 1024
+
+inline static size_t divide_round_up(size_t n, size_t q) {
+  return n % q == 0 ? n / q : n / q + 1;
+}
+
+inline static size_t round_up(size_t n, size_t q) {
+  return divide_round_up(n, q) * q;
+}
+
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
@@ -822,8 +833,7 @@ __global__ void GatherKthValue(const T* input,
 
   // 1. Find the k-th value
   T kth_value = static_cast<T>(0);
-phi:
-  funcs::RadixSearch<T, RadixTypeConfig<T>::RadixType, false>(
+  RadixSearch<T, RadixTypeConfig<T>::RadixType, false>(
       cur_input, k, num_cols, shared_mem, &kth_value);
   const auto converted_kth_value = RadixTypeConfig<T>::Convert(kth_value);
 
@@ -847,6 +857,21 @@ phi:
     output[row] = kth_value;
     indices[row] = kth_index;
   }
+}
+
+template <typename T>
+void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
+                          const T* input_data,
+                          const int64_t num_cols,
+                          const int64_t num_rows,
+                          const int k,
+                          T* out_data,
+                          int64_t* indices_data) {
+  int num_threads = std::min(
+      static_cast<int>(round_up(static_cast<int>(num_cols), WARP_SIZE)),
+      MAX_NUM_THREADS);
+  GatherKthValue<T><<<num_rows, num_threads, 0, dev_ctx.stream()>>>(
+      input_data, k, num_rows, num_cols, out_data, indices_data);
 }
 
 template <typename T, bool Largest>
