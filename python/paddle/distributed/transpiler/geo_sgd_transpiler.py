@@ -101,8 +101,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.vars_overview = VarsDistributed()
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
-        self.param_name_to_grad_name = dict()
-        self.grad_name_to_param_name = dict()
+        self.param_name_to_grad_name = {}
+        self.grad_name_to_param_name = {}
         for param_var, grad_var in self.params_grads:
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
