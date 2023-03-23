@@ -16,6 +16,7 @@
 
 /// The code and design is mainly from mlir, very thanks to the great project.
 
+#include <algorithm>
 #include <cassert>
 #include <optional>
 
@@ -65,14 +66,16 @@ struct PassInfo {
 class Pass {
  public:
   virtual ~Pass() = default;
-
-  PassInfo GetPassInfo() const { return info_; }
-
- protected:
   explicit Pass(const std::string& name,
                 int opt_level,
                 const std::vector<std::string>& dependents = {})
       : info_(name, opt_level, dependents) {}
+
+  PassInfo GetPassInfo() const { return info_; }
+
+  std::unique_ptr<Pass> Clone() const { return ClonePass(); }
+
+ protected:
   virtual void Run(mlir::Operation* op) = 0;
 
   virtual inline bool CanScheduleOn(mlir::Operation* op) const {
@@ -82,6 +85,10 @@ class Pass {
   virtual mlir::LogicalResult Initialize(mlir::MLIRContext* context) {
     return mlir::success();
   }
+
+  // TODO(wilber): need to consider pure virtual.
+  /// A clone method to create a copy of this pass.
+  virtual std::unique_ptr<Pass> ClonePass() const { return nullptr; }
 
   AnalysisManager GetAnalysisManager() { return pass_state_->am; }
 

@@ -5,13 +5,13 @@ git submodule update --init
 
 ## 1. compile llvm
 
+cmake > 3.19
+
 llvm commit id: 10939d1d580b9d3c9c2f3539c6bdb39f408179c0
 ```
 cd llvm-project
 mkdir build && cd build
 cmake -GNinja \
-  "-H$LLVM_SRC_DIR/llvm" \
-  "-B$build_dir" \
   -DLLVM_INSTALL_UTILS=ON \
   -DLLVM_ENABLE_LLD=ON \
   -DLLVM_ENABLE_PROJECTS=mlir \
@@ -25,7 +25,8 @@ cmake -GNinja \
   -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
   -DPython3_EXECUTABLE=`which python` \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -DLLVM_ENABLE_ASSERTIONS=On
+  -DLLVM_ENABLE_ASSERTIONS=On \
+  ../llvm
 ninja
 ```
 
