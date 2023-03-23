@@ -83,10 +83,6 @@ struct DictionaryAttributeStorage : public AttributeStorage {
   uint32_t size() const { return size_; }
 
  private:
-  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  }
-
   NamedAttribute *data_;
   uint32_t size_;
 };
