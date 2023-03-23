@@ -173,8 +173,8 @@ struct IntegerTypeStorage : public ir::TypeStorage {
   using ParamKey = std::pair<unsigned, unsigned>;
 
   static std::size_t HashValue(const ParamKey &key) {
-    return ir::utils::hash_combine(std::hash<unsigned>()(std::get<0>(key)),
-                                   std::hash<unsigned>()(std::get<1>(key)));
+    return ir::hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                            std::hash<unsigned>()(std::get<1>(key)));
   }
 
   bool operator==(const ParamKey &key) const {

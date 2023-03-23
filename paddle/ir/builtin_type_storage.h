@@ -109,23 +109,23 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   static std::size_t HashValue(const ParamKey &key) {
     std::size_t hash_value = 0;
     // hash dtype
-    hash_value = ir::utils::hash_combine(
-        hash_value, std::hash<ir::Type>()(std::get<0>(key)));
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));
     // hash dims
     hash_value =
-        ir::utils::hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
+        ir::hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
     // hash layout
-    hash_value = ir::utils::hash_combine(
+    hash_value = ir::hash_combine(
         hash_value,
         std::hash<std::underlying_type<DataLayout>::type>()(
             static_cast<std::underlying_type<DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
     hash_value =
-        ir::utils::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
+        ir::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
     // hash offset
-    hash_value = ir::utils::hash_combine(hash_value,
-                                         std::hash<size_t>()(std::get<4>(key)));
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
     return hash_value;
   }
 

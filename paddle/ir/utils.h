@@ -19,13 +19,10 @@
 #include <cstdlib>
 
 namespace ir {
-namespace utils {
-
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
 
-void* AlignedMalloc(size_t size, size_t alignment);
+void *aligned_malloc(size_t size, size_t alignment);
 
-void AlignedFree(void* mem_ptr);
+void aligned_free(void *mem_ptr);
 
-}  // namespace utils
 }  // namespace ir

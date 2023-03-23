@@ -15,17 +15,15 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
-namespace utils {
-
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
 }
 
-void* AlignedMalloc(size_t size, size_t alignment) {
-  assert(alignment >= sizeof(void*) && (alignment & (alignment - 1)) == 0);
+void *aligned_malloc(size_t size, size_t alignment) {
+  assert(alignment >= sizeof(void *) && (alignment & (alignment - 1)) == 0);
   size = (size + alignment - 1) / alignment * alignment;
 #if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
-  void* aligned_mem = nullptr;
+  void *aligned_mem = nullptr;
   if (posix_memalign(&aligned_mem, alignment, size) != 0) {
     aligned_mem = nullptr;
   }
@@ -33,29 +31,28 @@ void* AlignedMalloc(size_t size, size_t alignment) {
 #elif defined(_WIN32)
   return _aligned_malloc(size, alignment);
 #else
-  void* mem = malloc(size + alignment);
+  void *mem = malloc(size + alignment);
   if (mem == nullptr) {
     return nullptr;
   }
   size_t adjust = alignment - reinterpret_cast<uint64_t>(mem) % alignment;
-  void* aligned_mem = reinterpret_cast<char*>(mem) + adjust;
-  *(reinterpret_cast<void**>(aligned_mem) - 1) = mem;
+  void *aligned_mem = reinterpret_cast<char *>(mem) + adjust;
+  *(reinterpret_cast<void **>(aligned_mem) - 1) = mem;
   assert(reinterpret_cast<uint64_t>(aligned_mem) % alignment == 0);
   return aligned_mem;
 #endif
 }
 
-void AlignedFree(void* mem_ptr) {
+void aligned_free(void *mem_ptr) {
 #if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
   free(mem_ptr);
 #elif defined(_WIN32)
   _aligned_free(mem_ptr);
 #else
   if (mem_ptr) {
-    free(*(reinterpret_cast<void**>(mem_ptr) - 1));
+    free(*(reinterpret_cast<void **>(mem_ptr) - 1));
   }
 #endif
 }
 
-}  // namespace utils
 }  // namespace ir

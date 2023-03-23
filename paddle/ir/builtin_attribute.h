@@ -86,8 +86,8 @@ namespace std {
 template <>
 struct hash<ir::NamedAttribute> {
   std::size_t operator()(const ir::NamedAttribute &obj) const {
-    return ir::utils::hash_combine(std::hash<ir::Attribute>()(obj.name_),
-                                   std::hash<ir::Attribute>()(obj.value_));
+    return ir::hash_combine(std::hash<ir::Attribute>()(obj.name_),
+                            std::hash<ir::Attribute>()(obj.value_));
   }
 };
 }  // namespace std

@@ -33,7 +33,7 @@ DictionaryAttributeStorage::DictionaryAttributeStorage(const ParamKey &key) {
 std::size_t DictionaryAttributeStorage::HashValue(const ParamKey &key) {
   std::size_t hash_value = key.size();
   for (auto iter = key.begin(); iter != key.end(); ++iter) {
-    hash_value = ir::utils::hash_combine(
+    hash_value = ir::hash_combine(
         hash_value,
         std::hash<NamedAttribute>()(NamedAttribute(iter->first, iter->second)));
   }
