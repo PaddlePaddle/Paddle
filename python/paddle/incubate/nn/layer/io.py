@@ -90,8 +90,8 @@ class ListenAndServ:
         current_block = main_program.current_block()
         parent_block = self.parent_block()
         # params and grads in the same order.
-        params = list()
-        grads = list()
+        params = []
+        grads = []
         for op in current_block.ops:
             # FIXME(typhoonzero): op.inputs is None if it's cloned.
             if self.optimizer_mode:

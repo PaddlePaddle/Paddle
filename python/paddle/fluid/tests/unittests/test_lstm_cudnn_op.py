@@ -80,7 +80,7 @@ class LSTMCell(LayerMixin):
         self.hidden_size = hidden_size
         self.bias = bias
         self.dtype = np.float64
-        self.parameters = dict()
+        self.parameters = {}
         self.weight_ih = weight.weight_ih
         self.weight_hh = weight.weight_hh
         self.parameters['weight_ih'] = self.weight_ih

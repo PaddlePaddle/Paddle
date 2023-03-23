@@ -3276,7 +3276,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
-        kwargs = dict()
+        kwargs = {}
         for name, val in locals_var.items():
             if val is not None:
                 kwargs[name] = val

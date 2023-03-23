@@ -122,12 +122,14 @@ class TestLUOp(OpTest):
         lshape = np.array(sL.shape)
         ushape = np.array(sU.shape)
 
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-        )
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-        )
+        lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - lshape)[-2]),
+            (0, (ashape - lshape)[-1]),
+        ]
+        upad = (len(sU.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - ushape)[-2]),
+            (0, (ashape - ushape)[-1]),
+        ]
 
         NsL = np.pad(sL, lpad)
         NsU = np.pad(sU, upad)
@@ -262,12 +264,14 @@ class TestLUAPI(unittest.TestCase):
                     lshape = np.array(sL.shape)
                     ushape = np.array(sU.shape)
 
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-                    )
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-                    )
+                    lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - lshape)[-2]),
+                        (0, (ashape - lshape)[-1]),
+                    ]
+                    upad = (len(sU.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - ushape)[-2]),
+                        (0, (ashape - ushape)[-1]),
+                    ]
 
                     NsL = np.pad(sL, lpad)
                     NsU = np.pad(sU, upad)
