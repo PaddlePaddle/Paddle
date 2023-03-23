@@ -1029,12 +1029,12 @@ class TestDistBase(unittest.TestCase):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
         if DIST_UT_PORT == 0:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
         else:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT,
                 DIST_UT_PORT + 1,
             )
@@ -1137,7 +1137,7 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " %s --role trainer --update_method local --lr %f" % (
+        cmd += " {} --role trainer --update_method local --lr {:f}".format(
             model,
             self._lr,
         )

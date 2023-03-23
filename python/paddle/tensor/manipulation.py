@@ -493,8 +493,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):

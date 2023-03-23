@@ -28,14 +28,14 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
         self.assertEqual(
             data_type,
             self.dst_dtype,
-            'dtype should be %s, but get %s' % (self.dst_dtype, data_type),
+            'dtype should be {}, but get {}'.format(self.dst_dtype, data_type),
         )
 
         shape = out.shape
         self.assertTupleEqual(
             shape,
             self.dst_shape,
-            'shape should be %s, but get %s' % (self.dst_shape, shape),
+            'shape should be {}, but get {}'.format(self.dst_shape, shape),
         )
 
         if data_type in ['float32', 'float64', 'int32', 'int64']:

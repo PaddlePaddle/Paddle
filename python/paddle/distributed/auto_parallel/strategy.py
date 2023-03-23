@@ -62,7 +62,7 @@ class BaseConfig:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
-            string += "\"%s\":\"%s\"," % (k, v)
+            string += "\"{}\":\"{}\",".format(k, v)
         return string + "}"
 
     def __deepcopy__(self, memo):

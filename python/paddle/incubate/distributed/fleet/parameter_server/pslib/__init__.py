@@ -917,7 +917,7 @@ def _prepare_params(
         d_size[name] = size
     elif d_size[name] != size:
         raise ValueError(
-            "embedding size error: %s vs %s" % (size, d_size[name])
+            "embedding size error: {} vs {}".format(size, d_size[name])
         )
 
     # check embedding accessor
@@ -926,7 +926,7 @@ def _prepare_params(
         d_accessor[name] = accessor
     elif d_accessor[name] != accessor:
         raise ValueError(
-            "embedding size error: %s vs %s" % (d_accessor[name], accessor)
+            "embedding size error: {} vs {}".format(d_accessor[name], accessor)
         )
 
     # check embedding table id

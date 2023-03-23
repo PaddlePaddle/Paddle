@@ -191,7 +191,7 @@ class TestFleetHeterBase(unittest.TestCase):
 
     def tearDown(self):
         t = time.time() - self.startTime
-        print('%s: %.3f' % (self.__class__.__name__, t))
+        print('{}: {:.3f}'.format(self.__class__.__name__, t))
 
     def setUp(self):
         self.startTime = time.time()
@@ -210,37 +210,37 @@ class TestFleetHeterBase(unittest.TestCase):
 
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT,
                 DIST_UT_PORT + 1,
             )
-            self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT + 2,
                 DIST_UT_PORT + 3,
             )
-            self._heter_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._heter_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT + 4,
                 DIST_UT_PORT + 5,
             )
-            self._heter_endpoints_2 = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._heter_endpoints_2 = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT + 6,
                 DIST_UT_PORT + 7,
             )
             DIST_UT_PORT += 8
         else:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
-            self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
-            self._heter_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._heter_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
-            self._heter_endpoints_2 = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._heter_endpoints_2 = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )

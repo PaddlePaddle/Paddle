@@ -572,5 +572,5 @@ def watch_local_trainers(procs, nranks):
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print("{}: {}".format(arg, value))
     print("------------------------------------------------")

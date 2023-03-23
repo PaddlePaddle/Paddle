@@ -438,7 +438,9 @@ def create_api_shape_node(tensor_shape_node):
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
     return gast.parse(
-        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+        '{} = paddle.full({}, "{}", {})'.format(
+            name, str(shape), str(value), dtype
+        )
     )
 
 

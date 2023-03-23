@@ -78,7 +78,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         while not (os.path.exists(filename) and md5file(filename) == md5sum):
             if os.path.exists(filename):
                 sys.stderr.write(
-                    "file %s  md5 %s\n" % (md5file(filename), md5sum)
+                    "file {}  md5 {}\n".format(md5file(filename), md5sum)
                 )
             if retry < retry_limit:
                 retry += 1
@@ -89,7 +89,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     )
                 )
             sys.stderr.write(
-                "Cache file %s not found, downloading %s \n" % (filename, url)
+                "Cache file {} not found, downloading {} \n".format(
+                    filename, url
+                )
             )
             sys.stderr.write("Begin to download\n")
             try:

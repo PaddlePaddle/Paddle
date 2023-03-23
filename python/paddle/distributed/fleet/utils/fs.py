@@ -461,7 +461,7 @@ class HDFSClient(FS):
 
         if configs:
             for k, v in configs.items():
-                config_command = '-D%s=%s' % (k, v)
+                config_command = '-D{}={}'.format(k, v)
                 self.pre_commands.append(config_command)
 
         self._time_out = time_out

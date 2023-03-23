@@ -48,7 +48,7 @@ def get_h_file_md5(rootPath):
     lines = f.readlines()
     for line in lines:
         line = line.strip()
-        os.system('md5sum %s >> %s/tools/h_cu_md5.log' % (line, rootPath))
+        os.system('md5sum {} >> {}/tools/h_cu_md5.log'.format(line, rootPath))
 
 
 def insert_pile_to_h_file(rootPath):
@@ -58,8 +58,10 @@ def insert_pile_to_h_file(rootPath):
     for line in lines:
         line = line.strip()
         func = line.replace('/', '_').replace('.', '_')
-        os.system('echo "\n#ifndef _PRECISE%s_\n" >> %s' % (func.upper(), line))
-        os.system('echo "#define _PRECISE%s_" >> %s' % (func.upper(), line))
+        os.system(
+            'echo "\n#ifndef _PRECISE{}_\n" >> {}'.format(func.upper(), line)
+        )
+        os.system('echo "#define _PRECISE{}_" >> {}'.format(func.upper(), line))
         os.system('echo "\n#include <cstdio>\n" >> %s' % line)
         os.system(
             'echo "__attribute__((constructor)) static void calledFirst%s()\n{" >> %s'
@@ -115,7 +117,7 @@ def get_h_cu_file(file_path):
     dir_path = file_path[1]
     filename = file_path[2]
     ut = filename.replace('^', '').replace('$', '').replace('.log', '')
-    ut_path = "%s/build/ut_map/%s" % (rootPath, ut)
+    ut_path = "{}/build/ut_map/{}".format(rootPath, ut)
     if os.path.exists(ut_path):
         os.system(
             "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"

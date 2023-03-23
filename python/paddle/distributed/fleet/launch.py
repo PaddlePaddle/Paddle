@@ -89,7 +89,7 @@ __all__ = []
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print("{}: {}".format(arg, value))
     print("------------------------------------------------")
 
 
@@ -290,7 +290,9 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
+        node_ip, node_ips
+    )
     node_rank = node_ips.index(node_ip)
 
     logger.debug(

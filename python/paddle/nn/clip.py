@@ -290,7 +290,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def __str__(self):
-        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+        return "ByValue, min={:f}, max={:f}".format(self.min, self.max)
 
     def _append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()
@@ -403,7 +403,9 @@ class ClipGradByValue(ClipGradBase):
         self.min = float(min)
 
     def __str__(self):
-        return "Clip Gradient By Value, min = %f, max=%f" % (self.min, self.max)
+        return "Clip Gradient By Value, min = {:f}, max={:f}".format(
+            self.min, self.max
+        )
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):

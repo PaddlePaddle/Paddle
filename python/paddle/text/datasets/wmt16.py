@@ -182,7 +182,7 @@ class WMT16(Dataset):
 
         with open(dict_path, "wb") as fout:
             fout.write(
-                ("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode()
+                ("{}\n{}\n{}\n".format(START_MARK, END_MARK, UNK_MARK)).encode()
             )
             for idx, word in enumerate(
                 sorted(word_dict.items(), key=lambda x: x[1], reverse=True)

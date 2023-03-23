@@ -95,7 +95,9 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
             x_len = x_lod[0][idx]
             self.assertTrue(
                 x_len == channel_num * row_lod[0][idx] * col_lod[0][idx],
-                "x_len: %s can't mod channel_num: %s" % (x_len, channel_num),
+                "x_len: {} can't mod channel_num: {}".format(
+                    x_len, channel_num
+                ),
             )
             out_tmp = np.zeros((0,), dtype=x_data.dtype)
             pos_tmp = np.zeros((0,), dtype='int32')

@@ -118,7 +118,7 @@ def get_cloud_cluster(
 
         assert (
             node_ip in node_ips
-        ), "Can't find your local ip {%s} in node_ips: {%s}" % (
+        ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
             node_ip,
             node_ips,
         )

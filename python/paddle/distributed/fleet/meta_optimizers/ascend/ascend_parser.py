@@ -194,7 +194,7 @@ class AscendParserBase:
         self.op = op
         assert (
             self.op.type == self.parser_name
-        ), "op [%s] != parser_name[%s]" % (self.op.type, self.parser_name)
+        ), "op [{}] != parser_name[{}]".format(self.op.type, self.parser_name)
         # print("begin to parse op %s" % (self.parser_name))
         geop_list, index_list = self._apply()
         self.update_output(geop_list, index_list)

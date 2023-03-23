@@ -752,11 +752,12 @@ def get_xpus(xpus):
             # therefore xpus=0,1,2,3
             xpu_visible_devices_list = xpu_visible_devices.split(',')
             for x in xpus.split(','):
-                assert (
-                    x in xpu_visible_devices_list
-                ), "Can't find " "your xpus %s in XPU_VISIBLE_DEVICES[%s]." % (
-                    x,
-                    xpu_visible_devices,
+                assert x in xpu_visible_devices_list, (
+                    "Can't find "
+                    "your xpus {} in XPU_VISIBLE_DEVICES[{}].".format(
+                        x,
+                        xpu_visible_devices,
+                    )
                 )
             res_xpus = [
                 xpu_visible_devices_list.index(x.strip())
@@ -821,11 +822,12 @@ def get_mlus(mlus):
             # therefore mlus=0,1,2,3
             mlu_visible_devices_list = mlu_visible_devices.split(',')
             for x in mlus.split(','):
-                assert (
-                    x in mlu_visible_devices_list
-                ), "Can't find " "your mlus %s in MLU_VISIBLE_DEVICES[%s]." % (
-                    x,
-                    mlu_visible_devices,
+                assert x in mlu_visible_devices_list, (
+                    "Can't find "
+                    "your mlus {} in MLU_VISIBLE_DEVICES[{}].".format(
+                        x,
+                        mlu_visible_devices,
+                    )
                 )
             res_mlus = [
                 mlu_visible_devices_list.index(x.strip())
@@ -1086,7 +1088,9 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
+        node_ip, node_ips
+    )
     node_rank = node_ips.index(node_ip)
 
     assert len(node_ranks) == len(
@@ -1226,7 +1230,9 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
+        node_ip, node_ips
+    )
     node_rank = node_ips.index(node_ip)
 
     assert (
@@ -1657,7 +1663,7 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
-                    server.endpoint = "%s:%s" % (
+                    server.endpoint = "{}:{}".format(
                         ip,
                         self.server_endpoints_port[i],
                     )
@@ -1667,7 +1673,7 @@ class ParameterServerLauncher:
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
-                    worker.endpoint = "%s:%s" % (
+                    worker.endpoint = "{}:{}".format(
                         ip,
                         self.worker_endpoints_port[j],
                     )
@@ -1678,7 +1684,7 @@ class ParameterServerLauncher:
             for m in range(len(self.coordinator_endpoints_ips)):
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
-                    coordinator.endpoint = "%s:%s" % (
+                    coordinator.endpoint = "{}:{}".format(
                         ip,
                         self.coordinator_endpoints_port[m],
                     )
@@ -1690,7 +1696,7 @@ class ParameterServerLauncher:
             for k in range(len(self.heter_worker_endpoints_ips)):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
-                    heter_worker.endpoint = "%s:%s" % (
+                    heter_worker.endpoint = "{}:{}".format(
                         ip,
                         self.heter_worker_endpoints_port[k],
                     )

@@ -86,7 +86,9 @@ def download(url, module_name, md5sum, save_name=None):
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            sys.stderr.write("file %s  md5 %s\n" % (md5file(filename), md5sum))
+            sys.stderr.write(
+                "file {}  md5 {}\n".format(md5file(filename), md5sum)
+            )
         if retry < retry_limit:
             retry += 1
         else:
@@ -96,7 +98,7 @@ def download(url, module_name, md5sum, save_name=None):
                 )
             )
         sys.stderr.write(
-            "Cache file %s not found, downloading %s \n" % (filename, url)
+            "Cache file {} not found, downloading {} \n".format(filename, url)
         )
         sys.stderr.write("Begin to download\n")
         try:

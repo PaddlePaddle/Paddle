@@ -333,7 +333,9 @@ class TestDygraphDeepCF(unittest.TestCase):
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
-                    sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
+                    sys.stderr.write(
+                        'dynamic loss: {} {}\n'.format(slice, dy_loss)
+                    )
 
         with fluid.dygraph.guard():
             paddle.seed(seed)
@@ -368,7 +370,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
                     sys.stderr.write(
-                        'dynamic loss: %s %s\n' % (slice, dy_loss2)
+                        'dynamic loss: {} {}\n'.format(slice, dy_loss2)
                     )
 
         with fluid.dygraph.guard():
@@ -406,7 +408,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     deepcf.clear_gradients()
                     eager_loss = loss.numpy()
                     sys.stderr.write(
-                        'eager loss: %s %s\n' % (slice, eager_loss)
+                        'eager loss: {} {}\n'.format(slice, eager_loss)
                     )
 
         self.assertEqual(static_loss, dy_loss)

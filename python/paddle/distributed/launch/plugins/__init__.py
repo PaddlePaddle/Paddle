@@ -21,7 +21,7 @@ __all__ = []
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
     for arg, value in sorted(vars(ctx.args).items()):
-        ctx.logger.info("%s: %s" % (arg, value))
+        ctx.logger.info("{}: {}".format(arg, value))
     ctx.logger.info("--------------------------------------------------")
 
 

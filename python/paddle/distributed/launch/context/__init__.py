@@ -42,7 +42,7 @@ class Context:
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
         for arg, value in sorted(vars(self.args).items()):
-            self.logger.info("%s: %s" % (arg, value))
+            self.logger.info("{}: {}".format(arg, value))
         self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):

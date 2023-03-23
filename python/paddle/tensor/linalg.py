@@ -112,8 +112,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -1807,7 +1809,7 @@ def det(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )
@@ -1866,7 +1868,7 @@ def slogdet(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )

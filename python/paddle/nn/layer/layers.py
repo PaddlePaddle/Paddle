@@ -240,7 +240,7 @@ class LayerObjectHelper(LayerHelperBase):
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
             raise ValueError(
-                "no Parameter name %s found in %s" % (name, self.name)
+                "no Parameter name {} found in {}".format(name, self.name)
             )
         return param
 

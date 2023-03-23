@@ -302,7 +302,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         for k, v in kwargs.items():
             if v is True:
                 raise AssertionError(
-                    "you can't use %s and %s together" % (name, k)
+                    "you can't use {} and {} together".format(name, k)
                 )
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
