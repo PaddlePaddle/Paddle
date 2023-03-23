@@ -2186,7 +2186,7 @@ class Layer:
         For all floating point parameters and buffers, cast it to ``float`` datatype.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
 
         Returns:
             self
@@ -2224,7 +2224,7 @@ class Layer:
         For all floating point parameters and buffers, cast it to ``half`` datatype.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
 
         Returns:
             self
@@ -2262,7 +2262,7 @@ class Layer:
         For all floating point parameters and buffers, cast it to ``bfloat16`` datatype.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
 
         Returns:
             self
