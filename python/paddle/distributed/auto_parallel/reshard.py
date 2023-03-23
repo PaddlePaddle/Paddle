@@ -2213,7 +2213,11 @@ class Resharder:
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
-        assert op_input_attrs
+        assert (
+            op_input_attrs
+        ), "The input '{}' of op '{}' has no distibution attributes in subblock".format(
+            op.name, var_name
+        )
 
         return op_input_attrs
 

@@ -45,7 +45,16 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
+            [
+                "bool",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "float16",
+                "float32",
+                "float64",
+            ],
             op_name,
         )
         if y is not None:
@@ -58,6 +67,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                     "int16",
                     "int32",
                     "int64",
+                    "float16",
                     "float32",
                     "float64",
                 ],
@@ -105,8 +115,8 @@ def logical_and(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -147,8 +157,8 @@ def logical_or(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -191,8 +201,8 @@ def logical_xor(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -237,7 +247,7 @@ def logical_not(x, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float16, float32, or float64.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -736,13 +746,13 @@ def not_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "not_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "not_equal",
         )
         helper = LayerHelper("not_equal", **locals())
