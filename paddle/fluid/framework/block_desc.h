@@ -29,9 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OpDesc;
 class ProgramDesc;
-class VarDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize
 // read/write speed. Only when we want the protobuf message, the local changes
@@ -90,12 +88,11 @@ class BlockDesc {
   OpDesc *InsertOp(size_t index);
 
   /*
-   * Only remove op itself,
-   * do nothing to its input and output variables
+   * Remove Op and its input/output variables.
+   * Note that for either input or output variable, if it is also an input or
+   * output variable of other ops, we should remain it.
    */
   void RemoveOp(size_t s, size_t e);
-
-  void RemoveOpInternal(const OpDesc *op_desc);
 
   void RemoveVar(const std::string &name) { vars_.erase(name); }
 
@@ -103,7 +100,7 @@ class BlockDesc {
 
   size_t OpSize() const { return ops_.size(); }
 
-  OpDesc *Op(int idx) const { return ops_.at(idx).get(); }
+  OpDesc *Op(int idx) { return ops_.at(idx).get(); }
 
   void Flush();
 
@@ -111,18 +108,13 @@ class BlockDesc {
 
   ProgramDesc *Program() const { return this->prog_; }
 
-  void MoveFrom(BlockDesc *block);
-
-  bool NeedUpdate(bool include_subs = true);
-
  private:
   ProgramDesc *prog_;       // not_own
   proto::BlockDesc *desc_;  // not_own
-  bool need_update_;  // block itself need_update, not aware of its ops_ and
-                      // vars_
+  bool need_update_;
 
   std::deque<std::unique_ptr<OpDesc>> ops_;
-  std::map<std::string, std::unique_ptr<VarDesc>> vars_;
+  std::unordered_map<std::string, std::unique_ptr<VarDesc>> vars_;
 
   DISABLE_COPY_AND_ASSIGN(BlockDesc);
 };
