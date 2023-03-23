@@ -1965,8 +1965,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
-      if (dtype == 0) {
-        VLOG(3) << "BOOL type support requires TensorRT 8.4";
+      if (dtype == 0 || dtype == 21 || dtype == 20) {
+        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
         return false;
       }
 #endif
