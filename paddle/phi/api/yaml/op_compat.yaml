@@ -759,6 +759,10 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
+- op : fused_transpose
+  extra :
+    attrs : [str data_format = "AnyLayout"]
+
 - op : gather
   backward : gather_grad
   extra :
@@ -979,6 +983,12 @@
     {label : X, prior_dist : PriorDist}
   outputs :
     out : Out
+
+- op : lamb_
+  inputs :
+    {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
+  outputs :
+    {param_out : ParamOut, moment1_out : Moment1Out, moment2_out : Moment2Out, beta1_pow_out : Beta1PowOut, beta2_pow_out : Beta2PowOut, master_param_outs : MasterParamOut}
 
 - op : layer_norm
   backward : layer_norm_grad
@@ -1270,6 +1280,14 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : nms
+  inputs :
+    x : Boxes
+  outputs :
+    out : KeepBoxesIdxs
+  attrs :
+    threshold : iou_threshold
 
 - op : nonzero (where_index)
   inputs :
@@ -1574,6 +1592,16 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : sgd_
+  inputs :
+    {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, master_param_out : MasterParamOut}
+  get_expected_kernel_type :
+    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+  extra :
+    attrs : [bool use_mkldnn=false]
+
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
@@ -1853,8 +1881,7 @@
     perm : axis
   extra :
     outputs : [XShape]
-    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
-              str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)

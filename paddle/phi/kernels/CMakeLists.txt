@@ -81,11 +81,12 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
+
 if(WITH_FLASHATTN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
 endif()
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
                          nccl_comm_context)
