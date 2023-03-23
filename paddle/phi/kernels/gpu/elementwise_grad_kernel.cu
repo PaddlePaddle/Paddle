@@ -98,7 +98,6 @@ PD_REGISTER_KERNEL(fmax_grad,
                    double,
                    int,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin_grad,

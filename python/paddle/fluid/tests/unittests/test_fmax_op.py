@@ -261,12 +261,10 @@ class TestFmaxBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":

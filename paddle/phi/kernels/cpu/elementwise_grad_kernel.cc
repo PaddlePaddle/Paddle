@@ -58,8 +58,7 @@ PD_REGISTER_KERNEL(fmax_grad,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(fmin_grad,
                    CPU,
