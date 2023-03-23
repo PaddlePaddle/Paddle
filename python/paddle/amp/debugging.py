@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import argparse
 import os
 
 import numpy as np
@@ -725,14 +724,10 @@ def compare_accuracy(
     excel_writer = ExcelWriter(dump_path, another_dump_path, output_filename)
     grad_scale = loss_scale
     workerlog_filenames = []
-    if args.num_workerlogs is None:
-        filenames = os.listdir(dump_path)
-        for name in filenames:
-            if "workerlog_" in name:
-                workerlog_filenames.append(name)
-    else:
-        for i in range(args.num_workerlogs):
-            workerlog_filenames.append("workerlog_" + str(i))
+    filenames = os.listdir(dump_path)
+    for name in filenames:
+        if "workerlog_" in name:
+            workerlog_filenames.append(name)
     print(
         "-- There are {} workerlogs under {}: {}".format(
             len(workerlog_filenames), dump_path, workerlog_filenames
@@ -778,63 +773,6 @@ def compare_accuracy(
             False,
         )
 
-    print("-- Write to {}".format(output_path))
+    print("-- Write to {}".format(output_filename))
     print("")
     excel_writer.close()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    # Used to record the loss_scale of this AMP module
-    parser.add_argument(
-        '--loss_scale',
-        type=float,
-        default=524288,
-        help='The init loss scale used in amp training',
-    )
-
-    parser.add_argument(
-        '--fp32_dir',
-        type=str,
-        default="fp32_dir",
-        help='fp32 log dir',
-    )
-
-    parser.add_argument(
-        '--fp16_dir',
-        type=str,
-        default="fp16_dir",
-        help='fp16 log dir',
-    )
-
-    parser.add_argument(
-        '--out_file_name',
-        type=str,
-        default="compare_fp32_with_fp16",
-        help='File name for storing the comparison results between fp32 and fp16',
-    )
-
-    # Number of logs to compare
-    parser.add_argument('--num_workerlogs', type=int, default=None)
-    # Skip OP without exception data.
-    # When the OP meets the following conditions, it is abnormal data, and use --skip_normal_tensors to retain the data in Excel:
-    # 1. The number of OP outputs exceeds the indication range of int32
-    # 2. The output data exceeds the representation range of fp16
-    # 3. Nan or inf appears in fp16 output data
-    # 4. The maximum value of fp32 is not equal to the maximum value of fp16
-    # 5. The minimum value of fp32 is not equal to the minimum value of fp16
-    parser.add_argument(
-        "--skip_normal_tensors", action='store_true', default=False
-    )
-    # Only compare OPs in the list
-    parser.add_argument(
-        '--specified_op_list',
-        type=str,
-        default=None,
-        help='Specify the operator list.',
-    )
-    args = parser.parse_args()
-    log_fp32_dir = args.fp32_dir
-    log_fp16_dir = args.fp16_dir
-    output_path = args.out_file_name
-    main(args, log_fp32_dir, log_fp16_dir, output_path)
