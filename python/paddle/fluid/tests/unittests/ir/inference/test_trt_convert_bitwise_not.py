@@ -25,6 +25,11 @@ import paddle.inference as paddle_infer
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
+        if trt_version < 8400:
+            if program_config.inputs['input_data'].dtype == bool:
+                return False
         return True
 
     def sample_program_configs(self):
