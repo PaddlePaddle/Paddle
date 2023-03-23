@@ -2191,6 +2191,27 @@ class Layer:
         Returns:
             self
 
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                mylayer.float()
+                out = mylayer(x)
+
         '''
 
         def layer_trans(layer):
@@ -2208,6 +2229,27 @@ class Layer:
         Returns:
             self
 
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float16')
+                mylayer = MyLayer()
+                mylayer.half()
+                out = mylayer(x)
+
         '''
 
         def layer_trans(layer):
@@ -2224,6 +2266,27 @@ class Layer:
 
         Returns:
             self
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'bfloat16')
+                mylayer = MyLayer()
+                mylayer.bfloat16()
+                out = mylayer(x)
 
         '''
 
