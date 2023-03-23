@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 import paddle.static as static
 from paddle import _C_ops
 from paddle.fluid import Program, program_guard
+from paddle.incubate.autograd import primapi
 
 
 def dropout_wapper(
@@ -1597,7 +1598,7 @@ class TestCompositeDropout(unittest.TestCase):
                         mode=self.mode,
                     )
                     if core._is_fwd_prim_enabled():
-                        paddle.incubate.autograd.to_prim(mp.blocks)
+                        primapi.to_prim(mp.blocks)
                     grad = paddle.static.gradients(output, input_)[0]
                 exe = paddle.static.Executor(place)
                 exe.run(sp)
