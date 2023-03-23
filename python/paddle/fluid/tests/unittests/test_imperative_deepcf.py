@@ -190,7 +190,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
     def load_data(self):
         sys.stderr.write('loading from %s\n' % self.data_path)
-        likes = dict()
+        likes = {}
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:

@@ -1498,7 +1498,7 @@ def load(program, model_path, executor=None, var_list=None):
                     "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
             program_var_list = program.list_vars()
-            program_var_name_set = set([var.name for var in program_var_list])
+            program_var_name_set = {var.name for var in program_var_list}
 
             # check all the variable inlcuded in program
             for var in var_list:
