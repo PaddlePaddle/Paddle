@@ -17,13 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.fluid import core
 
 
 class MyModel(paddle.nn.Layer):
     def __init__(self, input_size, hidden_size):
-        super(MyModel, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(input_size, hidden_size)
         self.linear2 = paddle.nn.Linear(hidden_size, hidden_size)
         self.linear3 = paddle.nn.Linear(hidden_size, 1)
@@ -50,9 +51,9 @@ class MyModel(paddle.nn.Layer):
 
 class TestDtypeConvert(unittest.TestCase):
     def setUp(self):
-        self.input_size, self.hidden_size = 128, 256
-        self.x_data = np.random.randn(self.input_size)
-        self.y_data = np.random.randn(1)
+        self.batch_size, self.input_size, self.hidden_size = 128, 128, 256
+        self.x_data = np.random.randn(self.batch_size, self.input_size)
+        self.y_data = np.random.randn(self.batch_size, 1)
 
     def test_func_origin(self):
         x = paddle.to_tensor(self.x_data, dtype=paddle.float32)
@@ -106,6 +107,28 @@ class TestDtypeConvert(unittest.TestCase):
         y = paddle.to_tensor(self.y_data, dtype=paddle.bfloat16)
         model = MyModel(self.input_size, self.hidden_size)
         model.bfloat16()
+
+    def batchnorm_half(self, excluded_layers=None):
+
+        x = paddle.to_tensor(self.x_data, dtype=paddle.float32)
+        y = paddle.to_tensor(self.y_data, dtype=paddle.float32)
+
+        model = paddle.nn.Sequential(paddle.nn.BatchNorm(self.input_size))
+
+        model.half(excluded_layers=excluded_layers)
+        loss_fn = paddle.nn.MSELoss(reduction='mean')
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.01, parameters=model.parameters()
+        )
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        loss.backward()
+        optimizer.step()
+
+    def test_excluded_layers(self):
+        self.batchnorm_half(excluded_layers=[nn.BatchNorm])
+        self.batchnorm_half(excluded_layers=nn.BatchNorm)
+        self.assertRaises(ValueError, self.batchnorm_half)
 
 
 if __name__ == '__main__':

@@ -125,16 +125,16 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
-def _layer_trans_dtype(layer, dtype, exculde_layers):
-    assert isinstance(exculde_layers, (list, type)) or exculde_layers is None
-    # exculde_layers is list
-    if isinstance(exculde_layers, list) and type(layer) in exculde_layers:
+def _layer_trans_dtype(layer, dtype, excluded_layers):
+    assert isinstance(excluded_layers, (list, type)) or excluded_layers is None
+    # excluded_layers is list
+    if isinstance(excluded_layers, list) and type(layer) in excluded_layers:
         return
-    # exculde_layers is class, type(class) == type in python
+    # excluded_layers is class, type(class) == type in python
     if (
-        isinstance(exculde_layers, type)
-        and issubclass(exculde_layers, Layer)
-        and type(layer) == exculde_layers
+        isinstance(excluded_layers, type)
+        and issubclass(excluded_layers, Layer)
+        and type(layer) == excluded_layers
     ):
         return
 
@@ -2181,26 +2181,53 @@ class Layer:
     set_dict = set_state_dict
     load_dict = set_state_dict
 
-    def float(self, exculde_layers=None):
-        """For all floating point parameters and buffers, cast it to ``float`` datatype."""
+    def float(self, excluded_layers=None):
+        '''
+        For all floating point parameters and buffers, cast it to ``float`` datatype.
+
+        Parameters:
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+
+        Returns:
+            self
+
+        '''
 
         def layer_trans(layer):
-            _layer_trans_dtype(layer, paddle.float32, exculde_layers)
+            _layer_trans_dtype(layer, paddle.float32, excluded_layers)
 
         return self.apply(layer_trans)
 
-    def half(self, exculde_layers=None):
-        """For all floating point parameters and buffers, cast it to ``half`` datatype."""
+    def half(self, excluded_layers=None):
+        '''
+        For all floating point parameters and buffers, cast it to ``half`` datatype.
+
+        Parameters:
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+
+        Returns:
+            self
+
+        '''
 
         def layer_trans(layer):
-            _layer_trans_dtype(layer, paddle.float16, exculde_layers)
+            _layer_trans_dtype(layer, paddle.float16, excluded_layers)
 
         return self.apply(layer_trans)
 
-    def bfloat16(self, exculde_layers=None):
-        """For all floating point parameters and buffers, cast it to ``bfloat16`` datatype."""
+    def bfloat16(self, excluded_layers=None):
+        '''
+        For all floating point parameters and buffers, cast it to ``bfloat16`` datatype.
+
+        Parameters:
+            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers
+
+        Returns:
+            self
+
+        '''
 
         def layer_trans(layer):
-            _layer_trans_dtype(layer, paddle.bfloat16, exculde_layers)
+            _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)
 
         return self.apply(layer_trans)
