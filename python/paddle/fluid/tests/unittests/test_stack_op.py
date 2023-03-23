@@ -46,6 +46,7 @@ class TestStackOpBase(OpTest):
         self.op_type = 'stack'
         self.prim_op_type = "comp"
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -129,6 +130,7 @@ class TestStackBF16Op(OpTest):
         self.prim_op_type = "comp"
         self.enable_cinn = False
         self.python_api = paddle.stack
+        self.public_python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -176,7 +178,9 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         with fluid.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+            zero = paddle.tensor.fill_constant(
+                shape=[1], value=0, dtype="int64"
+            )
 
             for i in range(self.iter_num):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
@@ -214,7 +218,9 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         with fluid.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+            zero = paddle.tensor.fill_constant(
+                shape=[1], value=0, dtype="int64"
+            )
 
             for i in range(self.iter_num):
                 paddle.tensor.array_write(input, zero + i, tensor_array)

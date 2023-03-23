@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
@@ -262,7 +262,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
         dropout2_out = x + F.dropout(x=linear2_out, p=0.0, training=False)
         ln_out = F.layer_norm(
             dropout2_out,
-            normalized_shape=list([d_model]),
+            normalized_shape=[d_model],
             weight=ln2_scale,
             bias=ln2_bias,
         )

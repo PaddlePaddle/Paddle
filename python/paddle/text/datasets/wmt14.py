@@ -111,7 +111,7 @@ class WMT14(Dataset):
 
     def _load_data(self):
         def __to_dict(fd, size):
-            out_dict = dict()
+            out_dict = {}
             for line_count, line in enumerate(fd):
                 if line_count < size:
                     out_dict[line.strip().decode()] = line_count

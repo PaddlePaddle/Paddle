@@ -37,7 +37,7 @@ class TestRnnError(unittest.TestCase):
             input_size = 16
             hidden_size = 16
             seq_len = 4
-            inputs = fluid.data(
+            inputs = paddle.static.data(
                 name='inputs', shape=[None, input_size], dtype='float32'
             )
             pre_hidden = paddle.static.data(
@@ -45,12 +45,12 @@ class TestRnnError(unittest.TestCase):
                 shape=[None, hidden_size],
                 dtype='float32',
             )
-            inputs_basic_lstm = fluid.data(
+            inputs_basic_lstm = paddle.static.data(
                 name='inputs_basic_lstm',
                 shape=[None, None, input_size],
                 dtype='float32',
             )
-            sequence_length = fluid.data(
+            sequence_length = paddle.static.data(
                 name="sequence_length", shape=[None], dtype='int64'
             )
 
@@ -161,18 +161,18 @@ class TestRnn(unittest.TestCase):
             setattr(numpy_cell, k, param)
             fluid.global_scope().find_var(v.name).get_tensor().set(param, place)
 
-        sequence_length = fluid.data(
+        sequence_length = paddle.static.data(
             name="sequence_length", shape=[None], dtype='int64'
         )
-        inputs_rnn = fluid.data(
+        inputs_rnn = paddle.static.data(
             name='inputs_rnn',
             shape=[None, None, self.input_size],
             dtype='float64',
         )
-        pre_hidden = fluid.data(
+        pre_hidden = paddle.static.data(
             name='pre_hidden', shape=[None, self.hidden_size], dtype='float64'
         )
-        pre_cell = fluid.data(
+        pre_cell = paddle.static.data(
             name='pre_cell', shape=[None, self.hidden_size], dtype='float64'
         )
 

@@ -451,7 +451,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -465,13 +465,14 @@ class OpTest(unittest.TestCase):
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
         return (
             self.dtype == np.float16
+            or self.dtype == "float16"
             or (
                 hasattr(self, 'output_dtype')
                 and self.output_dtype == np.float16
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "float16"
+                and self.mkldnn_data_type == "float16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -664,7 +665,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -973,7 +974,10 @@ class OpTest(unittest.TestCase):
                 % self.op_type
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig
+                self.python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                kernel_sig,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1499,7 +1503,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -1595,6 +1599,23 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1702,11 +1723,9 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                if actual_np.dtype == np.uint16:
+                    if expect_np.dtype in [np.float32, np.float64]:
+                        actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1766,10 +1785,7 @@ class OpTest(unittest.TestCase):
                     return imperative_expect, imperative_expect_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
+                if actual_np.dtype == np.uint16:
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1806,6 +1822,23 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
@@ -1872,7 +1905,7 @@ class OpTest(unittest.TestCase):
                 with _test_eager_guard():
                     return super().find_actual_value(name)
 
-            def find_expect_valur(self, name):
+            def find_expect_value(self, name):
                 with _test_eager_guard():
                     return super().find_expect_value(name)
 
@@ -1904,17 +1937,18 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
                 check_eager = False
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
-            atol = 1e-3
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -2182,7 +2216,7 @@ class OpTest(unittest.TestCase):
                     else:
                         abs_a = 1 if abs_a < 1e-3 else abs_a
 
-                if self.dtype == np.bool:
+                if self.dtype == np.bool_:
                     diff_mat = np.abs(a ^ b) / abs_a
                 else:
                     diff_mat = np.abs(a - b) / abs_a
@@ -2285,7 +2319,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
             if only_check_prim:
                 return
@@ -2294,9 +2328,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
@@ -2373,21 +2407,7 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
-                output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
-            )
-            for input_to_check in inputs_to_check
-        ]
-
-        if self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -2397,6 +2417,20 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
             )
             self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
 
         analytic_grads = self._get_gradient(
             inputs_to_check,
@@ -2412,7 +2446,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2422,10 +2456,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,

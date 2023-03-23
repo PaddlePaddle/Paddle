@@ -56,12 +56,7 @@ void serialize_params(std::string* str,
                       framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace place;
-  phi::GPUContext ctx(place);
-#else
   phi::CPUContext ctx;
-#endif
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(
         scope->FindVar(param),
@@ -101,23 +96,12 @@ void RandomizeTensor(phi::DenseTensor* tensor, const platform::Place& place) {
 
 void CreateTensor(framework::Scope* scope,
                   const std::string& name,
-                  const std::vector<int64_t>& shape,
-                  bool in_cuda = true) {
+                  const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
-  platform::Place place;
-  if (in_cuda) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    place = platform::CUDAPlace(0);
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
-#endif
-  } else {
-    place = platform::CPUPlace();
-  }
+  platform::Place place = platform::CPUPlace();
   RandomizeTensor(tensor, place);
 }
 

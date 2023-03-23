@@ -32,13 +32,14 @@ class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -105,7 +106,7 @@ class TestElementwiseAddOp(OpTest):
     def if_check_prim(self):
         self.check_prim = self.axis == -1
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -115,7 +116,7 @@ class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -163,6 +164,7 @@ class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.dtype = np.uint16
 
@@ -182,7 +184,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -204,7 +206,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             place, ['X'], 'Out', no_grad_set=set('Y'), check_prim=True
         )
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -481,7 +483,7 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
         self.y = np.random.rand(100, 1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 100, 1)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -568,8 +570,8 @@ class TestAddApi(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = self._executed_api(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
@@ -583,8 +585,8 @@ class TestAddApi(unittest.TestCase):
                     "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[3], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
             place = fluid.CPUPlace()
