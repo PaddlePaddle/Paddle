@@ -243,8 +243,8 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        property(bool, Optional): whether the fucntion is python property. The default is False.
-
+        property(bool, Optional): Whether the fucntion is python property. The default is False.
+        backend(str, Optional): Specifies compilation backend. The default is None.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -299,6 +299,9 @@ def to_static(
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
         paddle.fluid.core._set_prim_all_enabled(True)
+    else:
+        build_strategy.build_cinn_pass = False
+        paddle.fluid.core._set_prim_all_enabled(False)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:
