@@ -28,7 +28,7 @@ linear_quant_axis = 1
 @quanter("CustomizedQuanter")
 class CustomizedQuanterLayer(BaseQuanter):
     def __init__(self, layer, bit_length=8, kwargs1=None):
-        super(CustomizedQuanterLayer, self).__init__()
+        super().__init__()
         self._layer = layer
         self._bit_length = bit_length
         self._kwargs1 = kwargs1

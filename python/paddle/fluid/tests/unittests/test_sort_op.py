@@ -27,7 +27,9 @@ class TestSortOnCPU(unittest.TestCase):
 
     def test_api_0(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 4], dtype="float32"
+            )
             output = paddle.sort(x=input)
             exe = fluid.Executor(self.place)
             data = np.array(
@@ -43,7 +45,9 @@ class TestSortOnCPU(unittest.TestCase):
 
     def test_api_1(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 4], dtype="float32"
+            )
             output = paddle.sort(x=input, axis=1)
             exe = fluid.Executor(self.place)
             data = np.array(

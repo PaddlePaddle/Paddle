@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
@@ -90,15 +89,15 @@ def static(
             opt.minimize(avg_loss)
             return avg_loss
 
-        image = fluid.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
-        label = fluid.data('label', [BATCH_SIZE, 1], 'int64')
+        image = paddle.static.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
+        label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
-        id = fluid.data('id', [1], 'int32')
-        two = layers.fill_constant([1], 'int32', 2)
+        id = paddle.static.data('id', [1], 'int32')
+        two = paddle.tensor.fill_constant([1], 'int32', 2)
         mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
@@ -141,7 +140,7 @@ def static(
     return out_hidden, out_pred, loss
 
 
-class DygraphLayer(fluid.dygraph.Layer):
+class DygraphLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.fc_1 = paddle.nn.Linear(

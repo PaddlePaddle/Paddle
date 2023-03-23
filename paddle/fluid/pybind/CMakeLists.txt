@@ -1,5 +1,6 @@
 set(PYBIND_DEPS
     init
+    init_phi
     pybind
     python
     proto_desc

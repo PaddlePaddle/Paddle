@@ -27,8 +27,10 @@ class TRTYoloBoxTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)
@@ -79,8 +81,10 @@ class TRTYoloBoxFP16Test(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)
@@ -129,8 +133,10 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)

@@ -507,7 +507,7 @@ class Inserter:
         # use slice
         else:
             inputs = {'Input': tensor}
-            infer_flags = list(1 for i in range(len(axes)))
+            infer_flags = [1 for i in range(len(axes))]
             attrs = {
                 "axes": axes,
                 "starts": starts,
@@ -2213,7 +2213,11 @@ class Resharder:
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
-        assert op_input_attrs
+        assert (
+            op_input_attrs
+        ), "The input '{}' of op '{}' has no distibution attributes in subblock".format(
+            op.name, var_name
+        )
 
         return op_input_attrs
 
@@ -2944,7 +2948,7 @@ class Resharder:
                         to_slice_tensor_shape = op_desc.shape
                     slice_desc = {}
                     slice_desc["op"] = "slice"
-                    infer_flags = list(1 for i in range(len(op_desc.axes)))
+                    infer_flags = [1 for i in range(len(op_desc.axes))]
                     slice_desc["attrs"] = {
                         "axes": op_desc.axes,
                         "starts": op_desc.starts,

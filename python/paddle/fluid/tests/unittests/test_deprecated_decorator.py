@@ -19,7 +19,6 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
 
@@ -64,29 +63,9 @@ def get_warning_index(api):
 class TestDeprecatedDocorator(unittest.TestCase):
     """
     tests for paddle's Deprecated Docorator.
-    test_fluid_data: test for old fluid.data API.
     test_new_multiply: test for new api, which should not insert warning information.
     test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
-
-    def test_fluid_data(self):
-        """
-        test old fluid elementwise_mul api, it should fire Warinng function,
-        which insert the Warinng info on top of API's doc string.
-        """
-        paddle.enable_static()
-        # Initialization
-        x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(fluid.data)
-        paddle.disable_static()
-
-        # testting
-        self.assertGreater(expected, captured)
 
     def test_new_multiply(self):
         """
