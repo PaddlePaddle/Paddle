@@ -344,8 +344,6 @@ template <typename T, typename DeviceContext>
 class AttentionLSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
-
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     auto* c0 = ctx.Input<phi::DenseTensor>("C0");
