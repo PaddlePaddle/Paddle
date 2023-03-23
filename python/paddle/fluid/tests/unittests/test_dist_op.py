@@ -195,6 +195,10 @@ class TestDistFP16OP(TestDistOp):
             core.CUDAPlace(0)
         ):
             self.data_type = 'float16'
+        else:
+            self.data_type = (
+                np.float32 if core.is_compiled_with_rocm() else np.float64
+            )
 
 
 class TestDistFP16OPCase1(TestDistFP16OP):
