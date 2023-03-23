@@ -19,6 +19,7 @@ from paddle.tensor import asin  # noqa: F401
 from paddle.tensor import asinh  # noqa: F401
 from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
+from paddle.tensor import bincount  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
 from paddle.tensor import concat  # noqa: F401
@@ -80,6 +81,7 @@ math_op = [
     'prod',
     'cumsum',
     'cumprod',
+    'bincount',
     'digamma',
     'lgamma',
     'erf',
