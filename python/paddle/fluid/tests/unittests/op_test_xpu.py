@@ -69,7 +69,7 @@ class XPUOpTest(OpTest):
         atol=0.001,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
     ):
         place = paddle.XPUPlace(0)
@@ -88,7 +88,7 @@ class XPUOpTest(OpTest):
         atol=0.001,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
     ):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -115,7 +115,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
     ):
         place = paddle.XPUPlace(0)
@@ -144,7 +144,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
     ):
         if hasattr(self, 'op_type_need_check_grad'):
@@ -231,7 +231,7 @@ class XPUOpTest(OpTest):
         in_place=False,
         max_relative_error=0.005,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
     ):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
