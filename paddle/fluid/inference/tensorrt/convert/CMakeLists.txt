@@ -104,6 +104,7 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  flip_op.cc
   temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

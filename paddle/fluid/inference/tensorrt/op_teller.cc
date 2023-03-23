@@ -766,6 +766,28 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "flip") {
+      std::cout << "now in flip ==========" << std::endl;
+      if (!desc.HasAttr("axis")) {
+        VLOG(3) << "flip need attributes : axis";
+        return false;
+      }
+
+      auto input_var_name = desc.Input("Input")[0];
+      auto* input_var_desc = block->FindVar(input_var_name);
+      const auto input_shape = input_var_desc->GetShape();
+      if (input_shape.size()<2) {
+        VLOG(3) << "The input tensor to the layer. Must have rank >= 2.";
+        return false;
+      }
+
+      const auto axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if ((axis +1 ) > input_shape.size()) {
+        VLOG(3) << "axis must less than input dims size";
+        return false;
+      }
+    }
+
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2802,6 +2824,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "arg_min",
       "roi_align",
       "affine_channel",
+      "flip",
       "nearest_interp",
       "anchor_generator",
       "reduce_max",
@@ -2957,6 +2980,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "arg_min",
       "roi_align",
       "affine_channel",
+      "flip",
       "nearest_interp",
       "anchor_generator",
       "reduce_max",
