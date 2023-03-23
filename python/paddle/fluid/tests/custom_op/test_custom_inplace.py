@@ -88,7 +88,7 @@ def inplace_static_add(func, device, dtype, np_x, np_y):
     return x_v, out_v, x_grad_v, y_grad_v, out_grad_v
 
 
-def inplace_dynamic_relu(phi_func, device, dtype, np_x, np_y, np_z):
+def inplace_dynamic_relu_net(phi_func, device, dtype, np_x, np_y, np_z):
     paddle.set_device(device)
     x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
     y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
@@ -107,7 +107,7 @@ def inplace_dynamic_relu(phi_func, device, dtype, np_x, np_y, np_z):
     return x.numpy(), y.numpy(), out.numpy(), x.grad.numpy(), y.grad.numpy()
 
 
-def inplace_static_relu(func, device, dtype, np_x, np_y, np_z):
+def inplace_static_relu_net(func, device, dtype, np_x, np_y, np_z):
     paddle.enable_static()
     paddle.set_device(device)
     with static.scope_guard(static.Scope()):
@@ -354,7 +354,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output(phi_x_grad, pd_x_grad, "x_grad")
                 self.check_output(phi_y_grad, pd_y_grad, "y_grad")
 
-    def test_static_multiple_inplace_relu(self):
+    def test_static_relu_net(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
@@ -363,7 +363,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     pd_out,
                     pd_x_grad,
                     pd_y_grad,
-                ) = inplace_static_relu(
+                ) = inplace_static_relu_net(
                     paddle.nn.functional.relu,
                     device,
                     dtype,
@@ -377,7 +377,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     phi_out,
                     phi_x_grad,
                     phi_y_grad,
-                ) = inplace_static_relu(
+                ) = inplace_static_relu_net(
                     custom_inplace.custom_relu_inplace,
                     device,
                     dtype,
@@ -391,7 +391,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output_allclose(phi_x_grad, pd_x_grad, "x_grad")
                 self.check_output_allclose(phi_y_grad, pd_y_grad, "y_grad")
 
-    def test_dynamic_multiple_inplace_relu(self):
+    def test_dynamic_relu_net(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
@@ -400,7 +400,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     pd_out,
                     pd_x_grad,
                     pd_y_grad,
-                ) = inplace_dynamic_relu(
+                ) = inplace_dynamic_relu_net(
                     False,
                     device,
                     dtype,
@@ -414,7 +414,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     phi_out,
                     phi_x_grad,
                     phi_y_grad,
-                ) = inplace_dynamic_relu(
+                ) = inplace_dynamic_relu_net(
                     True,
                     device,
                     dtype,

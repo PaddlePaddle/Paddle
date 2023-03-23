@@ -106,22 +106,6 @@ void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
       }));
 }
 
-std::vector<paddle::DataType> MultiInplaceInferDtype(
-    const paddle::DataType& x_dtype,
-    const paddle::DataType& y_dtype,
-    const paddle::DataType& a_dtype,
-    const paddle::DataType& b_dtype) {
-  return {x_dtype, a_dtype};
-}
-
-std::vector<std::vector<int64_t>> MultiInplaceInferShape(
-    const std::vector<int64_t>& x_shape,
-    const std::vector<int64_t>& y_shape,
-    const std::vector<int64_t>& a_shape,
-    const std::vector<int64_t>& b_shape) {
-  return {x_shape, a_shape};
-}
-
 std::vector<paddle::Tensor> MultiInplaceBackward(
     const paddle::Tensor& x,
     const paddle::Tensor& y,
@@ -154,9 +138,7 @@ PD_BUILD_OP(custom_multi_inplace)
     .Inputs({"X", "Y", "A", "B"})
     .Outputs({"OutXY", "OutAB"})
     .SetInplaceMap({{"X", "OutXY"}, {"A", "OutAB"}})
-    .SetKernelFn(PD_KERNEL(MultiInplaceForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(MultiInplaceInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(MultiInplaceInferDtype));
+    .SetKernelFn(PD_KERNEL(MultiInplaceForward));
 
 PD_BUILD_GRAD_OP(custom_multi_inplace)
     .Inputs({"X", "Y", paddle::Grad("OutXY"), "A", "B", paddle::Grad("OutAB")})
