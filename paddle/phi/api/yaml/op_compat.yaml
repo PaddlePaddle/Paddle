@@ -97,6 +97,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : arange(range)
+  inputs :
+    {start : Start, stop : Stop, step : Step}
+  outputs :
+    out : Out
+
 - op : argsort
   inputs :
     x : X
@@ -1047,6 +1053,12 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
 
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)

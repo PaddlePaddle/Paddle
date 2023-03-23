@@ -6,6 +6,16 @@
   kernel :
     func : all
 
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+  kernel :
+    func : arange
+  data_transform :
+    support_trans_dtype : start, end, step
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
   output: Tensor
@@ -113,6 +123,19 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+
+- op : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
+  kernel :
+    func : linspace
+    param: [start, stop, number, dtype]
+    data_type : dtype
+  data_transform :
+    skip_transform : start, stop, number
 
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
