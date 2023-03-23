@@ -1190,8 +1190,8 @@ class CompileTimeStrategy:
         sparse_pairs, dense_pairs = self.get_param_grads()
         origin_for_sparse = []
         origin_for_dense = []
-        param_name_grad_name = dict()
-        grad_name_to_param_name = dict()
+        param_name_grad_name = {}
+        grad_name_to_param_name = {}
 
         for param, grad in sparse_pairs:
             param = vars_metatools.create_var_struct(param)

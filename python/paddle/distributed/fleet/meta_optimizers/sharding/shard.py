@@ -30,12 +30,12 @@ class Shard:
         self.global_params = set([])
         self.worker_idx = -1
         self.worker_num = -1
-        self.global_param2device = dict()
-        self.device2global_params = dict()
+        self.global_param2device = {}
+        self.device2global_params = {}
 
     def setup(self, params_grads, worker_idx, worker_num):
         # param names of all devices
-        self.global_params = set([x[0].name for x in params_grads])
+        self.global_params = {x[0].name for x in params_grads}
         # _param(str) -> device_id(int)
         self.worker_idx = worker_idx
         self.worker_num = worker_num

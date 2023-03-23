@@ -420,7 +420,7 @@ class ClipGradByValue(ClipGradBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
-        param_new_grad_name_dict = dict()
+        param_new_grad_name_dict = {}
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -523,7 +523,7 @@ class ClipGradByNorm(ClipGradBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -835,7 +835,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -1062,7 +1062,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    context = dict()
+    context = {}
     for p, g in param_grads:
         if g is None:
             continue
@@ -1080,7 +1080,7 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    param_new_grad_name_dict = dict()
+    param_new_grad_name_dict = {}
     for p, g in param_grads:
         if g is None:
             continue
