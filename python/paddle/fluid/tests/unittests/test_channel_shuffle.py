@@ -277,19 +277,32 @@ class TestChannelShuffleFP16OP(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.python_api = paddle.nn.functional.channel_shuffle
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
         self.dtype = np.float16
-        self.inputs = {'X': np.random.randn(2, 16, 32, 32).astype(self.dtype)}
-        self.attrs = {'group': 2}
-        self.outputs = {'Out': np.zeros((2, 16, 32, 32)).astype(self.dtype)}
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
+        groups = 3
+
+        x = np.random.randn(shape).astype(self.dtype)
+        out = channel_shuffle_np(x, groups, self.format)
+
+        self.inputs = {'X': x}
+        self.attrs = {'groups': groups, "data_format": self.format}
+        self.outputs = {'Out': out}
+
+    def init_data_format(self):
+        self.format = "NCHW"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
+        self.check_grad(
             ['X'],
             'Out',
         )
@@ -303,26 +316,33 @@ class TestChannelShuffleFP16OP(OpTest):
 class TestChannelShuffleBF16OP(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
         self.use_mkldnn = False
-        self.input_shape = (2, 4, 3, 3)
-        self.groups = 2
 
-        self.inputs = {
-            'X': np.random.randn(*self.input_shape).astype(self.dtype)
-        }
-        self.attrs = {'group': self.groups}
-        self.outputs = {'Out': np.zeros_like(self.inputs['X'])}
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
+        groups = 3
+
+        x = np.random.randn(shape).astype(self.dtype)
+        out = channel_shuffle_np(x, groups, self.format)
+        self.inputs = {'X': x}
+        self.attrs = {'groups': groups, "data_format": self.format}
+        self.outputs = {'Out': out}
+
+    def init_data_format(self):
+        self.format = "NCHW"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
+        self.check_grad(
             ['X'],
             'Out',
         )
