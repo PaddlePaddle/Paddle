@@ -595,6 +595,7 @@ void GpuPsGraphTable::weighted_sample(
         graph, node_info_list, sample_array, neighbor_offset,
         target_weights_key_buf_ptr, shard_len, sample_size, random_seed,
         weight_array, return_weight);
+    CUDA_CHECK(cudaStreamSynchronize(cur_stream));
   } else {
     using WeightedSampleFuncType = void (*)(GpuPsCommGraph, GpuPsNodeInfo *,
                                             uint64_t *, int, int, unsigned long long,
@@ -624,6 +625,7 @@ void GpuPsGraphTable::weighted_sample(
     func_array[func_idx]<<<shard_len, block_size, 0, cur_stream>>>(
         graph, node_info_list, sample_array, shard_len, sample_size, random_seed,
         weight_array, return_weight);
+    CUDA_CHECK(cudaStreamSynchronize(cur_stream));
   }
 }
 
@@ -1564,11 +1566,12 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
       const bool need_neighbor_count = sample_size > SAMPLE_SIZE_THRESHOLD;
       int *neighbor_count_ptr = nullptr;
+      std::shared_ptr<phi::Allocation> neighbor_count;
       if (need_neighbor_count) {
-        auto neighbor_count =
-            memory::Alloc(place,
-                          (shard_len + 1) * sizeof(int),
-                          phi::Stream(reinterpret_cast<phi::StreamId>(cur_stream)));
+        neighbor_count =
+            memory::AllocShared(place,
+                                (shard_len + 1) * sizeof(int),
+                                phi::Stream(reinterpret_cast<phi::StreamId>(cur_stream)));
         neighbor_count_ptr = reinterpret_cast<int* >(neighbor_count->ptr());
       }
 
@@ -1836,11 +1839,12 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
       reinterpret_cast<int*>(d_shard_actual_sample_size->ptr());
 
   float* d_shard_weight_ptr = nullptr;
+  std::shared_ptr<phi::Allocation> d_shard_weight;
   if (return_weight) {
-    auto d_shard_weight =
-        memory::Alloc(place,
-                      sample_size * len * edge_type_len * sizeof(float),
-                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    d_shard_weight =
+        memory::AllocShared(place,
+                            sample_size * len * edge_type_len * sizeof(float),
+                            phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     d_shard_weight_ptr =
         reinterpret_cast<float*>(d_shard_weight->ptr());
   }
@@ -1976,11 +1980,12 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
 
       const bool need_neighbor_count = sample_size > SAMPLE_SIZE_THRESHOLD;
       int* neighbor_count_ptr = nullptr;
+      std::shared_ptr<phi::Allocation> neighbor_count;
       if (need_neighbor_count) {
-        auto neighbor_count =
-            memory::Alloc(place,
-                          (shard_len + 1) * sizeof(int),
-                          phi::Stream(reinterpret_cast<phi::StreamId>(cur_stream)));
+        neighbor_count =
+            memory::AllocShared(place,
+                                (shard_len + 1) * sizeof(int),
+                                phi::Stream(reinterpret_cast<phi::StreamId>(cur_stream)));
         neighbor_count_ptr = reinterpret_cast<int* >(neighbor_count->ptr());
       }
 
