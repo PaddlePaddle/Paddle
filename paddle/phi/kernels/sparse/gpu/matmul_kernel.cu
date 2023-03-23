@@ -84,9 +84,9 @@ void MatmulKernelImpl(const Context& dev_ctx,
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
-                                 "which is supported from CUDA 11.0"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "forward of 'sparse.matmul' use cusparseSpMM or rocsparse_spmm, "
+      "which is supported from CUDA 11.0 or on HIP"));
 #endif
 }
 

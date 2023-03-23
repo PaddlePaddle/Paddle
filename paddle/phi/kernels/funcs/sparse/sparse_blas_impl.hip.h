@@ -85,7 +85,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   auto cols_data = indices_data + (x_ndims - 1) * nnz;
 
   int64_t batch_nnz = nnz / batch_size;
-  rocsparse_indextype itype = GetGpuIndexType<IntT>();
+  rocsparse_indextype itype = GetGpuIndexType<int64_t>();
   rocsparse_datatype ttype = GetGpuDataType<T>();
   dev_ctx.CusparseCall([&](rocsparse_handle handle) {
     phi::dynload::rocsparse_create_coo_descr(descriptor,
@@ -164,17 +164,35 @@ class RocSparseDnMatDescriptor {
     for (int i = 0; i < x_ndims - 2; i++) {
       batch_size *= xdim_vec[i];
     }
-    int64_t ld = N;
+
+    const T* x_data = x.data<T>();
     rocsparse_datatype ttype = GetGpuDataType<T>();
     dev_ctx.CusparseCall([&](rocsparse_handle handle) {
       phi::dynload::rocsparse_create_dnmat_descr(&descriptor_,
                                                  M,
                                                  N,
-                                                 ld,
-                                                 const_cast<void*>(x.data()),
+                                                 N,
+                                                 const_cast<T*>(x_data),
                                                  ttype,
                                                  rocsparse_order_row);
     });
+
+    PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
+    if (batch_size > 1) {
+#if CUDA_VERSION >= 11080
+#if 0
+      dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+        phi::dynload::cusparseDnMatSetStridedBatch(
+            descriptor_, batch_size, M * N);
+      });
+#endif
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
+          "supported from CUDA 11.8"));
+#endif
+    }
+    VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
   }
 
   ~RocSparseDnMatDescriptor() {
@@ -201,6 +219,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        const phi::DenseTensor& mat_b,
                                        T beta,
                                        phi::DenseTensor* mat_out) const {
+  LOG(INFO) << "\n we are here!\n";
   auto a_descriptor = RocSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = RocSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
   auto out_descriptor = RocSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
