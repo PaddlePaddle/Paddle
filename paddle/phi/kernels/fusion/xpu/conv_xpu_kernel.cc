@@ -30,30 +30,20 @@ void ConvXPUKernel(const Context& ctx,
                    const std::vector<int>& paddings,
                    const std::vector<int>& dilations,
                    const std::vector<int>& strides,
-                   const std::vector<int>& groups,
                    const std::string& padding_algorithm,
+                   int groups,
                    bool has_bias,
                    bool has_branch,
                    int act_type,
                    float act_param,
                    DenseTensor* Output,
                    DenseTensor* OutputMax) {
+  LOG(INFO) << "-----------start running conv_xpu kernel.";
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = Input.dims();
   auto filter_dims = Filter.dims();
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-
-  phi::DDim in_data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
-  phi::DDim filter_data_dims =
-      phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
 
   int batch = static_cast<int>(input_dims[0]);
   int in_c = static_cast<int>(input_dims[1]);
@@ -62,7 +52,6 @@ void ConvXPUKernel(const Context& ctx,
   int filter_num = static_cast<int>(filter_dims[0]);
   int win_h = static_cast<int>(filter_dims[2]);
   int win_w = static_cast<int>(filter_dims[3]);
-  int group = groups.front();
 
   auto* input_data = reinterpret_cast<const XPUType*>(Input.data<T>());
   const float* input_max_data = InputMax.get_ptr() == nullptr
@@ -82,6 +71,7 @@ void ConvXPUKernel(const Context& ctx,
   } else if (act_type == 15) {
     act.hard_sigmoid_slope = act_param;
   }
+  LOG(INFO) << "-------------start running xpu::conv2d_fusion";
   int r = xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX, TW.
                                                                    // TY, TGEMM
       ctx.x_context(),                                             // ctx
@@ -97,7 +87,7 @@ void ConvXPUKernel(const Context& ctx,
       strides,                                                     // strides
       paddings_vec,                                                // paddings
       dilations_vec,                                               // dilations
-      group,                                                       // group
+      groups,                                                      // group
       input_max_data,                                              // in_maxptr
       FilterMax.data<float>(),               // filter_maxptr
       ctx.template Alloc<float>(OutputMax),  // out_maxptr

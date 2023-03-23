@@ -43,20 +43,101 @@ void ConvXPUInferMeta(const MetaTensor& Input,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
-                      const std::vector<int>& groups,
                       const std::string& padding_algorithm,
+                      int groups,
                       bool has_bias,
                       bool has_branch,
                       int act_type,
                       float act_param,
                       MetaTensor* Output,
                       MetaTensor* OutputMax) {
-  const auto in_dims = Input.dims();
-  const auto filter_dims = Filter.dims();
+  auto in_dims = Input.dims();
+  auto filter_dims = Filter.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4,
+      true,
+      phi::errors::InvalidArgument(
+          "The input of Op(Conv_xpu) should be a 4-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv_xpu) should be equal. But received: the input's shape is "
+          "[%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  const auto input_channels = in_dims[1];
+  int stride_size = strides.size();
+  int in_sub_stride_size = in_dims.size() - stride_size;
+  int dilation_size = dilations.size();
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      strides.size() + 2U,
+      phi::errors::InvalidArgument(
+          "The difference of input's dimension and Attr(strides)'s "
+          "length must be euqal to 2 for Op(Conv_xpu). "
+          "But received: input's dimension is %d, input's shape is [%s]; "
+          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
+          "difference of input's dimention and Attr(strides)'s length = %u.",
+          in_dims.size(),
+          in_dims,
+          strides.size(),
+          phi::make_ddim(strides),
+          in_sub_stride_size));
+
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv_xpu). But received: the input's channels is "
+          "%d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d. ",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups));
+
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0],
+          filter_dims,
+          groups));
+
+  // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-
-  std::vector<int> ksize = phi::vectorize<int>(filter_dims);
+  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -74,8 +155,13 @@ void ConvXPUInferMeta(const MetaTensor& Input,
                                     strides[i]));
   }
   // set output and output max dims
+  for (size_t i = 0; i < out_shape.size(); ++i) {
+    LOG(INFO) << "out_shape[" << i << "] is:" << out_shape[i];
+  }
+  LOG(INFO) << "--------infer out shape of conv_xpu";
   Output->set_dims(DDim(out_shape.data(), out_shape.size()));
   OutputMax->set_dims(phi::make_ddim({4}));
+  LOG(INFO) << "--------infer out shape of conv_xpu done";
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(

@@ -533,8 +533,8 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (has_bias) {
       LOG(INFO) << "----deal with fusion bias node,it's name is: "
                 << fusion_bias_name;
-      conv_xpu_op_desc.SetAttr("has_bias", has_bias);
       conv_xpu_op_desc.SetInput("Bias", {fusion_bias_name});
+      conv_xpu_op_desc.SetAttr("has_bias", has_bias);
       // PrepareBias(graph, scope, block, bias, &bias_fp32);
       // conv_xpu_op_desc.SetInput("Bias", {bias_fp32->Name()});
     }
@@ -566,8 +566,6 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     // set attrs
     conv_xpu_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
     conv_xpu_op_desc.SetAttr("act_param", act_param_);
-    std::vector<int> conv_groups{
-        PADDLE_GET_CONST(int, conv->Op()->GetAttr("groups"))};
     std::vector<int> conv_bias;
     if (has_bias) {
       conv_bias.push_back(1);
@@ -596,16 +594,16 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv_xpu_op_desc.SetAttr(
         "dilations",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations")));
-    conv_xpu_op_desc.SetAttr("groups", conv_groups);
+    conv_xpu_op_desc.SetAttr(
+        "groups", PADDLE_GET_CONST(int, conv->Op()->GetAttr("groups")));
+    conv_xpu_op_desc.SetAttr(
+        "strides",
+        PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
     conv_xpu_op_desc.SetAttr("conv_bias", conv_bias);
-    conv_xpu_op_desc.SetAttr("filter_dims", phi::vectorize(filter_dims));
     conv_xpu_op_desc.SetAttr("op_type", std::vector<int>{0});
     conv_xpu_op_desc.SetAttr("place_x", std::vector<int>{0});
     conv_xpu_op_desc.SetAttr("place_y", std::vector<int>{9});
     conv_xpu_op_desc.SetAttr("place_z", std::vector<int>{10});
-    conv_xpu_op_desc.SetAttr(
-        "strides",
-        PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
     conv_xpu_op_desc.SetAttr("paddings", conv_paddings);
     conv_xpu_op_desc.SetAttr("block_lod", std::vector<int>{1});
     conv_xpu_op_desc.SetAttr("has_branch", with_branch_x || with_branch_y);
