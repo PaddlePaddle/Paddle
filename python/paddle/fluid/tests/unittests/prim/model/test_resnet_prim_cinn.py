@@ -29,6 +29,43 @@ l2_decay = 1e-4
 batch_size = 2
 epoch_num = 1
 
+DY2ST_PRIM_GT = [
+    5.8473358154296875,
+    8.354944229125977,
+    5.098367691040039,
+    8.533346176147461,
+    8.179085731506348,
+    7.285282135009766,
+    9.824585914611816,
+    8.56928825378418,
+    8.539499282836914,
+    10.256929397583008,
+]
+DY2ST_CINN_GT = [
+    5.847336769104004,
+    8.336246490478516,
+    5.108744144439697,
+    8.316713333129883,
+    8.175262451171875,
+    7.590441703796387,
+    9.895681381225586,
+    8.196207046508789,
+    8.438933372497559,
+    10.305074691772461,
+]
+DY2ST_PRIM_CINN_GT = [
+    5.8473358154296875,
+    8.322463989257812,
+    5.169863700866699,
+    8.399882316589355,
+    7.859550476074219,
+    7.4672698974609375,
+    9.828727722167969,
+    8.270355224609375,
+    8.456792831420898,
+    9.919631958007812,
+]
+
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
@@ -109,7 +146,7 @@ def train(to_static, enable_prim, enable_cinn):
             total_acc1 += acc_top1
             total_acc5 += acc_top5
             total_sample += 1
-            losses.append(avg_loss.numpy())
+            losses.append(avg_loss.numpy().item())
 
             end_time = time.time()
             print(
@@ -123,7 +160,7 @@ def train(to_static, enable_prim, enable_cinn):
                     end_time - start_time,
                 )
             )
-            if batch_id == 10:
+            if batch_id >= 9:
                 # avoid dataloader throw abort signaal
                 data_loader._reset()
                 break
@@ -132,40 +169,33 @@ def train(to_static, enable_prim, enable_cinn):
 
 
 class TestResnet(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dy2st = train(to_static=True, enable_prim=False, enable_cinn=False)
-
+    @unittest.skipIf(
+        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
+        "paddle is not compiled with CINN and CUDA",
+    )
     def test_prim(self):
-        # todo: to be removed after adjust of rtol
-        core._set_prim_forward_blacklist("batch_norm")
-        core._add_skip_comp_ops("batch_norm")
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
-        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
+        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
+        "paddle is not compiled with CINN and CUDA",
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        # TODO(0x45f): The following is only temporary thresholds, and the final thresholds needs to be discussed
-        np.testing.assert_allclose(self.dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
-        np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-1)
+        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
+        "paddle is not compiled with CINN and CUDA",
     )
     def test_prim_cinn(self):
-        core._set_prim_forward_blacklist("flatten_contiguous_range")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-        # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
         np.testing.assert_allclose(
-            self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
+            dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
         )
-        np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
 
 
 if __name__ == '__main__':
