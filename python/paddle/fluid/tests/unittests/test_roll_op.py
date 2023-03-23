@@ -64,7 +64,7 @@ class TestRollOpCase2(TestRollOp):
 class TestRollOpCase3(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.float32
-        self.x_shape = (10, 10)
+        self.x_shape = (11, 11)
         self.shifts = [1, 1]
         self.axis = [-1, 1]
 
@@ -88,7 +88,7 @@ class TestRollFP16OpCase2(TestRollOp):
 class TestRollFP16OpCase3(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.float16
-        self.x_shape = (10, 10)
+        self.x_shape = (11, 11)
         self.shifts = [1, 1]
         self.axis = [-1, 1]
 
@@ -141,7 +141,7 @@ class TestRollBF16OpCase2(TestRollOp):
 class TestRollBF16OpCase3(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
-        self.x_shape = (10, 10)
+        self.x_shape = (11, 11)
         self.shifts = [1, 1]
         self.axis = [-1, 1]
         self.place = core.CUDAPlace(0)
