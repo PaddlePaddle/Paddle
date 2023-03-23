@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -28,62 +28,170 @@ class TestScatterOp(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 50)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 50)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 50)).astype("float32")
+        updates_np = np.random.random((2, 50)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
+class TestScatterFP16Op(TestScatterOp):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op(TestScatterOp):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False
+            )
 
 
 class TestScatterOp0(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.attrs = {'overwrite': True}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
+class TestScatterFP16Op0(TestScatterOp0):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op0(TestScatterOp0):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False
+            )
 
 
 class TestScatterOp1(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('float32')
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
+        zeros_np = np.zeros([2, 3]).astype(target_dtype)
         index_np = np.array([1, 1]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = zeros_np
         for i in range(0, len(index_np)):
             output_np[index_np[i]] += updates_np[i]
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.attrs = {'overwrite': False}
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
+class TestScatterFP16Op1(TestScatterOp1):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op1(TestScatterOp1):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False
+            )
 
 
 @unittest.skipIf(
@@ -93,13 +201,22 @@ class TestScatterOp2(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -112,6 +229,24 @@ class TestScatterOp2(OpTest):
             self.check_grad_with_place(
                 place, ['X', 'Updates'], 'Out', check_eager=False
             )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestScatterFP16Op2(TestScatterOp2):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op2(TestScatterOp2):
+    def _set_dtype(self):
+        self.dtype = np.uint16
 
 
 @unittest.skipIf(
@@ -121,17 +256,26 @@ class TestScatterOp3(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('float32')
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
+        zeros_np = np.zeros([2, 3]).astype(target_dtype)
         index_np = np.array([1, 1]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = zeros_np
         for i in range(0, len(index_np)):
             output_np[index_np[i]] += updates_np[i]
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.attrs = {'overwrite': False}
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -146,23 +290,77 @@ class TestScatterOp3(OpTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestScatterFP16Op3(TestScatterOp3):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op3(TestScatterOp3):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+
 class TestScatterOp4(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int64")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+
+
+class TestScatterFP16Op4(TestScatterOp4):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op4(TestScatterOp4):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False
+            )
 
 
 @unittest.skipIf(
@@ -172,13 +370,22 @@ class TestScatterOp5(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 3)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int64")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -193,23 +400,77 @@ class TestScatterOp5(OpTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestScatterFP16Op5(TestScatterOp5):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op5(TestScatterOp5):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+
 class TestScatterOp6(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
-        ref_np = np.ones((3, 50)).astype("float32")
+        self._set_dtype()
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+        ref_np = np.ones((3, 50)).astype(target_dtype)
         index_np = np.array([[1], [2]]).astype("int32")
-        updates_np = np.random.random((2, 50)).astype("float32")
+        updates_np = np.random.random((2, 50)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[np.array([1, 2]).astype("int32")] = updates_np
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
+class TestScatterFP16Op6(TestScatterOp6):
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterBF16Op6(TestScatterOp6):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False
+            )
 
 
 class TestScatterAPI(unittest.TestCase):
@@ -224,9 +485,13 @@ class TestScatterAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 2], dtype="float64")
-            index = fluid.data(name="index", shape=[4], dtype="int64")
-            updates = fluid.data(name="updates", shape=[4, 2], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
             result = self.scatter(input, index, updates, False)
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)

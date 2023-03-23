@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed.fleet as fleet
-import paddle.fluid.layers as layers
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import (
     HybridParallelInferenceHelper,
 )
@@ -66,16 +65,16 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                 )
 
             with paddle.fluid.device_guard(f'{device}:all'):
-                max_len = layers.fill_constant(
+                max_len = paddle.tensor.fill_constant(
                     shape=[1], dtype="int64", value=2, force_cpu=False, name="n"
                 )
-                step_idx = layers.fill_constant(
+                step_idx = paddle.tensor.fill_constant(
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i"
                 )
 
                 data = paddle.tensor.array_write(X, step_idx)
 
-                cond_int = layers.fill_constant(
+                cond_int = paddle.tensor.fill_constant(
                     shape=[1],
                     dtype="int64",
                     value=0,

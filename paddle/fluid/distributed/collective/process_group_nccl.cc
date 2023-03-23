@@ -993,34 +993,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
       CommType::ALLGATHER);
 }
 
-void* GetPointerByOffset(void* raw_pointer,
-                         size_t offset,
-                         experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+void* GetPointerByOffset(void* raw_pointer, size_t offset, phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT64) {
+  } else if (type == phi::DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT8) {
+  } else if (type == phi::DataType::INT8) {
     return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::UINT8) {
+  } else if (type == phi::DataType::UINT8) {
     return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::BOOL) {
+  } else if (type == phi::DataType::BOOL) {
     return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::BFLOAT16) {
+  } else if (type == phi::DataType::BFLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
                                    offset);
   } else {

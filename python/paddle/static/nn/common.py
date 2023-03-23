@@ -692,7 +692,10 @@ def group_norm(
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'group_norm'
+        input,
+        'input',
+        ['float16', 'uint16', 'float32', 'float64'],
+        'group_norm',
     )
     # create intput and parameters
     inputs = {'X': input}
@@ -3087,7 +3090,7 @@ class PyFuncRegistry:
         if self._named_args is None:
             func_ret = self._func()
         else:
-            kwargs = dict()
+            kwargs = {}
             idx = 0
             for arg in self._named_args:
                 kwargs[arg] = args[idx]

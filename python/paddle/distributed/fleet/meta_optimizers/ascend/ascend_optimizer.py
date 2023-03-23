@@ -116,10 +116,9 @@ class AscendIRParser:
             )
             op_parser.apply(op)
         else:
-            assert (
-                False
-            ), "Op[%s] has not been registered, so we have to skip it" % (
-                op.type
+            raise AssertionError(
+                'Op[%s] has not been registered, so we have to skip it'
+                % op.type
             )
 
     def _parse_program(
@@ -235,6 +234,10 @@ class AscendOptimizer(Optimizer):
             if var.is_data or var.persistable:
                 ret_list.append(var)
         return ret_list
+
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self.inner_opt._set_auxiliary_var(key, val)
 
     def minimize(
         self,

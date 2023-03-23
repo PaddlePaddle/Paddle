@@ -72,7 +72,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.outputs = {'Loss': loss.astype('float32')}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad(self):
             self.check_grad_with_place(
@@ -80,7 +80,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
                 ['X'],
                 'Loss',
                 no_grad_set=set(["Target"]),
-                check_eager=True,
+                check_dygraph=True,
             )
 
         def initTestCase(self):
@@ -121,8 +121,8 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.run_kl_loss('none')
 
         def test_kl_loss_static_api(self):
-            input = paddle.fluid.data(name='input', shape=[5, 20])
-            label = paddle.fluid.data(name='label', shape=[5, 20])
+            input = paddle.static.data(name='input', shape=[5, 20])
+            label = paddle.static.data(name='label', shape=[5, 20])
 
             paddle.nn.functional.kl_div(input, label)
 
