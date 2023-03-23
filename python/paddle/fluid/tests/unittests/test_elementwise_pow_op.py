@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -308,6 +308,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
 class TestElementwisePowOpFP16(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.dtype = np.float16
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
@@ -334,6 +335,31 @@ class TestElementwisePowOpFP16(OpTest):
             check_eager=True,
             check_prim=True,
         )
+
+
+class TestElementwisePowBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.dtype = np.uint16
+        self.python_api = paddle.pow
+
+        x = np.random.uniform(0, 1, [20, 5]).astype(np.float32)
+        y = np.random.uniform(0, 1, [20, 5]).astype(np.float32)
+        out = np.power(x, y)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 if __name__ == '__main__':

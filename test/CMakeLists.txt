@@ -4,11 +4,13 @@ set(CC_TESTS_DIR
 set(PYTHON_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test
     CACHE INTERNAL "python tests directory")
+
 if(WITH_TESTING)
   add_subdirectory(cpp)
   add_subdirectory(legacy_test)
   add_subdirectory(custom_op)
 endif()
+
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)
 

@@ -125,7 +125,7 @@ class ParamStorage(InternalStorage):
 
         self.param2align = param2align
 
-        cpu_param_shape = list()
+        cpu_param_shape = []
         for param in trainable_params:
             p_shape = self._add_param_as_view(
                 param, param2align[param.name], convert_gpu
