@@ -349,14 +349,10 @@ def apply_to_static(net, use_cinn):
 
 
 class PrimeNet(paddle.nn.Layer):
-    def __init__(self):
+    def __init__(self, data_layout='NCHW'):
         super().__init__()
-        self.conv = nn.Conv2D(4, 2, (3, 3), bias_attr=False)
-        self.bn = BatchNorm(2, act="relu")
-        self.run_mean = zeros([2])
-        self.run_var = ones([2])
-        self.scale = ones([2])
-        self.bias = ones([2])
+        self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
+        self.bn = BatchNorm(4, act="relu", data_layout=data_layout)
 
     def forward(self, x):
         y = self.conv(x)
@@ -372,13 +368,13 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
     def setUp(self):
         paddle.seed(2022)
-        self.x = paddle.randn([4, 4, 6, 6], dtype="float32")
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
         self.x.stop_gradient = False
 
-    def train(self, use_prim):
+    def train(self, use_prim, data_layout="NCHW"):
         core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
-        net = PrimeNet()
+        net = PrimeNet(data_layout)
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
@@ -394,10 +390,21 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             sgd.clear_grad()
             return loss
 
-    def test_amp(self):
+    def test_amp_nchw(self):
         if not isinstance(framework._current_expected_place(), core.CPUPlace):
             expected = self.train(False)
             actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
+
+    def test_amp_nhwc(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(use_prim=False, data_layout="NHWC")
+            actual = self.train(use_prim=True, data_layout="NHWC")
             np.testing.assert_allclose(
                 expected,
                 actual,
