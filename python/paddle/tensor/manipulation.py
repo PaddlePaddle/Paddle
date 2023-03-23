@@ -2906,7 +2906,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         check_variable_and_dtype(
             x,
             'dtype',
-            ['float32', 'float64', 'float16', 'int32', 'int64', 'unit16'],
+            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
             'scatter',
         )
         check_type(overwrite, 'overwrite', bool, 'scatter')
