@@ -46,6 +46,7 @@ from .communication import (
     reduce,
     send,
     scatter,
+    gather,
     scatter_object_list,
     isend,
     recv,
