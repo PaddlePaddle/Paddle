@@ -157,6 +157,12 @@ void Pool2dGradKernel(const Context& ctx,
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool2d_grad");
   } else {
+    if (kernel_size[0] > in_h) {
+      kernel_size[0] = in_h;
+    }
+    if (kernel_size[1] > in_w) {
+      kernel_size[1] = in_w;
+    }
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(

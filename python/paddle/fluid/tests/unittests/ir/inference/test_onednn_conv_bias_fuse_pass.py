@@ -129,8 +129,8 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
 
         # 11. Generate legal shape of input:bias of conv2d
         conv_bias_shape = []
-        inputs = dict()
-        weights = dict()
+        inputs = {}
+        weights = {}
         use_mkldnn = None
         conv_type = 'conv2d'
         if draw(st.booleans()):

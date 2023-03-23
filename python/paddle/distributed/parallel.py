@@ -1116,7 +1116,7 @@ def init_parallel_env():
         paddle.distributed.barrier(group=group)
         return group
 
-    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
+    node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":

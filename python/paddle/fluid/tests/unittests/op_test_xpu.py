@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 from xpu.get_test_cover_info import (
@@ -71,7 +71,6 @@ class XPUOpTest(OpTest):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(
@@ -81,7 +80,6 @@ class XPUOpTest(OpTest):
             equal_nan,
             check_dygraph,
             inplace_atol,
-            check_eager,
         )
 
     def check_output_with_place(
@@ -92,7 +90,6 @@ class XPUOpTest(OpTest):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64:
@@ -120,7 +117,6 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         numeric_place=None,
-        check_eager=False,
     ):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
@@ -135,7 +131,6 @@ class XPUOpTest(OpTest):
             user_defined_grad_outputs,
             check_dygraph,
             numeric_place,
-            check_eager,
         )
 
     def check_grad_with_place(
@@ -151,7 +146,6 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         numeric_place=None,
-        check_eager=False,
     ):
         if hasattr(self, 'op_type_need_check_grad'):
             xpu_version = core.get_xpu_device_version(0)
@@ -240,9 +234,9 @@ class XPUOpTest(OpTest):
         check_dygraph=True,
     ):
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if (

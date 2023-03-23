@@ -144,7 +144,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._hidden_act = hidden_act
