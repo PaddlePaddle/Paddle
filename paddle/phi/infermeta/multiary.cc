@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+
 namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(
@@ -1229,6 +1230,65 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
+                                      const MetaTensor& dout,
+                                      const MetaTensor& dweight,
+                                      const MetaTensor& dbias,
+                                      bool multi_precision,
+                                      MetaTensor* dweight_out,
+                                      MetaTensor* dbias_out) {
+  const auto dtype = dout.dtype();
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      dtype,
+      phi::errors::InvalidArgument(
+          "The data type of Input(x) and Input(dout) must be the same."));
+
+  const auto& x_dims = x.dims();
+  const auto& dout_dims = dout.dims();
+  int rank = dout_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      rank,
+      phi::errors::InvalidArgument(
+          "The shape of Input(x) and Input(dout) do not match: %s vs %s.",
+          x_dims,
+          dout_dims));
+  for (int i = 0; i + 1 < x_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[i],
+        dout_dims[i],
+        phi::errors::InvalidArgument(
+            "The shape of Input(x) and Input(dout) do not match: %s vs %s.",
+            x_dims,
+            dout_dims));
+  }
+
+  const phi::DDim& weight_dims = {x_dims[rank - 1], dout_dims[rank - 1]};
+  if (dweight) {
+    PADDLE_ENFORCE_EQ(
+        weight_dims,
+        dweight.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of input(dweight) does not match the other inputs."));
+  }
+
+  const auto mp_dtype =
+      (dtype == DataType::FLOAT16 || dtype == DataType::BFLOAT16)
+          ? DataType::FLOAT32
+          : dtype;
+
+  if (dbias_out) {
+    dbias_out->set_dims({weight_dims[1]});
+    dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
+  }
+
+  if (dweight_out) {
+    dweight_out->set_dims(weight_dims);
+    dweight_out->set_dtype(multi_precision ? mp_dtype : dtype);
+  }
+}
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
@@ -2059,7 +2119,11 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
   auto out_shape = std::vector<int>(inputs_num);
 
   for (size_t i = 0; i < inputs.size(); i++) {
-    out_shape[i] = inputs[i]->dims()[0];
+    if (inputs[i]->dims().size() == 0) {
+      out_shape[i] = 1;
+    } else {
+      out_shape[i] = inputs[i]->dims()[0];
+    }
   }
   auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
   for (size_t i = 0; i < outputs.size(); ++i) {

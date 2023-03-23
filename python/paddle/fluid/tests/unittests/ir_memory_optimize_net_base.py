@@ -76,7 +76,7 @@ class BuildIrMemOptBase(unittest.TestCase):
         # execution
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
-        reader = feeder.decorate_reader(self.train_reader, multi_devices=True)
+        reader = feeder.feed(self.train_reader())
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
