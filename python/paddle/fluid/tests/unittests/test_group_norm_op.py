@@ -49,10 +49,7 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 
 def group_norm_wrapper(x, scale, bias, epsilon, groups, data_layout):
-    if data_layout == 'NCHW':
-        num_channels = x.shape[1]
-    elif data_layout == 'NHWC':
-        num_channels = x.shape[-1]
+    num_channels = x.shape[1]
     func = paddle.nn.GroupNorm(
         groups, num_channels, epsilon, False, False, data_layout
     )
@@ -570,6 +567,7 @@ def apply_to_static(net, use_cinn):
     return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
+# The original GroupNorm cannot support NHWC format
 @param.parameterized_class(
     ('name', 'shape', 'epsilon', 'groups', 'data_format', 'places', 'dtype'),
     (
@@ -726,14 +724,12 @@ class TestCompositeGroupNorm(unittest.TestCase):
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
         self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
-        if self.data_format == 'NHWC':
-            self.num_channels = self.shape[-1]
-        else:
-            self.num_channels = self.shape[1]
+        self.num_channels = self.shape[1]
 
         if self.dtype == 'float16':
             self.places = []
-            self.places.append(paddle.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda():
+                self.places.append(paddle.CUDAPlace(0))
 
         self.threshold = {}
         self.threshold['float32'] = []
@@ -753,9 +749,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
         )  # gpu threshold for static, jit and jit_cinn
         self.threshold['float16'].append(
             [5e-3, 5e-3, 5e-3]
-        )  # cpu threshold for static, jit and jit_cinn
-        self.threshold['float16'].append(
-            [1e-3, 1e-3, 1e-3]
         )  # gpu threshold for static, jit and jit_cinn
 
         self.static_fwd_desire = []
@@ -862,8 +855,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 ]
             ]
 
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that group_norm in original block
+            assert 'group_norm' in fwd_ops
+
             if core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                fwd_ops_new = [op.type for op in blocks[0].ops]
+                # Ensure that group_norm is splitted into small ops
+                assert 'group_norm' not in fwd_ops_new
+
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
 
         exe = paddle.static.Executor(place)
@@ -887,6 +888,8 @@ class TestCompositeGroupNorm(unittest.TestCase):
         mps = []
         fwd_actual = []
         rev_actual = []
+        if len(self.places) < 1:
+            return
 
         with paddle.fluid.framework._static_guard():
             for place in self.places:
@@ -940,8 +943,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
                         ]
                     ]
 
+                    fwd_ops = [op.type for op in blocks[0].ops]
+                    # Ensure that group_norm in original block
+                    assert 'group_norm' in fwd_ops
+
                     if core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                        fwd_ops_new = [op.type for op in blocks[0].ops]
+                        # Ensure that group_norm is splitted into small ops
+                        assert 'group_norm' not in fwd_ops_new
+
                     grads = paddle.static.gradients(
                         output, [input_, scale_, bias_]
                     )
@@ -968,7 +979,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
             "Y",
             "Mean",
             "Variance",
-            "Y_grad",
+            "X_grad",
             "Scale_grad",
             "Bias_grad",
         ]
@@ -987,6 +998,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     atol=atol,
                     err_msg=f"Check diff failed of place:{self.places[i]}, output: {vars_name[j]}",
                 )
+                max_abs_diff = np.max(
+                    np.abs(self.static_fwd_desire[i][j] - fwd_actual[i][j])
+                )
+                print(
+                    self.shape,
+                    self.dtype,
+                    self.places[i],
+                    vars_name[j],
+                    max_abs_diff,
+                )
             # compare with eager_desire
             np.testing.assert_allclose(
                 self.fwd_desire[i],
@@ -997,15 +1018,29 @@ class TestCompositeGroupNorm(unittest.TestCase):
             )
 
             for j in range(len(self.static_rev_desire[i])):
-                # todo: fix the diff between cpu and gpu grad is large in original op
+                # TODO: fix the diff between cpu and gpu grad is large in original op
                 # now use larger threshold when testing cpu grads to bypass cpu grad test
                 if isinstance(self.places[i], fluid.CPUPlace):
                     atol = self.threshold[self.dtype][i][0] * 50
                     rtol = self.threshold[self.dtype][i][0] * 50
                 # bypass the test of cpu scale_grad as the diff is too large
                 if j == 1:
-                    atol *= 100
-                    rtol *= 100
+                    if self.dtype == 'float16':
+                        atol *= 10
+                        rtol *= 10
+                    else:
+                        atol *= 100
+                        rtol *= 100
+                max_abs_diff = np.max(
+                    np.abs(self.static_rev_desire[i][j] - rev_actual[i][j])
+                )
+                print(
+                    self.shape,
+                    self.dtype,
+                    self.places[i],
+                    vars_name[j + 3],
+                    max_abs_diff,
+                )
                 np.testing.assert_allclose(
                     self.static_rev_desire[i][j],
                     rev_actual[i][j],
@@ -1068,7 +1103,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 err_msg='%s jit fwd' % self.places[i],
             )
 
-            # todo: fix the diff between cpu and gpu grad is large in original op
+            # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if isinstance(self.places[i], fluid.CPUPlace):
                 atol *= 50
@@ -1125,7 +1160,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 atol=atol,
                 err_msg='%s jit_cinn fwd' % self.places[i],
             )
-            # todo: fix the diff between cpu and gpu grad is large in original op
+            # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if isinstance(self.places[i], fluid.CPUPlace):
                 atol *= 50

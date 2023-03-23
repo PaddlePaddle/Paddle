@@ -567,6 +567,8 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
     mean and var are computed from groups
     """
+    # original GroupNorm op cannot support NHWC format
+    assert data_layout == 'NCHW'
     N, C, H, W = x.shape
     x = reshape(x, (N * groups, -1))
     mean_ = mean(x, axis=1, keepdim=True)
