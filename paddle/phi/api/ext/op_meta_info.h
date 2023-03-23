@@ -739,6 +739,7 @@ class PADDLE_API OpMetaInfo {
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
   std::unordered_map<std::string, std::string> inplace_map_;
+  std::unordered_map<std::string, std::string> inplace_reverse_map_;
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
@@ -766,6 +767,10 @@ class OpMetaInfoHelper {
   static const std::unordered_map<std::string, std::string>& GetInplaceMap(
       const paddle::OpMetaInfo& info) {
     return info.inplace_map_;
+  }
+  static const std::unordered_map<std::string, std::string>&
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
+    return info.inplace_reverse_map_;
   }
   static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
     return info.kernel_fn_;

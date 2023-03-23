@@ -215,6 +215,9 @@ OpMetaInfo& OpMetaInfo::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   inplace_map_ =
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
+  for (const auto& pair : inplace_map_) {
+    inplace_reverse_map_[pair.second] = pair.first;
+  }
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
