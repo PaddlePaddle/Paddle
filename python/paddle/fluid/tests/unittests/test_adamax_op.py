@@ -31,6 +31,7 @@ def adamx_wrapper(
     beta1=0.78,
     beta2=0.899,
     epsilon=1e-5,
+    find_master=False,
 ):
     return paddle._C_ops.adamax_(
         param,
@@ -43,6 +44,7 @@ def adamx_wrapper(
         beta1,
         beta2,
         epsilon,
+        find_master,
     )
 
 

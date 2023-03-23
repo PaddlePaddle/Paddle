@@ -38,8 +38,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    cclEvents[i].Record(*dev_ctx[i]);
-    cclEvents[i].Block(*default_ctx);
+    cclEvents[i].Record(*default_ctx);
+    cclEvents[i].Block(*dev_ctx[i]);
   }
 }
 
@@ -74,8 +74,7 @@ void ProcessGroupCustom::CustomTask::SynchronizeStreams() {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
     phi::DeviceGuard guard(default_ctx->GetPlace());
-    phi::stream::Stream stream(default_ctx->GetPlace(), default_ctx->stream());
-    stream.WaitEvent(control_events_[i].GetCustomEvent());
+    control_events_[i].Block(*default_ctx);
   }
 }
 
@@ -118,7 +117,7 @@ ProcessGroupCustom::ProcessGroupCustom(
     int rank,
     int size,
     int gid)
-    : ProcessGroupWithoutStream(rank, size, gid),
+    : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       device_type_(device_type) {}
 
@@ -220,20 +219,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
 
 void* XcclGetPointerByOffset(void* raw_pointer,
                              size_t offset,
-                             experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+                             phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT64) {
+  } else if (type == phi::DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
                                    offset);
   } else {

@@ -24,7 +24,7 @@ from . import utils
 
 
 def abs_max_value(tensor):
-    return float(paddle.max(paddle.abs(tensor)).numpy())
+    return float(paddle.max(paddle.abs(tensor)))
 
 
 def merge_max_value(old, new):

@@ -32,7 +32,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -53,7 +53,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -117,7 +117,7 @@ class TestRecursiveCall1(unittest.TestCase):
 lambda_fun = lambda x: x
 
 
-class MyConvLayer(fluid.dygraph.Layer):
+class MyConvLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._conv = paddle.nn.Conv2D(
@@ -145,7 +145,7 @@ class MyConvLayer(fluid.dygraph.Layer):
         return x_v
 
 
-class MyLayer(fluid.dygraph.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -218,7 +218,7 @@ class TestStaticMethod(TestRecursiveCall2):
 
 class NotToStaticHelper(paddle.nn.Layer):
     def __init__(self):
-        super(NotToStaticHelper, self).__init__()
+        super().__init__()
 
     def sum(self, x):
         if x.shape[0] > 1:

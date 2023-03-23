@@ -19,7 +19,7 @@ from paddle.fluid.op import Operator
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
-    kwargs = dict()
+    kwargs = {}
 
     op_maker = core.op_proto_and_checker_maker
     op_role_attr_name = op_maker.kOpRoleAttrName()
