@@ -774,6 +774,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       auto input_var_name = desc.Input("Input")[0];
+      auto* block = desc.Block();
       auto* input_var_desc = block->FindVar(input_var_name);
       const auto input_shape = input_var_desc->GetShape();
       if (input_shape.size()<2) {
