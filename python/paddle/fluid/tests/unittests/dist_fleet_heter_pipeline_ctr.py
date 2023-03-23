@@ -162,7 +162,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         filelist = fleet.util.get_file_shard(train_file_list)
-        print("filelist: {}".format(filelist))
+        print(f"filelist: {filelist}")
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
@@ -186,7 +186,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 debug=int(os.getenv("Debug", "0")),
             )
             pass_time = time.time() - pass_start
-            print("do_dataset_training done. using time {}".format(pass_time))
+            print(f"do_dataset_training done. using time {pass_time}")
         exe.close()
 
     def do_dataset_heter_training(self, fleet):
@@ -212,7 +212,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         )
         exe.close()
         pass_time = time.time() - pass_start
-        print("do_dataset_heter_training done. using time {}".format(pass_time))
+        print(f"do_dataset_heter_training done. using time {pass_time}")
 
         # for epoch_id in range(1):
         #    pass_start = time.time()

@@ -753,7 +753,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y2,
                 getitem_pp[0],
-                err_msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]),
+                err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
             )
 
     def test_dygraph_list_index_muti_dim(self):
@@ -1216,7 +1216,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t1.numpy(),
                 y_np1,
-                err_msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()),
+                err_msg=f'\n numpy:{y_np1},\n paddle:{y_t1.numpy()}',
             )
             # 1 dim getitem
             array2 = array.copy()
@@ -1227,7 +1227,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t2.numpy(),
                 y_np2,
-                err_msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()),
+                err_msg=f'\n numpy:{y_np2},\n paddle:{y_t2.numpy()}',
             )
 
             # 2 dim setitem

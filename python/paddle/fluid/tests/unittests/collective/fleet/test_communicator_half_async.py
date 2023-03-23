@@ -139,7 +139,7 @@ half_run_server.run_ut()
         os.environ["TRAINING_ROLE"] = "PSERVER"
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, server_file)
+        ps_cmd = f"{_python} {server_file}"
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,

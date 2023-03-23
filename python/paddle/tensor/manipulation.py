@@ -965,7 +965,7 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(
         y.shape
-    ), "the y shape should be {}".format(predshape)
+    ), f"the y shape should be {predshape}"
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -1449,13 +1449,9 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis0 out of range, axis0 = {}".format(axes[0])
-        )
+        raise ValueError(f"Rotation axis0 out of range, axis0 = {axes[0]}")
     if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis1 out of range, axis1 = {}".format(axes[1])
-        )
+        raise ValueError(f"Rotation axis1 out of range, axis1 = {axes[1]}")
 
     k %= 4
     if k == 0:

@@ -151,7 +151,7 @@ def train():
                 },
                 fetch_list=[loss],
             )
-            print("step: {}, loss: {:f}".format(step, loss_print[0]))
+            print(f"step: {step}, loss: {loss_print[0]:f}")
         else:
             exe.run(
                 distributed_main_program,

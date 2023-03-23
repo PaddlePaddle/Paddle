@@ -145,7 +145,7 @@ def create_expand_v2_bf16_test_class(parent):
                 user_defined_grad_outputs=[self.dout],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Expand_v2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Expand_v2_BF16")
     TestExpandV2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestExpandV2BF16OneDNNOp
 

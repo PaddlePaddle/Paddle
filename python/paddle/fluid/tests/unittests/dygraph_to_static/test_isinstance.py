@@ -107,7 +107,7 @@ class TestIsinstance(unittest.TestCase):
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dy_out:\n {}\n st_out:\n{}'.format(dy_out, st_out),
+            err_msg=f'dy_out:\n {dy_out}\n st_out:\n{st_out}',
         )
 
 

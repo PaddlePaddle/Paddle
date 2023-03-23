@@ -93,9 +93,7 @@ class TensorRTPool3dTest(InferencePassTest):
             elif self.precision == AnalysisConfig.Precision.Half:
                 atol, rtol = (1e-3, 1e-3)
             else:
-                raise ValueError(
-                    "Unsupported precision {}".format(self.precision)
-                )
+                raise ValueError(f"Unsupported precision {self.precision}")
             self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')

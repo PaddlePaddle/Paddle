@@ -37,7 +37,7 @@ class TestStackOpBase(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):
@@ -120,7 +120,7 @@ class TestStackBF16Op(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):

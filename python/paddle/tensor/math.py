@@ -492,8 +492,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     bf16_and_complex_supported_ops = [
         "elementwise_add",
         "elementwise_sub",

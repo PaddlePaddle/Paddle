@@ -1830,7 +1830,7 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX

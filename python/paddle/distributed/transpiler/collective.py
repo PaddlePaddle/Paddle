@@ -953,7 +953,7 @@ class MultiThread(GradAllReduce):
                     # insert coalesce tensor
                     tmp_var = block.create_var(
                         name=unique_name.generate(
-                            'FusedOutput_{}'.format(segment[0].name)
+                            f'FusedOutput_{segment[0].name}'
                         ),
                         dtype=segment[0].dtype,
                         persistable=False,

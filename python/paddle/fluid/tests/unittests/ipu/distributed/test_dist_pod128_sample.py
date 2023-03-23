@@ -109,7 +109,7 @@ def TestDistTraining():
                 res = exe.run(
                     program, feed={"x": input_data}, fetch_list=fetch_list
                 )
-                print("index: {}, result: {}".format(i, res))
+                print(f"index: {i}, result: {res}")
 
 
 if __name__ == "__main__":

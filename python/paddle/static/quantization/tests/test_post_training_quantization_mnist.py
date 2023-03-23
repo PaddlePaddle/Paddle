@@ -77,14 +77,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         retry_limit = 3
         while not (os.path.exists(filename) and md5file(filename) == md5sum):
             if os.path.exists(filename):
-                sys.stderr.write(
-                    "file {}  md5 {}\n".format(md5file(filename), md5sum)
-                )
+                sys.stderr.write(f"file {md5file(filename)}  md5 {md5sum}\n")
             if retry < retry_limit:
                 retry += 1
             else:
                 raise RuntimeError(
-                    "Cannot download {0} within retry limit {1}".format(
+                    "Cannot download {} within retry limit {}".format(
                         url, retry_limit
                     )
                 )
@@ -133,7 +131,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
         print(
-            'Data is downloaded at {0}. File exists: {1}'.format(
+            'Data is downloaded at {}. File exists: {}'.format(
                 zip_path, os.path.exists(zip_path)
             )
         )
@@ -271,7 +269,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         origin_model_path = os.path.join(origin_model_path, model_name)
 
         print(
-            "Start FP32 inference for {0} on {1} images ...".format(
+            "Start FP32 inference for {} on {} images ...".format(
                 model_name, infer_iterations * batch_size
             )
         )
@@ -285,7 +283,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 post training quantization for {0} on {1} images ...".format(
+            "Start INT8 post training quantization for {} on {} images ...".format(
                 model_name, quant_iterations * batch_size
             )
         )
@@ -307,7 +305,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {0} on {1} images ...".format(
+            "Start INT8 inference for {} on {} images ...".format(
                 model_name, infer_iterations * batch_size
             )
         )
@@ -319,14 +317,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
             infer_iterations,
         )
 
-        print("---Post training quantization of {} method---".format(algo))
+        print(f"---Post training quantization of {algo} method---")
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.".format(
+            "FP32 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.".format(
                 model_name, batch_size, fp32_throughput, fp32_latency, fp32_acc1
             )
         )
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n".format(
+            "INT8 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.\n".format(
                 model_name, batch_size, int8_throughput, int8_latency, int8_acc1
             )
         )

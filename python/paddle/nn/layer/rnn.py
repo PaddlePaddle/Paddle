@@ -47,7 +47,7 @@ def rnn(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
@@ -109,7 +109,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
     else:
         return _rnn_static_graph(
@@ -119,7 +119,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -155,7 +155,7 @@ def _rnn_dynamic_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     time_step_index = 0 if time_major else 1
     flat_inputs = paddle.utils.flatten(inputs)
@@ -223,7 +223,7 @@ def _rnn_static_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
@@ -359,7 +359,7 @@ def birnn(
     initial_states=None,
     sequence_length=None,
     time_major=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     birnn creates a bidirectional recurrent neural network specified by
@@ -432,7 +432,7 @@ def birnn(
         states_fw,
         sequence_length,
         time_major=time_major,
-        **kwargs
+        **kwargs,
     )
 
     outputs_bw, states_bw = rnn(
@@ -442,7 +442,7 @@ def birnn(
         sequence_length,
         time_major=time_major,
         is_reverse=True,
-        **kwargs
+        **kwargs,
     )
 
     outputs = paddle.utils.map_structure(
@@ -1209,7 +1209,7 @@ class RNN(Layer):
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs
+            **kwargs,
         )
         return final_outputs, final_states
 
@@ -1296,7 +1296,7 @@ class BiRNN(Layer):
             initial_states,
             sequence_length,
             self.time_major,
-            **kwargs
+            **kwargs,
         )
         return outputs, final_states
 
@@ -1718,7 +1718,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,

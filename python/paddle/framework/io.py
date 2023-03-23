@@ -287,7 +287,7 @@ def _pickle_save(obj, f, protocol):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     def reduce_varbase(self):
@@ -858,7 +858,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     if _is_file_path(path):

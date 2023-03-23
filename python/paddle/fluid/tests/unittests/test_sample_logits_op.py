@@ -73,7 +73,7 @@ class TestSampleLogitsOp(OpTest):
 
             assert (
                 Samples.dtype == np.int64
-            ), "Samples dtype is {}, not int64".format(Samples.dtype)
+            ), f"Samples dtype is {Samples.dtype}, not int64"
             assert (
                 Probabilities.dtype == np.float64
             ), "Probabilities dtype is {}, not float64".format(

@@ -215,7 +215,7 @@ def create_reshape_bf16_test_classes(parent):
                 user_defined_grad_outputs=[self.dout],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape2_BF16")
     TestReshape2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshape2BF16OneDNNOp
 
@@ -240,7 +240,7 @@ def create_reshape_bf16_test_classes(parent):
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape_BF16")
     TestReshapeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshapeBF16OneDNNOp
 

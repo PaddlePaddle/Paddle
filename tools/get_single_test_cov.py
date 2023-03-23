@@ -23,7 +23,7 @@ import time
 def getFNDAFile(rootPath, test):
     # load base fnda
     fnda_base_dict = {}
-    find_file_cmd = os.popen("find {} -name {}.cc".format(rootPath, test))
+    find_file_cmd = os.popen(f"find {rootPath} -name {test}.cc")
     if find_file_cmd.read() != "":
         print("%s is a c++ unittest" % test)
         with open(
@@ -32,8 +32,8 @@ def getFNDAFile(rootPath, test):
         ) as load_f:
             fnda_base_dict = json.load(load_f)
     # analyse fnda
-    filename = '{}/build/ut_map/{}/coverage.info.tmp'.format(rootPath, test)
-    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
+    filename = f'{rootPath}/build/ut_map/{test}/coverage.info.tmp'
+    fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     os.system('touch %s' % fn_filename)
     try:
         f = open(filename)
@@ -45,7 +45,7 @@ def getFNDAFile(rootPath, test):
     del all_data[0]
     for gcov_data in all_data:
         message_list = gcov_data.split('\n')
-        os.system('echo {} >> {}'.format(message_list[1], fn_filename))
+        os.system(f'echo {message_list[1]} >> {fn_filename}')
         if 'FNH:0' not in gcov_data:
             for message in message_list:
                 if message.startswith(('FNDA:')) and (
@@ -60,11 +60,9 @@ def getFNDAFile(rootPath, test):
                                 str(hit - fnda_base_dict[symbol]),
                                 symbol,
                             )
-                            os.system(
-                                'echo {} >> {}'.format(fnda_str, fn_filename)
-                            )
+                            os.system(f'echo {fnda_str} >> {fn_filename}')
                     else:
-                        os.system('echo {} >> {}'.format(message, fn_filename))
+                        os.system(f'echo {message} >> {fn_filename}')
     f.close()
 
 
@@ -97,7 +95,7 @@ def analysisFNDAFile(rootPath, test):
         )
         return
 
-    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
+    fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     try:
         f = open(fn_filename)
         print("oepn %s successfully" % fn_filename)
@@ -129,9 +127,7 @@ def analysisFNDAFile(rootPath, test):
                     break
             if not OP_REGIST:
                 related_file_list.append(clazz_filename)
-                os.system(
-                    'echo {} >> {}'.format(clazz_filename, related_ut_map_file)
-                )
+                os.system(f'echo {clazz_filename} >> {related_ut_map_file}')
             else:
                 os.system(
                     'echo {} >> {}'.format(
@@ -151,7 +147,7 @@ def analysisFNDAFile(rootPath, test):
 
 
 def getBaseFnda(rootPath, test):
-    filename = '{}/build/ut_map/{}/coverage.info.tmp'.format(rootPath, test)
+    filename = f'{rootPath}/build/ut_map/{test}/coverage.info.tmp'
     try:
         f = open(filename)
         print("oepn %s successfully" % filename)
@@ -172,14 +168,12 @@ def getBaseFnda(rootPath, test):
                     symbol_fnda[tmp_data[1]] = int(tmp_data[0])
     f.close()
 
-    with open(
-        "{}/build/ut_map/{}/base_fnda.json".format(rootPath, test), "w"
-    ) as f:
+    with open(f"{rootPath}/build/ut_map/{test}/base_fnda.json", "w") as f:
         json.dump(symbol_fnda, f, indent=4)
 
 
 def getCovinfo(rootPath, test):
-    ut_map_path = '{}/build/ut_map/{}'.format(rootPath, test)
+    ut_map_path = f'{rootPath}/build/ut_map/{test}'
     print("start get fluid ===>")
     cmd_fluid = (
         'cd %s && lcov --capture -d paddle/fluid/ -o paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'

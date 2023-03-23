@@ -99,7 +99,7 @@ def register_algor(name):
 
 def new_algorithm(name, config):
     algor_class = AlgorithmBase._REGISTERED_ALGORITHMS.get(name)
-    assert algor_class is not None, "Algorithm {} is not defined.".format(name)
+    assert algor_class is not None, f"Algorithm {name} is not defined."
     algor_obj = algor_class(config)
     return algor_obj
 
@@ -140,7 +140,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
             sharding = new_strategy.sharding
             sharding.stage = stage
 
-            name = "trial-sharding-stage{}".format(stage)
+            name = f"trial-sharding-stage{stage}"
             trial = Trial(new_strategy, name, self.changed_configs)
 
             return trial

@@ -133,13 +133,13 @@ def _format_item(np_var, max_width=0, signed=False):
                 DEFAULT_PRINT_OPTIONS.precision
             ).format(np_var)
         elif np.ceil(np_var) == np_var:
-            item_str = '{:.0f}.'.format(np_var)
+            item_str = f'{np_var:.0f}.'
         else:
             item_str = '{{:.{}f}}'.format(
                 DEFAULT_PRINT_OPTIONS.precision
             ).format(np_var)
     else:
-        item_str = '{}'.format(np_var)
+        item_str = f'{np_var}'
 
     if max_width > len(item_str):
         if signed:  # handle sign character for tenosr with negative item

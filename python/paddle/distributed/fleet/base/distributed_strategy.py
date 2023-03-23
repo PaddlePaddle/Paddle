@@ -71,7 +71,7 @@ def assign_configs_value(msg, config):
 def check_configs_key(msg, config, field_name):
     key_list = msg.DESCRIPTOR.fields_by_name.keys()
     for key in config:
-        assert key in key_list, "key:{} not in {}".format(key, field_name)
+        assert key in key_list, f"key:{key} not in {field_name}"
 
 
 class DistributedJobInfo:
@@ -2471,7 +2471,7 @@ class DistributedStrategy:
 
         length = max_k + max_v + spacing
 
-        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h1_format = "    " + f"|{{:^{length}s}}|\n"
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
@@ -2499,7 +2499,7 @@ class DistributedStrategy:
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{}=True <-> {}_configs".format(f.name, f.name)
+                                f"{f.name}=True <-> {f.name}_configs"
                             )
                             draws += line + "\n"
                             my_configs = getattr(

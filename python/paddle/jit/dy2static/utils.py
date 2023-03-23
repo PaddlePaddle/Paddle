@@ -393,7 +393,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, paddle.nn.Layer)".format(class_src)
+        f"issubclass({class_src}, paddle.nn.Layer)"
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -519,7 +519,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:

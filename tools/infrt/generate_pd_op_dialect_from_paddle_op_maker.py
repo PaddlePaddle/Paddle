@@ -287,13 +287,13 @@ def convert_op_proto_into_mlir(op_descs):
             op_type=op_type,
             left_brace="{",
         )
-        SUMMARY = '  let summary = "{} op";\n'.format(op_type)
+        SUMMARY = f'  let summary = "{op_type} op";\n'
 
         # 2.2 Description
         contents = ""
         origin_contents = (op_proto[COMMENT]).split("\n")
         for line_ in origin_contents:
-            contents = contents + "    {}\n".format(line_)
+            contents = contents + f"    {line_}\n"
         DESCRIPTION = "  let description = [{left_brace}\n{description}  {right_brace}];\n".format(
             left_brace="{", description=contents, right_brace="}"
         )
@@ -438,12 +438,12 @@ def convert_op_proto_into_mlir(op_descs):
                     and not op_proto[OUTPUTS][output_][INTERMEDIATE]
                 ):
                     if not op_proto[OUTPUTS][output_][DUPLICABLE]:
-                        outputs = outputs + "PD_Tensor:${},".format(output_)
+                        outputs = outputs + f"PD_Tensor:${output_},"
                     else:
                         outputs = outputs + "PD_Tensor_Array:${},".format(
                             output_
                         )
-            RESULTS = "\n  let results = (outs {});\n".format(outputs[:-1])
+            RESULTS = f"\n  let results = (outs {outputs[:-1]});\n"
 
         with open(dst_dialect_file, 'a') as ops_mlir_file:
             ops_mlir_file.write(HEAD)

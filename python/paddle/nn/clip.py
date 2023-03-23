@@ -290,7 +290,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def __str__(self):
-        return "ByValue, min={:f}, max={:f}".format(self.min, self.max)
+        return f"ByValue, min={self.min:f}, max={self.max:f}"
 
     def _append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()

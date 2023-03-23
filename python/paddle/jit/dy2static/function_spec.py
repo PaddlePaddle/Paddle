@@ -433,7 +433,7 @@ def _replace_spec_name(name, input_spec):
     elif isinstance(input_spec, (list, tuple)):
         processed_specs = []
         for i, spec in enumerate(input_spec):
-            new_name = "{}_{}".format(name, i)
+            new_name = f"{name}_{i}"
             processed_specs.append(_replace_spec_name(new_name, spec))
         return processed_specs
     elif isinstance(input_spec, dict):

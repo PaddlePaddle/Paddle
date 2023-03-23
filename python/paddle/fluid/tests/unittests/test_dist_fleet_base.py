@@ -194,7 +194,7 @@ class TestFleetBase(unittest.TestCase):
 
     def tearDown(self):
         t = time.time() - self.startTime
-        print('{}: {:.3f}'.format(self.__class__.__name__, t))
+        print(f'{self.__class__.__name__}: {t:.3f}')
 
     def setUp(self):
         self.startTime = time.time()
@@ -339,7 +339,7 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        tr_cmd = "{} {} --role trainer --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --test {}".format(
             python_path,
             model,
             self._ps_endpoints,
@@ -352,7 +352,7 @@ class TestFleetBase(unittest.TestCase):
             self._need_test,
         )
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        ps_cmd = "{} {} --role pserver --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --test {}".format(
             python_path,
             model,
             self._ps_endpoints,
@@ -366,8 +366,8 @@ class TestFleetBase(unittest.TestCase):
         )
 
         if self._model_dir:
-            tr_cmd += " --model_dir {}".format(self._model_dir)
-            ps_cmd += " --model_dir {}".format(self._model_dir)
+            tr_cmd += f" --model_dir {self._model_dir}"
+            ps_cmd += f" --model_dir {self._model_dir}"
 
         # Run dist train to compare with local results
         ps0, ps1 = self._start_pserver(ps_cmd, env)
@@ -428,7 +428,7 @@ class TestFleetBase(unittest.TestCase):
                     basename
                 )
             )
-            os.system("cat {}".format(logx))
+            os.system(f"cat {logx}")
             print(
                 "================== Error {} end =====================\n".format(
                     basename

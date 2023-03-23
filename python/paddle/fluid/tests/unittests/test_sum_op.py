@@ -324,7 +324,7 @@ def create_test_sum_fp16_class(parent):
                 for inplace in [True, False]:
                     self.check_with_place(place, inplace)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "SumFp16Test")
+    cls_name = "{}_{}".format(parent.__name__, "SumFp16Test")
     TestSumFp16Case.__name__ = cls_name
     globals()[cls_name] = TestSumFp16Case
 

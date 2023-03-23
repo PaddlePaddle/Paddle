@@ -404,9 +404,9 @@ class TestCUDNNLstmOp(OpTest):
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
-            weight_names.append('weight{}'.format(i))
+            weight_names.append(f'weight{i}')
         for i in range(2 * self.num_layers):
-            weight_names.append('bias{}'.format(i))
+            weight_names.append(f'bias{i}')
         return weight_names
 
     def setUp(self):

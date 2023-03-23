@@ -708,7 +708,7 @@ class TestCycleGANModel(unittest.TestCase):
 
         self.assertTrue(
             assert_func(dy_out, st_out),
-            msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out),
+            msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}",
         )
 
 

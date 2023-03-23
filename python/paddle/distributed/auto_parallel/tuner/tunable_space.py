@@ -49,13 +49,13 @@ class TunableSpace:
         if name in self.values:
             return self.values[name]
         else:
-            raise KeyError("{} does not exist.".format(name))
+            raise KeyError(f"{name} does not exist.")
 
     def set_value(self, name, value):
         if name in self.values:
             self.values[name] = value
         else:
-            raise KeyError("{} does not exist.".format(name))
+            raise KeyError(f"{name} does not exist.")
 
     def _exists(self, name):
         if name in self._variables:
@@ -151,7 +151,7 @@ def _deserialize_tunable_variable(state):
     cls_name = state["class_name"]
     cls = cls_name_to_cls[cls_name]
     if cls is None:
-        raise ValueError("Unknown class name {}".format(cls_name))
+        raise ValueError(f"Unknown class name {cls_name}")
 
     cls_state = state["state"]
     deserialized_object = cls.from_state(cls_state)
