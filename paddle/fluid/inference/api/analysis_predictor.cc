@@ -242,7 +242,6 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    VLOG(0) << "tensor to custom\n";
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     auto custom_place = place;
