@@ -550,9 +550,7 @@ def _lower(block, reverse, blacklist):
     block._sync_with_cpp()
 
 
-def _lower_composite(
-    block, filter_: typing.Callable[[framework.Operator], bool] = lambda x: True
-):
+def _lower_composite(block, blacklist=False, whitelist=False):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
 
     def bind(args, to_bind, value_table):
@@ -606,9 +604,16 @@ def _lower_composite(
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
-            if lookup_fn(op.type) is not None and filter_(op):
+
+            op_name = op.type
+            comp_flag = (lookup_fn(op_name) is not None) and (
+                op_name not in blacklist
+            )
+            if len(whitelist) > 0:
+                comp_flag = comp_flag and (op_name in whitelist)
+
+            if comp_flag:
                 change = True
-                op_name = op.type
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
@@ -687,12 +692,12 @@ def _lower_composite(
 
         # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
-            _lower_composite(block, filter_)
+            _lower_composite(block, blacklist, whitelist)
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item, filter_)
+            _lower_composite(item, blacklist, whitelist)
         return
     else:
         raise TypeError
