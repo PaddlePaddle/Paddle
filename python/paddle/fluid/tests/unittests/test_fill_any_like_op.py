@@ -35,6 +35,7 @@ class TestFillAnyLikeOp(OpTest):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
+        self.public_python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -70,6 +71,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
+        self.public_python_api = fill_any_like_wrapper
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
@@ -118,6 +120,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
+        self.public_python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()

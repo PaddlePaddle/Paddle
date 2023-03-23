@@ -109,7 +109,7 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             use_mkldnn=True,
             passes=['quant_transpose2_dequant_onednn_fuse_pass'],
         )
-        yield config, ['transpose2', 'transpose2'], (1e-5, 1e-5)
+        yield config, ['fused_transpose', 'fused_transpose'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

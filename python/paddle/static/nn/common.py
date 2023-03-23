@@ -3090,7 +3090,7 @@ class PyFuncRegistry:
         if self._named_args is None:
             func_ret = self._func()
         else:
-            kwargs = dict()
+            kwargs = {}
             idx = 0
             for arg in self._named_args:
                 kwargs[arg] = args[idx]
