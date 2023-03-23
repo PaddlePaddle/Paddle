@@ -5,7 +5,7 @@
     func : ConvXPUInferMeta
   kernel :
     func : conv_xpu
-    data_type : x
+    data_type : Input
   optional : Bias, Branch, InputMax
 
 - op : embedding_with_eltwise_add_xpu
