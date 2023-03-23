@@ -94,10 +94,10 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', check_eager=True)
+            self.check_grad(['X'], 'Out', check_dygraph=True)
 
         def initTestCase(self):
             self.shape = (2, 3, 4, 5, 6)
@@ -188,7 +188,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 mode = "constant"
                 value = 100
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="x", shape=input_shape, dtype=self.dtype
                 )
                 result = F.pad(
@@ -211,7 +211,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 pad = [1, 2, 1, 1, 1, 2]
                 mode = "reflect"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="x", shape=input_shape, dtype=self.dtype
                 )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
@@ -239,7 +239,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 pad = [1, 2, 1, 1, 3, 4]
                 mode = "replicate"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="x", shape=input_shape, dtype=self.dtype
                 )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")

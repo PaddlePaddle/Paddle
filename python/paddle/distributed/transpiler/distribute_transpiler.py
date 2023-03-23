@@ -711,8 +711,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.table_name = find_distributed_lookup_table(self.origin_program)
         self.has_distributed_lookup_table = self.table_name is not None
-        self.param_name_to_grad_name = dict()
-        self.grad_name_to_param_name = dict()
+        self.param_name_to_grad_name = {}
+        self.grad_name_to_param_name = {}
         for param_var, grad_var in self.params_grads:
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
@@ -722,7 +722,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             self.origin_program
         )
         # use_sparse_update_param_name -> split_height_section
-        self.sparse_param_to_height_sections = dict()
+        self.sparse_param_to_height_sections = {}
         self.need_delete_optimize_vars = []
 
         # add distributed attrs to program
@@ -753,7 +753,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             np.random.seed(self.origin_program.random_seed)
             np.random.shuffle(grad_var_mapping_items)
 
-        self.grad_name_to_send_dummy_out = dict()
+        self.grad_name_to_send_dummy_out = {}
 
         for grad_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)

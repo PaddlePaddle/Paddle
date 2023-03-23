@@ -18,15 +18,16 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..fluid.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -323,33 +324,29 @@ def slice(input, axes, starts, ends):
                 )
             )
 
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         tmp_tensor_type = core.eager.Tensor
 
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
         elif isinstance(starts, tmp_tensor_type):
             tensor_t = starts.numpy()
             starts = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
             tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
 
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
@@ -366,13 +363,13 @@ def slice(input, axes, starts, ends):
 
         inputs = {'Input': input}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True
             inputs['StartsTensor'] = starts
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
             if paddle.utils._contain_var(starts):
@@ -392,7 +389,7 @@ def slice(input, axes, starts, ends):
         if isinstance(ends, Variable):
             ends.stop_gradient = True
             inputs['EndsTensor'] = ends
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
             if paddle.utils._contain_var(ends):
@@ -1068,7 +1065,8 @@ def tolist(x):
             print(expectlist)   #[0, 1, 2, 3, 4]
 
     """
-    return x.numpy().tolist()
+    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    return x.numpy(False).tolist()
 
 
 def concat(x, axis=0, name=None):
@@ -1117,7 +1115,6 @@ def concat(x, axis=0, name=None):
     input = x
     if in_dygraph_mode():
         if isinstance(axis, Variable):
-            axis = axis.numpy()
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
@@ -1710,6 +1707,21 @@ def roll(x, shifts, axis=None, name=None):
     if in_dygraph_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            [
+                'float16',
+                'float32',
+                'uint16',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'roll',
+        )
         helper = LayerHelper("roll", **locals())
         check_type(axis, 'axis', (list, tuple), 'roll')
 
@@ -1937,7 +1949,6 @@ def split(x, num_or_sections, axis=0, name=None):
     dim = axis
     if in_dygraph_mode():
         if isinstance(dim, Variable):
-            dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
@@ -1946,9 +1957,7 @@ def split(x, num_or_sections, axis=0, name=None):
             if paddle.utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].numpy()[
-                            0
-                        ]
+                        num_or_sections[index] = num_or_sections[index].item()
         elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
@@ -2578,10 +2587,10 @@ def unsqueeze(x, axis, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
@@ -2644,10 +2653,10 @@ def unsqueeze_(x, axis, name=None):
     if isinstance(axes, int):
         axes = [axes]
     elif isinstance(axes, Variable):
-        axes = axes.numpy().tolist()
+        axes = axes.tolist()
     elif isinstance(axes, (list, tuple)):
         axes = [
-            item.numpy().item(0) if isinstance(item, Variable) else item
+            item.item(0) if isinstance(item, Variable) else item
             for item in axes
         ]
     return _C_ops.unsqueeze_(input, axes)
@@ -3133,7 +3142,7 @@ def tile(x, repeat_times, name=None):
             assert (
                 repeat_times.ndim == 1
             ), "Only support ndim == 1 while repeat_times is a Tensor."
-            repeat_times = repeat_times.numpy().tolist()
+            repeat_times = repeat_times.tolist()
 
         return _C_ops.tile(x, repeat_times)
     else:
@@ -3633,9 +3642,7 @@ def reshape_(x, shape, name=None):
         tmp_tensor_type = core.eager.Tensor
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in shape
             ]
             if shape == x.shape:
@@ -3735,6 +3742,7 @@ def gather_nd(x, index, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int16',
@@ -3892,7 +3900,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
         inputs = {'Input': x}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True

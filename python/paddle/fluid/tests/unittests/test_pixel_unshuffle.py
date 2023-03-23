@@ -140,10 +140,10 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 1, 12, 12], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
             out_1 = F.pixel_unshuffle(x_1, 3)
@@ -177,10 +177,10 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 1, 12, 12], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
             # init instance

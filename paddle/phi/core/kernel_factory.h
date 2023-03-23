@@ -32,8 +32,6 @@
 #include "paddle/utils/small_vector.h"
 namespace phi {
 
-using DataType = paddle::experimental::DataType;
-
 struct OpCount {
   OpCount() {
     fp16_called_ = 0;
@@ -337,9 +335,8 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
-  void AddToLowPrecisionKernelList(
-      const std::string& name,
-      const paddle::experimental::DataType& kernel_key_type);
+  void AddToLowPrecisionKernelList(const std::string& name,
+                                   const DataType& kernel_key_type);
 
   std::map<const std::string, OpCount> GetLowPrecisionKernelList();
 

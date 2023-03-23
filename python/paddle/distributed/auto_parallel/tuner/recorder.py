@@ -101,7 +101,7 @@ class MetricRecords:
             self._records[step] = MetricRecord(value, step=step)
 
     def get_best_value(self):
-        values = list(r.mean() for r in self._records.values())
+        values = [r.mean() for r in self._records.values()]
         if not values:
             return None
         if self._direction == "min":

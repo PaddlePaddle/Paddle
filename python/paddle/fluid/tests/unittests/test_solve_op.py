@@ -270,30 +270,30 @@ class TestSolveOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.linalg.solve, x1, y1)
 
             # The data type of input must be float32 or float64.
-            x2 = fluid.data(name="x2", shape=[30, 30], dtype="bool")
-            y2 = fluid.data(name="y2", shape=[30, 10], dtype="bool")
+            x2 = paddle.static.data(name="x2", shape=[30, 30], dtype="bool")
+            y2 = paddle.static.data(name="y2", shape=[30, 10], dtype="bool")
             self.assertRaises(TypeError, paddle.linalg.solve, x2, y2)
 
-            x3 = fluid.data(name="x3", shape=[30, 30], dtype="int32")
-            y3 = fluid.data(name="y3", shape=[30, 10], dtype="int32")
+            x3 = paddle.static.data(name="x3", shape=[30, 30], dtype="int32")
+            y3 = paddle.static.data(name="y3", shape=[30, 10], dtype="int32")
             self.assertRaises(TypeError, paddle.linalg.solve, x3, y3)
 
-            x4 = fluid.data(name="x4", shape=[30, 30], dtype="int64")
-            y4 = fluid.data(name="y4", shape=[30, 10], dtype="int64")
+            x4 = paddle.static.data(name="x4", shape=[30, 30], dtype="int64")
+            y4 = paddle.static.data(name="y4", shape=[30, 10], dtype="int64")
             self.assertRaises(TypeError, paddle.linalg.solve, x4, y4)
 
-            x5 = fluid.data(name="x5", shape=[30, 30], dtype="float16")
-            y5 = fluid.data(name="y5", shape=[30, 10], dtype="float16")
+            x5 = paddle.static.data(name="x5", shape=[30, 30], dtype="float16")
+            y5 = paddle.static.data(name="y5", shape=[30, 10], dtype="float16")
             self.assertRaises(TypeError, paddle.linalg.solve, x5, y5)
 
             # The number of dimensions of input'X must be >= 2.
-            x6 = fluid.data(name="x6", shape=[30], dtype="float64")
-            y6 = fluid.data(name="y6", shape=[30], dtype="float64")
+            x6 = paddle.static.data(name="x6", shape=[30], dtype="float64")
+            y6 = paddle.static.data(name="y6", shape=[30], dtype="float64")
             self.assertRaises(ValueError, paddle.linalg.solve, x6, y6)
 
             # The inner-most 2 dimensions of input'X should be equal to each other
-            x7 = fluid.data(name="x7", shape=[2, 3, 4], dtype="float64")
-            y7 = fluid.data(name="y7", shape=[2, 4, 3], dtype="float64")
+            x7 = paddle.static.data(name="x7", shape=[2, 3, 4], dtype="float64")
+            y7 = paddle.static.data(name="y7", shape=[2, 4, 3], dtype="float64")
             self.assertRaises(ValueError, paddle.linalg.solve, x7, y7)
 
 
@@ -308,10 +308,10 @@ class TestSolveOpAPI_1(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            paddle_input_x = fluid.data(
+            paddle_input_x = paddle.static.data(
                 name="input_x", shape=[3, 3], dtype=self.dtype
             )
-            paddle_input_y = fluid.data(
+            paddle_input_y = paddle.static.data(
                 name="input_y", shape=[3], dtype=self.dtype
             )
             paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
@@ -369,10 +369,10 @@ class TestSolveOpAPI_2(unittest.TestCase):
     def check_static_result(self, place):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            paddle_input_x = fluid.data(
+            paddle_input_x = paddle.static.data(
                 name="input_x", shape=[10, 10], dtype=self.dtype
             )
-            paddle_input_y = fluid.data(
+            paddle_input_y = paddle.static.data(
                 name="input_y", shape=[10, 4], dtype=self.dtype
             )
             paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
@@ -429,10 +429,10 @@ class TestSolveOpAPI_3(unittest.TestCase):
     def check_static_result(self, place):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            paddle_input_x = fluid.data(
+            paddle_input_x = paddle.static.data(
                 name="input_x", shape=[10, 10], dtype=self.dtype
             )
-            paddle_input_y = fluid.data(
+            paddle_input_y = paddle.static.data(
                 name="input_y", shape=[10, 4], dtype=self.dtype
             )
             paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
@@ -489,10 +489,10 @@ class TestSolveOpAPI_4(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            paddle_input_x = fluid.data(
+            paddle_input_x = paddle.static.data(
                 name="input_x", shape=[2, 3, 3], dtype=self.dtype
             )
-            paddle_input_y = fluid.data(
+            paddle_input_y = paddle.static.data(
                 name="input_y", shape=[1, 3, 3], dtype=self.dtype
             )
             paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
@@ -548,8 +548,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.data(name="x", shape=[4, 4], dtype=self.dtype)
-            y = fluid.data(name="y", shape=[4, 4], dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[4, 4], dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=[4, 4], dtype=self.dtype)
 
             result = paddle.linalg.solve(x, y)
 

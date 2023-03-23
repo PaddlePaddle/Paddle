@@ -200,7 +200,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             )
 
             # 9. Generate legal elemntwise_add: X of conv2d
-            bias_2_dict = dict()
+            bias_2_dict = {}
             bias_2_dict[1] = [
                 x_shape[0],
                 f_shape[0],

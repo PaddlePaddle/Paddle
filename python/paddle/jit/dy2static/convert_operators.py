@@ -18,15 +18,15 @@ import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import _convert_into_variable
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow, fill_constant
+from paddle.fluid.layers import Print, control_flow
 from paddle.fluid.layers.control_flow import while_loop
-from paddle.jit.dy2static.utils import (
+
+from .utils import (
+    RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
     GetterSetterHelper,
     UndefinedVar,
 )
-
-from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
 
 __all__ = []
@@ -87,7 +87,7 @@ def _unpack_by_structure_paddle(target, structure):
         if isinstance(ele, list):
             ret.append(unpack_by_structure(target[idx], ele))
             continue
-        assert False, "structure element must be 1 or list"
+        raise AssertionError("structure element must be 1 or list")
     return ret
 
 
@@ -798,6 +798,8 @@ def _run_paddle_pop(array, *args):
     if idx < 0:
         idx = idx + arr_len
     else:
+        from paddle.tensor import fill_constant
+
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
     pop_item = paddle.tensor.array_read(array, idx)
