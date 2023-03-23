@@ -30,9 +30,11 @@ class TestLerp(OpTest):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.shape)
-        y = np.full(100, 10.0).astype(self.dtype).reshape(self.shape)
-        w = np.asarray([0.5]).astype(self.dtype)
+        self.init_xyshape()
+        self.init_wshape()
+        x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.xshape)
+        y = np.full(100, 10.0).astype(self.dtype).reshape(self.yshape)
+        w = np.random.random(self.wshape).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
 
@@ -41,6 +43,13 @@ class TestLerp(OpTest):
 
     def init_shape(self):
         self.shape = [100]
+
+    def init_xyshape(self):
+        self.xshape = self.shape
+        self.yshape = self.shape
+
+    def init_wshape(self):
+        self.wshape = [1]
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -74,38 +83,6 @@ class TestLerpWithDim6(TestLerp):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
-class TestLerpWithDim2Fp16(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 50]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLerpWithDim3Fp16(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 2, 25]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLerpWithDim4Fp16(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 2, 5, 5]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLerpWithDim5Fp16(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 1, 2, 5, 5]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
 class TestLerpWithDim6Fp16(TestLerp):
     def init_shape(self):
         self.shape = [2, 1, 2, 5, 1, 5]
@@ -115,51 +92,37 @@ class TestLerpWithDim6Fp16(TestLerp):
 
 
 class TestLerpWihFp16BroadXY(TestLerp):
-    def setUp(self):
-        self.op_type = "lerp"
-        self.python_api = paddle.lerp
-        x = np.arange(1.0, 201.0).astype(np.float16).reshape([2, 1, 2, 50])
-        y = np.full(200, 10.0).astype(np.float16).reshape([2, 2, 1, 50])
-        w = np.asarray([0.5]).astype(np.float16)
-        self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + w * (y - x)}
+    def init_xyshape(self):
+        self.xshape = [2, 1, 2, 5, 5]
+        self.yshape = [2, 2, 1, 5, 5]
+
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestLerpWithFp16BroadWToXY(TestLerp):
-    def setUp(self):
-        self.op_type = "lerp"
-        self.python_api = paddle.lerp
-        x = np.full(600, 2.5).astype(np.float16).reshape([50, 2, 2, 3])
-        y = np.full(600, 1.0).astype(np.float16).reshape([50, 2, 2, 3])
-        w = np.random.random([3]).astype(np.float16)
-        self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + w * (y - x)}
+    def init_shape(self):
+        self.shape = [2, 2, 5, 5]
+
+    def init_wshape(self):
+        self.wshape = [5]
+
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestLerpBroadXY(TestLerp):
-    def setUp(self):
-        self.op_type = "lerp"
-        self.python_api = paddle.lerp
-        self.init_dtype()
-        self.init_shape()
-        x = np.arange(1.0, 201.0).astype(self.dtype).reshape([2, 1, 2, 50])
-        y = np.full(200, 10.0).astype(self.dtype).reshape([2, 2, 1, 50])
-        w = np.asarray([0.5]).astype(self.dtype)
-        self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + w * (y - x)}
+    def init_xyshape(self):
+        self.xshape = [2, 1, 2, 5, 5]
+        self.yshape = [2, 2, 1, 5, 5]
 
 
 class TestLerpBroadWToXY(TestLerp):
-    def setUp(self):
-        self.op_type = "lerp"
-        self.python_api = paddle.lerp
-        self.init_dtype()
-        self.init_shape()
-        x = np.full(600, 2.5).astype(self.dtype).reshape([50, 2, 2, 3])
-        y = np.full(600, 1.0).astype(self.dtype).reshape([50, 2, 2, 3])
-        w = np.random.random([3]).astype(self.dtype)
-        self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + w * (y - x)}
+    def init_shape(self):
+        self.shape = [2, 2, 5, 5]
+
+    def init_wshape(self):
+        self.wshape = [5]
 
 
 class TestLerpAPI(unittest.TestCase):
@@ -255,6 +218,21 @@ class TestLerpAPI(unittest.TestCase):
         res_ref = x + w * (y - x)
         np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
+
+
+class TestLerpAPIFp16(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = np.arange(1.0, 5.0).astype(self.dtype)
+        self.y = np.full(4, 10.0).astype(self.dtype)
+        self.w = np.asarray([0.75]).astype(self.dtype)
+        self.res_ref = self.x + self.w * (self.y - self.x)
+        self.place = []
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":
