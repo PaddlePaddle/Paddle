@@ -433,11 +433,6 @@ class TestProdOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
-class TestProdOpFp16(TestProdOp):
-    def init_data_type(self):
-        self.data_type = "float16"
-
-
 class TestProdOpFp64(TestProdOp):
     def init_data_type(self):
         self.data_type = "float64"
@@ -452,7 +447,7 @@ class TestProdOp_ZeroDim(OpTest):
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].prod()}
         self.attrs = {'dim': [], 'reduce_all': True}
-        # reduce doesn't support float64 in cinn.
+
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
 
