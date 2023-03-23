@@ -44,10 +44,20 @@ class TestFlattenOp(OpTest):
         self.enable_cinn = True
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_prim=True)
+        if str(self.dtype) in {"float16", "uint16"}:
+            self.check_output_with_place(
+                core.CUDAPlace(0), no_check_set=["XShape"], check_prim=True
+            )
+        else:
+            self.check_output(no_check_set=["XShape"], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        if str(self.dtype) in {"float16", "uint16"}:
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ["X"], "Out", check_prim=True
+            )
+        else:
+            self.check_grad(["X"], "Out", check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -65,7 +75,10 @@ class TestFlattenOp(OpTest):
         self.dtype = "float64"
 
     def init_input_data(self):
-        self.inputs = {"X": np.random.random(self.in_shape).astype(self.dtype)}
+        x = np.random.random(self.in_shape).astype("float32")
+        if str(self.dtype) == "uint16":
+            x = convert_float_to_uint16(x)
+        self.inputs = {"X": x}
 
 
 class TestFlattenFP32Op(TestFlattenOp):
@@ -90,10 +103,6 @@ class TestFlattenFP16Op(TestFlattenOp):
 class TestFlattenBF16Op(TestFlattenOp):
     def init_test_dtype(self):
         self.dtype = "uint16"
-
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
 
 
 class TestFlattenOp_1(TestFlattenOp):
@@ -133,10 +142,6 @@ class TestFlattenBF16Op_1(TestFlattenOp_1):
     def init_test_dtype(self):
         self.dtype = "uint16"
 
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
-
 
 class TestFlattenOp_2(TestFlattenOp):
     def init_test_case(self):
@@ -174,10 +179,6 @@ class TestFlattenFP16Op_2(TestFlattenOp_2):
 class TestFlattenBF16Op_2(TestFlattenOp_2):
     def init_test_dtype(self):
         self.dtype = "uint16"
-
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
 
 
 class TestFlattenOp_3(TestFlattenOp):
@@ -217,10 +218,6 @@ class TestFlattenBF16Op_3(TestFlattenOp_3):
     def init_test_dtype(self):
         self.dtype = "uint16"
 
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
-
 
 class TestFlattenOp_4(TestFlattenOp):
     def init_test_case(self):
@@ -259,10 +256,6 @@ class TestFlattenBF16Op_4(TestFlattenOp_4):
     def init_test_dtype(self):
         self.dtype = "uint16"
 
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
-
 
 class TestFlattenOp_5(TestFlattenOp):
     def init_test_case(self):
@@ -300,10 +293,6 @@ class TestFlattenFP16Op_5(TestFlattenOp_5):
 class TestFlattenBF16Op_5(TestFlattenOp_5):
     def init_test_dtype(self):
         self.dtype = "uint16"
-
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
 
 
 class TestFlattenOp_6(TestFlattenOp):
@@ -346,10 +335,6 @@ class TestFlattenBF16Op_6(TestFlattenOp_6):
     def init_test_dtype(self):
         self.dtype = "uint16"
 
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
-
 
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
@@ -387,10 +372,6 @@ class TestFlattenFP16OpSixDims(TestFlattenOpSixDims):
 class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):
     def init_test_dtype(self):
         self.dtype = "uint16"
-
-    def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        self.inputs = {"X": convert_float_to_uint16(x)}
 
 
 class TestFlatten2OpError(unittest.TestCase):
