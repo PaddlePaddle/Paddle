@@ -824,7 +824,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(autograd)
