@@ -35,7 +35,7 @@ class CAllReduceProdOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceProdInplaceInferer, {"X", "Out"});
 
-DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceProd, ops::kRedProd)
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceProd, kRedProd)
 
 }  // namespace operators
 }  // namespace paddle

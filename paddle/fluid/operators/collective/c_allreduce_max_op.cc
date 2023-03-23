@@ -35,7 +35,7 @@ class CAllReduceMaxOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceMaxInplaceInferer, {"X", "Out"});
 
-DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMax, ops::kRedMax)
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMax, kRedMax)
 
 }  // namespace operators
 }  // namespace paddle

@@ -56,7 +56,7 @@ class CAllReduceSumOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceSumInplaceInferer, {"X", "Out"});
 
-DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceSum, ops::kRedSum)
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceSum, kRedSum)
 
 }  // namespace operators
 }  // namespace paddle

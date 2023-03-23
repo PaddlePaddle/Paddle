@@ -35,7 +35,7 @@ class CAllReduceMinOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceMinInplaceInferer, {"X", "Out"});
 
-DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMin, ops::kRedMin)
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMin, kRedMin)
 
 }  // namespace operators
 }  // namespace paddle
