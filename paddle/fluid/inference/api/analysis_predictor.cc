@@ -2404,6 +2404,7 @@ USE_TRT_CONVERTER(logical_or);
 USE_TRT_CONVERTER(logical_xor);
 USE_TRT_CONVERTER(logical_and);
 USE_TRT_CONVERTER(less_equal);
+USE_TRT_CONVERTER(greater_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
