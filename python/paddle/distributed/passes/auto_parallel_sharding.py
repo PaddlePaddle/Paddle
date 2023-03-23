@@ -1806,7 +1806,7 @@ class ShardingInfo:
             self.params, self.group_size, self.partition_algor
         )
         # include fp32 and fp16 param
-        self.param_to_rank = dict()
+        self.param_to_rank = {}
         self._map_param_to_rank()
 
     def _map_param_to_rank(self):
