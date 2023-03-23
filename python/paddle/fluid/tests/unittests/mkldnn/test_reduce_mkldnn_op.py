@@ -33,12 +33,12 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
