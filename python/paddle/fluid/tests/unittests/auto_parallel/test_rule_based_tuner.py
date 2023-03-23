@@ -95,7 +95,7 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestGroupOperatorsAndPatterns(unittest.TestCase):
+class TestRuleBasedTuner(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
@@ -112,28 +112,31 @@ class TestGroupOperatorsAndPatterns(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
+        from paddle.distributed.auto_parallel.dist_context import (
+            DistributedContext,
+        )
+        from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
         from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
-            _PATTERNS,
-            GraphUtil,
+            RuleBasedTuner,
         )
 
-        graph = GraphUtil.convert_to_graph(train_program.global_block())
-        print("graph: ", graph)
-        print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
-        print("row_matmul: ", _PATTERNS["row_matmul"].attrs["shard_spec"])
-        print("ffn: ", _PATTERNS["ffn"].attrs["shard_spec"])
-        print(
-            "shared_word_embedding: ",
-            _PATTERNS["shared_word_embedding"].attrs["shard_spec"],
+        clip = paddle.nn.ClipGradByGlobalNorm(0.2)
+        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
+        dist_context = DistributedContext(
+            serial_main_prog=train_program,
+            serial_startup_prog=start_program,
+            serial_optimizer=opt,
+            serial_loss=loss,
         )
-        print(
-            "position_embedding: ",
-            _PATTERNS["position_embedding"].attrs["shard_spec"],
-        )
-        print(
-            "unsqueeze_data: ", _PATTERNS["unsqueeze_data"].attrs["shard_spec"]
-        )
-        print("reshape_data: ", _PATTERNS["reshape_data"].attrs["shard_spec"])
+        dist_context.initialize()
+        tuner = RuleBasedTuner(dist_context)
+        tuner.cluster_operators()
+        tuner.gen_full_program()
+        tuner.match_program(tuner._dist_context.serial_main_program)
+        process_mesh = ProcessMesh([0, 1])
+        tuner.gen_fwd_sub_programs_by_clone()
+        tuner.complete_sub_fwd_programs(process_mesh)
+        tuner.complete_sub_bwd_programs()
 
 
 if __name__ == "__main__":

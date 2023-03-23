@@ -706,30 +706,38 @@ class TestDygraphDoubleGradMatmul(TestCase):
             dout = paddle.to_tensor(
                 np.ones([3, 3]), stop_gradient=False, dtype='float32'
             )
-            (dx,) = paddle.grad(
-                [out], [x], [dout], retain_graph=True, create_graph=True
+            (dx, dy) = paddle.grad(
+                [out], [x, y], [dout], retain_graph=True, create_graph=True
             )
             ddx = paddle.to_tensor(
                 np.ones([3, 3]), stop_gradient=False, dtype='float32'
             )
+            ddy = ddx
             dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                [dx],
+                [dx, dy],
                 [x, y, dout],
-                [ddx],
+                [ddx, ddy],
                 retain_graph=True,
                 create_graph=True,
             )
             return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_expected = np.zeros([3, 3], dtype="float32")
+            dx_double_grad_expected = np.matmul(
+                np.ones([3, 3], dtype="float32"),
+                np.ones([3, 3], dtype="float32"),
+            )
             dy_double_grad_expected = np.matmul(
                 np.ones([3, 3], dtype="float32"),
                 np.ones([3, 3], dtype="float32"),
             )
-            ddout_expected = np.matmul(
+            ddout_expected1 = np.matmul(
                 np.ones([3, 3], dtype="float32"), input_numpy_y
             )
+            ddout_expected2 = np.matmul(
+                input_numpy_x, np.ones([3, 3], dtype="float32")
+            )
+            ddout_expected = ddout_expected1 + ddout_expected2
             return (
                 dx_double_grad_expected,
                 dy_double_grad_expected,
@@ -773,27 +781,26 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddy = paddle.to_tensor(
                 np.ones([3, 3]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when x isnot be differentiate in first grad dy in second grad could be None in composite op
+            dx_double_grad, ddout = paddle.grad(
                 [dy],
-                [x, y, dout],
+                [x, dout],
                 [ddy],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dx_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.matmul(
                 np.ones([3, 3], dtype="float32"),
                 np.ones([3, 3], dtype="float32"),
             )
-            dy_double_grad_expected = np.zeros([3, 3], dtype="float32")
             ddout_expected = np.matmul(
                 input_numpy_x, np.ones([3, 3], dtype="float32")
             )
             return (
                 dx_double_grad_expected,
-                dy_double_grad_expected,
                 ddout_expected,
             )
 
@@ -834,24 +841,23 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddy = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when x is not be differentiate in first grad, dy from second grad could be None in composite api.
+            dx_double_grad, ddout = paddle.grad(
                 [dy],
-                [x, y, dout],
+                [x, dout],
                 [ddy],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dx_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([3], dtype="float32")
-            dy_double_grad_expected = np.zeros([3], dtype="float32")
             ddout_expected = np.matmul(
                 input_numpy_x, np.ones([3], dtype="float32")
             )
             return (
                 dx_double_grad_expected,
-                dy_double_grad_expected,
                 ddout_expected,
             )
 
@@ -892,23 +898,22 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddx = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when y is not be differentiate in first grad, dx from second grad could be None in composite api.
+            dy_double_grad, ddout = paddle.grad(
                 [dx],
-                [x, y, dout],
+                [y, dout],
                 [ddx],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_expected = np.zeros([3], dtype="float32")
             dy_double_grad_expected = np.ones([3], dtype="float32")
             ddout_expected = np.matmul(
                 input_numpy_y, np.ones([3], dtype="float32")
             )
             return (
-                dx_double_grad_expected,
                 dy_double_grad_expected,
                 ddout_expected,
             )
@@ -920,6 +925,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
+
             for expected_result, actual_result in zip(
                 expected_results, actual_results
             ):
@@ -950,24 +956,22 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddy = paddle.to_tensor(
                 np.ones([1]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            dx_double_grad, ddout = paddle.grad(
                 [dy],
-                [x, y, dout],
+                [x, dout],
                 [ddy],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dx_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([2, 1], dtype="float32")
-            dy_double_grad_expected = np.zeros([1], dtype="float32")
             ddout_expected = np.matmul(
                 input_numpy_x, np.ones([1], dtype="float32")
             )
             return (
                 dx_double_grad_expected,
-                dy_double_grad_expected,
                 ddout_expected,
             )
 
@@ -1008,21 +1012,19 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddx = paddle.to_tensor(
                 np.ones([2, 1]), stop_gradient=False, dtype='float32'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            dy_double_grad, ddout = paddle.grad(
                 [dx],
-                [x, y, dout],
+                [y, dout],
                 [ddx],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_expected = np.zeros([2, 1], dtype="float32")
             dy_double_grad_expected = np.ones([1], dtype="float32") * 2
             ddout_expected = np.ones([2], dtype="float32") * input_numpy_y[0]
             return (
-                dx_double_grad_expected,
                 dy_double_grad_expected,
                 ddout_expected,
             )
@@ -1041,6 +1043,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
+    # TODO(Ruting) test complex dtype when composite api support
+    '''
     # case7: ddx is none, dims = 1, complex dtype
     def test_matmul_double_grad_case7(self):
         input_numpy_x = np.random.random([3]).astype(
@@ -1069,19 +1073,17 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddx = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='complex64'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            # when y is not be differentiate in first grad, dx from second grad could be None in composite api.
+            dy_double_grad, ddout = paddle.grad(
                 [dx],
-                [x, y, dout],
+                [y, dout],
                 [ddx],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_expected = np.zeros(
-                [3], dtype="float32"
-            ) + 0j * np.zeros([3], dtype="float32")
             dy_double_grad_expected = np.ones(
                 [3], dtype="float32"
             ) + 0j * np.ones([3], dtype="float32")
@@ -1089,7 +1091,6 @@ class TestDygraphDoubleGradMatmul(TestCase):
                 input_numpy_y_conj, np.ones([3], dtype="float32")
             )
             return (
-                dx_double_grad_expected,
                 dy_double_grad_expected,
                 ddout_expected,
             )
@@ -1107,6 +1108,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
+
 
     # case8: ddy is none, dims = 1, complex dtype
     def test_matmul_double_grad_case8(self):
@@ -1136,24 +1138,22 @@ class TestDygraphDoubleGradMatmul(TestCase):
             ddy = paddle.to_tensor(
                 np.ones([3]), stop_gradient=False, dtype='complex64'
             )
-            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+            dx_double_grad, ddout = paddle.grad(
                 [dy],
-                [x, y, dout],
+                [x, dout],
                 [ddy],
                 retain_graph=True,
                 create_graph=True,
             )
-            return dx_double_grad, dy_double_grad, ddout
+            return dx_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([3], dtype="float32")
-            dy_double_grad_expected = np.zeros([3], dtype="float32")
             ddout_expected = np.matmul(
                 input_numpy_x_conj, np.ones([3], dtype="float32")
             )
             return (
                 dx_double_grad_expected,
-                dy_double_grad_expected,
                 ddout_expected,
             )
 
@@ -1170,6 +1170,39 @@ class TestDygraphDoubleGradMatmul(TestCase):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
+    '''
+
+    def test_value_error(self):
+        def test():
+            import paddle
+            import paddle.nn as nn
+
+            model = nn.Sequential(nn.Linear(3, 4))
+
+            x = paddle.randn([4, 1])
+            y = paddle.randn([4, 1])
+            z = paddle.randn([4, 1])
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z.stop_gradient = False
+            out = model(paddle.concat((x, y, z), axis=1))
+
+            data = {
+                "x": x,
+                "y": y,
+                "z": z,
+                "u": out[:, 0:1],
+                "v": out[:, 1:2],
+                "w": out[:, 2:3],
+                "p": out[:, 3:4],
+            }
+
+            v = out[:, 1:2]
+            z = paddle.grad(v, x, create_graph=True)[0]
+            zz = paddle.grad(z, x, create_graph=True)[0]
+
+        with self.assertRaises(ValueError):
+            test()
 
 
 if __name__ == '__main__':

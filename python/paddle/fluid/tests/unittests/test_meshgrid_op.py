@@ -28,7 +28,9 @@ def meshgrid_wrapper(x):
 class TestMeshgridOp(OpTest):
     def setUp(self):
         self.op_type = "meshgrid"
+        self.prim_op_type = "comp"
         self.python_api = meshgrid_wrapper
+        self.public_python_api = meshgrid_wrapper
         self.dtype = self.get_dtype()
         ins, outs = self.init_test_data()
         self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
@@ -36,15 +38,16 @@ class TestMeshgridOp(OpTest):
             'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
         }
         self.python_out_sig = ['out0', 'out1']
+        self.if_enable_cinn()
 
     def get_dtype(self):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0', 'out1'])
+        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
 
     def init_test_data(self):
         self.shape = self.get_x_shape()
@@ -62,6 +65,9 @@ class TestMeshgridOp(OpTest):
 
     def get_x_shape(self):
         return [100, 200]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = True
 
 
 class TestMeshgridOp2(TestMeshgridOp):
@@ -255,6 +261,28 @@ class TestMeshgridOp8(unittest.TestCase):
 
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
+
+
+class TestMeshGrid_ZeroDim(TestMeshgridOp):
+    def init_test_data(self):
+        self.shape = self.get_x_shape()
+        ins = []
+        outs = []
+        ins.append(np.random.random(([])).astype(self.dtype))
+        ins.append(np.random.random([2]).astype(self.dtype))
+        ins.append(np.random.random([3]).astype(self.dtype))
+        for i in range(len(self.shape)):
+            out_reshape = [1] * len(self.shape)
+            out_reshape[i] = self.shape[i]
+            out_temp = np.reshape(ins[i], out_reshape)
+            outs.append(np.broadcast_to(out_temp, self.shape))
+        return ins, outs
+
+    def get_x_shape(self):
+        return [1, 2, 3]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestMeshgridEager(unittest.TestCase):

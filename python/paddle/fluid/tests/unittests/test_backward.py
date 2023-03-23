@@ -103,9 +103,9 @@ class TestBackward(unittest.TestCase):
         params_grads = fluid.backward.append_backward(
             loss, parameter_list, no_grad_set
         )
-        params_names = set(
-            [param_var.name for (param_var, grad_var) in params_grads]
-        )
+        params_names = {
+            param_var.name for (param_var, grad_var) in params_grads
+        }
         self.assertSetEqual(params_names, self.net.params_names)
 
         return params_grads

@@ -222,7 +222,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         upper_mem_use = param_memory_size * 5.0
 
-        program_tmp_vars = dict()
+        program_tmp_vars = {}
         eval_batch_size = 1024
         for op in program.global_block().ops:
             for var_name in op.output_arg_names:

@@ -19,7 +19,7 @@ import numpy as np
 sys.path.append("..")
 import unittest
 
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
