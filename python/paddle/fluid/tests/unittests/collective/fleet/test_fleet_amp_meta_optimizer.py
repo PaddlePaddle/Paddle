@@ -184,7 +184,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         applied_meta_list = fleet._get_applied_meta_list()
         applied_graph_list = fleet._get_applied_graph_list()
         print(applied_meta_list, applied_graph_list)
-        self.assertEqual(len(applied_meta_list), 3)
+        self.assertEqual(len(applied_meta_list), 4)
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [

@@ -89,8 +89,8 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
-            index = paddle.fluid.data('Index', self.index_shape, "int64")
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place)
             res = exe.run(

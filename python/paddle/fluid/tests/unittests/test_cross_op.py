@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -47,10 +47,10 @@ class TestCrossOp(OpTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestCrossOpCase1(TestCrossOp):
@@ -123,8 +123,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 3:
         with program_guard(Program(), Program()):
-            x = fluid.data(name="x", shape=[-1, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[-1, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 
             y_1 = paddle.cross(x, y, name='result')
             self.assertEqual(('result' in y_1.name), True)

@@ -26,7 +26,7 @@ from paddle.distributed.fleet.meta_parallel import (
     PipelineLayer,
     SharedLayerDesc,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 
 def print_hook_fn(grad):

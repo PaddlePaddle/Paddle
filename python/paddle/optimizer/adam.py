@@ -310,12 +310,12 @@ class Adam(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
 
             _, _, _, _, _, _ = _C_ops.adam_(
@@ -448,7 +448,7 @@ class Adam(Optimizer):
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
@@ -588,7 +588,7 @@ class Adam(Optimizer):
                 if param_and_grad[1] is None:
                     continue
                 if param_and_grad[0].stop_gradient is False:
-                    param_grad_dict = dict()
+                    param_grad_dict = {}
                     param_grad_dict['params'] = param_and_grad
                     param_grad_dict.update(
                         {
@@ -623,12 +623,12 @@ class Adam(Optimizer):
                 _beta1 = (
                     self._beta1
                     if not isinstance(self._beta1, Variable)
-                    else self._beta1.numpy().item(0)
+                    else self._beta1.item(0)
                 )
                 _beta2 = (
                     self._beta2
                     if not isinstance(self._beta2, Variable)
-                    else self._beta2.numpy().item(0)
+                    else self._beta2.item(0)
                 )
 
                 if framework.in_dygraph_mode():
