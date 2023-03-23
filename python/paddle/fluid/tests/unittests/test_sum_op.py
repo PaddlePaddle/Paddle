@@ -275,16 +275,14 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
         w_tensor = var.get_tensor()
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         w_tensor.set(w_array, place)
         return var
 

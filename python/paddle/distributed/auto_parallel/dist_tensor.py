@@ -39,7 +39,7 @@ class DistributedTensor:
     ):
         if not (
             isinstance(sizes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, sizes))
+            and all((isinstance(x, int) and x >= 0 for x in sizes))
         ):
             raise ValueError(
                 "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".format(
@@ -48,7 +48,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(dims_mapping, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))
+            and all((isinstance(x, int) and x >= -1 for x in dims_mapping))
         ):
             raise ValueError(
                 "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".format(
@@ -57,7 +57,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(processes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, processes))
+            and all((isinstance(x, int) and x >= 0 for x in processes))
         ):
             raise ValueError(
                 "The processes must be list or tuple and item in processes must be integer, but got {}".format(
@@ -66,7 +66,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(topology, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x > 0, topology))
+            and all((isinstance(x, int) and x > 0 for x in topology))
         ):
             raise ValueError(
                 "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".format(
@@ -162,9 +162,9 @@ class DistributedTensor:
             len(local_sizes), len(local_offsets)
         )
 
-        local_end_offsets = list(
-            map(lambda x: x[0] + x[1], zip(local_offsets, local_sizes))
-        )
+        local_end_offsets = [
+            x[0] + x[1] for x in zip(local_offsets, local_sizes)
+        ]
         local_shard = list(zip(local_offsets, local_end_offsets))
         return local_shard
 

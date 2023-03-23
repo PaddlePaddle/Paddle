@@ -246,7 +246,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 if iters == skip_batch_num:
                     total_samples = 0
                     infer_start_time = time.time()
-                images = list(map(lambda x: x[0].reshape(dshape), data))
+                images = [x[0].reshape(dshape) for x in data]
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype('int64')
 

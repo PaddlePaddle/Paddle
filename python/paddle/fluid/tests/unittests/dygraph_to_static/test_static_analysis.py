@@ -185,9 +185,7 @@ class TestStaticAnalysis(unittest.TestCase):
         if wrapper.parent is not None:
             self.assertTrue(wrapper in wrapper.parent.children)
 
-        children_ast_nodes = [
-            child for child in gast.iter_child_nodes(wrapper.node)
-        ]
+        children_ast_nodes = list(gast.iter_child_nodes(wrapper.node))
         self.assertEqual(len(wrapper.children), len(children_ast_nodes))
         for child in wrapper.children:
             self.assertTrue(child.node in children_ast_nodes)

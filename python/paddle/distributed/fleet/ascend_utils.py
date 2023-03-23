@@ -129,9 +129,7 @@ def get_cloud_cluster(
         device_count = 1
 
     devices_per_proc = [str(x) for x in range(device_count)]
-    free_ports = [
-        x for x in range(start_port, start_port + len(devices_per_proc))
-    ]
+    free_ports = list(range(start_port, start_port + len(devices_per_proc)))
 
     trainer_endpoints = []
     for ip in node_ips:

@@ -54,9 +54,9 @@ def get_cluster_from_args(args, selected_gpus):
         if args.started_port is not None:
             started_port = args.started_port
 
-        free_ports = [
-            x for x in range(started_port, started_port + len(selected_gpus))
-        ]
+        free_ports = list(
+            range(started_port, started_port + len(selected_gpus))
+        )
 
     trainer_endpoints = []
     for ip in node_ips:

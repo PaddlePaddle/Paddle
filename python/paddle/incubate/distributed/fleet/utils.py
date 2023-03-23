@@ -96,7 +96,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
         if io_utils.is_persistable(v)
     ]
     pruned_vars = OrderedDict(pruned_vars)
-    pruned_vars_name = [name for name in pruned_vars]
+    pruned_vars_name = list(pruned_vars)
     logger.info(
         "persistable vars in pruned program: {}".format(pruned_vars_name)
     )
@@ -497,7 +497,7 @@ def parse_program(program, output_dir):
             f.write("\n")
 
     # all vars
-    all_vars = [v for v in program.list_vars()]
+    all_vars = list(program.list_vars())
     output["all_vars"] = [
         {
             'name': str(v.name),

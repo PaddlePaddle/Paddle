@@ -660,7 +660,7 @@ class TestParallelDyGraphRunnerBase:
                 if paddle.distributed.get_rank() == 0:
                     new_batch.append(batch[0])
                 elif paddle.distributed.get_rank() == 1:
-                    new_batch.extend([_ for _ in batch[1:]])
+                    new_batch.extend(list(batch[1:]))
                 else:
                     raise NotImplementedError(
                         "Current TestParallelDyGraphRunnerBase don't support world_size > 2"

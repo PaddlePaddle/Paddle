@@ -65,7 +65,7 @@ def create_pyobject_test_data(shape=None, seed=None):
         np.random.seed(seed)
     list_shape = np.random.randint(0, high=100, size=(2)).tolist()
     list_data = np.random.random(shape).tolist()
-    dict_key = [i for i in range(0, shape[0])]
+    dict_key = list(range(0, shape[0]))
     dict_val = np.random.random(shape).tolist()
     dict_data = dict(zip(dict_key, dict_val))
     return [list_data, dict_data]

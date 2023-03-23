@@ -222,9 +222,9 @@ def for_loop_dufunc_with_listcomp(array):
     a = 1
     for j in range(array):
         res = [x + a for x in array]
-        res = [i for i in array]
+        res = list(array)
         x = 1
-    b = [i for i in array]
+    b = list(array)
     print(x)
     return res
 
