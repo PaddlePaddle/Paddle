@@ -40,8 +40,8 @@ static std::unordered_set<std::string>& nan_inf_skip_op_list() {
 static void InitDumpListFormEnv() {
   nan_inf_check_op_list();
   nan_inf_skip_op_list();
-  const char* check_op_list = std::getenv("FLAGS_check_nan_inf_op_list");
-  const char* skip_op_list = std::getenv("FLAGS_skip_nan_inf_op_list");
+  const char* check_op_list = std::getenv("Paddle_check_nan_inf_op_list");
+  const char* skip_op_list = std::getenv("Paddle_skip_nan_inf_op_list");
 
   if (check_op_list) {
     std::stringstream ss(check_op_list);
