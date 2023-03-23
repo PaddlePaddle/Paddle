@@ -120,9 +120,9 @@ class TestGroupNormOp(OpTest):
         place = core.CPUPlace()
         place2 = core.CUDAPlace(0)
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
         self.op = create_op(
             self.scope, self.op_type, op_inputs, op_outputs, op_attrs
         )

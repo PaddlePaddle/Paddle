@@ -342,7 +342,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             exe = fluid.Executor(place)
 
             exe.run(start_up)
-            result = list()
+            result = []
             for i in range(10):
                 data = [
                     (

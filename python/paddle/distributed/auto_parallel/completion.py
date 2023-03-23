@@ -550,7 +550,7 @@ class Completer:
         def _find_nodes_related_to_cond(source_node):
             related_nodes = []
             visited = set()
-            frontier = list()
+            frontier = []
             frontier.append(source_node)
             # BFS
             while len(frontier) != 0:
