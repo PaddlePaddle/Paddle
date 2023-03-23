@@ -567,13 +567,6 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
     mean and var are computed from groups
     """
-    is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
-
-    if convert_dtype(x.dtype) == "float16":
-        is_amp = True
-        x = cast(x, "float32")
-
     N, C, H, W = x.shape
     x = reshape(x, (N * groups, -1))
     mean_ = mean(x, axis=1, keepdim=True)
@@ -589,6 +582,4 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
 
-    if is_amp:
-        out = cast(out, "float16")
     return out, ret_mean_, ret_var_
