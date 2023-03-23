@@ -22,8 +22,10 @@
 
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
+
 namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
@@ -1045,6 +1047,57 @@ void gather_nd_grad(const Tensor& x,
 }
 
 template <typename T>
+void max_grad(const Tensor& x,
+              const Tensor& out,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool reduce_all,
+              Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
+    auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
+    auto out_tmp = out.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 1; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      axis_ = axis.GetData();
+      for (int64_t i = 0; i < axis_size; i++) {
+        if (axis[i] < 0) {
+          axis_[i] = axis[i] + x_dim_size;
+        }
+      }
+    }
+    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+    auto out_ = unsqueeze<T>(out, axis_);
+    auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
+    auto out_tmp = out_.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+  }
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     by_pass<T>(out_grad, x_grad);
@@ -1125,11 +1178,11 @@ void dropout_grad(const Tensor& mask,
   } else {
     if (mode == "upscale_in_train") {
       if (p.to<float>() == 1.0f) {
-        set_output<T>(out_grad * 0.0, x_grad);
+        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
       } else {
-        set_output<T>(
-            out_grad * cast<T>(mask, out_grad.dtype()) / (1.0 - p.to<float>()),
-            x_grad);
+        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                               1.0 / (1.0 - p.to<float>())),
+                      x_grad);
       }
     } else {
       set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
@@ -1282,7 +1335,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto tmp = out_grad_data * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
           auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
-          auto part2 = out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1311,5 +1364,78 @@ void batch_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void gelu_grad(const Tensor& x,
+               const Tensor& out_grad,
+               bool approximate,
+               Tensor* x_grad) {
+  if (!x_grad) return;
+  // Promote to fp32 when the input type is fp16 for keeping consistent with
+  // phi kernel
+
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
+    auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
+    if (approximate) {
+      float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+      float kkappa = 0.044715;
+      auto x_sq = promoted_x * promoted_x;
+      auto x_cube = x_sq * promoted_x;
+      auto inner = kbeta * (promoted_x + kkappa * x_cube);
+      auto tanh_inner = tanh<T>(inner);
+
+      auto left = scale<T>(promoted_x, 0.5);
+      auto right = scale<T>(tanh_inner, 1., 1.);
+
+      auto left_derivative = scale<T>(right, 0.5);
+
+      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+      auto inner_derivative = kbeta * (scale<T>(3 * kkappa * x_sq, 1., 1.));
+      auto right_derivative = left * tanh_derivative * inner_derivative;
+
+      set_output<T>(
+          cast<T>(promoted_out_grad * (left_derivative + right_derivative),
+                  x.type()),
+          x_grad);
+    } else {
+      float kalpha = M_SQRT1_2;
+      float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+      auto cdf = scale<T>(scale<T>(erf<T>(kalpha * promoted_x), 1., 1.), 0.5);
+      auto pdf = kbeta * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
+      set_output<T>(
+          cast<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
+          x_grad);
+    }
+  } else {
+    // Scale only support fp32 attr in static graph mode, use elementwise_xx
+    // when precision is over fp32.
+    if (approximate) {
+      auto kBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+      auto kKappa = 0.044715;
+      auto x_sq = x * x;
+      auto x_cube = x_sq * x;
+      auto inner = kBeta * (x + kKappa * x_cube);
+      auto tanh_inner = tanh<T>(inner);
+
+      auto left = scale<T>(x, 0.5);
+      auto right = scale<T>(tanh_inner, 1., 1.);
+
+      auto left_derivative = scale<T>(right, 0.5);
+
+      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+      auto inner_derivative = kBeta * (scale<T>(3 * kKappa * x_sq, 1., 1.));
+      auto right_derivative = left * tanh_derivative * inner_derivative;
+
+      set_output<T>(out_grad * (left_derivative + right_derivative), x_grad);
+    } else {
+      auto kAlpha = M_SQRT1_2;
+      auto kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+      auto cdf = scale<T>(scale<T>(erf<T>(kAlpha * x), 1., 1.), 0.5);
+      auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
+      set_output<T>(out_grad * (cdf + x * pdf), x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle

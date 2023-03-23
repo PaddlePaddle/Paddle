@@ -60,6 +60,8 @@ static std::vector<int> TransposeToPermuteAxes(const std::vector<int>& axis) {
   return permute_axis;
 }
 
+// a trick is used here to fake transpose of out_md, so later it will be
+// "untransposed", leaving output data in plain format tag
 static std::vector<int64_t> FakeTransposeStrides(
     const std::vector<int64_t>& out_dims, const std::vector<int>& axis) {
   std::vector<int64_t> fake_strides(axis.size());
@@ -776,7 +778,8 @@ class SoftmaxOneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
+    int rank = x->dims().size() != 0 ? x->dims().size() : 1;
+    const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, x->mem_desc(), canonical_axis);
   }
@@ -790,8 +793,8 @@ class SoftmaxOneDNNHandler
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
-    const int canonical_axis =
-        funcs::CanonicalAxis(axis, out_grad->dims().size());
+    int rank = out_grad->dims().size() != 0 ? out_grad->dims().size() : 1;
+    const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, out->mem_desc(), canonical_axis);
     this->AcquireBackwardPrimitiveDescriptor(
@@ -1646,7 +1649,13 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 
-    auto x_tz = phi::vectorize(x->dims());
+    // if x is a 0-D tensor, then:
+    //     x->dims() is [] and x->mem_desc().dims() is [1], we should use
+    //     the later shape since oneDNN doesn't support 0-D shape.
+    // else, then:
+    //    x->dims() == x->mem_desc().dims()
+    // so, we can directly use x->mem_desc().dims() here
+    auto x_tz = x->mem_desc().dims();
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
     auto beta_md = dnnl::memory::desc(
         beta_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(x_tz.size()));

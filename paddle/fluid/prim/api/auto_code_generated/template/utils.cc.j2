@@ -115,7 +115,7 @@ op->SetInput("{{input.fluid_name | to_pascal}}", {std::static_pointer_cast<prim:
   {%- if output.typename is tensor_sequence -%} {#- render the output of type std::Vector<Tensor> -#}
 std::vector<Tensor> {{output.name}};
 std::vector<std::string> {{output.name}}_names;
-for (auto i=0; i<{{output.size}}; i++) {
+for (size_t i=0; i<{{output.size}}; i++) {
   auto tmp = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   {{output.name}}.push_back(tmp);
   {{output.name}}_names.push_back(std::static_pointer_cast<prim::DescTensor>(tmp.impl())->Name());

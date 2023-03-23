@@ -336,7 +336,7 @@ class TestSparseLambOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place)
 
-        op_args = dict()
+        op_args = {}
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
