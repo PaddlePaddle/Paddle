@@ -260,6 +260,7 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("data_format", "").SetDefault("NHWC");
     AddAttr<bool>("fuse_add", "").SetDefault(false);
     AddAttr<bool>("has_shortcut", "").SetDefault(false);
+    AddAttr<bool>("has_dx", "wheather x need grad").SetDefault(true);
     AddAttr<bool>("use_global_stats", "").SetDefault(false);
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -303,6 +304,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
 
     bool fuse_add = ctx->Attrs().Get<bool>("fuse_add");
     bool has_shortcut = ctx->Attrs().Get<bool>("has_shortcut");
+    bool has_dx = ctx->Attrs().Get<bool>("has_dx");
     if (fuse_add || has_shortcut) {
       OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitGradOp");
     }
@@ -333,10 +335,12 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
                    "ResNetUnitGradOp");
 
     // check output
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output",
-                   framework::GradVarName("X"),
-                   "ResNetUnitGradOp");
+    if (has_dx) {
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                     "Output",
+                     framework::GradVarName("X"),
+                     "ResNetUnitGradOp");
+    }
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterX")),
                    "Output",
                    framework::GradVarName("FilterX"),
@@ -372,7 +376,9 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const auto filter_x_dims = ctx->GetInputDim("FilterX");
     const auto param_dims = ctx->GetInputDim("ScaleX");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (has_dx) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
     ctx->SetOutputDim(framework::GradVarName("FilterX"), filter_x_dims);
     ctx->SetOutputDim(framework::GradVarName("ScaleX"), param_dims);
     ctx->SetOutputDim(framework::GradVarName("BiasX"), param_dims);
