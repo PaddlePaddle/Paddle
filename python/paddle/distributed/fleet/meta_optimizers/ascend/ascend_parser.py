@@ -219,7 +219,7 @@ class AscendParserBase:
         tensor = core.GETensor(tensor_desc)
 
         data = (
-            (value * np.ones((shape)))
+            (value * np.ones(shape))
             .reshape(shape)
             .astype(self.ascend_helper.dtype2np(dtype))
         )
@@ -282,7 +282,7 @@ class AscendParserBase:
         )
         tensor = core.GETensor(tensor_desc)
 
-        data = np.ones((2)).astype("int32").reshape([2])
+        data = np.ones(2).astype("int32").reshape([2])
         data[0] = 64
         buf = data.tobytes()
         data_8 = np.frombuffer(buf, dtype=np.uint8)

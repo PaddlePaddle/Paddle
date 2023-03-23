@@ -154,7 +154,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         sections_tensor = []
         for index, ele in enumerate(self.sections):
             sections_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs['SectionsTensorList'] = sections_tensor

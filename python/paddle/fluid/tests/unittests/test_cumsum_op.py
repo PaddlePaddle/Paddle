@@ -182,7 +182,7 @@ class TestSumOp6(TestSumOp1):
 
 class TestSumOp7(TestSumOp1):
     def set_attrs_input_output(self):
-        self.x = np.random.random((100)).astype(self.dtype_)
+        self.x = np.random.random(100).astype(self.dtype_)
         self.out = self.x.cumsum(axis=0)
 
 

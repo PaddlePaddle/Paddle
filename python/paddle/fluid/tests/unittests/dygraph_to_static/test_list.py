@@ -219,7 +219,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
         self.init_dygraph_func()
 
     def init_data(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.input = np.random.random(3).astype('int32')
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
@@ -275,7 +275,7 @@ class TestListInIf(TestListWithoutControlFlow):
 
 class TestListInWhileLoop(TestListWithoutControlFlow):
     def init_data(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.input = np.random.random(3).astype('int32')
         self.iter_num = 3
 
     def init_dygraph_func(self):

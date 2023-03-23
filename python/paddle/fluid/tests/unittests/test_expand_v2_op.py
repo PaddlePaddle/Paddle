@@ -89,7 +89,7 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
             expand_shapes_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
