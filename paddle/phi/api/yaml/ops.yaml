@@ -934,6 +934,15 @@
     func : log_loss
   backward : log_loss_grad
 
+- op : log_softmax
+  args : (Tensor x, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMetaCheckAxis
+  kernel :
+    func : log_softmax
+  backward : log_softmax_grad
+
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor
