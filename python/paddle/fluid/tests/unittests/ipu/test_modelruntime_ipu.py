@@ -23,7 +23,7 @@ import paddle
 
 class SimpleLayer(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
         )

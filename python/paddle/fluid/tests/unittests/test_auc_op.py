@@ -142,8 +142,12 @@ class TestAucOpError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             def test_type1():
-                data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
-                label1 = fluid.data(name="label1", shape=[-1], dtype="int")
+                data1 = paddle.static.data(
+                    name="input1", shape=[-1, 2], dtype="int"
+                )
+                label1 = paddle.static.data(
+                    name="label1", shape=[-1], dtype="int"
+                )
                 ins_tag_w1 = paddle.static.data(
                     name="label1", shape=[-1], dtype="int"
                 )
@@ -154,10 +158,12 @@ class TestAucOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type1)
 
             def test_type2():
-                data2 = fluid.data(
+                data2 = paddle.static.data(
                     name="input2", shape=[-1, 2], dtype="float32"
                 )
-                label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
+                label2 = paddle.static.data(
+                    name="label2", shape=[-1], dtype="float32"
+                )
                 result2 = paddle.static.auc(input=data2, label=label2)
 
             self.assertRaises(TypeError, test_type2)

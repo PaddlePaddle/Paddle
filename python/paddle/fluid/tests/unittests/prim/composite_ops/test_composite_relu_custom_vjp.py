@@ -65,8 +65,8 @@ def expect_grad(inputs):
     return gradients
 
 
-class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
-    "test composite softmax and prim backward"
+class TestCompositeReluPrimBackward(unittest.TestCase):
+    "test composite relu and prim backward"
 
     def setUp(self):
         core._set_prim_backward_enabled(True)

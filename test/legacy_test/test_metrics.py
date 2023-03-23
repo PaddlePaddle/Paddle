@@ -205,10 +205,12 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         main_prog.random_seed = 1024
         startup_prog.random_seed = 1024
         with fluid.program_guard(main_prog, startup_prog):
-            pred = fluid.data(
+            pred = paddle.static.data(
                 name='pred', shape=[None, self.class_num], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             state = acc.compute(pred, label)
 
