@@ -299,16 +299,12 @@ class TestChannelShuffleFP16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
-        else:
-            self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
         )
 
 
@@ -343,16 +339,12 @@ class TestChannelShuffleBF16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
-        else:
-            self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
-            check_eager=True,
         )
 
 
