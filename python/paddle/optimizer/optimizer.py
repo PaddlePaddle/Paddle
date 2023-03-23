@@ -1321,9 +1321,9 @@ class Optimizer:
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.stop_gradient is True]
-        )
+        param_no_trainable = {
+            param.name for param in parameters if param.stop_gradient is True
+        }
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 

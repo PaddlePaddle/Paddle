@@ -907,7 +907,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _build_shard(self, params_grads, shard_rank, shard_size):
         # step 2: split params
-        self._params = set([x[0].name for x in params_grads])
+        self._params = {x[0].name for x in params_grads}
         self._shard.setup(params_grads, shard_rank, shard_size)
 
         # step 3: get broadcast vars

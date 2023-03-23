@@ -969,7 +969,7 @@ class ShardingPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            var_names = set([var.name for var in group.vars])
+            var_names = {var.name for var in group.vars}
             return len(vars_.intersection(var_names)) > 0
 
         # analyze groups
