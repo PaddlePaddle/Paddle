@@ -102,7 +102,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
   MPType min_val = static_cast<MPType>(1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    min_val = min(min_val, abs(static_cast<MPType>(x[i] - y[i])));
+    min_val = min(min_val, static_cast<MPType>(abs(x[i] - y[i])));
   }
 
   __syncthreads();
