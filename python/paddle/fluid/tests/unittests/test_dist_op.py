@@ -191,7 +191,10 @@ class TestDistAPI(unittest.TestCase):
 
 class TestDistFP16OP(TestDistOp):
     def init_data_type(self):
-        self.data_type = 'float16'
+        if core.is_compiled_with_cuda() and core.is_float16_supported(
+            core.CUDAPlace(0)
+        ):
+            self.data_type = 'float16'
 
 
 class TestDistFP16OPCase1(TestDistFP16OP):
