@@ -159,7 +159,7 @@ class OpOutlineResultImpl : public detail::OpResultImpl {
 ///
 class OpOperandImpl {
  private:
-  OpOperandImpl::OpOperandImpl(ir::OpResult source, ir::Operation *owner)
+  OpOperandImpl(ir::OpResult source, ir::Operation *owner)
       : source_(source), owner_(owner) {
     back_user_addr_ = &source.first_user();
     next_user_ = source.first_user();
