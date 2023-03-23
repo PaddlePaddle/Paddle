@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import platform
 import time
 import unittest
 
@@ -79,9 +78,7 @@ def train(to_static, enable_prim, enable_cinn):
         paddle.set_device('gpu')
     else:
         paddle.set_device('cpu')
-    fluid.core._set_prim_all_enabled(
-        enable_prim and platform.system() == 'Linux'
-    )
+    fluid.core._set_prim_all_enabled(enable_prim)
 
     np.random.seed(SEED)
     paddle.seed(SEED)
