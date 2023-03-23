@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestGatherNdOpWithEmptyIndex(OpTest):
@@ -29,17 +30,54 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
-        xnp = np.random.random((5, 20)).astype("float64")
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.random((5, 20)).astype(target_dtype)
+        output = np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
-        self.outputs = {
-            'Out': np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
-        }
+        self.outputs = {'Out': output}
+
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithEmptyIndexFP16(TestGatherNdOpWithEmptyIndex):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithEmptyIndexBF16(TestGatherNdOpWithEmptyIndex):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpWithIndex1(OpTest):
@@ -48,15 +86,55 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
-        xnp = np.random.random((5, 20)).astype("float64")
-        self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.random((5, 20)).astype(target_dtype)
+        index = np.array([1]).astype("int32")
+        output = xnp[index]
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithIndex1FP16(TestGatherNdOpWithIndex1):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithIndex1BF16(TestGatherNdOpWithIndex1):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
@@ -68,20 +146,57 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         self.enable_cinn = False
-        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.uniform(0, 100, (10, 10)).astype(target_dtype)
         index = np.array([[1], [2]]).astype("int64")
+        output = xnp[tuple(index.T)]  # [[14, 25, 1], [76, 22, 3]]
+
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
 
         self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
 
-        self.outputs = {
-            'Out': xnp[tuple(index.T)]
-        }  # [[14, 25, 1], [76, 22, 3]]
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithLowIndexFP16(TestGatherNdOpWithLowIndex):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithLowIndexBF16(TestGatherNdOpWithLowIndex):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -92,16 +207,25 @@ class TestGatherNdOpIndex1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
-        self.init_input()
-
-        self.inputs = {'X': self.xnp, 'Index': self.index}
-
-        self.outputs = {'Out': self.xnp[tuple(self.index.T)]}
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.uniform(0, 100, (10, 10)).astype(target_dtype)
+        index = np.array([1, 2]).astype("int32")
+        output = xnp[tuple(index.T)]
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
         self.enable_cinn = False
 
-    def init_input(self):
-        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        self.index = np.array([1, 2]).astype("int32")
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
@@ -111,9 +235,28 @@ class TestGatherNdOpIndex1(OpTest):
 
 
 class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
-    def init_input(self):
-        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float16")
-        self.index = np.array([1, 2]).astype("int32")
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpIndex1BF16(TestGatherNdOpIndex1):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
@@ -124,17 +267,55 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         self.enable_cinn = False
-        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.uniform(0, 100, (10, 10)).astype(target_dtype)
         index = np.array([[1, 1], [2, 1]]).astype("int64")
-
+        output = xnp[tuple(index.T)]  # [25, 22]
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index}
-        self.outputs = {'Out': xnp[tuple(index.T)]}  # [25, 22]
+        self.outputs = {'Out': output}
+
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithSameIndexAsXFP16(TestGatherNdOpWithSameIndexAsX):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithSameIndexAsXBF16(TestGatherNdOpWithSameIndexAsX):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -146,17 +327,55 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         shape = (5, 2, 3, 1, 10)
-        xnp = np.random.rand(*shape).astype("float64")
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.rand(*shape).astype(target_dtype)
         index = np.vstack([np.random.randint(0, s, size=2) for s in shape]).T
-
+        output = xnp[tuple(index.T)]
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index.astype("int32")}
-        self.outputs = {'Out': xnp[tuple(index.T)]}
+        self.outputs = {'Out': output}
+
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithHighRankSameFP16(TestGatherNdOpWithHighRankSame):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithHighRankSameBF16(TestGatherNdOpWithHighRankSame):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -168,18 +387,56 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         shape = (2, 3, 4, 1, 10)
-        xnp = np.random.rand(*shape).astype("float64")
+        self.config_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.rand(*shape).astype(target_dtype)
         index = np.vstack([np.random.randint(0, s, size=200) for s in shape]).T
         index_re = index.reshape([20, 5, 2, 5])
-
+        output = xnp[tuple(index.T)].reshape([20, 5, 2])
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index_re.astype("int32")}
-        self.outputs = {'Out': xnp[tuple(index.T)].reshape([20, 5, 2])}
+        self.outputs = {'Out': output}
+
+    def config_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpWithHighRankDiffFP16(TestGatherNdOpWithHighRankDiff):
+    def config_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestGatherNdOpWithHighRankDiffBF16(TestGatherNdOpWithHighRankDiff):
+    def config_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=False, check_prim=True
+        )
 
 
 # Test Python API

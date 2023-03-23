@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 
 DECLARE_bool(use_mkldnn);
@@ -384,6 +385,18 @@ DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
                            {"DDX", "D_DOut"});
 
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
+
+#define DEFINE_ACTIVATION_CPU_KERNEL(op_name, functor, grad_functor)           \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##Kernel : public ActivationKernel<DeviceContext, functor<T>> { \
+  };                                                                           \
+                                                                               \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##GradKernel                                                    \
+      : public ActivationGradKernel<DeviceContext, grad_functor<T>> {};
+
+DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -407,19 +420,19 @@ namespace plat = paddle::platform;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(                                     \
-    act_type, op_name, functor, grad_functor)                               \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      act_type,                                                             \
-      ops::ActivationKernel<phi::CPUContext, ops::functor<float>>,          \
-      ops::ActivationKernel<phi::CPUContext, ops::functor<double>>);        \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      act_type##_grad,                                                      \
-      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<float>>, \
-      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<double>>);
-
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
+
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
+  PD_REGISTER_STRUCT_KERNEL(                                             \
+      act_type, CPU, ALL_LAYOUT, ops::op_name##Kernel, float, double) {} \
+  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                             \
+                            CPU,                                         \
+                            ALL_LAYOUT,                                  \
+                            ops::op_name##GradKernel,                    \
+                            float,                                       \
+                            double) {}
+
+REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);

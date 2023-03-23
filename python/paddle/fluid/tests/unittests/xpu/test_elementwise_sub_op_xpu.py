@@ -19,7 +19,7 @@ import numpy as np
 sys.path.append("..")
 import unittest
 
-from op_test import skip_check_grad_ci
+from eager_op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,

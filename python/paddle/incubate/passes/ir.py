@@ -32,16 +32,16 @@ except ModuleNotFoundError:
 
 
 class RegisterPassHelper:
-    _register_helpers = list()
+    _register_helpers = []
 
-    def __init__(self, pass_pairs, pass_type='', input_specs=dict()):
+    def __init__(self, pass_pairs, pass_type='', input_specs={}):
         self._pass_type = pass_type
         self._pass_pairs = pass_pairs
         self._input_specs = input_specs
         RegisterPassHelper._register_helpers.append(self)
 
     def _get_args_from_func(self, func):
-        args = list()
+        args = []
         arg_specs = inspect.getfullargspec(func)
         for arg_name in arg_specs.args:
             input_spec = self._input_specs.get(arg_name)
@@ -62,7 +62,7 @@ class RegisterPassHelper:
             default_attrs = core.get_op_attrs_default_value(
                 op_desc.type.encode()
             )
-            remove_attrs = list()
+            remove_attrs = []
             for attr in op_desc.attrs:
                 # attr must not in
                 if attr.name not in [
@@ -83,7 +83,7 @@ class RegisterPassHelper:
                 op_desc.attrs.remove(attr)
 
     def _func_to_program_desc(self, func, ops):
-        vars = list()
+        vars = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
@@ -184,7 +184,7 @@ class PassDesc:
             self._name = name
             self._operation_type = None
             self._element_index = element_index
-            self._elements = list()
+            self._elements = []
             self._operation = None
             self._condition = None
             self._mapped = None
@@ -301,7 +301,7 @@ class PassDesc:
         def __init__(self, *args, **kwargs):
             block = paddle.static.default_main_program().current_block()
             self._var = paddle.static.data(*args, **kwargs)
-            self._attrs = dict()
+            self._attrs = {}
 
         def __getattr__(self, name):
             return getattr(self._var, name)
@@ -377,9 +377,9 @@ class PassDesc:
             self._index = len(block.ops)
             self._desc = block.desc.append_op()
             self._desc.set_type(self._type)
-            self._attrs = dict()
-            self._inputs = {i.name: list() for i in self._proto.inputs}
-            self._outputs = {o.name: list() for o in self._proto.outputs}
+            self._attrs = {}
+            self._inputs = {i.name: [] for i in self._proto.inputs}
+            self._outputs = {o.name: [] for o in self._proto.outputs}
             block.ops.append(self)
 
         def Attr(self, name):
@@ -418,7 +418,7 @@ class PassDesc:
     OP = OpHelper()
 
 
-def RegisterPass(function=None, input_specs=dict()):
+def RegisterPass(function=None, input_specs={}):
     """
     The function decorator of Register Pass. Decorator @RegisterPass handles
     the function and register it into a core.Pass instance. Use name of function

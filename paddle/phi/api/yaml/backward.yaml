@@ -605,6 +605,16 @@
   kernel :
     func : frame_grad
 
+- backward_op : fused_dropout_add_grad
+  forward : fused_dropout_add (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(seed_offset)
+  args : (Tensor seed_offset, Tensor out_grad, Scalar p, bool is_test, str mode, bool fix_seed)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out_grad, out_grad]
+  kernel :
+    func : fused_dropout_add_grad
+
 - backward_op : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -625,6 +635,7 @@
     param: [x]
   kernel :
     func : gelu_grad
+  composite: gelu_grad(x, out_grad, approximate, x_grad)
 
 - backward_op : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)

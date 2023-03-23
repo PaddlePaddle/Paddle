@@ -1060,9 +1060,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -1078,9 +1076,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
         self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
         self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
         self._world_device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
@@ -1206,18 +1202,14 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._worker_endpoints[self._current_id]
         elif self._role == Role.SERVER:
             self._cur_endpoint = self._server_endpoints[self._current_id]
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.WORKER
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _generate_role(self):
         """

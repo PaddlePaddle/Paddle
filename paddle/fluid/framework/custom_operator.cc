@@ -174,7 +174,7 @@ static void RunKernelFunc(
           custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
           custom_vec_in.emplace_back(custom_t);
         }
-      } else {  // optional inputs, `custom_vec_in` is empty
+      } else {  // optional inputs.
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
             phi::errors::NotFound("Your custom operator's KernelFunc cannot "
@@ -182,6 +182,12 @@ static void RunKernelFunc(
                                   in_name));
         VLOG(3) << "Custom Operator: KernelFunc's vector input " << in_name
                 << " is optional dtype with None input";
+        // NOTE(HongyuJia): In dygraph mode, we can not distinguish Tensor and
+        // vector<Tensor> when user inputs None, so dygraph mode appends one
+        // un-initialized Tensor to CustomOpKernelContext. To be compatible with
+        // dygraph mode, `custom_vec_in` also emplace_back one un-initialized
+        // tensor here.
+        custom_vec_in.emplace_back(paddle::Tensor());
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
     } else {                        // inputs Tensor
