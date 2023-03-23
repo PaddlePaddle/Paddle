@@ -17,9 +17,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #endif
@@ -389,7 +389,7 @@ struct MatmulWithCublasLt {
  private:
   static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
                                                     size_t workspace_size) {
-    return paddle::memory::Alloc(
+    return phi::memory_utils::Alloc(
         ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

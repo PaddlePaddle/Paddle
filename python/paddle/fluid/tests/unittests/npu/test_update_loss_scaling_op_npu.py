@@ -104,17 +104,17 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
 
 class TestUpdateLossScalingLayer(unittest.TestCase):
     def loss_scaling_check(self, use_npu=True, scope=fluid.Scope()):
-        a = fluid.data(name="a", shape=[1024, 1024], dtype='float32')
-        b = fluid.data(name="b", shape=[512, 128], dtype='float32')
+        a = paddle.static.data(name="a", shape=[1024, 1024], dtype='float32')
+        b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
         x = [a, b]
-        found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
-        prev_loss_scaling = fluid.data(
+        found_inf = paddle.static.data(name="found_inf", shape=[1], dtype='bool')
+        prev_loss_scaling = paddle.static.data(
             name="prev_loss_scaling", shape=[1], dtype='float32'
         )
-        num_good_steps = fluid.data(
+        num_good_steps = paddle.static.data(
             name="num_good_steps", shape=[1], dtype='int32'
         )
-        num_bad_steps = fluid.data(
+        num_bad_steps = paddle.static.data(
             name="num_bad_steps", shape=[1], dtype='int32'
         )
 
@@ -175,17 +175,17 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
         assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
 
     def loss_scaling_check_inf(self, use_npu=True, scope=fluid.Scope()):
-        a = fluid.data(name="a", shape=[1024, 1024], dtype='float32')
-        b = fluid.data(name="b", shape=[512, 128], dtype='float32')
+        a = paddle.static.data(name="a", shape=[1024, 1024], dtype='float32')
+        b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
         x = [a, b]
-        found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
-        prev_loss_scaling = fluid.data(
+        found_inf = paddle.static.data(name="found_inf", shape=[1], dtype='bool')
+        prev_loss_scaling = paddle.static.data(
             name="prev_loss_scaling", shape=[1], dtype='float32'
         )
-        num_good_steps = fluid.data(
+        num_good_steps = paddle.static.data(
             name="num_good_steps", shape=[1], dtype='int32'
         )
-        num_bad_steps = fluid.data(
+        num_bad_steps = paddle.static.data(
             name="num_bad_steps", shape=[1], dtype='int32'
         )
 
