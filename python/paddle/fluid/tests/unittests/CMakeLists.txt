@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -320,53 +321,6 @@ function(py_test_modules TARGET_NAME)
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     endif()
-  endif()
-endfunction()
-
-function(bash_test_modules TARGET_NAME)
-  if(NOT WITH_TESTING)
-    return()
-  endif()
-
-  set(options SERIAL)
-  set(oneValueArgs TIMEOUT START_BASH)
-  set(multiValueArgs DEPS ENVS LABELS)
-  cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}"
-                        "${multiValueArgs}" ${ARGN})
-
-  set(timeout 350)
-  if(${bash_test_modules_TIMEOUT})
-    set(timeout ${bash_test_modules_TIMEOUT})
-  endif()
-
-  if(WITH_COVERAGE)
-    add_test(
-      NAME ${TARGET_NAME}
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} WITH_COVERAGE=ON
-        COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data bash
-        ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    add_test(
-      NAME ${TARGET_NAME}
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} bash
-        ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
-
-  if(bash_test_modules_SERIAL)
-    set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-  endif()
-
-  if(bash_test_modules_LABELS)
-    set_tests_properties(${TARGET_NAME} PROPERTIES LABELS
-                                                   ${bash_test_modules_LABELS})
   endif()
 endfunction()
 
@@ -1213,6 +1167,7 @@ set(TEST_CINN_OPS
     test_reshape_op
     test_mean_op
     test_unsqueeze2_op
+    test_meshgrid_op
     test_gather_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})

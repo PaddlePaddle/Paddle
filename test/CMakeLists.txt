@@ -52,9 +52,11 @@ function(bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
-add_subdirectory(cpp)
-add_subdirectory(legacy_test)
 add_subdirectory(collective)
+if(WITH_TESTING)
+  add_subdirectory(cpp)
+  add_subdirectory(legacy_test)
+endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)

@@ -52,7 +52,7 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_eager=False)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
         def init_data(self):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
