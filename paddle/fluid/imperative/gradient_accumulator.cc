@@ -192,13 +192,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
   auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto place = src_tensor.place();
 
-  PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(dst_tensor->dtype()),
-                    data_type,
-                    platform::errors::PreconditionNotMet(
-                        "The data type of source tensor and destination tensor "
-                        "should be equal, Otherwise, the calculation results "
-                        "will be incorrect."));
-
   // if src and dst are in different place, copy dst to src's place
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);

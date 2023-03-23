@@ -95,10 +95,52 @@ PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
 
-
 def amp_state():
     global _g_amp_state_
     return _g_amp_state_
+
+class AMPGlobalState:
+    def __init__(self):
+        self.model_parameters = []
+        self.master_grad = False
+
+    def __setattr__(self, name, val):
+        self.__dict__[name] = val
+
+
+_amp_global_state = AMPGlobalState()
+
+
+def amp_global_state():
+    return _amp_global_state
+
+
+def low_precision_op_list():
+    if os.getenv("FLAGS_low_precision_op_list") is not None:
+        level = int(os.getenv("FLAGS_low_precision_op_list"))
+        print('<{:-^120}>'.format(" op list "))
+        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_count = 0
+        print(
+            '<{:-^40}'.format(" Op Name "),
+            '|',
+            '{:-^17}'.format("FP16 Calls"),
+            '|',
+            '{:-^17}'.format("BF16 Calls"),
+            '|',
+            '{:-^17}'.format('FP32 Calls'),
+            '|',
+            '{:-^17}>'.format('Other Calls'),
+        )
+        for x in op_list:
+            # fp16, bf16, fp32, other
+            called = op_list[x].split(",")
+            print(
+                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
+                % (x, called[0], called[1], called[2], called[3])
+            )
+            op_count += 1
+        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
 
 
 # NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -491,6 +533,7 @@ def amp_decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -604,6 +647,14 @@ def amp_decorate(
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
+        # support master_grad
+        if master_grad:
+            amp_global_state().master_grad = True
+            for idx in range(len(models)):
+                amp_global_state().model_parameters.extend(
+                    models[idx].parameters()
+                )
+
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'bfloat16', 'float32', 'float64']):
             raise ValueError(
@@ -701,6 +752,7 @@ def decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -717,6 +769,8 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
+        master_grad(bool, optional): For level='O2', whether to use FP32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If it is enabled, the weight
+             gradients will be FP32 dtype after the backpropagation. Default is False.
 
     Examples:
 
@@ -766,5 +820,5 @@ def decorate(
             print(output.dtype) # FP16
     """
     return amp_decorate(
-        models, optimizers, level, dtype, master_weight, save_dtype
+        models, optimizers, level, dtype, master_weight, save_dtype, master_grad
     )
