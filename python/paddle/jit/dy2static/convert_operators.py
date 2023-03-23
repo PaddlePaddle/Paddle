@@ -87,7 +87,7 @@ def _unpack_by_structure_paddle(target, structure):
         if isinstance(ele, list):
             ret.append(unpack_by_structure(target[idx], ele))
             continue
-        assert False, "structure element must be 1 or list"
+        raise AssertionError("structure element must be 1 or list")
     return ret
 
 

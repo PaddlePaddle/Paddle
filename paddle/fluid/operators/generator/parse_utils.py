@@ -20,13 +20,23 @@ from tests_utils import is_attr, is_input, is_output, is_vec
 from type_mapping import opmaker_attr_types_map
 
 
-def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
+def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
     named_dict = {}
-    for item in items:
-        if "name" not in item:
-            raise KeyError(f"name not in {item}")
-        name = item["name"]
-        named_dict[name] = item
+    if is_op:
+        for item in items:
+            if "name" not in item:
+                raise KeyError(f"name not in {item}")
+            item["name"] = (
+                item["name"] if item["name"][-1] != '_' else item["name"][:-1]
+            )
+            name = item["name"]
+            named_dict[name] = item
+    else:
+        for item in items:
+            if "name" not in item:
+                raise KeyError(f"name not in {item}")
+            name = item["name"]
+            named_dict[name] = item
     return named_dict
 
 

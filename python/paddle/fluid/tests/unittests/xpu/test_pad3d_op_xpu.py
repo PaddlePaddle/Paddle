@@ -189,7 +189,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 value = 100
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
                 x = paddle.static.data(
-                    name="x", shape=input_shape, dtype="float32"
+                    name="x", shape=input_shape, dtype=self.dtype
                 )
                 result = F.pad(
                     x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
@@ -212,7 +212,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 mode = "reflect"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
                 x = paddle.static.data(
-                    name="x", shape=input_shape, dtype="float32"
+                    name="x", shape=input_shape, dtype=self.dtype
                 )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
                 result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
@@ -240,7 +240,7 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 mode = "replicate"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
                 x = paddle.static.data(
-                    name="x", shape=input_shape, dtype="float32"
+                    name="x", shape=input_shape, dtype=self.dtype
                 )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
                 result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
