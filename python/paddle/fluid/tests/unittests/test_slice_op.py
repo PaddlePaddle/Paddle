@@ -34,6 +34,7 @@ class TestSliceOp(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -86,6 +87,7 @@ class TestSliceZerosShapeTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -116,6 +118,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -466,6 +469,7 @@ class TestFP16(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -510,6 +514,7 @@ class TestFP16_2(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -551,6 +556,7 @@ class TestBF16(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.public_python_api = paddle.slice
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -714,9 +720,15 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def set_program_and_run(self, main_program, case_num):
         with fluid.program_guard(main_program):
             x = [
-                fluid.data(name='x0', shape=self.shape, dtype="float32"),
-                fluid.data(name='x1', shape=self.shape, dtype="float32"),
-                fluid.data(name='x2', shape=self.shape, dtype="float32"),
+                paddle.static.data(
+                    name='x0', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x1', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x2', shape=self.shape, dtype="float32"
+                ),
             ]
 
             for each_x in x:

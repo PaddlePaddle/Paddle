@@ -29,23 +29,13 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 
 // These Op needs set output dtype when register phi kernel, but they didn't
 std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "clip_by_norm",
-    "eig",
     "eig_grad",
     "eigh",
-    "generate_proposals",
     "graph_sample_neighbors",
     "group_norm",
-    "instance_norm",
     "lamb",
     "less_equal",
     "less_than",
-    "momentum",
-    "multiclass_nms3",
-    "multinomial",
-    "nanmedian",
-    "rnn",
-    "search_sort",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",

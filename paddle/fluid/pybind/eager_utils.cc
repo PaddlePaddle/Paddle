@@ -1219,7 +1219,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
   return result;
 }
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none) {
   std::vector<paddle::Tensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -1229,6 +1230,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (allow_none && (item == Py_None)) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
@@ -1245,6 +1249,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (allow_none && (item == Py_None)) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
@@ -1262,16 +1269,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
   return result;
 }
 
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
-  if (!PyCheckTensor(obj)) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument must be "
-        "Tensor, but got %s",
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj) {
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
-
 paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos) {
@@ -1532,7 +1532,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
-    return paddle::experimental::DataType::UNDEFINED;
+    return phi::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

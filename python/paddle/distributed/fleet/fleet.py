@@ -416,7 +416,9 @@ class Fleet:
         if not order:
             order = ['dp', 'pp', 'sharding', 'mp']
         if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
-            assert False, "The order of hybrid_config setting is incorrect."
+            raise AssertionError(
+                'The order of hybrid_config setting is incorrect.'
+            )
 
         hybrid_group_names = []
         dims = []
@@ -1296,7 +1298,7 @@ class Fleet:
             self.origin_main_program = loss.block.program
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
-                self.origin_main_program.distributed_info_ = dict()
+                self.origin_main_program.distributed_info_ = {}
                 self.origin_main_program.distributed_info_[
                     "dp_degree"
                 ] = self._user_defined_strategy.sharding_configs["dp_degree"]

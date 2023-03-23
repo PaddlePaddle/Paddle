@@ -16,8 +16,8 @@ import os
 
 import numpy as np
 
-os.environ[str("FLAGS_check_nan_inf")] = str("1")
-os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
+os.environ["FLAGS_check_nan_inf"] = "1"
+os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle
 import paddle.fluid as fluid
@@ -105,7 +105,7 @@ def check(use_cuda):
 if __name__ == '__main__':
     try:
         check(use_cuda=False)
-        assert False
+        raise AssertionError()
     except Exception as e:
         print(e)
         print(type(e))
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            assert False
+            raise AssertionError()
         except Exception as e:
             print(e)
             print(type(e))

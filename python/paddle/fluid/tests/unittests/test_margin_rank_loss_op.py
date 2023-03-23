@@ -87,9 +87,11 @@ class TestMarginRankLossLayer(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                label = fluid.data("label", (self.batch_size, 1), "float32")
-                x1 = fluid.data("x1", (self.batch_size, 1), "float32")
-                x2 = fluid.data("x2", (self.batch_size, 1), "float32")
+                label = paddle.static.data(
+                    "label", (self.batch_size, 1), "float32"
+                )
+                x1 = paddle.static.data("x1", (self.batch_size, 1), "float32")
+                x2 = paddle.static.data("x2", (self.batch_size, 1), "float32")
                 out = paddle.nn.functional.margin_ranking_loss(
                     x1, x2, label, self.margin, 'none'
                 )
