@@ -699,6 +699,15 @@ def apply_to_static(net, use_cinn):
             places,
             'float64',
         ),
+        (
+            'test0_fp16',
+            (2, 100, 3, 5),
+            1e-5,
+            2,
+            'NCHW',
+            places,
+            'float16',
+        ),
     ),
 )
 class TestCompositeGroupNorm(unittest.TestCase):
@@ -721,6 +730,10 @@ class TestCompositeGroupNorm(unittest.TestCase):
             self.num_channels = self.shape[-1]
         else:
             self.num_channels = self.shape[1]
+
+        if self.dtype == 'float16':
+            self.places = []
+            self.places.append(paddle.CUDAPlace(0))
 
         self.threshold = {}
         self.threshold['float32'] = []
