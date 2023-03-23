@@ -211,6 +211,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_feedforward_, "fused_feedforward_pass");
+#endif
   }
 
   void SetCollectiveContext() const {
@@ -530,6 +533,9 @@ USE_PASS(fuse_adamw_op_pass);
 #endif
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
+#endif
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_feedforward_pass);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);

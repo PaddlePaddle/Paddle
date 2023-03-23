@@ -84,6 +84,19 @@ class FusedAttentionPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fused_feedforward")
+class FusedFeedforwardPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_feedforward_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_gemm_epilogue")
 class FuseGemmEpiloguePass(CPPPassWrapper):
     def __init__(self):

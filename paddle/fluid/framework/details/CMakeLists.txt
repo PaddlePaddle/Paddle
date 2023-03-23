@@ -383,8 +383,9 @@ set(IR_PASS_DEPS
     fix_op_run_order_pass
     fuse_gemm_epilogue_pass
     fused_attention_pass
-    delete_dropout_op_pass
-    fuse_adamw_op_pass)
+    fuse_adamw_op_pass
+    fused_feedforward_pass
+    delete_dropout_op_pass)
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)

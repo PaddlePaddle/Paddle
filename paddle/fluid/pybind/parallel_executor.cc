@@ -372,17 +372,13 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-            import os
             import paddle
             import paddle.static as static
 
             paddle.enable_static()
 
-            os.environ['CPU_NUM'] = str(2)
-            places = static.cpu_places()
-
             data = static.data(name="x", shape=[None, 1], dtype="float32")
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(data, size=10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -390,10 +386,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             build_strategy.enable_inplace = True
             build_strategy.memory_optimize = True
             build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
-            program = static.CompiledProgram(static.default_main_program())
-            program = program.with_data_parallel(loss_name=loss.name,
-                                                  build_strategy=build_strategy,
-                                                  places=places)
+            program = static.CompiledProgram(static.default_main_program(), build_strategy=build_strategy)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -461,7 +454,6 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                     .. code-block:: python
 
                         import numpy
-                        import os
                         import paddle
                         import paddle.static as static
 
@@ -471,20 +463,8 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
                         exe = static.Executor(place)
 
-                        # NOTE: If you use CPU to run the program, you need
-                        # to specify the CPU_NUM, otherwise, paddle will use
-                        # all the number of the logic core as the CPU_NUM,
-                        # in that case, the batch size of the input should be
-                        # greater than CPU_NUM, if not, the process will be
-                        # failed by an exception.
-                        if not use_cuda:
-                            os.environ['CPU_NUM'] = str(2)
-                            places = static.cpu_places()
-                        else:
-                            places = static.cuda_places()
-
                         data = static.data(name='X', shape=[None, 1], dtype='float32')
-                        hidden = static.nn.fc(input=data, size=10)
+                        hidden = static.nn.fc(data, size=10)
                         loss = paddle.mean(hidden)
                         paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -492,19 +472,18 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.gradient_scale_strategy = \
-                                  static.BuildStrategy.GradientScaleStrategy.Customized
+                                    static.BuildStrategy.GradientScaleStrategy.Customized
                         compiled_prog = static.CompiledProgram(
-                                  static.default_main_program()).with_data_parallel(
-                                          loss_name=loss.name, build_strategy=build_strategy,
-                                          places=places)
+                                    static.default_main_program(),
+                                    build_strategy=build_strategy,
+                        )
 
-                        dev_count =  len(places)
                         x = numpy.random.random(size=(10, 1)).astype('float32')
-                        loss_grad = numpy.ones((dev_count)).astype("float32") * 0.01
+                        loss_grad = numpy.ones((1)).astype("float32") * 0.01
                         loss_grad_name = loss.name+"@GRAD"
                         loss_data = exe.run(compiled_prog,
-                                              feed={"X": x, loss_grad_name : loss_grad},
-                                              fetch_list=[loss.name, loss_grad_name])
+                                                feed={"X": x, loss_grad_name : loss_grad},
+                                                fetch_list=[loss.name, loss_grad_name])
                    )DOC")
       .def_property(
           "debug_graphviz_path",
@@ -765,6 +744,32 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fused_attention = True
+                     )DOC")
+      .def_property(
+          "fused_feedforward",
+          [](const BuildStrategy &self) { return self.fused_feedforward_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fused_feedforward_ = b;
+          },
+          R"DOC((bool, optional): fused_feedforward indicate whether
+                to fuse the whole feed_forward part with one op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_feedforward = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

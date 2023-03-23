@@ -436,8 +436,10 @@ def build_dp_costs(
             elif var_name in dist_attr.outputs_dist_attrs:
                 dims_mapping = dist_attr.get_output_dims_mapping(var_name)
             else:
-                assert False, "cannot find dims_mapping for {} in {}".format(
-                    var_name, dist_attr
+                raise AssertionError(
+                    "cannot find dims_mapping for {} in {}".format(
+                        var_name, dist_attr
+                    )
                 )
 
             # dims_mapping = (

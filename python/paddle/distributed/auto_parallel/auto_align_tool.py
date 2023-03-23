@@ -276,7 +276,7 @@ class AutoAlignTool:
                 save_dir, "dist_attr_rank{}.pkl".format(dist.get_rank())
             )
         if vars is not None:
-            vars_dict = dict()
+            vars_dict = {}
             assert len(fetch_list) == len(vars)
             for i in range(len(fetch_list)):
                 if vars[i] is None:
@@ -331,7 +331,7 @@ class AutoAlignTool:
                 with (open(filepath, "rb")) as f:
                     dist_attr_list.append(pickle.load(f))
 
-        dist_attr_map = dict()
+        dist_attr_map = {}
         for dist_attrs in dist_attr_list:
             for dist_attr_name in dist_attrs.keys():
                 if dist_attr_name not in dist_attr_map:
@@ -352,9 +352,9 @@ class AutoAlignTool:
         if src_attr_map is None or len(src_attr_map) == 0:
             return vars_list[0]
 
-        dst_strategys = dict()
-        src_strategys = dict()
-        tensors_dict = dict()
+        dst_strategys = {}
+        src_strategys = {}
+        tensors_dict = {}
 
         convert_tensor_dict = None
         for var_name in src_attr_map.keys():
@@ -451,7 +451,7 @@ class AutoAlignTool:
     def diff_informations_from_dirs(right_dirs, wrong_dirs):
         right_vars_list = []
         right_program_list = []
-        right_dist_attr_map = dict()
+        right_dist_attr_map = {}
         for right_dir in right_dirs:
             (
                 tmp_vars_list,
@@ -473,7 +473,7 @@ class AutoAlignTool:
 
         wrong_vars_list = []
         wrong_program_list = []
-        wrong_dist_attr_map = dict()
+        wrong_dist_attr_map = {}
         for wrong_dir in wrong_dirs:
             (
                 tmp_vars_list,

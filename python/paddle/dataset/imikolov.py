@@ -108,7 +108,7 @@ def reader_creator(filename, word_idx, n, data_type):
                         continue
                     yield src_seq, trg_seq
                 else:
-                    assert False, 'Unknown data type'
+                    raise AssertionError('Unknown data type')
 
     return reader
 
