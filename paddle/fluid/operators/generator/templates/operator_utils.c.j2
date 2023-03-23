@@ -439,7 +439,7 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
 };
 
 {% if op["op_name"] is has_infer_var_type_func %}
-{% set infer_var_type_func_str = op["op_name"] | to_infer_var_type_func %}
+{% set infer_var_type_func_str = op["op_name"] | get_infer_var_type_func %}
 {{infer_var_type_func_str}}
 {% endif %}
 

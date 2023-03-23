@@ -41,7 +41,7 @@ class AssignInferVarType : public framework::VarTypeInference {
 }
 
 
-def to_infer_var_type_func(op_name):
+def get_infer_var_type_func(op_name):
     assert (
         op_name in infer_var_type_func_map
     ), "op {} has not var_type_func.".format(op_name)
