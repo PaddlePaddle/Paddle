@@ -439,6 +439,33 @@ def silu_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('meshgrid')
+def meshgrid_composite(inputs):
+    """
+    define composite rule of op meshgrid
+    If the input has N tensors of size S_0, ... S_n-1, then the output will also have N tensors, where
+    each tensor is of shape (S_0, ..., S_n-1).
+    E.g. a1 is Tensor [1,2,3]
+         b1 is Tensor [4,5]
+         r1, r2 = paddle.meshgrid([a1, b1])
+         r1 is Tensor [[1,1], [2,2], [3,3]]
+         r2 is Tensor [[4,5], [4,5], [4,5]]
+    """
+    size = len(inputs)
+    shape = [1] * size
+    for i in range(size):
+        dim = inputs[i].dim()
+        assert dim == 0 or dim == 1
+        if dim == 1:
+            shape[i] = inputs[i].shape[0]
+    outputs = []
+    for i in range(size):
+        view_shape = [1] * size
+        view_shape[i] = shape[i]
+        outputs.append(inputs[i].reshape(view_shape).broadcast_to(shape))
+    return outputs
+
+
 @REGISTER_COMPOSITE('fill_any_like')
 def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
