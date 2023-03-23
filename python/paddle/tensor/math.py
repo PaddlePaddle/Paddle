@@ -5604,7 +5604,7 @@ def i0(x, name=None):
 
             x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
             print(paddle.i0(x))
-            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [1., 1.26606588,  2.2795853, 4.88079259, 11.30192195]),
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089]),
     """
     if in_dygraph_mode():
         return _C_ops.i0(x)
@@ -5617,6 +5617,7 @@ def i0(x, name=None):
             type='i0', inputs={'X': x}, outputs={'Out': out}, attrs={}
         )
     return out
+
 
 def i0e(x, name=None):
     """
