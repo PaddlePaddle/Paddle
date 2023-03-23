@@ -1895,6 +1895,31 @@ class RuleBasedTuner:
         )
         return global_cost.time, max_memory
 
+    def combine_dist_contexts(self, dist_contexts):
+        """Combine the dist attr in dist contexts to one dist context."""
+        combined_dist_context = DistributedContext()
+        # set dist tensor, pay attention to shared param or var as input for multi op
+        for dist_context in dist_contexts:
+            for tensor_id in dist_context._dist_tensors_for_program:
+                dist_tensor = dist_context._dist_tensors_for_program[tensor_id]
+                if (
+                    tensor_id
+                    not in combined_dist_context._dist_tensors_for_program
+                ):
+                    combined_dist_context.add_dist_tensor_for_program(
+                        dist_tensor
+                    )
+
+            # set dist op
+            for op_id in dist_context._dist_ops_for_program:
+                dist_op = dist_context._dist_ops_for_program[op_id]
+                combined_dist_context.add_dist_op_for_program(dist_op)
+
+            for process_mesh in dist_context.process_meshes:
+                combined_dist_context.add_process_mesh(process_mesh)
+
+        return combined_dist_context
+
     def prepare(self):
         """Prepare the sub program, tensor dist attr setting, device meshes and so on that tuner need."""
 

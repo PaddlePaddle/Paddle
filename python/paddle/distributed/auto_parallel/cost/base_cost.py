@@ -879,6 +879,8 @@ class CompOpCost(OpCost):
                 )
 
     def calc_flops(self):
+        if not self.op_desc:
+            return 0
         if "_grad" in self.__class__.OP_TYPE:
             op_type = self.__class__.OP_TYPE[: len(self.__class__.OP_TYPE) - 5]
             return 2 * flops(
