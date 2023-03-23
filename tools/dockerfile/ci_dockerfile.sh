@@ -99,7 +99,7 @@ function make_centos_dockerfile(){
 
 function make_cinn_dockerfile(){
   dockerfile_name="Dockerfile.cuda11_cudnn8_gcc82_ubuntu18_cinn"
-  sed "s#<baseimg>#nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed "s#<baseimg>#nvidia/cuda:11.6.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
