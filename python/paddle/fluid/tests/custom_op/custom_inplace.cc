@@ -61,16 +61,6 @@ void AddForward(paddle::Tensor& x, const paddle::Tensor& y) {  // NOLINT
                              }));
 }
 
-std::vector<paddle::DataType> AddInferDtype(const paddle::DataType& x_dtype,
-                                            const paddle::DataType& y_dtype) {
-  return {x_dtype};
-}
-
-std::vector<std::vector<int64_t>> AddInferShape(
-    const std::vector<int64_t>& x_shape, const std::vector<int64_t>& y_shape) {
-  return {x_shape};
-}
-
 std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
                                         const paddle::Tensor& y,
                                         paddle::Tensor& out_grad) {  // NOLINT
@@ -92,9 +82,7 @@ PD_BUILD_OP(custom_add)
     .Inputs({"X", "Y"})
     .Outputs({"Out"})
     .SetInplaceMap({{"X", "Out"}})
-    .SetKernelFn(PD_KERNEL(AddForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(AddInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(AddInferDtype));
+    .SetKernelFn(PD_KERNEL(AddForward));
 
 PD_BUILD_GRAD_OP(custom_add)
     .Inputs({"X", "Y", paddle::Grad("Out")})
