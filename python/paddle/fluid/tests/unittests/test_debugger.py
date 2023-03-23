@@ -15,7 +15,7 @@
 import unittest
 
 import paddle.fluid.core as core
-from paddle.fluid import debugger
+from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 from paddle.fluid.framework import Program
 
 
@@ -56,9 +56,9 @@ class TestDebugger(unittest.TestCase):
             attrs={"x_num_col_dims": 1},
         )
 
-        print(debugger.pprint_program_codes(p))
+        # print(pprint_program_codes(p))
 
-        debugger.draw_block_graphviz(p.block(0), path="./test.dot")
+        draw_block_graphviz(p.block(0), path="./test.dot")
 
 
 if __name__ == '__main__':
