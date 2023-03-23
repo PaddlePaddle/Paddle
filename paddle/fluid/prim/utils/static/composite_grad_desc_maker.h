@@ -320,7 +320,11 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleInputGrad(const std::string& name,
                                       bool drop_empty_grad = true) const {
-    auto var_name = this->SingleForwardInputVarName(name);
+    auto* var = this->SingleForwardInput(name);
+    if (!var) {
+      return nullptr;
+    }
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     if (no_grad_set_.empty() || !no_grad_set_.count(grad_var_name)) {
       (*this->grad_to_var_)[grad_var_name] = var_name;
@@ -342,6 +346,13 @@ class CompositeGradOpMakerBase {
   }
 
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
+    auto* var = this->SingleForwardOutput(name);
+    if (!var) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
+          "please use GetOptionalSingleOutputGrad replaced. ",
+          name));
+    }
     auto var_name = this->SingleForwardOutputVarName(name);
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;

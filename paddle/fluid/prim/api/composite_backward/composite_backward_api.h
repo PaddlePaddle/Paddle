@@ -908,6 +908,9 @@ void layer_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
+  // std::cout << x.type() << " " << scale.get().type() << " " <<
+  // bias.get().type() << " " << mean.type() << " " << variance.type() <<
+  // std::endl;
   auto x_dims = x.dims();
   auto shape_1 = 1;  // front part
   auto shape_2 = 1;  // back part
@@ -951,7 +954,9 @@ void layer_norm_grad(const Tensor& x,
     }
   }
   auto x_sub_mean = x_cast - mean_;
-  auto tmp = (1.0 / (variance_ + epsilon));
+  auto eps =
+      full<T>(phi::vectorize(variance_.dims()), epsilon, variance_.dtype());
+  auto tmp = (1.0 / (variance_ + eps));
   auto sqrt_var_1 = sqrt<T>(tmp);
   if (scale_grad) {
     if (scale_ptr) {

@@ -278,15 +278,9 @@ class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto begin_norm_axis = this->Attr<int>("begin_norm_axis");
     // get outputs
     paddle::Tensor x_grad = this->GetSingleInputGrad("X");
-    paddle::Tensor scale_grad;
-    paddle::Tensor bias_grad;
+    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
 
-    if (scale.is_initialized()) {
-      scale_grad = this->GetSingleInputGrad("Scale");
-    }
-    if (bias.is_initialized()) {
-      bias_grad = this->GetSingleInputGrad("Bias");
-    }
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
     auto dscale_ptr = this->GetOutputPtr(&scale_grad);
