@@ -17,7 +17,7 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -336,14 +336,11 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.inputs = {'X': convert_uint16_to_float(input)}
         self.check_grad(
             self.verify_output['X'],
             'Out',
             user_defined_grads=[
-                np_logcumsumexp_grad(
-                    self.inputs['X'], 1 / self.inputs['X'].size, **self.attrs
-                )
+                np_logcumsumexp_grad(input, 1 / input.size, **self.attrs)
             ],
         )
 
