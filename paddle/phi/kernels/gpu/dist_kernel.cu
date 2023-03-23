@@ -38,9 +38,8 @@ struct OtherOrderFunctor {
   explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
   __device__ T operator()(const T& x, const T& y) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    MPType mptx = static_cast<MPType>(x);
-    MPType mpty = static_cast<MPType>(y);
-    return static_cast<T>(pow(abs(mptx - mpty), static_cast<MPType>(p_order_)));
+    return static_cast<T>(
+        pow(abs(static_cast<MPType>(x - y)), static_cast<MPType>(p_order_)));
   }
 
  private:
@@ -52,9 +51,8 @@ struct PowFunctor {
   explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
   HOSTDEVICE inline T operator()(const T x) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    MPType mptx = static_cast<MPType>(x);
-    MPType mp_order_ = static_cast<MPType>(p_order_);
-    return static_cast<T>(pow(mptx, mp_order_));
+    return static_cast<T>(
+        pow(static_cast<MPType>(x), static_cast<MPType>(p_order_)));
   }
   T p_order_;
 };
@@ -85,7 +83,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
   MPType max_val = static_cast<MPType>(-1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    max_val = max(max_val, static_cast<MPType>(abs(x[i] - y[i])));
+    max_val = max(max_val, abs(static_cast<MPType>(x[i] - y[i])));
   }
 
   __syncthreads();
