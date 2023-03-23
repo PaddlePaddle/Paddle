@@ -298,6 +298,44 @@ class TestPixelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_data_format_layer)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestPixelShuffleFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "pixel_shuffle"
+        self.python_api = paddle.nn.functional.pixel_shuffle
+        self.dtype = np.float16
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+
+        up_factor = 3
+
+        x = np.random.random(shape).astype(self.dtype)
+        npresult = pixel_shuffle_np(x, up_factor, self.format)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': npresult}
+        self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+    def init_data_format(self):
+        self.format = "NCHW"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
