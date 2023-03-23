@@ -708,6 +708,7 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
+  intermediate : Residual
   backward : huber_loss_grad
 
 - op : imag
