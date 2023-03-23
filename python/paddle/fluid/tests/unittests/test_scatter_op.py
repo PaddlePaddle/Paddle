@@ -28,6 +28,7 @@ class TestScatterOp(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -92,6 +93,7 @@ class TestScatterOp0(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -157,6 +159,7 @@ class TestScatterOp1(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -228,6 +231,7 @@ class TestScatterOp2(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -290,6 +294,7 @@ class TestScatterOp3(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -353,6 +358,7 @@ class TestScatterOp4(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -420,6 +426,7 @@ class TestScatterOp5(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
@@ -479,6 +486,7 @@ class TestScatterOp6(OpTest):
     def setUp(self):
         self.op_type = "scatter"
         self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self._set_dtype()
