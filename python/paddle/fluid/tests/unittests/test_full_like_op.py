@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
-from op_test import convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -106,10 +105,6 @@ class TestFullOpError(unittest.TestCase):
             )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
 class TestFullLikeOp1(OpTest):
     # test basic
     def setUp(self):
@@ -136,7 +131,6 @@ class TestFullLikeOp1(OpTest):
             'value': self.fill_value,
             'dtype': convert_np_dtype_to_dtype_(self.dtype),
         }
-        self.place = core.CUDAPlace(0)
 
     def init_data(self):
         self.fill_value = 5
@@ -195,9 +189,6 @@ class TestFullLikeFP16Op(TestFullLikeOp1):
         self.shape = [10, 10]
         self.dtype = np.float16
 
-    def if_enable_cinn(self):
-        pass
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -209,9 +200,6 @@ class TestFullLikeBF16Op(TestFullLikeOp1):
         self.fill_value = 6666
         self.shape = [10, 10]
         self.dtype = np.uint16
-
-    def if_enable_cinn(self):
-        pass
 
 
 if __name__ == "__main__":
