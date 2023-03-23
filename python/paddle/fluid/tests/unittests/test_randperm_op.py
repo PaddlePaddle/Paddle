@@ -63,7 +63,7 @@ class TestRandpermOp(OpTest):
         self.dtype = "int64"
 
         self.inputs = {}
-        self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
+        self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
         self.init_attrs()
         self.attrs = {
             "n": self.n,

@@ -1511,7 +1511,7 @@ class Model:
                 match_res = _check_match(key, param)
             except ValueError as err:
                 if skip_mismatch:
-                    warnings.warn((f"Skip loading for {key}. " + str(err)))
+                    warnings.warn(f"Skip loading for {key}. " + str(err))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:

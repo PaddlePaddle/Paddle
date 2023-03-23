@@ -103,14 +103,14 @@ class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 100, 1)).astype("float32")
-        self.alpha = np.random.random((100)).astype("float32")
+        self.alpha = np.random.random(100).astype("float32")
 
 
 class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 1, 100)).astype("float32")
-        self.alpha = np.random.random((1)).astype("float32")
+        self.alpha = np.random.random(1).astype("float32")
 
 
 #   BF16 TESTS

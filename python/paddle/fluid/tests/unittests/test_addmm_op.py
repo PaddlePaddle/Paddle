@@ -230,7 +230,7 @@ class TestAddMMOp4(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'Input': np.random.random((100)).astype(self.dtype),
+            'Input': np.random.random(100).astype(self.dtype),
             'X': np.random.random((20, 10)).astype(self.dtype),
             'Y': np.random.random((10, 100)).astype(self.dtype),
         }
@@ -296,7 +296,7 @@ class TestAddMMAPI(unittest.TestCase):
         self.assertRaises(ValueError, test_error1)
 
         def test_error2():
-            data_x_wrong = np.ones((2)).astype(np.float32)
+            data_x_wrong = np.ones(2).astype(np.float32)
             x = paddle.to_tensor(data_x_wrong)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input)
@@ -318,7 +318,7 @@ class TestAddMMAPI(unittest.TestCase):
         self.assertRaises(ValueError, test_error3)
 
         def test_error4():
-            data_input_wrong = np.ones((5)).astype(np.float32)
+            data_input_wrong = np.ones(5).astype(np.float32)
             x = paddle.to_tensor(data_x)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input_wrong)
@@ -358,7 +358,7 @@ class TestAddMMAPI(unittest.TestCase):
     def test_api_normal_2(self):
         data_x = np.ones((3, 10)).astype(np.float32)
         data_y = np.ones((10, 3)).astype(np.float32)
-        data_input = np.ones((3)).astype(np.float32)
+        data_input = np.ones(3).astype(np.float32)
         data_alpha = 0.1
         data_beta = 1.0
 
@@ -383,7 +383,7 @@ class TestAddMMAPI(unittest.TestCase):
     def test_api_normal_3(self):
         data_x = np.ones((3, 10)).astype(np.float32)
         data_y = np.ones((10, 3)).astype(np.float32)
-        data_input = np.ones((1)).astype(np.float32)
+        data_input = np.ones(1).astype(np.float32)
         data_alpha = 0.1
         data_beta = 1.0
 

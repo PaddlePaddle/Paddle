@@ -102,7 +102,7 @@ class TestRNNOp(OpTest):
         init_c = np.zeros(
             (self.num_layers * self.direction_num, batch_size, hidden_size)
         ).astype(self.dtype)
-        state_out = np.ndarray((300)).astype("uint8")
+        state_out = np.ndarray(300).astype("uint8")
 
         self.inputs = {
             'Input': input,
@@ -128,7 +128,7 @@ class TestRNNOp(OpTest):
         self.outputs = {
             'Out': output,
             "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
-            'Reserve': np.ndarray((400)).astype("uint8"),
+            'Reserve': np.ndarray(400).astype("uint8"),
             'DropoutState': state_out,
         }
 

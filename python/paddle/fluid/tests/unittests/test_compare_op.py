@@ -333,7 +333,7 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
-                input_x = np.arange(0, 5).reshape((5)).astype(np.int32)
+                input_x = np.arange(0, 5).reshape(5).astype(np.int32)
                 input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(np.int32)
                 real_result = callback(input_x, input_y)
                 (res,) = exe.run(

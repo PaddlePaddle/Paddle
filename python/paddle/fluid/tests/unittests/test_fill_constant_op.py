@@ -156,7 +156,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -181,7 +181,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
