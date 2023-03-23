@@ -57,7 +57,8 @@ add_library(
   Rewrite/FrozenRewritePatternSet.cc
   Rewrite/PatternApplicator.cc
   Transforms/GreedyPatternRewriteDriver.cc
-  Pass/PassTiming.cc)
+  Pass/PassTiming.cc
+  Analysis/DataFlow/Framework.cc)
 
 # python and pybind11
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/pybind11)
