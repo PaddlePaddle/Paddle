@@ -443,7 +443,7 @@ def nonzero(x, as_tuple=False):
     if not as_tuple:
         return outs
     elif rank == 1:
-        return tuple([outs])
+        return (outs,)
     else:
         for i in range(rank):
             list_out.append(

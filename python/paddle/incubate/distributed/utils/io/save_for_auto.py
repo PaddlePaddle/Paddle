@@ -333,7 +333,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
 def _get_wrapped_dist_state_dict(dist_state_dict):
 
-    wrapped_state_dict = dict()
+    wrapped_state_dict = {}
     if dist.get_world_size() <= 1:
         for _, v in dist_state_dict.items():
             wrapped_state_dict[v.name] = v

@@ -2036,7 +2036,7 @@ class AdagradOptimizer(Optimizer):
 
             paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = fluid.data(name="inp", shape=[2, 2])
+            inp = paddle.static.data(name="inp", shape=[2, 2], dtype="float32")
             out = paddle.static.nn.fc(inp, size=3)
             out = paddle.sum(out)
             optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
@@ -2081,7 +2081,11 @@ class AdagradOptimizer(Optimizer):
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
-                self._add_accumulator(self._moment_acc_str, master_p)
+                self._add_accumulator(
+                    self._moment_acc_str,
+                    master_p,
+                    fill_value=self.initial_accumulator_value,
+                )
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -2228,8 +2232,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -2257,8 +2261,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -2292,8 +2296,8 @@ class AdamOptimizer(Optimizer):
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
                     decayed_beta2 = beta2_init * (decay_rate**div_res)
-                    fluid.layers.assign(decayed_beta1, beta1)
-                    fluid.layers.assign(decayed_beta2, beta2)
+                    paddle.assign(decayed_beta1, beta1)
+                    paddle.assign(decayed_beta2, beta2)
 
                     return beta1, beta2, epsilon
 
@@ -2651,7 +2655,7 @@ class AdamaxOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+              data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
               hidden = paddle.static.nn.fc(x=data, size=10)
               loss = paddle.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
@@ -2994,7 +2998,7 @@ class DecayedAdagradOptimizer(Optimizer):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
             trans = paddle.static.nn.fc(x, 100)
             cost = paddle.mean(trans)
             optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
@@ -3118,7 +3122,7 @@ class AdadeltaOptimizer(Optimizer):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            image = fluid.data(name='image', shape=[None, 28], dtype='float32')
+            image = paddle.static.data(name='image', shape=[None, 28], dtype='float32')
             fc = paddle.static.nn.fc(image, size=10)
             cost = paddle.mean(fc)
             optimizer = fluid.optimizer.Adadelta(
@@ -3747,7 +3751,7 @@ class LambOptimizer(AdamOptimizer):
             import paddle.fluid as fluid
             paddle.enable_static()
 
-            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
+            data = paddle.static.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             cost = paddle.mean(hidden)
 
@@ -3964,7 +3968,7 @@ class ModelAverage(Optimizer):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             # build net
-            data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+            data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -4143,7 +4147,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -4199,7 +4203,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)

@@ -122,7 +122,7 @@ class TestPadOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            data = fluid.data(name='data', shape=[4], dtype='float16')
+            data = paddle.static.data(name='data', shape=[4], dtype='float16')
             paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 

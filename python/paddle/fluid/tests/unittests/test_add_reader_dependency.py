@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -47,7 +48,9 @@ class TestAddReaderDependency(unittest.TestCase):
     def run_main(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(fluid.Scope()):
-                tmp_in = fluid.data(name='tmp_in', dtype='float32', shape=[1])
+                tmp_in = paddle.static.data(
+                    name='tmp_in', dtype='float32', shape=[1]
+                )
                 loader = fluid.io.DataLoader.from_generator(
                     feed_list=[tmp_in],
                     capacity=16,
@@ -62,7 +65,7 @@ class TestAddReaderDependency(unittest.TestCase):
                             low=-1, high=1, size=[1]
                         ).astype('float32'),
 
-                persistable_in = fluid.data(
+                persistable_in = paddle.static.data(
                     name='persistable_in', dtype='float32', shape=[1]
                 )
                 persistable_in.persistable = True

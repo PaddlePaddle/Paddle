@@ -25,10 +25,10 @@ from paddle.fluid.tests.unittests.op_test import (
 )
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
 class TestClipOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "clip"
+        self.init_shape()
         self.set_inputs()
         self.set_attrs()
         self.set_additional_inputs()
@@ -47,8 +47,13 @@ class TestClipOneDNNOp(OpTest):
 
         self.outputs = {'Out': np.clip(self.x_fp32, self.min, self.max)}
 
+    def init_shape(self):
+        self.shape = [10, 10]
+
     def set_inputs(self):
-        self.inputs = {'X': np.random.random((10, 10)).astype(np.float32) * 25}
+        self.inputs = {
+            'X': np.array(np.random.random(self.shape).astype(np.float32) * 25)
+        }
         self.x_fp32 = self.inputs['X']
 
     def set_additional_inputs(self):
@@ -65,6 +70,11 @@ class TestClipOneDNNOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestClipOneDNNOp_ZeroDim(TestClipOneDNNOp):
+    def init_shape(self):
+        self.shape = []
 
 
 class TestClipMinAsInputOneDNNOp(TestClipOneDNNOp):

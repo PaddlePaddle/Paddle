@@ -29,8 +29,8 @@ class TestUnzipOp(unittest.TestCase):
         paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            x = fluid.data(name='X', shape=[3, 4], dtype='float64')
-            lod = fluid.data(name='lod', shape=[11], dtype='int64')
+            x = paddle.static.data(name='X', shape=[3, 4], dtype='float64')
+            lod = paddle.static.data(name='lod', shape=[11], dtype='int64')
             output = paddle.incubate.operators.unzip(x, lod)
 
             input = [

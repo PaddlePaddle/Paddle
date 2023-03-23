@@ -116,7 +116,9 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
     def check_static_result(self, place, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.cholesky(input)
 
             input_np = np.zeros([4, 4]).astype("float64")

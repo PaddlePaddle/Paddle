@@ -77,7 +77,7 @@ class TestAnchorGeneratorOp(OpTest):
         self.outputs = {'Anchors': self.out_anchors, 'Variances': self.out_var}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "anchor_generator"

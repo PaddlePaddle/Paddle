@@ -271,7 +271,7 @@ static_source_end = """
 
 
 class PrimTensorAPI(BaseAPI):
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         super().__init__(api_item_yaml, prims)
 
     def get_api_func_name(self):

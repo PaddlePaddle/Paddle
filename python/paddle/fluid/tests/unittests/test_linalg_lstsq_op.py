@@ -97,12 +97,12 @@ class LinalgLstsqTestCase(unittest.TestCase):
             paddle.set_device(dev)
             place = fluid.CPUPlace() if dev == "cpu" else fluid.CUDAPlace(0)
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="x",
                     shape=self._input_shape_1,
                     dtype=self._input_data_1.dtype,
                 )
-                y = paddle.fluid.data(
+                y = paddle.static.data(
                     name="y",
                     shape=self._input_shape_2,
                     dtype=self._input_data_2.dtype,

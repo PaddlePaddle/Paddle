@@ -32,8 +32,12 @@ class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, layer, x0)
                 # the input dtype must be float32 or float64
-                x1 = fluid.data(name='x1', shape=[-1, 5], dtype="float16")
-                x2 = fluid.data(name='x2', shape=[-1, 4], dtype="float32")
+                x1 = paddle.static.data(
+                    name='x1', shape=[-1, 5], dtype="float16"
+                )
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 4], dtype="float32"
+                )
                 self.assertRaises(TypeError, layer, x1, x2)
                 # the dimensions of x and y must be 2
                 paddle.enable_static()
