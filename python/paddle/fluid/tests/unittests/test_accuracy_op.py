@@ -19,7 +19,8 @@ from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -62,6 +63,48 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestAccuracyOpBf16(OpTest):
+    def setUp(self):
+        self.op_type = "accuracy"
+        self.python_api = accuracy_wrapper
+        self.init_dtype()
+        n = 8192
+        infer = np.random.random((n, 1)).astype(np.float32)
+        indices = np.random.randint(0, 2, (n, 1)).astype('int64')
+        label = np.random.randint(0, 2, (n, 1)).astype('int64')
+        self.inputs = {
+            'Out': convert_float_to_uint16(infer),
+            'Indices': indices,
+            "Label": label,
+        }
+        num_correct = 0
+        for rowid in range(n):
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
+                    num_correct += 1
+                    break
+        self.outputs = {
+            'Accuracy': convert_float_to_uint16(
+                np.array([num_correct / float(n)]).astype(np.float32)
+            ),
+            'Correct': np.array([num_correct]).astype("int32"),
+            'Total': np.array([n]).astype("int32"),
+        }
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
 
 
 class TestAccuracyOpError(unittest.TestCase):

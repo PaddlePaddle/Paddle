@@ -99,6 +99,16 @@ file(
   "install(DIRECTORY xpu/include xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 
+if(WITH_XPU_BKCL)
+  message(STATUS "Compile with XPU BKCL!")
+  add_definitions(-DPADDLE_WITH_XPU_BKCL)
+
+  set(XPU_BKCL_LIB_NAME "libbkcl.so")
+  set(XPU_BKCL_LIB "${XPU_LIB_DIR}/${XPU_BKCL_LIB_NAME}")
+  set(XPU_BKCL_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
+  include_directories(${XPU_BKCL_INC_DIR})
+endif()
+
 ExternalProject_Add(
   ${XPU_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -116,7 +126,8 @@ ExternalProject_Add(
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
   BUILD_BYPRODUCTS ${XPU_API_LIB}
-  BUILD_BYPRODUCTS ${XPU_RT_LIB})
+  BUILD_BYPRODUCTS ${XPU_RT_LIB}
+  BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
 
 include_directories(${XPU_INC_DIR})
 add_library(shared_xpuapi SHARED IMPORTED GLOBAL)
@@ -127,16 +138,6 @@ set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
 target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
-
-if(WITH_XPU_BKCL)
-  message(STATUS "Compile with XPU BKCL!")
-  add_definitions(-DPADDLE_WITH_XPU_BKCL)
-
-  set(XPU_BKCL_LIB_NAME "libbkcl.so")
-  set(XPU_BKCL_LIB "${XPU_LIB_DIR}/${XPU_BKCL_LIB_NAME}")
-  set(XPU_BKCL_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
-  include_directories(${XPU_BKCL_INC_DIR})
-endif()
 
 if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")

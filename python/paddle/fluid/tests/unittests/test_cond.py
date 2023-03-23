@@ -285,7 +285,7 @@ class TestCondInputOutput(unittest.TestCase):
             a = paddle.tensor.fill_constant(
                 shape=[3, 2, 1], dtype='int32', value=7
             )
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             a = paddle.static.nn.cond(
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
@@ -330,7 +330,7 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
             out2 = paddle.static.nn.cond(pred, None, false_func)
@@ -371,7 +371,7 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             with self.assertRaises(TypeError):
                 out = paddle.static.nn.cond(pred, i, func_return_one_tensor)
@@ -477,7 +477,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='float32')
+            i = paddle.static.data(name="i", shape=[1], dtype='float32')
             i.stop_gradient = False
             a = 2.0 * i
             out = paddle.static.nn.cond(
@@ -629,10 +629,14 @@ class TestCondBackward(unittest.TestCase):
         startup_program = Program()
         startup_program.random_seed = 123
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 9], dtype='float32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 9], dtype='float32'
+            )
             img.stop_gradient = False
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             append_backward(loss)
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -684,9 +688,13 @@ class TestCondBackward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 784], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             optimizer = fluid.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
@@ -793,7 +801,7 @@ class TestCondWithError(unittest.TestCase):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
-            pred = fluid.data(name='y', shape=[1], dtype='bool')
+            pred = paddle.static.data(name='y', shape=[1], dtype='bool')
 
             def func():
                 return pred

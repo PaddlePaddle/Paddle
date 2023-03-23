@@ -66,7 +66,7 @@ StorageManager::StorageManager() {}
 
 StorageManager::~StorageManager() = default;
 
-StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     TypeId type_id,
     std::size_t hash_value,
     std::function<bool(const StorageBase *)> equal_func,
@@ -81,7 +81,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
   return parametric_storage.GetOrCreate(hash_value, equal_func, constructor);
 }
 
-StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
     TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "Try to get a parameterless storage of: [TypeId_hash="
@@ -92,7 +92,7 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
   return parameterless_instance;
 }
 
-void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
+void StorageManager::RegisterParametricStorageImpl(TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
   VLOG(4) << "Register a parameteric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
@@ -100,7 +100,7 @@ void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
                                std::make_unique<ParametricStorageManager>());
 }
 
-void StorageManager::RegisterParameterlessStorageTypeImpl(
+void StorageManager::RegisterParameterlessStorageImpl(
     TypeId type_id, std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "Register a parameterless storage of: [TypeId_hash="

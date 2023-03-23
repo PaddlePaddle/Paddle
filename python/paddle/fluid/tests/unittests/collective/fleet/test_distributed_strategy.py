@@ -47,7 +47,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(program_config.min_block_size, 81920)
 
         # test set_program_config using dict
-        program_config_dict = dict()
+        program_config_dict = {}
         program_config_dict['min_block_size'] = 8192
         strategy.set_program_config(program_config_dict)
         program_config = strategy.get_program_config()
@@ -90,7 +90,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(build_strategy.memory_optimize, False)
 
         # test set_build_strategy using dict
-        build_strategy_dict = dict()
+        build_strategy_dict = {}
         build_strategy_dict['memory_optimize'] = True
         strategy.set_build_strategy(build_strategy_dict)
         build_strategy = strategy.get_build_strategy()
@@ -132,7 +132,7 @@ class TestStrategyFactor(unittest.TestCase):
         )
 
         # test set_trainer_runtime_config using dict
-        trainer_runtime_config_dict = dict()
+        trainer_runtime_config_dict = {}
         trainer_runtime_config_dict['communicator_send_queue_size'] = '20'
         strategy.set_trainer_runtime_config(trainer_runtime_config_dict)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
@@ -168,7 +168,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(exec_strategy.num_threads, 4)
 
         # test set_execute_strategy using dict
-        exec_strategy_dict = dict()
+        exec_strategy_dict = {}
         exec_strategy_dict['num_threads'] = 8
         strategy.set_execute_strategy(exec_strategy_dict)
         exec_strategy = strategy.get_execute_strategy()
@@ -198,7 +198,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(server_runtime_config._rpc_send_thread_num, 24)
 
         # test set_server_runtime_config using dict
-        server_runtime_config_dict = dict()
+        server_runtime_config_dict = {}
         server_runtime_config_dict['_rpc_send_thread_num'] = 20
         strategy.set_server_runtime_config(server_runtime_config_dict)
         server_runtime_config = strategy.get_server_runtime_config()

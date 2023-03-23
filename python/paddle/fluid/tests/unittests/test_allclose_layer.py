@@ -24,8 +24,8 @@ paddle.enable_static()
 
 class TestAllcloseLayer(unittest.TestCase):
     def allclose_check(self, use_cuda, dtype='float32'):
-        a = fluid.data(name="a", shape=[2], dtype=dtype)
-        b = fluid.data(name="b", shape=[2], dtype=dtype)
+        a = paddle.static.data(name="a", shape=[2], dtype=dtype)
+        b = paddle.static.data(name="b", shape=[2], dtype=dtype)
 
         result = paddle.allclose(
             a, b, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan"

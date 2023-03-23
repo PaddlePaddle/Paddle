@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/ir/attribute.h"
+#include "paddle/ir/dialect.h"
 
-namespace phi {
-KernelSignature PNormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("p_norm_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"porder", "axis", "epsilon", "keepdim", "asvector"},
-                         {"X@GRAD"});
-}
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(p_norm_grad, phi::PNormGradOpArgumentMapping);
+namespace ir {
+IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
+}  // namespace ir
