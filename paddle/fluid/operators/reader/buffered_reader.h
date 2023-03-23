@@ -57,6 +57,8 @@ class BufferedReader : public framework::DecoratedReader {
 
   ~BufferedReader() override;
 
+  platform::Place GetPlace() const { return place_; }
+
  private:
   void ReadTillBufferFullAsync();
 

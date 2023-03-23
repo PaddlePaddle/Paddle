@@ -777,12 +777,16 @@ void BuildOpFuncList(const platform::Place& place,
             auto* original_tensor =
                 GetMutableLoDTensorOrSelectedRowsValueFromVar(
                     local_scope->FindVar(var_scope->GetNameById(p.second)));
-            if (static_build) {
+
+            // avoid overwriting valid data
+            if (static_build && original_tensor->initialized()) {
               phi::Copy(*dev_ctx,
                         *original_tensor,
                         transformed_tensor->place(),
                         /*blocking=*/true,
                         original_tensor);
+              original_tensor->set_type(transformed_tensor->dtype());
+              original_tensor->set_layout(transformed_tensor->layout());
             } else {
               original_tensor->ShareDataWith(*transformed_tensor);
             }

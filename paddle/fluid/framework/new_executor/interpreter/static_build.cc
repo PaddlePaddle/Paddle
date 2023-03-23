@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
 std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
@@ -53,6 +54,8 @@ std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
 std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
+    "cudnn_lstm",
+    "distributed_fused_lamb",
     "fused_attention",
     "fused_attention_grad",
     "fused_batch_norm_act",
@@ -62,6 +65,7 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
 
 std::set<std::string> StaticBuildBlackList = {
     "batch_norm" /*: to handle reserve_space output*/,
+    "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
 namespace paddle {
@@ -167,7 +171,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
                    ->place_ != phi::CPUPlace();
   }
 
-  return tensor && !IsExtendedTensor(*tensor) && !tensor->initialized();
+  return tensor && !IsExtendedTensor(*tensor);
 }
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
@@ -198,37 +202,103 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
   }
 }
 
-void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
-                          const phi::DataType& dtype,
-                          const phi::Place& place,
-                          phi::TensorBase* tensor) {
+template <class TensorType>
+void FakeInitialzeTensor(const platform::DeviceContext& dev_ctx,
+                         const phi::Place& place,
+                         const phi::DataType& dtype,
+                         const phi::DataLayout& layout,
+                         TensorType* tensor) {
+  PADDLE_ENFORCE_NE(place.GetType(),
+                    phi::AllocationType::UNDEFINED,
+                    phi::errors::InvalidArgument(
+                        "The place %s to fake intialize is not valid.", place));
+  PADDLE_ENFORCE_NE(dtype,
+                    phi::DataType::UNDEFINED,
+                    phi::errors::InvalidArgument(
+                        "The dtype %s to fake intialize is not valid.", dtype));
+  PADDLE_ENFORCE_NE(
+      layout,
+      phi::DataLayout::UNDEFINED,
+      phi::errors::InvalidArgument(
+          "The layout %s to fake intialize is not valid.", layout));
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
       phi::errors::InvalidArgument(
           "The tensor to fake intialize should not be null."));
-  if (place == phi::CPUPlace()) {
-    dev_ctx.HostAlloc(tensor,
-                      dtype,
-                      /*requested_size=*/0,
-                      /*fake_alloc=*/true);
+
+  if (tensor->initialized() && place == tensor->place() &&
+      dtype == tensor->dtype() && tensor->layout() == layout) {
+    return;
+  }
+
+  // set place
+  if (tensor->initialized()) {  // avoid overwriting valid data
+    phi::Copy(dev_ctx, *tensor, place, /*blocking=*/true, tensor);
   } else {
-    PADDLE_ENFORCE_EQ(
-        place,
-        dev_ctx.GetPlace(),
-        phi::errors::Unavailable("The place %s for fack alloc is not equal to "
-                                 "the place %s of DeviceContext.",
-                                 place,
-                                 dev_ctx.GetPlace()));
-    dev_ctx.Alloc(tensor,
-                  dtype,
-                  /*requested_size=*/0,
-                  /*pinned=*/false,
-                  /*fake_alloc=*/true);
+    if (place == phi::CPUPlace()) {
+      dev_ctx.HostAlloc(tensor,
+                        dtype,
+                        /*requested_size=*/0,
+                        /*fake_alloc=*/true);
+    } else {
+      PADDLE_ENFORCE_EQ(place,
+                        dev_ctx.GetPlace(),
+                        phi::errors::Unavailable(
+                            "The place %s for fack alloc is not equal to "
+                            "the place %s of DeviceContext.",
+                            place,
+                            dev_ctx.GetPlace()));
+      dev_ctx.Alloc(tensor,
+                    dtype,
+                    /*requested_size=*/0,
+                    /*pinned=*/false,
+                    /*fake_alloc=*/true);
+    }
+  }
+
+  // set dtype and layout
+  tensor->set_type(dtype);
+  tensor->set_layout(layout);
+
+  VLOG(4) << "Tensor " << tensor << " fake alloc with type = " << dtype
+          << ", place = " << place << ", layout = " << layout;
+}
+
+void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
+                              const phi::Place& place,
+                              const phi::DataType& dtype,
+                              const phi::DataLayout& layout,
+                              phi::TensorBase* tensor) {
+  if (phi::DenseTensor::classof(tensor)) {
+    FakeInitialzeTensor(
+        dev_ctx, place, dtype, layout, dynamic_cast<phi::DenseTensor*>(tensor));
+  } else if (phi::SelectedRows::classof(tensor)) {
+    FakeInitialzeTensor(dev_ctx,
+                        place,
+                        dtype,
+                        layout,
+                        dynamic_cast<phi::SelectedRows*>(tensor));
+  } else if (phi::SparseCooTensor::classof(tensor)) {
+    FakeInitialzeTensor(dev_ctx,
+                        place,
+                        dtype,
+                        layout,
+                        dynamic_cast<phi::SparseCooTensor*>(tensor));
+  } else if (phi::SparseCsrTensor::classof(tensor)) {
+    FakeInitialzeTensor(dev_ctx,
+                        place,
+                        dtype,
+                        layout,
+                        dynamic_cast<phi::SparseCsrTensor*>(tensor));
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported `%s` type when fake initialize tensor.",
+        tensor->type_info().name()));
   }
 }
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const platform::Place& place,
+                                          const phi::Place& place,
                                           Scope* scope) {
   const std::string& op_type = op.Type();
   if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
@@ -243,6 +313,13 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
     framework::ReaderHolder* reader =
         GET_DATA_SAFELY(scope->FindVar(reader_name), "Input", "Reader", "Read")
             .GetMutable<framework::ReaderHolder>();
+
+    std::shared_ptr<operators::reader::BufferedReader> buffered_reader =
+        std::dynamic_pointer_cast<operators::reader::BufferedReader>(
+            reader->Get());
+    phi::Place target_place =
+        buffered_reader ? buffered_reader->GetPlace() : phi::CPUPlace();
+
     auto& outputs = op.Outputs("Out");
     auto& var_types = reader->VarTypes();
     PADDLE_ENFORCE_EQ(
@@ -259,10 +336,8 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
           GetTensorFormVar(scope->FindVar(parameter_name));
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::DataType dtype = phi::TransToPhiDataType(var_types[i]);
-
-        VLOG(4) << parameter_name << " fake alloc with type " << dtype
-                << " on place " << place << " " << out_tensor;
-        FakeInitializeTensor(*dev_ctx, dtype, place, out_tensor);
+        FakeInitializeTensorBase(
+            *dev_ctx, target_place, dtype, out_tensor->layout(), out_tensor);
       }
     }
   } else {
@@ -332,6 +407,33 @@ void FakeInitializeOutputsForFunctionKernel(
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
+
+        // analyze place
+        phi::Backend backend = tensor_arg_def.backend;
+        if (backend == phi::Backend::UNDEFINED) {
+          if (op_type == "adam" || op_type == "adamw") {
+            phi::TensorBase* beta1_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
+            phi::TensorBase* beta2_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
+            if (beta1_pow->place() == CPUPlace() &&
+                beta2_pow->place() == CPUPlace()) {
+              backend = phi::TransToPhiBackend(CPUPlace());
+            } else {
+              backend = phi::TransToPhiBackend(GPUPlace());
+            }
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "Unsupported UNDEFINED backend for op: %s, parameter: %s",
+                op_type,
+                parameter_name));
+          }
+        }
+        phi::Place place = backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(backend);
+
+        // analyze dtype
         phi::DataType dtype = tensor_arg_def.dtype;
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
@@ -343,9 +445,9 @@ void FakeInitializeOutputsForFunctionKernel(
           } else if (op_type == "arg_min" || op_type == "arg_max" ||
                      op_type == "one_hot_v2") {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
-          } else if (op_type == "bincount") {
+          } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
-          } else if (op_type == "layer_norm" || op_type == "reduce_sum_grad") {
+          } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
             int dtype_attr = op.Attr<int>("out_dtype");
@@ -368,36 +470,10 @@ void FakeInitializeOutputsForFunctionKernel(
           }
         }
 
-        phi::Backend backend = tensor_arg_def.backend;
+        // analyze layout
+        phi::DataLayout layout = tensor_arg_def.layout;
 
-        if (backend == phi::Backend::UNDEFINED) {
-          if (op_type == "adam" || op_type == "adamw") {
-            phi::TensorBase* beta1_pow = GetTensorFormVar(
-                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
-            phi::TensorBase* beta2_pow = GetTensorFormVar(
-                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
-            if (beta1_pow->place() == CPUPlace() &&
-                beta2_pow->place() == CPUPlace()) {
-              backend = phi::TransToPhiBackend(CPUPlace());
-            } else {
-              backend = phi::TransToPhiBackend(GPUPlace());
-            }
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "Unsupported UNDEFINED backend for op: %s, parameter: %s",
-                op_type,
-                parameter_name));
-          }
-        }
-
-        phi::Place place = backend == phi::Backend::CUSTOM
-                               ? dev_ctx.GetPlace()
-                               : phi::TransToPhiPlace(backend);
-
-        VLOG(4) << parameter_name << " fake alloc with type " << dtype
-                << " on place " << place << " " << out_tensor;
-
-        FakeInitializeTensor(dev_ctx, dtype, place, out_tensor);
+        FakeInitializeTensorBase(dev_ctx, place, dtype, layout, out_tensor);
       }
     }
     start_idx += outs_vector.size();
@@ -419,15 +495,15 @@ void FakeInitializeOutputsForStructureKernel(
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
+        phi::Place place = execution_context->GetPlace();
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
-        phi::Place place = execution_context->GetPlace();
-
-        VLOG(4) << parameter_name << " fake alloc with type " << dtype
-                << " on place " << place << " " << out_tensor;
-
-        FakeInitializeTensor(
-            execution_context->device_context(), dtype, place, out_tensor);
+        phi::DataLayout layout = out_tensor->layout();
+        FakeInitializeTensorBase(execution_context->device_context(),
+                                 place,
+                                 dtype,
+                                 layout,
+                                 out_tensor);
       }
     }
   }
