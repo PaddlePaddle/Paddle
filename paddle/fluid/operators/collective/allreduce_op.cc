@@ -73,9 +73,12 @@ REGISTER_OP_WITHOUT_GRADIENT(allreduce,
                              ops::AllReduceOp,
                              ops::AllReduceOpMaker);
 
-REGISTER_OP_CPU_KERNEL(allreduce,
-                       ops::AllReduceOpKernel<phi::CPUContext, float>,
-                       ops::AllReduceOpKernel<phi::CPUContext, double>,
-                       ops::AllReduceOpKernel<phi::CPUContext, int>,
-                       ops::AllReduceOpKernel<phi::CPUContext, int64_t>,
-                       ops::AllReduceOpKernel<phi::CPUContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(allreduce,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AllReduceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}
