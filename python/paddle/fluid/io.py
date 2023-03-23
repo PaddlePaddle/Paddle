@@ -190,8 +190,8 @@ def save_inference_model(
             path = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 

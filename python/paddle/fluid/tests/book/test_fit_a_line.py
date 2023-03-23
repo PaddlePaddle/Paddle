@@ -115,7 +115,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 )
                 if avg_loss_value.dtype == numpy.uint16:
                     avg_loss_value = convert_uint16_to_float(avg_loss_value)
-                if avg_loss_value[0] < 10.0:
+                if float(avg_loss_value) < 10.0:
                     if save_dirname is not None:
                         paddle.static.save_inference_model(
                             save_dirname,

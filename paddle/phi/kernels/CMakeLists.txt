@@ -81,11 +81,12 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
+
 if(WITH_FLASHATTN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
 endif()
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
                          nccl_comm_context)
@@ -103,6 +104,7 @@ file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
+# fusion ops would be included here
 file(
   GLOB
   kernel_cu

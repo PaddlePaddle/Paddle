@@ -37,7 +37,7 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
     def setUp(self):
         self.setUpTensorRTParam()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 32, 32], dtype="float32"
             )
             act_out = self.append_act(data)

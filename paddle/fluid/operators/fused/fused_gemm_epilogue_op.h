@@ -330,6 +330,185 @@ class GemmEpilogueAlgoCache {
   }
 };
 
+static cublasLtEpilogue_t GetEpilogueType(const std::string& activation,
+                                          bool enable_auxiliary) {
+  if (activation == "relu") {
+    return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
+                            : CUBLASLT_EPILOGUE_RELU_BIAS;
+  } else if (activation == "gelu") {
+    return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
+                            : CUBLASLT_EPILOGUE_GELU_BIAS;
+  } else if (activation == "none") {
+    return CUBLASLT_EPILOGUE_BIAS;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The activation attribute of fused_gemm_epilogue op should be"
+        " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
+        "But received activation=%s.",
+        activation));
+  }
+}
+
+template <typename T>
+void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
+                                     const phi::DenseTensor* x,
+                                     const phi::DenseTensor* y,
+                                     const phi::DenseTensor* bias,
+                                     int64_t M,
+                                     int64_t N,
+                                     int64_t K,
+                                     bool trans_x,
+                                     bool trans_y,
+                                     const std::string& activation,
+                                     phi::DenseTensor* out,
+                                     phi::DenseTensor* reserve_space) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
+          << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
+          << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
+          << ", activation=" << activation
+          << ", reserve_space=" << reserve_space;
+
+  bool enable_auxiliary = reserve_space == nullptr ? false : true;
+  auto* out_data = out->data<T>();
+
+  cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
+  cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+  if (std::is_same<T, double>::value) {
+    compute_type = CUBLAS_COMPUTE_64F;
+  }
+
+  cublasLtMatmulDesc_t operation_desc = NULL;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+      &operation_desc, compute_type, scale_type));
+  cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
+
+  cublasLtEpilogue_t epiloque_func =
+      GetEpilogueType(activation, enable_auxiliary);
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc,
+      CUBLASLT_MATMUL_DESC_EPILOGUE,
+      &epiloque_func,
+      sizeof(epiloque_func)));
+  const T* bias_data = bias->data<T>();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc,
+      CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+      &bias_data,
+      sizeof(bias_data)));
+
+  if (enable_auxiliary && activation != "none") {
+    // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+    // dev_ctx.Alloc. Therefore, we set real date type up here.
+    if (activation == "relu") {
+      phi::DataType rs_type = phi::DataType::BOOL;
+      size_t reserve_space_size =
+          phi::product(reserve_space->dims()) * SizeOf(rs_type);
+      dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
+    } else {
+      size_t reserve_space_size =
+          phi::product(reserve_space->dims()) * sizeof(T);
+      dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
+    }
+
+    void* aux_data = reserve_space->data();
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+            &aux_data,
+            sizeof(aux_data)));
+    int64_t aux_ld = N;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+            &aux_ld,
+            sizeof(aux_ld)));
+  }
+
+  cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
+  if (trans_x) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &x_desc, mat_type, M, K, M));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &x_desc, mat_type, K, M, K));
+  }
+  if (trans_y) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &y_desc, mat_type, K, N, K));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &y_desc, mat_type, N, K, N));
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+      &out_desc, mat_type, N, M, N));
+
+  cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+  // NOTE(zengjinle): I do not know whether the 4MB workspace size is
+  // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
+  size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+  cudaStream_t stream = dev_ctx.stream();
+  memory::allocation::AllocationPtr workspace = memory::Alloc(
+      dev_ctx.GetPlace(),
+      workspace_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+
+  MT alpha = static_cast<MT>(1);
+  MT beta = static_cast<MT>(0);
+
+  const auto* y_data = y->data<T>();
+  const auto* x_data = x->data<T>();
+
+  auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
+                                                            operation_desc,
+                                                            y_desc,
+                                                            x_desc,
+                                                            out_desc,
+                                                            &alpha,
+                                                            &beta,
+                                                            y_data,
+                                                            x_data,
+                                                            out_data,
+                                                            stream,
+                                                            workspace->ptr(),
+                                                            workspace_size);
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(lt_handle,
+                                                               operation_desc,
+                                                               &alpha,
+                                                               y_data,
+                                                               y_desc,
+                                                               x_data,
+                                                               x_desc,
+                                                               &beta,
+                                                               out_data,
+                                                               out_desc,
+                                                               out_data,
+                                                               out_desc,
+                                                               algo,
+                                                               workspace->ptr(),
+                                                               workspace_size,
+                                                               stream));
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmulDescDestroy(operation_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(y_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(x_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(out_desc));
+}
+
 enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
 
 template <bool TransX, bool TransY>
@@ -408,7 +587,7 @@ static cublasLtEpilogue_t GetEpilogueGradType(
   }
 }
 
-template <typename T, bool TransX, bool TransY>
+template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           const phi::DenseTensor* dout,
                                           const phi::DenseTensor* x,
@@ -421,8 +600,12 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           phi::DenseTensor* dx,
                                           phi::DenseTensor* dy,
                                           phi::DenseTensor* dbias,
-                                          bool use_addto) {
+                                          bool use_addto_dx,
+                                          bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  static_assert(std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value);
+  static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
   cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
@@ -440,8 +623,8 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
   cudaStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);
-  MT beta_dx = use_addto ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
-  MT beta_dy = static_cast<MT>(0.0);
+  MT beta_dx = use_addto_dx ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
+  MT beta_dy = use_addto_dy ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
 
   cublasLtMatrixLayout_t dout_desc = nullptr, dout_trans_desc = nullptr;
   cublasLtMatrixLayout_t x_desc = nullptr, x_trans_desc = nullptr;
@@ -508,7 +691,11 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kXGradBTrans);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dx_desc, mat_type, x_col, x_row, x_col));
+        &dx_desc,
+        phi::backends::gpu::ToCudaDataType<DXT>(),
+        x_col,
+        x_row,
+        x_col));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &dx_operation_desc, compute_type, scale_type));
@@ -556,7 +743,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-    auto* dx_data = dev_ctx.Alloc<T>(dx, dx->numel() * sizeof(T));
+    auto* dx_data = dev_ctx.Alloc<DXT>(dx, dx->numel() * sizeof(DXT));
     const auto* y_data = y->data<T>();
     const auto* dout_data = dout->data<T>();
     const auto* a_data = kXGradAIsDZ ? dout_data : y_data;
@@ -627,7 +814,11 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kYGradBTrans);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dy_desc, mat_type, y_col, y_row, y_col));
+        &dy_desc,
+        phi::backends::gpu::ToCudaDataType<DYT>(),
+        y_col,
+        y_row,
+        y_col));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &dy_operation_desc, compute_type, scale_type));
@@ -664,7 +855,8 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
             sizeof(epiloque_func_for_dy)));
 
     if (dbias) {
-      auto* dbias_data = dev_ctx.Alloc<T>(dbias, dbias->numel() * sizeof(T));
+      auto* dbias_data =
+          dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
               dy_operation_desc,
@@ -677,7 +869,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto* dy_data = dev_ctx.Alloc<T>(dy, dy->numel() * sizeof(T));
+    auto* dy_data = dev_ctx.Alloc<DYT>(dy, dy->numel() * sizeof(DYT));
     const auto* dout_data = dout->data<T>();
     const auto* x_data = x->data<T>();
     const auto* a_data = kYGradAIsDZ ? dout_data : x_data;
@@ -718,7 +910,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DXT = T, typename DYT = T>
 void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       const phi::DenseTensor* dout,
                                       const phi::DenseTensor* x,
@@ -733,70 +925,79 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       phi::DenseTensor* dx,
                                       phi::DenseTensor* dy,
                                       phi::DenseTensor* dbias,
-                                      bool use_addto = false) {
+                                      bool use_addto_dx = false,
+                                      bool use_addto_dy = false) {
   VLOG(10) << "M=" << M << ", K=" << K << ", N=" << N << ", trans_x=" << trans_x
            << ", trans_y=" << trans_y
            << ", activation_grad=" << activation_grad;
 
   if (trans_x) {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, true, true>(dev_ctx,
-                                                          dout,
-                                                          x,
-                                                          y,
-                                                          reserve_space,
-                                                          M,
-                                                          N,
-                                                          K,
-                                                          activation_grad,
-                                                          dx,
-                                                          dy,
-                                                          dbias,
-                                                          use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, true>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, true, false>(dev_ctx,
-                                                           dout,
-                                                           x,
-                                                           y,
-                                                           reserve_space,
-                                                           M,
-                                                           N,
-                                                           K,
-                                                           activation_grad,
-                                                           dx,
-                                                           dy,
-                                                           dbias,
-                                                           use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, false>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     }
   } else {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, false, true>(dev_ctx,
-                                                           dout,
-                                                           x,
-                                                           y,
-                                                           reserve_space,
-                                                           M,
-                                                           N,
-                                                           K,
-                                                           activation_grad,
-                                                           dx,
-                                                           dy,
-                                                           dbias,
-                                                           use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, true>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, false, false>(dev_ctx,
-                                                            dout,
-                                                            x,
-                                                            y,
-                                                            reserve_space,
-                                                            M,
-                                                            N,
-                                                            K,
-                                                            activation_grad,
-                                                            dx,
-                                                            dy,
-                                                            dbias,
-                                                            use_addto);
+      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, false>(
+          dev_ctx,
+          dout,
+          x,
+          y,
+          reserve_space,
+          M,
+          N,
+          K,
+          activation_grad,
+          dx,
+          dy,
+          dbias,
+          use_addto_dx,
+          use_addto_dy);
     }
   }
 }

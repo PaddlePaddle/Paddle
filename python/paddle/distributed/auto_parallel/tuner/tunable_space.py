@@ -117,7 +117,7 @@ class TunableSpace:
                 {"class_name": v.__class__.__name__, "state": v.get_state()}
                 for v in self._variables.values()
             ],
-            "values": dict((k, v) for (k, v) in self.values.items()),
+            "values": {k: v for (k, v) in self.values.items()},
         }
 
     @classmethod
@@ -126,7 +126,7 @@ class TunableSpace:
         for v in state["variables"]:
             v = _deserialize_tunable_variable(v)
             ts._variables[v.name] = v
-        ts._values = dict((k, v) for (k, v) in state["values"].items())
+        ts._values = {k: v for (k, v) in state["values"].items()}
         return ts
 
 
