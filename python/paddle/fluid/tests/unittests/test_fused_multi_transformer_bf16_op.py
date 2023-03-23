@@ -51,7 +51,7 @@ class TestFusedMultiTransformerOp(OpTest):
         elif self.x_type is 'bfloat16':
             self.atol = 1e-1
 
-        # paddle.set_default_dtype(self.x_type)
+        paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_multi_transformer"
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = False
@@ -69,39 +69,39 @@ class TestFusedMultiTransformerOp(OpTest):
             self.embed_dim,
             weight_attr,
             bias_attr=bias_attr,
-        ).to(dtype=self.x_type)
+        )
 
         self.k_proj = Linear(
             self.kdim,
             self.embed_dim,
             weight_attr,
             bias_attr=self.bias_attr,
-        ).to(dtype=self.x_type)
+        )
         self.v_proj = Linear(
             self.vdim,
             self.embed_dim,
             weight_attr,
             bias_attr=self.bias_attr,
-        ).to(dtype=self.x_type)
+        )
         self.out_proj = Linear(
             self.embed_dim,
             self.embed_dim,
             weight_attr,
             bias_attr=self.bias_attr,
-        ).to(dtype=self.x_type)
+        )
 
         self.ffn1_proj = Linear(
             self.embed_dim,
             4 * self.embed_dim,
             weight_attr,
             bias_attr=self.bias_attr,
-        ).to(dtype=self.x_type)
+        )
         self.ffn2_proj = Linear(
             4 * self.embed_dim,
             self.embed_dim,
             weight_attr,
             bias_attr=self.bias_attr,
-        ).to(dtype=self.x_type)
+        )
 
         paddle.set_default_dtype(np.float32)
         self.norm = LayerNorm(self.embed_dim)
@@ -354,7 +354,6 @@ class TestFusedMultiTransformerOp(OpTest):
             k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
             v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
             v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
             if self.rotary_emb_dims > 0:
                 cos_emb = rotary_embs[0]
                 sin_emb = rotary_embs[1]
@@ -614,9 +613,7 @@ class TestFusedMultiTransformerOp(OpTest):
             v_proj_bias = paddle.to_tensor(
                 self.v_proj.bias, stop_gradient=False
             )
-            qkv_bias = np.concatenate(
-                (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy())
-            )
+            qkv_bias = paddle.concat((q_proj_bias, k_proj_bias, v_proj_bias))
             qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
             qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
             out_linear_bias = paddle.to_tensor(
@@ -636,10 +633,10 @@ class TestFusedMultiTransformerOp(OpTest):
         )
         ffn_ln_bias = paddle.to_tensor(self.ffn_norm.bias, stop_gradient=False)
 
-        q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
-        k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
-        v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
-        qkv_weight = np.concatenate(
+        q_proj_weight = paddle.transpose(q_proj_weight, (1, 0))
+        k_proj_weight = paddle.transpose(k_proj_weight, (1, 0))
+        v_proj_weight = paddle.transpose(v_proj_weight, (1, 0))
+        qkv_weight = paddle.concat(
             (q_proj_weight, k_proj_weight, v_proj_weight)
         )
         qkv_weight = qkv_weight.reshape(
@@ -673,7 +670,6 @@ class TestFusedMultiTransformerOp(OpTest):
                 ),
                 dtype=self.x_type,
             )
-
             elems = 4
             if self.x_type is 'float16' or self.x_type is 'bfloat16':
                 elems = 8

@@ -136,8 +136,6 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<paddle::experimental::Scalar>>("values", "values")
         .SetDefault({});
-    AddAttr<std::vector<float>>("bf16_values", "Store the bfloat16 values.")
-        .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
