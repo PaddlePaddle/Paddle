@@ -141,7 +141,7 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&in_shape_device, kSize));
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         in_shape_device, &in_shape_host, kSize, gpuMemcpyHostToDevice));
-
+    // this line seems a bug, kSize -> 1
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
                                                         in_shape_device,
                                                         kSize,
@@ -158,6 +158,36 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
     }
     PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));
   }
+}
+
+void NCCLDynamicCheck::CheckGatherShape(const phi::DenseTensor& in_tensor,
+                                        const std::vector<phi::DenseTensor>& out_tensors,
+                                        int root_rank,
+                                        int cur_rank,
+                                        int world_size,
+                                        ncclComm_t comm) {
+    std::vector<int64_t> shapes(world_size, 0);
+    shapes[cur_rank] = in_tensor.numel();
+    int64_t* in_shape_device;
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&in_shape_device, world_size * sizeof (int64_t)));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
+        in_shape_device, shapes.data(), world_size * sizeof (int64_t), gpuMemcpyHostToDevice));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
+                                                        in_shape_device,
+                                                        world_size,
+                                                        ncclInt64,
+                                                        comm,
+                                                        kDefaultStream));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
+        shapes.data(), in_shape_device, world_size * sizeof (int64_t), gpuMemcpyDeviceToHost));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));
+
+    if(cur_rank == root_rank) {
+      for(int i = 0; i < world_size; i++) {
+          CheckShape(out_tensors[i], shapes[i]);
+      }
+    }
 }
 }  //  namespace distributed
 }  // namespace phi
