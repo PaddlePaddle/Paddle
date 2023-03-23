@@ -314,7 +314,6 @@ class PartialProgramLayer:
         forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
-        # TODO: wait for the PR: https://github.com/PaddlePaddle/Paddle/pull/50885
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
