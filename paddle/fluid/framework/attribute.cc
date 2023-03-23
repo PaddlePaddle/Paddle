@@ -295,6 +295,8 @@ std::vector<paddle::experimental::Scalar> make_scalars_from_attribute(
 
 void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
                              AttributeMap* attrs) {
+  PADDLE_ENFORCE_NOT_NULL(
+      attrs, platform::errors::InvalidArgument("attrs can not be nullptr"));
   for (auto& attr : op_proto.attrs()) {
     proto::AttrType attr_type = attr.type();
     const std::string& attr_name = attr.name();
@@ -302,14 +304,13 @@ void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
     if (it == attrs->end()) {
       continue;
     }
-    proto::AttrType actual_attr_type =
-        static_cast<proto::AttrType>(it->second.index());
+    proto::AttrType actual_attr_type = AttrTypeID(it->second);
     if (actual_attr_type == attr_type) {
       continue;
     }
     if (actual_attr_type == proto::AttrType::VAR ||
         actual_attr_type == proto::AttrType::VARS) {
-      continue;  // VAR& VARS are not prper attribute
+      continue;  // VAR& VARS are not proper attribute
     }
     if (attr_type == proto::AttrType::SCALAR) {
       it->second = Attribute(make_scalar_from_attribute(it->second));

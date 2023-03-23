@@ -44,7 +44,12 @@ ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
   }
 }
 
-bool operator==(const Scalar& lhs, const Scalar& rhs) { return lhs == rhs; }
+bool operator==(const Scalar& lhs, const Scalar& rhs) {
+  return lhs.operator==(rhs);
+}
+bool operator!=(const Scalar& lhs, const Scalar& rhs) {
+  return lhs.operator!=(rhs);
+}
 
 std::ostream& operator<<(std::ostream& os, const Scalar& s) {
   return os << s.ToString();

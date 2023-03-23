@@ -32,7 +32,6 @@ import logging
 
 from .proto import framework_pb2, data_feed_pb2
 
-
 from . import core
 from . import unique_name
 import paddle.version as fluid_version
@@ -73,6 +72,7 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
 
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
@@ -128,7 +128,6 @@ _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
 
-
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
 special_op_attrs = {
@@ -170,7 +169,6 @@ extra_op_attrs = {
     "uniform": ["diag_num"],
     "unique": ["is_sorted"],
 }
-
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -1441,7 +1439,7 @@ def wrap_as_scalar(number):
         return number
     if isinstance(number, (bool, int, float, complex)):
         return core.Scalar(number)
-    if np.isscalar(number):
+    if isinstance(number, np.number):
         # it is a numpy scalar
         return core.Scalar(number.item())
     else:
@@ -1462,7 +1460,7 @@ def wrap_as_scalars(array):
     """
     if isinstance(array, np.ndarray):
         array = array.ravel().tolist()
-    return [core.Scalar(item) for item in array]
+    return [wrap_as_scalar(item) for item in array]
 
 
 def extract_plain_list(array):
@@ -1499,16 +1497,25 @@ def canonicalize_attrs(attrs, op_proto):
         type_index = attr.type
         if (attr_name not in attrs) or (attrs[attr_name] is None):
             continue
+
         attr_val = attrs[attr_name]
+
+        # VAR and VARS should be skipped
+        if isinstance(attr_val, Variable):
+            continue
+        if isinstance(attr_val, list) and _all_is_type(attr_val, Variable):
+            continue
+
+        # wrap
         if type_index == core.AttrType.SCALAR:
             canonicalized_attrs[attr_name] = core.Scalar(attr_val)
         elif type_index == core.AttrType.SCALARS:
+            # it should be a list (or a numpy array)
             if len(attr_val) > 0:
                 attr_val = np.array(attr_val).ravel().tolist()
                 attr_val = [core.Scalar(x) for x in attr_val]
                 canonicalized_attrs[attr_name] = attr_val
-        else:
-            canonicalized_attrs[attr_name] = attr_val
+
     return canonicalized_attrs
 
 

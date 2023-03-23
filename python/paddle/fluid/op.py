@@ -195,6 +195,20 @@ class OpDescCreationMethod:
                     new_attr.bools.extend(user_defined_attr)
                 elif attr_type == framework_pb2.LONGS:
                     new_attr.longs.extend(user_defined_attr)
+                elif attr.type == framework_pb2.FLOAT64:
+                    new_attr.float64 = user_defined_attr
+                elif attr.type == framework_pb2.FLOAT64S:
+                    new_attr.float64s.extend(user_defined_attr)
+                # the code below manipulates protobuf directly
+                elif attr.type == framework_pb2.SCALAR:
+                    scalar = make_scalar_proto(user_defined_attr)
+                    new_attr.scalar.CopyFrom(scalar)
+                elif attr.type == framework_pb2.SCALARS:
+                    scalars = [
+                        make_scalar_proto(item) for item in user_defined_attr
+                    ]
+                    for item in scalars:
+                        new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." % (str(attr_type))

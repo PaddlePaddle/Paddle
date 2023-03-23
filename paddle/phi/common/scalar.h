@@ -152,6 +152,10 @@ class ScalarBase {
         return static_cast<RT>(data_.i16);
       case DataType::INT8:
         return static_cast<RT>(data_.i8);
+      case DataType::UINT64:
+        return static_cast<RT>(data_.ui64);
+      case DataType::UINT32:
+        return static_cast<RT>(data_.ui32);
       case DataType::UINT16:
         return static_cast<RT>(data_.ui16);
       case DataType::UINT8:
@@ -170,7 +174,7 @@ class ScalarBase {
   DataType dtype() const { return dtype_; }
 
   template <typename T2>
-  bool operator==(const ScalarBase<T2>& other) {
+  bool operator==(const ScalarBase<T2>& other) const {
     DataType data_type = this->dtype();
     if (data_type != other.dtype()) {
       return false;
@@ -209,6 +213,11 @@ class ScalarBase {
       default:
         PD_THROW("Invalid tensor data type `", dtype_, "`.");
     }
+  }
+
+  template <typename T2>
+  bool operator!=(const ScalarBase<T2>& other) const {
+    return !operator==(other);
   }
 
   std::string ToRawString() const {

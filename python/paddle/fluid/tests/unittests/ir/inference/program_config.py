@@ -183,12 +183,13 @@ class BlockConfig:
             op_desc.set_type(op_config.type)
             for name, values in op_config.inputs.items():
                 op_desc.set_input(name, values)
-            try:
+            # canonicalize scalar attrs
+            if OpProtoHolder.instance().has_op_proto(op_config.type):
                 proto = OpProtoHolder.instance().get_op_proto(op_config.type)
                 canonicalized_attrs = framework.canonicalize_attrs(
                     op_config.attrs, proto
                 )
-            except ValueError:
+            else:
                 canonicalized_attrs = op_config.attrs
             for name, values in canonicalized_attrs.items():
                 op_desc._set_attr(name, values)
@@ -331,12 +332,13 @@ def create_fake_model(program_config):
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
-        try:
+        # canonicalize scalar attrs
+        if OpProtoHolder.instance().has_op_proto(op_config.type):
             proto = OpProtoHolder.instance().get_op_proto(op_config.type)
             canonicalized_attrs = framework.canonicalize_attrs(
                 op_config.attrs, proto
             )
-        except ValueError:
+        else:
             canonicalized_attrs = op_config.attrs
 
         for name, values in op_config.inputs.items():
