@@ -541,5 +541,37 @@ struct MatmulWithCublasLt {
 struct MatmulPlanner {};
 #endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+    &dx_desc, mat_type, x_col, x_row, x_col));
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+    dx_dout_desc, mat_type, z_row, z_col, z_row));
+
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+    &dx_operation_desc, compute_type, scale_type));
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+    dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &a_trans, sizeof(a_trans)));
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+    dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &b_trans, sizeof(b_trans)));
+cublasLtEpilogue_t epiloque_func_for_dx = GetEpilogueGradType(activation_grad);
+PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+    dx_operation_desc,
+    CUBLASLT_MATMUL_DESC_EPILOGUE,
+    &epiloque_func_for_dx,
+    sizeof(epiloque_func_for_dx)));
+
+if (planner->aux_data != nullptr) {
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      dx_operation_desc,
+      CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+      &aux_data,
+      sizeof(aux_data)));
+  int64_t aux_ld = TransX ? M : K;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      dx_operation_desc,
+      CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+      &aux_ld,
+      sizeof(aux_ld)));
+}
+
 }  // namespace funcs
 }  // namespace phi
