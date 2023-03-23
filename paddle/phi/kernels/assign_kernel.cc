@@ -153,6 +153,7 @@ PD_REGISTER_KERNEL(assign_value,
                    phi::AssignValueKernel,
                    bool,
                    int,
+                   phi::dtype::float16,
                    float,
                    int64_t) {}
 #endif

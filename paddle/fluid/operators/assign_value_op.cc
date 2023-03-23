@@ -62,9 +62,12 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "data type of values")
         .InEnum({framework::proto::VarType::BOOL,
                  framework::proto::VarType::INT32,
+                 framework::proto::VarType::FP16,
                  framework::proto::VarType::FP32,
                  framework::proto::VarType::INT64});
     AddAttr<std::vector<int>>("bool_values", "store the bool values")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("fp16_values", "store the float16 values")
         .SetDefault({});
     AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
         .SetDefault({});

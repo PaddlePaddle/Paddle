@@ -50,6 +50,21 @@ class TestDeterminantOpCase1(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOpCase1FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.dtype = np.float16
+        self.case = np.random.rand(10, 10).astype(self.dtype)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32))
+        self.gt_grad = [
+            self.target * np.linalg.inv(self.case.astype(np.float32)).T
+        ]
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], ['Out'], user_defined_grads=self.gt_grad)
+
+
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)

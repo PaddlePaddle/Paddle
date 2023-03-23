@@ -64,6 +64,13 @@ class TestAssignValueOp4(TestAssignValueOp):
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
+class TestAssignValueOpFp16(TestAssignValueOp):
+    def init_data(self):
+        self.dtype = np.float16
+        self.value = np.random.random(size=(2, 5)).astype(self.dtype)
+        self.attrs["fp16_values"] = [float(v) for v in self.value.flat]
+
+
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
         self.init_dtype()
@@ -115,6 +122,11 @@ class TestAssignApi4(TestAssignApi):
 
     def init_dtype(self):
         self.dtype = "bool"
+
+
+class TestAssignApiFp16(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':

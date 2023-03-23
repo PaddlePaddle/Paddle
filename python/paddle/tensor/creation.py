@@ -1507,7 +1507,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``float16``, ``int32``, ``int64``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -2101,6 +2101,9 @@ def assign(x, output=None):
         if dtype == core.VarDesc.VarType.BOOL:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
+        elif dtype == core.VarDesc.VarType.FP16:
+            value_name = "fp16_values"
+            values = [float(v) for v in input.flat]
         elif dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
@@ -2113,7 +2116,7 @@ def assign(x, output=None):
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
+                "the data type of 'input' must be bool, float16, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype)
             )
         if input.size > 1024 * 1024:

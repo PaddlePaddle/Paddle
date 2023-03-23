@@ -20,6 +20,7 @@
 #include <cmath>
 #include <vector>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_kernel.h"
@@ -28,6 +29,13 @@ namespace phi {
 namespace detail {
 template <typename T>
 class EigenMatrix {};
+
+template <>
+class EigenMatrix<phi::dtype::float16> {
+ public:
+  using MatrixType =
+      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+};
 
 template <>
 class EigenMatrix<float> {
@@ -72,6 +80,7 @@ struct DeterminantFunctor {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -83,7 +92,8 @@ struct DeterminantFunctor {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
-      output_vec.push_back(matrix.determinant());
+      output_vec.push_back(
+          static_cast<T>(matrix.template cast<MPType>().determinant()));
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }

@@ -39,11 +39,14 @@ class TestKthvalueOp(OpTest):
         self.k = 5
         self.axis = -1
 
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def setUp(self):
         self.op_type = "kthvalue"
         self.python_api = paddle.kthvalue
-        self.dtype = np.float64
-        self.input_data = np.random.random((2, 1, 2, 4, 10))
+        self.init_dtype()
+        self.input_data = np.random.random((2, 1, 2, 4, 10)).astype(self.dtype)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
@@ -61,17 +64,25 @@ class TestKthvalueOp(OpTest):
         self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
+class TestKthvalueOpFp16(TestKthvalueOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestKthvalueOpWithKeepdim(OpTest):
     def init_args(self):
         self.k = 2
         self.axis = 1
 
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def setUp(self):
         self.init_args()
+        self.init_dtype()
         self.op_type = "kthvalue"
         self.python_api = paddle.kthvalue
-        self.dtype = np.float64
-        self.input_data = np.random.random((1, 3, 2, 4, 10))
+        self.input_data = np.random.random((1, 3, 2, 4, 10)).astype(self.dtype)
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
         output, indices = cal_kthvalue(
@@ -86,6 +97,11 @@ class TestKthvalueOpWithKeepdim(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(set(['X']), 'Out', check_eager=True)
+
+
+class TestKthvalueOpWithKeepdimFp16(TestKthvalueOpWithKeepdim):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestKthvalueOpKernels(unittest.TestCase):
