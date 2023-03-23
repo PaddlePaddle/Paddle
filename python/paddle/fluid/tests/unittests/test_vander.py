@@ -93,7 +93,7 @@ class TestVanderAPI(unittest.TestCase):
             x = paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(ValueError, paddle.vander, x)
             x1 = paddle.static.data('X1', [10], 'int32')
-            self.assertRaises(ValueError, paddle.vander, x1, N=-1)
+            self.assertRaises(ValueError, paddle.vander, x1, n=-1)
 
 
 if __name__ == "__main__":
