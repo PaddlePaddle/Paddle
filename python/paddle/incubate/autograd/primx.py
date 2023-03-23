@@ -609,8 +609,8 @@ def _lower_composite(block, blacklist=set(), whitelist=set()):
             comp_flag = (lookup_fn(op_name) is not None) and (
                 op_name not in blacklist
             )
-            if len(whitelist) > 0:
-                comp_flag = comp_flag and (op_name in whitelist)
+            # if len(whitelist) > 0:
+            #     comp_flag = comp_flag and (op_name in whitelist)
 
             if comp_flag:
                 change = True
