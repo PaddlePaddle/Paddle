@@ -209,7 +209,7 @@ def create_feed_dict_list(data, init=False):
             + decoder_data_input_fields[:-1]
             + label_data_input_fields
         )
-    feed_dict_list = dict()
+    feed_dict_list = {}
     for i in range(len(data_input_names)):
         feed_dict_list[data_input_names[i]] = data[i]
     return feed_dict_list
@@ -605,7 +605,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._preprocess_layer = PrePostProcessLayer(
@@ -886,7 +886,7 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
-        self._decoder_sub_layers = list()
+        self._decoder_sub_layers = []
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -1155,8 +1155,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=0.003, parameter_list=transformer.parameters()
                 )
-            dy_param_init = dict()
-            dy_param_updated = dict()
+            dy_param_init = {}
+            dy_param_updated = {}
 
             helper = DyGraphProgramDescTracerTestHelper(self)
             program = None
@@ -1238,9 +1238,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ]
             label = all_inputs[-2]
             weights = all_inputs[-1]
-            static_param_updated = dict()
-            static_param_init = dict()
-            static_param_name_list = list()
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
             (
                 static_sum_cost,
                 static_avg_cost,

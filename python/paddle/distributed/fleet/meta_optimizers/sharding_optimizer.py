@@ -230,7 +230,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         gm_acc_step = int(sharding_configs["gradient_merge_acc_step"])
         if self.pp_degree <= 1:
             gm_mode = "sharding_gm"
-            self._grad2merged_grad = dict()
+            self._grad2merged_grad = {}
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
@@ -937,7 +937,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 last_backward_op_idx = op_idx + 1
                 break
 
-        var2broadcast_time = dict()
+        var2broadcast_time = {}
         segment = ProgramSegment(block)
         segment._end_idx = last_backward_op_idx
         for op_idx in reversed(range(last_backward_op_idx)):
