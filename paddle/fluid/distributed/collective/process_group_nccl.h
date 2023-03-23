@@ -136,6 +136,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                               bool sync_op,
                                               bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Gather(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const GatherOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Gather(const phi::DenseTensor& in_tensor,
                                              std::vector<phi::DenseTensor>& gather_tensors,
                                              const GatherOptions& opts,

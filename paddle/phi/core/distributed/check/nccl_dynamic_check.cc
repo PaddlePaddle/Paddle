@@ -173,12 +173,13 @@ void NCCLDynamicCheck::CheckGatherShape(const phi::DenseTensor& in_tensor,
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         in_shape_device, shapes.data(), world_size * sizeof (int64_t), gpuMemcpyHostToDevice));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
-                                                        in_shape_device,
-                                                        world_size,
-                                                        ncclInt64,
-                                                        comm,
-                                                        kDefaultStream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(in_shape_device,
+                                                           in_shape_device,
+                                                           world_size,
+                                                           ncclInt64,
+                                                           ncclSum,
+                                                           comm,
+                                                           kDefaultStream));
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         shapes.data(), in_shape_device, world_size * sizeof (int64_t), gpuMemcpyDeviceToHost));
     PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));

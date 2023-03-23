@@ -475,6 +475,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> partial_tensors;
+  partial_tensors.reserve(size_);
+  size_t offset = 0;
+  size_t numel = out_tensor->numel() / size_;
+  for(auto i = 0; i < size_; i++) {
+    GetPartialTensor(*out_tensor, offset, numel);
+    offset += numel;
+  }
+  return Gather(in_tensor, partial_tensors, opts, sync_op, use_calc_stream);
+}
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     const phi::DenseTensor& in_tensor,
@@ -494,7 +510,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
                                                            size_,
                                                            comm);
     }
-    int64_t numel = in_tensor.numel();
     GroupStart();
     // root receive from all devices
     if(rank_ == opts.root_rank) {
@@ -513,7 +528,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     NCCL_CHECK(
         phi::dynload::ncclSend(in_tensor.data(),
                                in_tensor.numel(),
-                               phi::ToNCCLDataType(gather_tensor.dtype()),
+                               phi::ToNCCLDataType(in_tensor.dtype()),
                                opts.root_rank,
                                comm,
                                stream));

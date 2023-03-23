@@ -113,6 +113,10 @@ void BindDistributed(py::module *m) {
       .def_readwrite("reduce_op", &distributed::ReduceOptions::reduce_op)
       .def_readwrite("source_root", &distributed::ReduceOptions::root_rank);
 
+  py::class_<distributed::GatherOptions>(*m, "GatherOptions")
+      .def(py::init<>())
+      .def_readwrite("root_rank", &distributed::GatherOptions::root_rank);
+
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
@@ -519,6 +523,36 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("in"),
               py::arg("src"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "gather",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 py::handle py_gather_tensor_list,
+                 int src,
+                 bool sync_op) {
+                auto out_tensor_list =
+                    CastPyArg2VectorOfTensor(py_gather_tensor_list.ptr(), 0);
+                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    stack_out_tensor.impl());
+                auto *out_dense = p_out_tensor.get();
+
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto in_dense = *p_in_tensor;
+
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
+                auto task = self.AllGather(out_dense, in_dense, sync_op);
+                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
+                task->UpdateWaitChain(*dev_ctx);
+                return task;
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("dst"),
               py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
