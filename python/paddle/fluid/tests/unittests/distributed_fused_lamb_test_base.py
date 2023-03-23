@@ -231,9 +231,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
 
     def reader():
         for _ in range(6):
-            yield dict(
-                [(grad.name, gen_random_grad_tensor(grad)) for grad in grads]
-            )
+            yield {grad.name: gen_random_grad_tensor(grad) for grad in grads}
 
     scope = paddle.static.Scope()
     fetch_list = params
