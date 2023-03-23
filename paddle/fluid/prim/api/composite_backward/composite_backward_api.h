@@ -951,7 +951,9 @@ void layer_norm_grad(const Tensor& x,
     }
   }
   auto x_sub_mean = x_cast - mean_;
-  auto tmp = (1.0 / (variance_ + epsilon));
+  auto eps =
+      full<T>(phi::vectorize(variance_.dims()), epsilon, variance_.dtype());
+  auto tmp = (1.0 / (variance_ + eps));
   auto sqrt_var_1 = sqrt<T>(tmp);
   if (scale_grad) {
     if (scale_ptr) {

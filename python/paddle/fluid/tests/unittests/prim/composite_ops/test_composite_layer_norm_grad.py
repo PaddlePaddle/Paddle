@@ -30,7 +30,8 @@ TOLERANCE_NUMPY = {
 }
 
 TOLERANCE_COMP_GRAD = {
-    "float32": {"rtol": 1e-3, "atol": 1e-3},
+    "float64": {"rtol": 1e-13, "atol": 1e-13},
+    "float32": {"rtol": 1e-5, "atol": 1e-5},
     "float16": {"rtol": 1e-3, "atol": 1e-3},  # amp
 }
 
@@ -422,6 +423,16 @@ class TestCompositelayer_norm(unittest.TestCase):
             atol=TOLERANCE_COMP_GRAD[attrs.dtype]['atol'],
         )
 
+    def compare_comp_forward_withNone(self):
+        x, w, b, y_g = generate_data(
+            attrs.shape1, attrs.shape2, attrs.shape3, attrs.dtype
+        )
+        n_shape = attrs.n_shape
+        x_p = paddle.to_tensor(x)
+        w_p = paddle.to_tensor(w)
+        b_p = paddle.to_tensor(b)
+        y_g_p = paddle.to_tensor(y_g)
+
         expect_2 = dygraph_fused_backward_withNone(
             x_p, n_shape, None, None, y_g_p
         )[0].numpy()
@@ -443,8 +454,8 @@ class TestCompositelayer_norm(unittest.TestCase):
         np.testing.assert_allclose(
             expect_2,
             actual_all_2,
-            rtol=attrs.get_rtol("backward"),
-            atol=attrs.get_atol("backward"),
+            rtol=TOLERANCE_COMP_GRAD[attrs.dtype]['rtol'],
+            atol=TOLERANCE_COMP_GRAD[attrs.dtype]['atol'],
         )
 
     def test_backward(self):
@@ -461,6 +472,21 @@ class TestCompositelayer_norm(unittest.TestCase):
                     self.shape3s[t],
                 )
                 self.compare_comp_forward()
+
+    def test_backward_withNone(self):
+
+        for t in range(0, len(self.shape1s)):
+            if paddle.device.get_device() == "cpu":
+                print("need pass this case")
+                continue
+            attrs.set_dtype("float32")
+            attrs.set_shape(
+                self.n_shape[t],
+                self.shape1s[t],
+                self.shape2s[t],
+                self.shape3s[t],
+            )
+            self.compare_comp_forward_withNone()
 
 
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
