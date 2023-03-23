@@ -464,13 +464,17 @@ EagerReducer::EagerReducer(
     const std::vector<bool> &is_sparse_gradient,
     std::shared_ptr<distributed::ProcessGroup> process_group,
     const std::vector<size_t> &group_size_limits,
-    bool find_unused_parameters)
+    bool find_unused_parameters,
+    std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> pre_hook,
+    std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> post_hook)
     : tensors_(tensors),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       process_group_(process_group),
       group_size_limits_(group_size_limits),
-      find_unused_vars_each_step_(find_unused_parameters) {
+      find_unused_vars_each_step_(find_unused_parameters),
+      pre_hook_(pre_hook),
+      post_hook_(post_hook) {
   VLOG(3) << "Start construct the Reducer ...";
 
   nranks_ = process_group_->GetSize();
@@ -954,12 +958,21 @@ void EagerReducer::ProcessUnusedDenseVars() {
 
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
+
+  for (auto &pre_hook : pre_hook_) {
+    global_used_vars_ = pre_hook(&global_used_vars_);
+  }
+
   std::vector<Tensor> reduce_tensors = {global_used_vars_};
   std::vector<phi::DenseTensor> in_out;
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
   process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
+
+  for (auto &pre_hook : post_hook_) {
+    global_used_vars_ = pre_hook(&global_used_vars_);
+  }
 
   framework::TensorToVector<int>(
       *global_used_tensor, *dev_ctx, &local_used_vars_);
@@ -1049,6 +1062,10 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   paddle::experimental::scale_(
       group->dense_contents_, 1.0 / nranks_, 0.0, false);
 
+  for (auto &pre_hook : pre_hook_) {
+    group->dense_contents_ = pre_hook(&group->dense_contents_);
+  }
+
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
   std::vector<phi::DenseTensor> in_out;
@@ -1056,6 +1073,10 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
   group->task = process_group_->AllReduce(in_out, in_out, opts);
+
+  for (auto &post_hook : post_hook_) {
+    group->dense_contents_ = post_hook(&group->dense_contents_);
+  }
 
   auto *context = process_group_->GetDeviceContext(inner_place_);
 
@@ -1124,12 +1145,19 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
+  for (auto &pre_hook : pre_hook_) {
+    rows_num_tensor = pre_hook(&rows_num_tensor);
+  }
   std::vector<Tensor> reduce_tensors = {rows_num_tensor};
   std::vector<phi::DenseTensor> in_out;
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
   process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
+
+  for (auto &pre_hook : post_hook_) {
+    rows_num_tensor = pre_hook(&rows_num_tensor);
+  }
 
   framework::TensorToVector<int64_t>(
       *rows_num_dense_tensor, *dev_ctx, &rows_num_vector);

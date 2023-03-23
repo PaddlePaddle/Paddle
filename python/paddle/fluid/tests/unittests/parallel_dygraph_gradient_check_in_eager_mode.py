@@ -64,6 +64,14 @@ class SimpleNet(paddle.nn.Layer):
         return self.share_net(tmp)
 
 
+def to_fp16_hook(tensor):
+    return paddle.cast(tensor, dtype='float16')
+
+
+def to_fp32_hook(tensor):
+    return paddle.cast(tensor, dtype='float32')
+
+
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
@@ -76,7 +84,11 @@ class TestDistTraning(unittest.TestCase):
         model_b.set_state_dict(state_dict)
 
         model_a = paddle.DataParallel(
-            model_a, find_unused_parameters=True, group=self.pg
+            model_a,
+            find_unused_parameters=True,
+            group=self.pg,
+            pre_hook=to_fp16_hook,
+            post_hook=to_fp32_hook,
         )
         model_b = paddle.DataParallel(
             model_b, find_unused_parameters=True, group=self.pg

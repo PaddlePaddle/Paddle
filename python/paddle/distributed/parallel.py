@@ -240,7 +240,8 @@ class DataParallel(layers.Layer):
                                                 will affect computing performance. Therefore, if all parameters
                                                 are sure to participate in the loss calculation and the
                                                 autograd graph construction, please set it False. Default: False.
-
+        pre_hook (callable function, optional): Function take a tensor ptr to do some works before all reduce sum.
+        post_hook (callable function, optional): Function take a tensor ptr to do some works after all reduce sum.
     Returns:
         Layer: The data paralleled module.
 
@@ -368,6 +369,8 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size=1,
         find_unused_parameters=False,
         group=None,
+        pre_hook=None,
+        post_hook=None,
     ):
         super().__init__(layers.full_name() + "_data_parallel")
 
@@ -381,6 +384,16 @@ class DataParallel(layers.Layer):
         self.group = group
         self.var_dtype = (
             core.eager.Tensor if in_dygraph_mode() else core.VarBase
+        )
+        self.pre_hook = (
+            pre_hook
+            if pre_hook is None or isinstance(pre_hook, list)
+            else [pre_hook]
+        )
+        self.post_hook = (
+            post_hook
+            if pre_hook is None or isinstance(post_hook, list)
+            else [post_hook]
         )
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy.
@@ -488,6 +501,8 @@ class DataParallel(layers.Layer):
                 self.group.process_group,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters,
+                self.pre_hook,
+                self.post_hook,
             )
 
     def _find_varbase(self, obj):

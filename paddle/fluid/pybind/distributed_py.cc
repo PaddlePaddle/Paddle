@@ -67,14 +67,40 @@ std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     const std::vector<bool> &is_sparse_gradient,
     std::shared_ptr<distributed::ProcessGroup> process_group,
     const std::vector<size_t> &group_size_limits,
-    bool find_unused_parameters) {
+    bool find_unused_parameters,
+    py::object pre_hook,
+    py::object post_hook) {
   auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+  std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> pre_hook_funcs;
+  std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> post_hook_funcs;
+  if (py::isinstance<py::list>(pre_hook)) {
+    for (py::handle ph : pre_hook) {
+      pre_hook_funcs.push_back([=](paddle::Tensor *tensor) -> paddle::Tensor {
+        py::gil_scoped_acquire ag;
+        py::object rst = ph(tensor);
+        paddle::Tensor p_tensor = CastPyArg2Tensor(rst.ptr(), 0);
+        return p_tensor;
+      });
+    }
+  }
+  if (py::isinstance<py::list>(post_hook)) {
+    for (py::handle ph : post_hook) {
+      post_hook_funcs.push_back([=](paddle::Tensor *tensor) -> paddle::Tensor {
+        py::gil_scoped_acquire ag;
+        py::object rst = ph(tensor);
+        paddle::Tensor p_tensor = CastPyArg2Tensor(rst.ptr(), 0);
+        return p_tensor;
+      });
+    }
+  }
   return std::make_shared<distributed::EagerReducer>(params,
                                                      group_indices,
                                                      is_sparse_gradient,
                                                      process_group,
                                                      group_size_limits,
-                                                     find_unused_parameters);
+                                                     find_unused_parameters,
+                                                     pre_hook_funcs,
+                                                     post_hook_funcs);
 }
 
 #if defined(PADDLE_WITH_GLOO)

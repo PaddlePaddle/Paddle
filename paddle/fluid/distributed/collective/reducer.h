@@ -93,7 +93,9 @@ class EagerReducer {
       const std::vector<bool> &is_sparse_gradient,
       std::shared_ptr<distributed::ProcessGroup> process_group,
       const std::vector<size_t> &group_size_limits,
-      bool find_unused_parameters);
+      bool find_unused_parameters,
+      std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> pre_hook,
+      std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> post_hook);
 
   virtual ~EagerReducer() {}
 
@@ -139,6 +141,8 @@ class EagerReducer {
   bool find_unused_vars_once_{true};
   bool groups_need_finalize_{false};
   Tensor global_used_vars_;
+  std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> pre_hook_{};
+  std::vector<std::function<paddle::Tensor(paddle::Tensor *)>> post_hook_{};
 };
 
 }  //  namespace distributed
