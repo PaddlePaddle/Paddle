@@ -16,8 +16,6 @@ import re
 
 from type_mapping import attr_types_map, input_types_map, output_type_map
 
-ops_with_infer_var_type = ["assign"]
-
 
 # tests for typename
 def is_input(s):
@@ -50,10 +48,6 @@ def is_datatype(s):
 
 def is_initializer_list(s):
     return s == "{}"
-
-
-def has_infer_var_type_func(s):
-    return s in ops_with_infer_var_type
 
 
 def is_base_op(op):

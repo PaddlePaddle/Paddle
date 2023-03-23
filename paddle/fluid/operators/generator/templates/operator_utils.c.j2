@@ -438,8 +438,8 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
       {%- endif %}
 };
 
-{% if op["op_name"] is has_infer_var_type_func %}
 {% set infer_var_type_func_str = op["op_name"] | get_infer_var_type_func %}
+{% if infer_var_type_func_str is not none %}
 {{infer_var_type_func_str}}
 {% endif %}
 
@@ -480,7 +480,8 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% if op is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
 {% endif %}
-{% if name is has_infer_var_type_func %}
+{% set infer_var_type_func_str = op["op_name"] | get_infer_var_type_func %}
+{% if infer_var_type_func_str is not none %}
                   ops::{{name | to_pascal_case}}InferVarType,
 {% endif %}
 {% if "backward_composite" in op and op["backward_composite"] is not none %}

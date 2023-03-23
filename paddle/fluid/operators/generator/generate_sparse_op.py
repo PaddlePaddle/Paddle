@@ -37,7 +37,6 @@ from generate_op import add_fluid_name, process_invoke_op
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests_utils import (
-    has_infer_var_type_func,
     is_base_op,
     is_composite_op,
     is_initializer_list,
@@ -76,7 +75,6 @@ env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
 env.tests["supports_inplace"] = supports_inplace
-env.tests["has_infer_var_type_func"] = has_infer_var_type_func
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
