@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/i0_kernel.h"
+#include "paddle/phi/kernels/i0e_kernel.h"
 
 #include <random>
 
@@ -23,7 +24,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  const T* x_data = x.data<T>();
+  T* out_data = ctx.template Alloc<T>(out);
+  int64_t size = x.numel();
 
+  CalcI0e(ctx, x, out_data);
+  for (int64_t i = 0; i < size; ++i) {
+    auto x = std::abs(x_data[i]);
+    out_data[i] = std::exp(x) * out_data[i];
+  }
 }
 
 }  // namespace phi
