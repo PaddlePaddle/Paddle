@@ -158,6 +158,15 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
             'x4', shape=weight.shape, dtype=str(weight.dtype)
         )
         x5 = paddle.static.data('x5', shape=bias.shape, dtype=str(bias.dtype))
+        if attrs.use_global_stats is None:
+            attrs.use_global_stats = not attrs.training
+            trainable_statistics = False
+        else:
+            trainable_statistics = not attrs.use_global_stats
+
+        use_run_stat = (
+            (not attrs.training) and (not trainable_statistics)
+        ) or attrs.use_global_stats
         y = fn(
             x1,
             x2,
@@ -177,16 +186,27 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
                 blocks[0].ops[0].output_names, blocks[0].ops[0].output_arg_names
             )
         )
-        vars_list = [
-            names[key]
-            for key in [
-                "Y",
-                "MeanOut",
-                "VarianceOut",
-                "SavedMean",
-                "SavedVariance",
+
+        if not use_run_stat:
+            vars_list = [
+                names[key]
+                for key in [
+                    "Y",
+                    "MeanOut",
+                    "VarianceOut",
+                    "SavedMean",
+                    "SavedVariance",
+                ]
             ]
-        ]
+        else:
+            vars_list = [
+                names[key]
+                for key in [
+                    "Y",
+                    "MeanOut",
+                    "VarianceOut",
+                ]
+            ]
 
         fwd_ops = [op.type for op in blocks[0].ops]
         # Ensure that batch_norm in original block
@@ -202,21 +222,36 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
     exe.run(startup_program)
 
     # indeed SavedVariance is 1/sqrt(batch_var+eps)
-    Y, MeanOut, VarianceOut, SavedMean, SavedVariance = exe.run(
-        main_program,
-        feed={
-            'x1': inputs,
-            'x2': running_mean,
-            'x3': running_variance,
-            'x4': weight,
-            'x5': bias,
-        },
-        fetch_list=vars_list,
-    )
+    if not use_run_stat:
+        Y, MeanOut, VarianceOut, SavedMean, SavedVariance = exe.run(
+            main_program,
+            feed={
+                'x1': inputs,
+                'x2': running_mean,
+                'x3': running_variance,
+                'x4': weight,
+                'x5': bias,
+            },
+            fetch_list=vars_list,
+        )
+    else:
+        Y, MeanOut, VarianceOut = exe.run(
+            main_program,
+            feed={
+                'x1': inputs,
+                'x2': running_mean,
+                'x3': running_variance,
+                'x4': weight,
+                'x5': bias,
+            },
+            fetch_list=vars_list,
+        )
     paddle.disable_static()
     core._set_prim_all_enabled(False)
-
-    return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
+    if not use_run_stat:
+        return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
+    else:
+        return Y, MeanOut, VarianceOut
 
 
 class TestCompositeBatchNorm(unittest.TestCase):
