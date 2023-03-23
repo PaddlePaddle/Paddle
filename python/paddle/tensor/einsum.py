@@ -844,7 +844,7 @@ def gen_einsum_op(equation, *operands):
         check_type(equation, 'equation', str, 'einsum')
         helper = LayerHelper('einsum', **locals())
         out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        attrs = dict()
+        attrs = {}
         attrs['equation'] = equation
         caches = [
             helper.create_variable_for_type_inference(dtype=operands[0].dtype)
