@@ -37,10 +37,7 @@ def _gather_in_dygraph(
         tensor_list = [tensor for _ in range(nranks)]
 
     if use_calc_stream:
-        #TODO(liuzhenhai): to implement
-        raise RuntimeError(
-            "yet to be implemented."
-        )
+        group.process_group.gather_on_calc_stream(tensor, tensor_list, dst_rank_in_group)
 
     task = group.process_group.gather(
         tensor, tensor_list, dst_rank_in_group, sync_op
