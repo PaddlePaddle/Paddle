@@ -857,10 +857,6 @@ if(WIN32)
     DEPS python)
 endif()
 
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
 if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
