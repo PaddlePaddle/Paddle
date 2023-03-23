@@ -550,7 +550,7 @@ def _lower(block, reverse, blacklist):
     block._sync_with_cpp()
 
 
-def _lower_composite(block, blacklist=False, whitelist=False):
+def _lower_composite(block, blacklist=set(), whitelist=set()):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
 
     def bind(args, to_bind, value_table):
