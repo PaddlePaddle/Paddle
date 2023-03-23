@@ -288,7 +288,7 @@ class TestChannelShuffleFP16OP(OpTest):
 
         groups = 3
 
-        x = np.random.randn(shape).astype(self.dtype)
+        x = np.random.random(shape).astype(self.dtype)
         out = channel_shuffle_np(x, groups, self.format)
 
         self.inputs = {'X': x}
@@ -299,7 +299,10 @@ class TestChannelShuffleFP16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
