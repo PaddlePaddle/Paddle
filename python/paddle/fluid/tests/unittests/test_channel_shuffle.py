@@ -308,6 +308,7 @@ class TestChannelShuffleFP16OP(OpTest):
         self.check_grad(
             ['X'],
             'Out',
+            check_eager=True,
         )
 
 
@@ -351,6 +352,7 @@ class TestChannelShuffleBF16OP(OpTest):
         self.check_grad(
             ['X'],
             'Out',
+            check_eager=True,
         )
 
 
