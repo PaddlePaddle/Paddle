@@ -772,9 +772,7 @@ def update_role_var_grad(main_prog, params_grads):
             post_ops = find_true_post_op(block.ops, op, g.name)
             if post_ops:
                 raise ValueError(
-                    "The cast op {}'s output should not be used by a non-optimize op, however, it is used by {}".format(
-                        op, post_ops[0]
-                    )
+                    f"The cast op {op}'s output should not be used by a non-optimize op, however, it is used by {post_ops[0]}"
                 )
             # add new op in the python and cpp at the same time
             new_op_desc = block.desc.append_op()
