@@ -139,8 +139,10 @@ def composite_batchnorm(
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
-
-    return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
+    if not use_run_stat:
+        return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
+    else:
+        return y, run_mean_, run_var_, None, None, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
