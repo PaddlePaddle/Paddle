@@ -1281,6 +1281,14 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : nms
+  inputs :
+    x : Boxes
+  outputs :
+    out : KeepBoxesIdxs
+  attrs :
+    threshold : iou_threshold
+
 - op : nonzero (where_index)
   inputs :
     condition : Condition

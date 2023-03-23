@@ -72,7 +72,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.outputs = {'Loss': loss.astype('float32')}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad(self):
             self.check_grad_with_place(
