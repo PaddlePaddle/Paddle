@@ -78,6 +78,15 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : lamb
+  version :
+    - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
+      action :
+        - add_output : Beta1PowOut
+          comment : The Output beta1 power accumulator. 'Beta1PowOut' is dispensable.
+        - add_output : Beta2PowOut
+          comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
+
 - op : less_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]

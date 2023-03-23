@@ -993,7 +993,7 @@ def save(layer, path, input_spec=None, **configs):
         configs._program_only = True
 
     scope = core.Scope()
-    extra_var_info = dict()
+    extra_var_info = {}
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
@@ -1099,8 +1099,8 @@ def save(layer, path, input_spec=None, **configs):
             # structured name, the buffer variable (non-persistable)
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
-            state_names_dict = dict()
-            state_var_dict = dict()
+            state_names_dict = {}
+            state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
@@ -1126,7 +1126,7 @@ def save(layer, path, input_spec=None, **configs):
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
+                    extra_info_dict = {}
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name

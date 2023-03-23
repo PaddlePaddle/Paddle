@@ -136,6 +136,15 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
+        def test_dynamic_api_float16(self):
+            paddle.disable_static()
+            x = paddle.to_tensor(self.input_x, dtype="float16")
+            y = paddle.to_tensor(self.input_y, dtype="float16")
+            op = eval("paddle.%s" % (self.op_type))
+            out = op(x, y)
+            self.assertEqual((out.numpy() == self.real_result).all(), True)
+            paddle.enable_static()
+
         def test_dynamic_api_inf_1(self):
             if self.op_type == "equal":
                 paddle.disable_static()
@@ -432,6 +441,39 @@ create_paddle_case('greater_than', lambda _a, _b: _a > _b)
 create_paddle_case('greater_equal', lambda _a, _b: _a >= _b)
 create_paddle_case('equal', lambda _a, _b: _a == _b)
 create_paddle_case('not_equal', lambda _a, _b: _a != _b)
+
+
+# add bf16 tests
+def create_bf16_case(op_type, callback):
+    class TestCompareOpBF16Op(op_test.OpTest):
+        def setUp(self):
+            self.op_type = op_type
+            self.dtype = np.uint16
+            self.python_api = eval("paddle." + op_type)
+
+            x = np.random.uniform(0, 1, [5, 5]).astype(np.float32)
+            y = np.random.uniform(0, 1, [5, 5]).astype(np.float32)
+            real_result = callback(x, y)
+            self.inputs = {
+                'X': op_test.convert_float_to_uint16(x),
+                'Y': op_test.convert_float_to_uint16(y),
+            }
+            self.outputs = {'Out': real_result}
+
+        def test_check_output(self):
+            self.check_output()
+
+    cls_name = "BF16TestCase_{}".format(op_type)
+    TestCompareOpBF16Op.__name__ = cls_name
+    globals()[cls_name] = TestCompareOpBF16Op
+
+
+create_bf16_case('less_than', lambda _a, _b: _a < _b)
+create_bf16_case('less_equal', lambda _a, _b: _a <= _b)
+create_bf16_case('greater_than', lambda _a, _b: _a > _b)
+create_bf16_case('greater_equal', lambda _a, _b: _a >= _b)
+create_bf16_case('equal', lambda _a, _b: _a == _b)
+create_bf16_case('not_equal', lambda _a, _b: _a != _b)
 
 
 class TestCompareOpError(unittest.TestCase):
