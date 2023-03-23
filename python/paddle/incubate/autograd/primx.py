@@ -633,16 +633,13 @@ def _lower_composite(
                             f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                             f'but orig_out: {orig_out.name}.dtype={orig_out.dtype} and new_out: {new_out.name}.dtype={new_out.dtype}'
                         )
-                        if (orig_out.shape is not None) and (
-                            new_out.shape is not None
-                        ):
-                            assert (
-                                -1 not in new_out.shape
-                            ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
-                            assert orig_out.shape == new_out.shape, (
-                                f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
-                                f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
-                            )
+                        assert (
+                            -1 not in new_out.shape
+                        ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        assert orig_out.shape == new_out.shape, (
+                            f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                            f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
+                        )
                         assert not (orig_out is None) ^ (
                             new_out is None
                         ), "orig_out and new_out should match."

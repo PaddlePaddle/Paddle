@@ -315,7 +315,7 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
     if len(shape_in) == 0 or start_dim == end_dim:
-        return reshape(x, shape=shape_in), None
+        return reshape(x, shape=[1]), None
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
         slice_numel *= shape_in[i]
