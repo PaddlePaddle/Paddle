@@ -103,6 +103,8 @@ class CompositeGradOpMakerBase {
     return output_grad;
   }
 
+  // TODO(Ruting): modify name to GetNullableSingleInputGrad after Large-scale
+  // development
   paddle::Tensor GetSingleInputGrad(const std::string& name) {
     framework::VarDesc* input_grad_desc = this->SingleInputGrad(name);
     if (!input_grad_desc) return paddle::Tensor();

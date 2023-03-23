@@ -908,9 +908,6 @@ void layer_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  // std::cout << x.type() << " " << scale.get().type() << " " <<
-  // bias.get().type() << " " << mean.type() << " " << variance.type() <<
-  // std::endl;
   auto x_dims = x.dims();
   auto shape_1 = 1;  // front part
   auto shape_2 = 1;  // back part
