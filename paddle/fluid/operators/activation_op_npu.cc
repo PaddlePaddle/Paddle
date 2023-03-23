@@ -76,13 +76,13 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // Step 2: Construct a broadcast factor, which has the same shape with x.
 
     // 2.1 Get a factor tensor with shape [1].
-    phi::DenseTensor factor_tensor(experimental::DataType::FLOAT32);
+    phi::DenseTensor factor_tensor(phi::DataType::FLOAT32);
     factor_tensor.mutable_data<float>({1}, place);
     FillNpuTensorWithConstant<float>(&factor_tensor, factor);
 
     // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
-    phi::DenseTensor factor_bc_tensor(experimental::DataType::FLOAT32);
+    phi::DenseTensor factor_bc_tensor(phi::DataType::FLOAT32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
     const auto& runner_bc = NpuOpRunner("FillD",
                                         {factor_tensor},
@@ -669,7 +669,7 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    phi::DenseTensor tmp_bool(experimental::DataType::BOOL);
+    phi::DenseTensor tmp_bool(phi::DataType::BOOL);
     tmp_bool.mutable_data<bool>(x->dims(), place);
     const auto& runner_less =
         NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});

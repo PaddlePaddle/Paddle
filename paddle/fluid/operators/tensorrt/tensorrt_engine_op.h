@@ -90,25 +90,24 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
           runtime_input_shape_str));
 }
 
-static paddle::experimental::DataType TRT2FluidDataType(
-    nvinfer1::DataType type) {
+static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
   switch (type) {
     case nvinfer1::DataType::kFLOAT:
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
     case nvinfer1::DataType::kINT32:
-      return paddle::experimental::DataType::INT32;
+      return phi::DataType::INT32;
     case nvinfer1::DataType::kHALF:
-      return paddle::experimental::DataType::FLOAT16;
+      return phi::DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
-      return paddle::experimental::DataType::INT8;
+      return phi::DataType::INT8;
 #if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
-      return paddle::experimental::DataType::BOOL;
+      return phi::DataType::BOOL;
 #endif
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
   }
 }
 

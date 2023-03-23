@@ -244,7 +244,9 @@ class TestEigStatic(TestEigOp):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 3], dtype='complex')
+            input = paddle.static.data(
+                name="input", shape=[3, 3], dtype='complex'
+            )
             act_val, act_vec = paddle.linalg.eig(input)
 
             exe = fluid.Executor(place)

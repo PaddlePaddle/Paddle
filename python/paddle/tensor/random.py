@@ -258,7 +258,7 @@ def uniform_random_batch_size_like(
             from paddle.tensor import random
             paddle.enable_static()
             # example 1:
-            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
+            input = paddle.static.data(name="input", shape=[1, 3], dtype='float32')
             out_1 = random.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
             # example 2:
             out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
@@ -660,7 +660,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         check_type(min, 'min', (float, int, Variable), 'uniform/rand')
         check_type(max, 'max', (float, int, Variable), 'uniform/rand')
 
-        inputs = dict()
+        inputs = {}
         attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand'
@@ -807,7 +807,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
                 "high = {1}".format(low, high)
             )
 
-        inputs = dict()
+        inputs = {}
         attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='randint'

@@ -39,31 +39,12 @@ class FeedDataReader:
 
     def _feed_executor(self):
         next_data = next(self._iter)
-        feed_data = dict()
+        feed_data = {}
         assert len(self._feed_list) == len(next_data)
         for key, value in zip(self._feed_list, next_data):
             feed_data[key] = value
         return feed_data
 
-    def _feed_parallel_executor(self, device_num):
-        feed_data = []
-        for _ in range(device_num):
-            feed_data.append(self._feed_executor())
-
-        return feed_data
-
     def get_next(self, exe, program):
-        result = []
         assert isinstance(exe, fluid.Executor), "exe must be Executor"
-        use_cuda = isinstance(exe.place, fluid.CUDAPlace)
-        if isinstance(program, fluid.CompiledProgram):
-            use_executor = True
-            device_num = 1
-        else:
-            use_executor = True
-            device_num = 1
-
-        if use_executor:
-            return self._feed_executor()
-        else:
-            return self._feed_parallel_executor(device_num)
+        return self._feed_executor()

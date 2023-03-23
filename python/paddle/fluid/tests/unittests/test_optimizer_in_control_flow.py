@@ -89,14 +89,14 @@ def static(
             opt.minimize(avg_loss)
             return avg_loss
 
-        image = fluid.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
-        label = fluid.data('label', [BATCH_SIZE, 1], 'int64')
+        image = paddle.static.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
+        label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
-        id = fluid.data('id', [1], 'int32')
+        id = paddle.static.data('id', [1], 'int32')
         two = paddle.tensor.fill_constant([1], 'int32', 2)
         mod_two = paddle.remainder(id, two) == 0
 
