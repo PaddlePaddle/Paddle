@@ -444,8 +444,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64, uint16.
+        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -478,13 +478,29 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         helper = LayerHelper("equal", **locals())
@@ -508,8 +524,8 @@ def greater_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -531,13 +547,29 @@ def greater_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         helper = LayerHelper("greater_equal", **locals())
@@ -561,8 +593,8 @@ def greater_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -584,13 +616,29 @@ def greater_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         helper = LayerHelper("greater_than", **locals())
@@ -614,8 +662,8 @@ def less_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -638,13 +686,29 @@ def less_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         helper = LayerHelper("less_equal", **locals())
@@ -668,8 +732,8 @@ def less_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -692,13 +756,29 @@ def less_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         helper = LayerHelper("less_than", **locals())
@@ -722,8 +802,8 @@ def not_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64, uint16.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64, uint16.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -746,13 +826,29 @@ def not_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         helper = LayerHelper("not_equal", **locals())
