@@ -37,6 +37,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"

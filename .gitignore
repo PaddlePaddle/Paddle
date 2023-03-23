@@ -7,6 +7,7 @@ paddle/fluid/op_use_default_grad_maker_DEV.spec
 paddle/fluid/op_use_default_grad_maker_PR.spec
 paddle/fluid/operators/ops_extra_info.cc
 paddle/phi/api/backward/backward_api.h
+paddle/phi/api/backward/fused_backward_api.h
 paddle/phi/api/backward/sparse_bw_api.h
 paddle/phi/api/include/api.h
 paddle/phi/api/include/fused_api.h
@@ -19,6 +20,7 @@ paddle/phi/api/lib/api.cc
 paddle/phi/api/lib/fused_api.cc
 paddle/phi/api/lib/dygraph_api.*
 paddle/phi/api/lib/backward_api.cc
+paddle/phi/api/lib/fused_backward_api.cc
 paddle/phi/api/lib/operants_manager.cc
 paddle/phi/api/lib/sparse_api.cc
 paddle/phi/api/lib/strings_api.cc

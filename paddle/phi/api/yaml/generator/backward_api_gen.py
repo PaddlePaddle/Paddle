@@ -269,7 +269,7 @@ def header_include():
 """
 
 
-def source_include(header_file_path):
+def source_include(header_file_path, fw_header_file_path):
     return f"""
 #include "{header_file_path}"
 #include <memory>
@@ -282,7 +282,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/api/include/api.h"
+#include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -320,6 +320,10 @@ def generate_backward_api(
             if api_list:
                 bw_apis.extend(api_list)
 
+    is_fused_op = (
+        True if backward_yaml_path[0].endswith("fused_backward.yaml") else False
+    )
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -329,8 +333,19 @@ def generate_backward_api(
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/backward/backward_api.h"
-    source_file.write(source_include(include_header_file))
+    include_header_file = (
+        "paddle/phi/api/backward/fused_backward_api.h"
+        if is_fused_op
+        else "paddle/phi/api/backward/backward_api.h"
+    )
+    include_fw_header_file = (
+        "paddle/phi/api/include/fused_api.h"
+        if is_fused_op
+        else "paddle/phi/api/include/api.h"
+    )
+    source_file.write(
+        source_include(include_header_file, include_fw_header_file)
+    )
     source_file.write(namespace[0])
 
     for bw_api in bw_apis:
