@@ -574,8 +574,6 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
         is_amp = True
         x = cast(x, "float32")
 
-    if data_layout == "NHWC":
-        x = transpose(x, (0, 3, 1, 2))
     N, C, H, W = x.shape
     x = reshape(x, (N * groups, -1))
     mean_ = mean(x, axis=1, keepdim=True)
@@ -588,8 +586,6 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
         out = out * reshape(scale, (-1, 1, 1))
     if bias is not None:
         out = out + reshape(bias, (-1, 1, 1))
-    if data_layout == "NHWC":
-        out = transpose(out, (0, 2, 3, 1))
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
 

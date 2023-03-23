@@ -23,6 +23,8 @@ from eager_op_test import (
 )
 from testsuite import create_op
 import parameterized as param
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from testsuite import create_op
 
 import paddle
 from paddle import fluid
@@ -723,6 +725,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
         self.threshold = {}
         self.threshold['float32'] = []
         self.threshold['float64'] = []
+        self.threshold['float16'] = []
         self.threshold['float32'].append(
             [5e-5, 5e-5, 5e-5]
         )  # cpu threshold for static, jit and jit_cinn
@@ -730,10 +733,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
             [1e-5, 1e-5, 1e-5]
         )  # gpu threshold for static, jit and jit_cinn
         self.threshold['float64'].append(
-            [5e-14, 5e14, 5e-14]
+            [5e-14, 5e-14, 5e-14]
         )  # cpu threshold for static, jit and jit_cinn
         self.threshold['float64'].append(
             [1e-14, 1e-14, 1e-14]
+        )  # gpu threshold for static, jit and jit_cinn
+        self.threshold['float16'].append(
+            [5e-3, 5e-3, 5e-3]
+        )  # cpu threshold for static, jit and jit_cinn
+        self.threshold['float16'].append(
+            [1e-3, 1e-3, 1e-3]
         )  # gpu threshold for static, jit and jit_cinn
 
         self.static_fwd_desire = []
