@@ -268,44 +268,43 @@ class TestChannelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_data_format_layer)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
 class TestChannelShuffleFP16OP(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.float16
-        self.__class__.op_type = self.op_type
-        self.place = (
-            fluid.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
         self.inputs = {'X': np.random.randn(2, 16, 32, 32).astype(self.dtype)}
         self.attrs = {'group': 2}
         self.outputs = {'Out': np.zeros((2, 16, 32, 32)).astype(self.dtype)}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+        )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestChannelShuffleBF16OP(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
-        self.__class__.op_type = self.op_type
         self.use_mkldnn = False
         self.input_shape = (2, 4, 3, 3)
         self.groups = 2
@@ -317,20 +316,16 @@ class TestChannelShuffleBF16OP(OpTest):
         self.outputs = {'Out': np.zeros_like(self.inputs['X'])}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+        )
 
 
 if __name__ == '__main__':
