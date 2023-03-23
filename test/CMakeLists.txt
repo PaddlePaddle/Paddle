@@ -4,6 +4,7 @@ set(CC_TESTS_DIR
 set(PYTHON_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test
     CACHE INTERNAL "python tests directory")
+
 if(WITH_TESTING)
   add_subdirectory(cpp)
   add_subdirectory(legacy_test)

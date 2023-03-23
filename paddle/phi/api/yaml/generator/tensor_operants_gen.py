@@ -468,7 +468,7 @@ operants_manager_source_end = """
 
 
 class OperantsAPI(ForwardAPI):
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         super().__init__(api_item_yaml)
         self.is_prim_api = False
         if self.get_api_func_name() in prims:
