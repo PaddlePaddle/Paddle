@@ -414,7 +414,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
             api_list = yaml.load(f, Loader=yaml.FullLoader)
             if api_list:
                 apis.extend(api_list)
-    print("++++ api_yaml_path[0]-----{}".format(api_yaml_path[0]))
+
     is_fused_op = True if api_yaml_path[0].endswith("fused_ops.yaml") else False
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
@@ -430,6 +430,16 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
         if is_fused_op is True
         else "paddle/phi/api/include/api.h"
     )
+    # not all fused ops supoort dygraph
+    if is_fused_op is True:
+        new_apis = [
+            api
+            for api in apis
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        apis = new_apis
+
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 

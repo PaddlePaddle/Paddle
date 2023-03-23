@@ -340,6 +340,7 @@ def check_op_config(op_entry, op_name):
         'no_need_buffer',
         'data_transform',
         'composite',
+        'support_dygraph_mode',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = (

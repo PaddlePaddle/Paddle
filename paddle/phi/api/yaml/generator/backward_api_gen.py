@@ -347,6 +347,15 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
+    # not all fused ops supoort dygraph
+    if is_fused_op is True:
+        new_bw_apis = [
+            bw_api
+            for bw_api in bw_apis
+            if "support_dygraph_mode" in bw_api
+            and bw_api["support_dygraph_mode"] is True
+        ]
+        bw_apis = new_bw_apis
 
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
