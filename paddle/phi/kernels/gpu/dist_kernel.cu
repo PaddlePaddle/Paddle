@@ -83,7 +83,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
   MPType max_val = static_cast<MPType>(-1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    max_val = max(max_val, abs(static_cast<MPType>(x[i] - y[i])));
+    max_val = max(max_val, static_cast<MPType>(abs(x[i] - y[i])));
   }
 
   __syncthreads();
