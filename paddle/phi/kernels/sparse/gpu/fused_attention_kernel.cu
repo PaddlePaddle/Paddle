@@ -104,6 +104,7 @@ void FusedAttentionCsrKernel(
     const paddle::optional<DenseTensor>& key_padding_mask,
     const paddle::optional<DenseTensor>& attn_mask,
     const float scale_qk_coeff,
+    const float dropout_rate,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
 #if CUDA_VERSION >= 11080
@@ -222,6 +223,11 @@ void FusedAttentionCsrKernel(
       q_dim[1],
       batch_nnz,
       scale_qk_coeff);
+
+  // dropout
+  if (dropout != 0.0) {
+    // call sparse DropoutKernel
+  }
 
   softmax->set_dims(phi::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
 

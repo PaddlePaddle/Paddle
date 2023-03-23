@@ -27,6 +27,7 @@ def attention(
     key_padding_mask=None,
     attn_mask=None,
     scale_qk_coeff=1.0,
+    dropout_rate=0.0,
     name=None,
 ):
     r"""
@@ -58,6 +59,8 @@ def attention(
         attn_mask(DenseTensor, optional): The attention mask tensor in the Attention module.
             2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64. Default: None.
         scale_qk_coeff(float, optional): scale the result of Q*K. Default:1.0.
+        dropout_rate(float, optional): The dropout probability used on attention
+            weights to drop some attention targets. 0 for no dropout. Default 0
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -101,4 +104,5 @@ def attention(
         key_padding_mask,
         attn_mask,
         scale_qk_coeff,
+        dropout_rate,
     )
