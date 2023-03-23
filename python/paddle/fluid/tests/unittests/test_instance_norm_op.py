@@ -134,6 +134,20 @@ class TestInstanceNormOp(OpTest):
             check_prim=True,
         )
 
+    def test_check_output_cpu(self):
+        self.check_output_with_place(
+            core.CPUPlace(), atol=1e-05, check_eager=True, check_prim=True
+        )
+
+    def test_check_grad_cpu(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_eager=True,
+            check_prim=True,
+        )
+
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(
