@@ -36,7 +36,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const TensorType& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-#if CUDA_VERSION >= 11000
+#if CUDA_VERSION >= 11000 || defined(PADDLE_WITH_HIP)
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -103,7 +103,9 @@ void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
+#if PADDLE_WITH_CUDA
   MatmulKernelImpl<T>(dev_ctx, x, y, out);
+#endif
 }
 
 template <typename T, typename Context>

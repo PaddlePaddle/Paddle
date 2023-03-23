@@ -86,7 +86,6 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 
   int64_t batch_nnz = nnz / batch_size;
   rocsparse_indextype itype = GetGpuIndexType<IntT>();
-  rocsparse_indextype jtype = GetGpuIndexType<IntT>();
   rocsparse_datatype ttype = GetGpuDataType<T>();
   dev_ctx.CusparseCall([&](rocsparse_handle handle) {
     phi::dynload::rocsparse_create_coo_descr(descriptor,
@@ -97,7 +96,6 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                              const_cast<IntT*>(cols_data),
                                              const_cast<T*>(values_data),
                                              itype,
-                                             jtype,
                                              rocsparse_index_base_zero,
                                              ttype);
   });
@@ -169,8 +167,13 @@ class RocSparseDnMatDescriptor {
     int64_t ld = N;
     rocsparse_datatype ttype = GetGpuDataType<T>();
     dev_ctx.CusparseCall([&](rocsparse_handle handle) {
-      phi::dynload::rocsparse_create_dnmat_descr(
-          descriptor_, M, N, ld, x.data(), ttype, rocsparse_order_row);
+      phi::dynload::rocsparse_create_dnmat_descr(&descriptor_,
+                                                 M,
+                                                 N,
+                                                 ld,
+                                                 const_cast<void*>(x.data()),
+                                                 ttype,
+                                                 rocsparse_order_row);
     });
   }
 
@@ -241,6 +244,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                  ttype,
                                  GetSpMMAlgorithm(mat_a),
                                  rocsparse_spmm_stage_preprocess,
+                                 &buffer_size,
                                  tmp_buffer_ptr);
   });
 
@@ -257,6 +261,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                  ttype,
                                  GetSpMMAlgorithm(mat_a),
                                  rocsparse_spmm_stage_compute,
+                                 &buffer_size,
                                  tmp_buffer_ptr);
   });
 }
