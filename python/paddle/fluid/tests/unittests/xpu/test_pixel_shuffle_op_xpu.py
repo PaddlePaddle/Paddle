@@ -78,7 +78,6 @@ class XPUTestPixelShuffleOp(XPUOpTestWrapper):
             self.set_xpu()
             self.op_type = "pixel_shuffle"
             self.init_dtype()
-            self.eager_mode = True
 
             # override
             self.init_input_shape()
@@ -109,9 +108,7 @@ class XPUTestPixelShuffleOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', check_eager=self.eager_mode
-            )
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestNHWC(TestPixelShuffleOp):
         def init_input_shape(self):
