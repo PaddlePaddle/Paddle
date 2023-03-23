@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.tensor as tensor
-from paddle.fluid import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-3, "atol": 1e-3},
@@ -31,9 +30,8 @@ axes_condis = [-1, 0, 1]
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    backend = 'CINN' if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend)
 
 
 def generate_data(shape, dtype="float32"):
@@ -77,7 +75,6 @@ class TestPrimForward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_forward_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 
@@ -152,7 +149,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_all_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 

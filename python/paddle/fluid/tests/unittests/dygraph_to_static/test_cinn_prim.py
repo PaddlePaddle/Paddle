@@ -18,13 +18,11 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    backend = 'CINN' if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend)
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -56,7 +54,6 @@ class TestPrimForward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_forward_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 
@@ -114,7 +111,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_all_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 
