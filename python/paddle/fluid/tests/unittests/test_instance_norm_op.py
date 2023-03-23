@@ -97,7 +97,7 @@ class TestInstanceNormOp(OpTest):
         self.op_type = "instance_norm"
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
-        self.public_python_api = paddle.static.nn.instance_norm
+        self.public_python_api = instance_norm_wrapper
         self.python_out_sig = ['Y']
         self.rev_comp_rtol = 1e-04
         self.rev_comp_atol = 1e-04
@@ -133,6 +133,22 @@ class TestInstanceNormOp(OpTest):
             check_eager=True,
             check_prim=True,
         )
+
+    def test_check_output_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), atol=1e-05, check_eager=True, check_prim=True
+            )
+
+    def test_check_grad_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_eager=True,
+                check_prim=True,
+            )
 
     def init_test_case(self):
         x_shape = [2, 100, 4, 5]
