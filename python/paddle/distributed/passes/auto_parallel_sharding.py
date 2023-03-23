@@ -1790,7 +1790,7 @@ def group_param(sharding_info, fuse_size):
 class ShardingInfo:
     def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
-        self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
+        self.params_grads = {p.name: (p, g) for p, g in params_grads}
         assert len(self.params_grads) == len(
             set(self.params_grads)
         ), "found duplicated param in params_grads"
