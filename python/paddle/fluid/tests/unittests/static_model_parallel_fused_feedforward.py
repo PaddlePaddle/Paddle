@@ -102,7 +102,7 @@ class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, seq_len, IN_SIZE], dtype=DTYPE
         )
 

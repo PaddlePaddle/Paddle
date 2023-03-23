@@ -55,13 +55,17 @@ class TestSquareErrorInvalidInput(unittest.TestCase):
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]
-            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
+            label = paddle.static.data(
+                name='label1', shape=[None, 3], dtype='float32'
+            )
             loss = paddle.nn.functional.square_error_cost(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
-            input = fluid.data(name='input2', shape=[None, 3], dtype='float32')
+            input = paddle.static.data(
+                name='input2', shape=[None, 3], dtype='float32'
+            )
             label = [256, 3]
             loss = paddle.nn.functional.square_error_cost(input, label)
 

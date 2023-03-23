@@ -30,8 +30,12 @@ class TestMseLoss(unittest.TestCase):
         sub = input_val - label_val
         np_result = np.mean(sub * sub)
 
-        input_var = fluid.data(name="input", shape=[-1, 3], dtype="float32")
-        label_var = fluid.data(name="label", shape=[-1, 3], dtype="float32")
+        input_var = paddle.static.data(
+            name="input", shape=[-1, 3], dtype="float32"
+        )
+        label_var = paddle.static.data(
+            name="label", shape=[-1, 3], dtype="float32"
+        )
 
         output = paddle.nn.functional.mse_loss(input=input_var, label=label_var)
         for use_cuda in (
@@ -52,13 +56,17 @@ class TestMseInvalidInput(unittest.TestCase):
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]
-            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
+            label = paddle.static.data(
+                name='label1', shape=[None, 3], dtype='float32'
+            )
             loss = paddle.nn.functional.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
-            input = fluid.data(name='input1', shape=[None, 3], dtype='float32')
+            input = paddle.static.data(
+                name='input1', shape=[None, 3], dtype='float32'
+            )
             label = [256, 3]
             loss = paddle.nn.functional.mse_loss(input, label)
 
@@ -219,10 +227,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'mean')
@@ -261,10 +269,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'sum')
@@ -303,10 +311,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'none')

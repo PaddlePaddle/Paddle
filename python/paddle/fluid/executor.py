@@ -1687,7 +1687,7 @@ class Executor:
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        # Check if fluid.data() variable no feed data
+        # Check if paddle.static.data() variable no feed data
         if use_prune:
             if compiled:
                 global_block = program._program.global_block()

@@ -1060,6 +1060,8 @@ PYBIND11_MODULE(libpaddle, m) {
              if (PyList_Check(obj) || PyTuple_Check(obj)) {
                self.EmplaceBackInputs(
                    std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else if (obj == Py_None) {  // check optional Tensor
+               self.EmplaceBackInput(std::move(paddle::Tensor()));
              } else {
                self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
              }

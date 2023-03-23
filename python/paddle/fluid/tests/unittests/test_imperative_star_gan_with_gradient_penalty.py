@@ -553,7 +553,7 @@ class DyGraphTrainModel:
 
         self.clear_gradients()
 
-        return g_loss.numpy()[0], d_loss.numpy()[0]
+        return float(g_loss), float(d_loss)
 
 
 class StaticGraphTrainModel:
@@ -561,15 +561,15 @@ class StaticGraphTrainModel:
         self.cfg = cfg
 
         def create_data_layer():
-            image_real = fluid.data(
+            image_real = paddle.static.data(
                 shape=[None, 3, cfg.image_size, cfg.image_size],
                 dtype='float32',
                 name='image_real',
             )
-            label_org = fluid.data(
+            label_org = paddle.static.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_org'
             )
-            label_trg = fluid.data(
+            label_trg = paddle.static.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg'
             )
             return image_real, label_org, label_trg
