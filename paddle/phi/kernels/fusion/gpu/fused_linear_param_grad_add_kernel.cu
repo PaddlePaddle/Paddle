@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/fusion/fused_linear_param_grad_add_kernel.h"
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
@@ -41,7 +41,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
 
   const bool fuse_bias_grad = kIsMultiPrecision && dweight_out;
   if (dweight_out) {
-    paddle::operators::ComputeFusedGemmEpilogueBackward<T, T, MT>(
+    phi::funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
         ctx,
         &dout,
         &x,
@@ -183,10 +183,6 @@ void FusedLinearParamGradAdd(const Context &ctx,
   } else {
     FusedLinearParamGradAddImpl<T, T, Context>(
         ctx, x, dout, dbias, M, K, N, use_addto, dweight_out, dbias_out);
-  }
-
-  if (VLOG_IS_ON(kLogLevel)) {
-    ctx.Wait();
   }
 }
 
