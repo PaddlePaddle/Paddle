@@ -969,7 +969,7 @@ class ShardingPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            var_names = set([var.name for var in group.vars])
+            var_names = {var.name for var in group.vars}
             return len(vars_.intersection(var_names)) > 0
 
         # analyze groups
@@ -1806,7 +1806,7 @@ class ShardingInfo:
             self.params, self.group_size, self.partition_algor
         )
         # include fp32 and fp16 param
-        self.param_to_rank = dict()
+        self.param_to_rank = {}
         self._map_param_to_rank()
 
     def _map_param_to_rank(self):
