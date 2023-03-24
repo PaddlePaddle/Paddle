@@ -606,9 +606,13 @@ def _lower_composite(
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
-            if lookup_fn(op.type) is not None and filter_(op):
+
+            op_name = op.type
+            comp_flag = (lookup_fn(op_name) is not None) and filter_(op)
+            if op.desc.attr("op_role") == 1:
+                comp_flag = False
+            if comp_flag:
                 change = True
-                op_name = op.type
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
