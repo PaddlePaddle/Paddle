@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,116 +12,242 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
+from paddle import enable_static
+
+# add paddle.fluid.tests.unittests to path
+sys.path.append("..")
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
+from test_pool2d_op import (
+    TestPool2D_Op_Mixin,
+    adaptive_end_index,
+    adaptive_start_index,
+    max_pool2D_forward_naive,
 )
-from paddle.fluid.tests.unittests.test_conv2d_op import (
-    TestConv2DOp,
-    conv2d_forward_naive,
-)
 
 
-def conv2d_residual_naive(out, residual):
-    assert out.shape == residual.shape
-    out = np.add(out, residual)
-    return out
+def pool2d_backward_naive(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=True,
+    adaptive=False,
+    data_format='NCHW',
+    pool_type="max",
+    padding_algorithm="EXPLICIT",
+):
+    # update paddings
+    def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
+        padding = []
+        for input_size, filter_size, stride_size in zip(
+            input_shape, pool_size, pool_stride
+        ):
+            out_size = int((input_size + stride_size - 1) / stride_size)
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
+            pad_0 = int(pad_sum / 2)
+            pad_1 = int(pad_sum - pad_0)
+            padding.append(pad_0)
+            padding.append(pad_1)
+        return padding
 
+    if isinstance(padding_algorithm, str):
+        padding_algorithm = padding_algorithm.upper()
+        if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
+            raise ValueError(
+                "Unknown Attr(padding_algorithm): '%s'. "
+                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            )
 
-@unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
-)
-class TestConv2DBF16Op(TestConv2DOp):
-    def setUp(self):
-        self.op_type = "conv2d"
-        self.use_cudnn = False
-        self.exhaustive_search = False
-        self.use_cuda = False
-        self.use_mkldnn = True
-        self._cpu_only = True
-        self.weight_type = np.float32
-        self.input_type = np.float32
-        self.mkldnn_data_type = "bfloat16"
-        self.force_fp32_output = False
-        self.init_group()
-        self.init_dilation()
-        self.init_test_case()
-        self.init_fuse_relu()
-        self.init_fuse_residual()
-        self.init_data_type()
-        self.init_force_fp32_output()
-        self.init_infer_or_train()
+        if padding_algorithm == "VALID":
+            paddings = [0, 0, 0, 0]
+            if ceil_mode is not False:
+                raise ValueError(
+                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
+                    " must be False. "
+                    "Received ceil_mode: True."
+                )
+        elif padding_algorithm == "SAME":
+            input_data_shape = []
+            if data_format == "NCHW":
+                input_data_shape = x.shape[2:4]
+            elif data_format == "NHWC":
+                input_data_shape = x.shape[1:3]
+            paddings = _get_padding_with_SAME(input_data_shape, ksize, strides)
 
-        self.conv2d_param = {
-            'stride': self.stride,
-            'pad': self.pad,
-            'dilation': self.dilations,
-        }
+    assert len(paddings) == 2 or len(paddings) == 4
+    is_sys = True if len(paddings) == 2 else False
 
-        self.input = np.random.random(self.input_size).astype(np.float32)
-        self.filter = np.random.random(self.filter_size).astype(np.float32)
+    if data_format == "NHWC":
+        x = x.transpose([0, 3, 1, 2])
 
-        self.inputs_fp32 = {'Input': self.input, 'Filter': self.filter}
+    N, C, H, W = x.shape
 
-        conv_out, _, _, _, _ = conv2d_forward_naive(
-            self.input, self.filter, self.groups, self.conv2d_param
+    if global_pool == 1:
+        ksize = [H, W]
+        paddings = [0 for _ in range(len(paddings))]
+
+    pad_h_up = paddings[0] if is_sys else paddings[0]
+    pad_h_down = paddings[0] if is_sys else paddings[1]
+    pad_w_left = paddings[1] if is_sys else paddings[2]
+    pad_w_right = paddings[1] if is_sys else paddings[3]
+
+    if adaptive:
+        H_out, W_out = ksize
+    else:
+        H_out = (
+            (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1)
+            // strides[0]
+            + 1
+            if ceil_mode
+            else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
         )
-        self.conv_output_float = conv_out
+        W_out = (
+            (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1)
+            // strides[1]
+            + 1
+            if ceil_mode
+            else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        )
 
-        if self.fuse_residual:
-            self.input_residual = np.random.random(
-                self.input_residual_size
-            ).astype(np.float32)
-            self.conv_output_float = conv2d_residual_naive(
-                self.conv_output_float, self.input_residual
-            )
-            self.conv_output = convert_float_to_uint16(self.conv_output_float)
-            self.outputs = {'Output': self.conv_output}
-        elif self.force_fp32_output:
-            self.outputs = {'Output': self.conv_output_float.astype(np.float32)}
+    x_grad = np.zeros_like(x)
+    for i in range(H_out):
+        if adaptive:
+            in_h_start = adaptive_start_index(i, H, ksize[0])
+            in_h_end = adaptive_end_index(i, H, ksize[0])
         else:
-            self.outputs = {
-                'Output': convert_float_to_uint16(self.conv_output_float)
-            }
+            in_h_start = np.max((i * strides[0] - pad_h_up, 0))
+            in_h_end = np.min((i * strides[0] + ksize[0] - pad_h_up, H))
 
-        if self.input_type is not np.float32:
-            self.input = convert_float_to_uint16(self.input)
+        for j in range(W_out):
+            if adaptive:
+                in_w_start = adaptive_start_index(j, W, ksize[1])
+                in_w_end = adaptive_end_index(j, W, ksize[1])
+            else:
+                in_h_start = i * strides[0] - pad_h_up
+                in_w_start = j * strides[1] - pad_w_left
+                in_h_end = i * strides[0] + ksize[0] - pad_h_up
+                in_w_end = j * strides[1] + ksize[1] - pad_w_left
 
-        if self.weight_type is not np.float32:
-            self.filter = convert_float_to_uint16(self.filter)
+                field_size = (in_h_end - in_h_start) * (in_w_end - in_w_start)
+                in_h_start = np.max((in_h_start, 0))
+                in_w_start = np.max((in_w_start, 0))
+                in_h_end = np.min((in_h_end, H))
+                in_w_end = np.min((in_w_end, W))
 
-        self.inputs = {
-            'Input': self.input,
-            'Filter': OpTest.np_dtype_to_fluid_dtype(
-                self.filter.astype(self.weight_type)
-            ),
-        }
+            if pool_type == 'avg':
+                if exclusive or adaptive:
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
+                x_grad[:, :, in_h_start:in_h_end, in_w_start:in_w_end] += (
+                    1 / field_size
+                )
+            elif pool_type == 'max':
+                for n in range(N):
+                    for c in range(C):
+                        idx = np.argmax(
+                            x[
+                                n, c, in_h_start:in_h_end, in_w_start:in_w_end
+                            ].flatten()
+                        )
+                        idx_h = idx // (in_w_end - in_w_start)
+                        idx_w = idx % (in_w_end - in_w_start)
+                        x_grad[
+                            n, c, in_h_start + idx_h, in_w_start + idx_w
+                        ] += 1
 
-        if self.fuse_residual:
-            self.op_type = "fused_conv2d"
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.input_residual)
+    if data_format == "NHWC":
+        x_grad = x_grad.transpose([0, 2, 3, 1])
+    return x_grad
+
+
+@OpTestTool.skip_if_not_cpu_bf16()
+class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_data_type(self):
+        self.dtype = np.uint16
+
+    def setUp(self):
+        super().setUp()
+        self.attrs['mkldnn_data_type'] = "bfloat16"
+        self.x_fp32 = np.random.random(self.shape).astype(np.float32)
+
+        output = self.pool2D_forward_naive(
+            self.x_fp32,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            "float32",
+        ).astype(np.float32)
+
+        self.inputs = {'X': convert_float_to_uint16(self.x_fp32)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        x_grad = pool2d_backward_naive(
+            self.x_fp32,
+            ksize=self.ksize,
+            strides=self.strides,
+            paddings=self.paddings,
+            global_pool=self.global_pool,
+            ceil_mode=False,
+            exclusive=self.exclusive,
+            adaptive=self.adaptive,
+            data_format=self.data_format,
+            pool_type=self.pool_type,
+            padding_algorithm=self.padding_algorithm,
+        )
+        x_grad = x_grad / np.prod(self.outputs['Out'].shape)
+        self.check_grad_with_place(
+            core.CPUPlace(), set(['X']), 'Out', user_defined_grads=[x_grad]
+        )
+
+
+@OpTestTool.skip_if_not_cpu_bf16()
+class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def setUp(self):
+        TestPool2D_Op_Mixin.setUp(self)
+        self.dtype = np.uint16
+
+        input = np.random.random(self.shape).astype(np.float32)
+        output = (
+            self.pool2D_forward_naive(
+                input,
+                self.ksize,
+                self.strides,
+                self.paddings,
+                self.global_pool,
+                self.ceil_mode,
+                self.exclusive,
+                self.adaptive,
+                "float32",
             )
+        ).astype(np.float32)
 
-        self.attrs = {
-            'strides': self.stride,
-            'paddings': self.pad,
-            'groups': self.groups,
-            'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
-            'force_fp32_output': self.force_fp32_output,
-            'fuse_residual_connection': self.fuse_residual,
-        }
-
-        self.init_additional_attrs()
+        self.inputs = {'X': convert_float_to_uint16(input)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -129,267 +255,94 @@ class TestConv2DBF16Op(TestConv2DOp):
     def test_check_grad(self):
         pass
 
-    def test_check_grad_no_filter(self):
-        pass
 
-    def test_check_grad_no_input(self):
-        pass
-
+class TestCase1Avg(TestPoolBf16MklDNNOp):
     def init_test_case(self):
-        TestConv2DOp.init_test_case(self)
-        self.input_size = [1, 6, 12, 12]  # NCHW
-        f_c = self.input_size[1] // self.groups
-        o_c = 15
-        self.input_residual_size = [1, o_c, 10, 10]
-        self.filter_size = [o_c, f_c, 3, 3]
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0]
 
-    def init_padding(self):
-        pass
+    def init_global_pool(self):
+        self.global_pool = False
 
-    def init_data_type(self):
-        self.weight_type = np.float32
-        self.input_type = np.uint16
-
-    def init_force_fp32_output(self):
-        self.force_fp32_output = False
-
-    def init_fuse_relu(self):
-        self.fuse_activation = "relu"
-
-    def init_fuse_residual(self):
-        self.fuse_residual = True
-
-    def init_infer_or_train(self):
-        self.weight_type = np.float32
-
-    def init_additional_attrs(self):
-        self.attrs['is_test'] = True
+    def init_exclusive(self):
+        self.exclusive = True
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
-class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
-    def init_fuse_relu(self):
-        self.fuse_activation = None
-
-    def init_fuse_residual(self):
-        self.fuse_residual = None
-
-    def init_additional_attrs(self):
-        self.attrs['is_test'] = False
-
-    def init_infer_or_train(self):
-        self.weight_type = np.uint16
-
-    def test_check_grad(self):
-        dout = self.conv_output_float
-        x = self.inputs_fp32['Input']
-        w = self.inputs_fp32['Filter']
-
-        dx, dweights = conv_backward(dout, x, w, self.conv2d_param)
-
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ["Input", "Filter"],
-            "Output",
-            user_defined_grads=[dx, dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
-        )
-
-    def test_check_grad_no_filter(self):
-        dout = self.conv_output_float
-        x = self.inputs_fp32['Input']
-        w = self.inputs_fp32['Filter']
-
-        dx, _ = conv_backward(dout, x, w, self.conv2d_param)
-
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ["Input"],
-            "Output",
-            set(['Filter']),
-            user_defined_grads=[dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
-        )
-
-    def test_check_grad_no_input(self):
-        dout = self.conv_output_float
-        x = self.inputs_fp32['Input']
-        w = self.inputs_fp32['Filter']
-
-        _, dweights = conv_backward(dout, x, w, self.conv2d_param)
-
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ["Filter"],
-            "Output",
-            set(['Input']),
-            user_defined_grads=[dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
-        )
-
-
-def conv_backward(dout, x, w, params):
-    padding = params['pad'][0]
-    stride = params['stride']
-
-    dx = np.zeros_like(x)
-    dweights = np.zeros_like(w)
-
-    N, IC, H, W = x.shape
-    OC, _, KH, KW = w.shape
-
-    H_out = int(1 + (H + 2 * padding - KH) / stride[0])
-    W_out = int(1 + (W + 2 * padding - KW) / stride[1])
-
-    x_padded = np.pad(x, ((0,), (0,), (padding,), (padding,)), 'constant')
-
-    for n in range(N):
-        for oc in range(OC):
-            for i in range(KH):
-                for j in range(KW):
-                    for k in range(H_out):
-                        for l in range(W_out):
-                            for ic in range(IC):
-                                dweights[oc, ic, i, j] += (
-                                    x_padded[
-                                        n,
-                                        ic,
-                                        i + k * stride[0],
-                                        j + l * stride[1],
-                                    ]
-                                    * dout[n, oc, k, l]
-                                )
-
-    dx_padded = np.pad(dx, ((0,), (0,), (padding,), (padding,)), 'constant')
-
-    w_ = np.zeros_like(w)
-    for i in range(KH):
-        for j in range(KW):
-            w_[:, :, i, j] = w[:, :, KH - i - 1, KW - j - 1]
-
-    for n in range(N):
-        for oc in range(OC):
-            for i in range(H_out):
-                for j in range(W_out):
-                    for kh in range(KH):
-                        for kw in range(KW):
-                            for ic in range(IC):
-                                dx_padded[
-                                    n,
-                                    ic,
-                                    stride[0] * i + kh,
-                                    stride[1] * j + kw,
-                                ] += (
-                                    dout[n, oc, i, j] * w[oc, ic, kh, kw]
-                                )
-
-    if padding == 0:
-        dx = dx_padded
-    else:
-        dx = dx_padded[:, :, padding:-padding, padding:-padding]
-
-    return dx.astype(np.float32), dweights.astype(np.float32)
-
-
-class TestConv2DBF16WithPadding1(TestConv2DWithGradBF16Op):
+class TestCase2Avg(TestPoolBf16MklDNNOp):
     def init_test_case(self):
-        TestConv2DWithGradBF16Op.init_test_case(self)
-        self.pad = [1, 1]
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+
+    def init_global_pool(self):
+        self.global_pool = False
+
+    def init_exclusive(self):
+        self.exclusive = False
 
 
-class TestConv2DBF16WithStride2(TestConv2DWithGradBF16Op):
+class TestCase0Max(TestPoolBf16MklDNNOp):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestCase1Max(TestCase1Avg):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestCase2Max(TestCase2Avg):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestCase1PadZeroExclusiveAvgGrad(TestPoolBf16MklDNNOpGrad):
     def init_test_case(self):
-        TestConv2DWithGradBF16Op.init_test_case(self)
-        self.stride = [2, 3]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+    def init_paddings(self):
+        self.paddings = [0, 0]
+
+    def init_global_pool(self):
+        self.global_pool = False
+
+    def init_exclusive(self):
+        self.exclusive = True
 
 
-class TestConv2D(TestConv2DBF16Op):
-    def init_test_case(self):
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.input_residual_size = [2, 6, 3, 3]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-
-    def init_data_type(self):
-        self.input_type = np.uint16
+class TestCase2PadOneNonExclusiveAvgGrad(TestCase1PadZeroExclusiveAvgGrad):
+    def init_exclusive(self):
+        self.exclusive = False
 
 
-class TestWithPad(TestConv2D):
-    def init_test_case(self):
-        TestConv2D.init_test_case(self)
-        self.pad = [1, 1]
-        self.input_residual_size = [2, 6, 5, 5]
+class TestCase0InitialMaxGrad(TestPoolBf16MklDNNOpGrad):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-class TestWithGroup(TestConv2D):
-    def init_group(self):
-        self.groups = 3
+class TestCase1PadZeroExclusiveMaxGrad(TestCase1PadZeroExclusiveAvgGrad):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-class TestWithStride(TestConv2DBF16Op):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.input_size = [2, 3, 6, 6]
-        self.input_residual_size = [2, 6, 3, 3]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-
-    def init_data_type(self):
-        self.input_type = np.uint16
+class TestCase2PadOneNonExclusiveMaxGrad(TestCase2PadOneNonExclusiveAvgGrad):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-class TestWithDilations(TestConv2DBF16Op):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [2, 2]
-        self.input_size = [2, 3, 10, 10]
-        self.input_residual_size = [2, 6, 8, 8]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-
-    def init_data_type(self):
-        self.input_type = np.uint16
-
-
-class TestWith1x1ForceFP32Output(TestConv2DBF16Op):
-    def init_test_case(self):
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.input_size = [1, 3, 5, 5]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
-
-    def init_force_fp32_output(self):
-        self.force_fp32_output = True
-
-    def init_fuse_residual(self):
-        self.fuse_residual = False
-
-
-class TestWithInput1x1Filter1x1(TestConv2DBF16Op):
-    def init_test_case(self):
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.input_size = [2, 3, 1, 1]
-        self.input_residual_size = [2, 6, 1, 1]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
-
-    def init_group(self):
-        self.groups = 3
-
-
-if __name__ == '__main__':
-    from paddle import enable_static
-
+if __name__ == "__main__":
     enable_static()
     unittest.main()
