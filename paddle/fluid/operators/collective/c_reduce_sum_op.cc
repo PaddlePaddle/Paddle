@@ -33,6 +33,8 @@ class CReduceSumOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Sum"; }
 };
 
+DEFINE_C_REDUCE_CPU_KERNEL(CReduceSum, kRedSum)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -43,9 +45,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_reduce_sum,
                              ops::CReduceOp,
                              ops::CReduceSumOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reduce_sum,
-                       ops::CReduceOpCPUKernel<ops::kRedSum, float>,
-                       ops::CReduceOpCPUKernel<ops::kRedSum, double>,
-                       ops::CReduceOpCPUKernel<ops::kRedSum, int>,
-                       ops::CReduceOpCPUKernel<ops::kRedSum, int64_t>,
-                       ops::CReduceOpCPUKernel<ops::kRedSum, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(c_reduce_sum,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CReduceSumCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

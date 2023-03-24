@@ -76,9 +76,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
                              ops::CReduceScatterOp,
                              ops::CReduceScatterOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reducescatter,
-                       ops::CReduceScatterOpCPUKernel<float>,
-                       ops::CReduceScatterOpCPUKernel<double>,
-                       ops::CReduceScatterOpCPUKernel<int>,
-                       ops::CReduceScatterOpCPUKernel<int64_t>,
-                       ops::CReduceScatterOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CReduceScatterOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

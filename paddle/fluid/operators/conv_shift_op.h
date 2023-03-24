@@ -18,13 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ConvShiftKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ConvShiftGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override;

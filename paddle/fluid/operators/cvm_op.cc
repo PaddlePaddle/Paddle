@@ -180,8 +180,7 @@ REGISTER_OPERATOR(cvm_grad,
                   ops::CVMGradientOp,
                   ops::CVMGradNoNeedBufferVarInferer);
 
-REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
-
-REGISTER_OP_CPU_KERNEL(cvm_grad,
-                       ops::CVMGradOpKernel<float>,
-                       ops::CVMGradOpKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    cvm, CPU, ALL_LAYOUT, ops::CVMOpKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    cvm_grad, CPU, ALL_LAYOUT, ops::CVMGradOpKernel, float, double) {}

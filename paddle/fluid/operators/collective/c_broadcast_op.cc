@@ -68,9 +68,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
                              ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_broadcast,
-                       ops::CBroadcastOpCPUKernel<float>,
-                       ops::CBroadcastOpCPUKernel<double>,
-                       ops::CBroadcastOpCPUKernel<int>,
-                       ops::CBroadcastOpCPUKernel<int64_t>,
-                       ops::CBroadcastOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_broadcast,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CBroadcastOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -53,8 +53,11 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
                              ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    c_sync_comm_stream, GPU, ALL_LAYOUT, ops::CSyncCommStreamKernel, float) {}
 
-REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+REGISTER_OP_NPU_KERNEL(c_sync_comm_stream,
+                       ops::CSyncCommStreamKernel<float, platform::NPUPlace>);
 
-REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream,
+                       ops::CSyncCommStreamKernel<float, platform::MLUPlace>);

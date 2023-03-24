@@ -34,7 +34,7 @@ using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

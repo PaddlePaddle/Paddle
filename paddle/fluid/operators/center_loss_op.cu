@@ -81,7 +81,7 @@ __global__ void UpdateCenters(T *centers,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CenterLossCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -150,11 +150,12 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(center_loss,
-                        ops::CenterLossCUDAKernel<GPUCtx, float>,
-                        ops::CenterLossCUDAKernel<GPUCtx, double>);
 
-REGISTER_OP_CUDA_KERNEL(center_loss_grad,
-                        ops::CenterLossGradKernel<GPUCtx, float>,
-                        ops::CenterLossGradKernel<GPUCtx, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    center_loss, GPU, ALL_LAYOUT, ops::CenterLossCUDAKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(center_loss_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CenterLossGradKernel,
+                          float,
+                          double) {}

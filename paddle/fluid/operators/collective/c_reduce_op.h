@@ -131,6 +131,10 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+#define DEFINE_C_REDUCE_CPU_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>       \
+  class op_name##CPUKernel : public CReduceOpCPUKernel<red_type, T> {};
+
 template <ReduceType red_type, typename T>
 class CReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
@@ -359,6 +363,10 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
 #endif
   }
 };
+
+#define DEFINE_C_REDUCE_CUDA_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>        \
+  class op_name##CUDAKernel : public CReduceOpCUDAKernel<red_type, T> {};
 
 template <ReduceType red_type, typename T>
 class CReduceOpMLUKernel : public framework::OpKernel<T> {

@@ -25,7 +25,7 @@ namespace operators {
 
 using framework::LoD;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CRFDecodingOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

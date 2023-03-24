@@ -113,9 +113,12 @@ REGISTER_OPERATOR(c_concat,
                   ops::CConcatOpGradMaker<paddle::imperative::OpBase>,
                   ops::CConcatOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_concat,
-                       ops::CConcatOpCPUKernel<float>,
-                       ops::CConcatOpCPUKernel<double>,
-                       ops::CConcatOpCPUKernel<int>,
-                       ops::CConcatOpCPUKernel<int64_t>,
-                       ops::CConcatOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CConcatOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

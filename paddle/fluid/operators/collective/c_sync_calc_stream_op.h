@@ -34,7 +34,7 @@ class CSyncCalcStreamOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

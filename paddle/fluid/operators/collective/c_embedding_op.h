@@ -51,7 +51,7 @@ void GetIdsEmbedding(const TIds* ids,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -112,7 +112,7 @@ void UpdateEmbedding(const TIds* ids,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

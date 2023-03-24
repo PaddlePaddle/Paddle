@@ -220,16 +220,13 @@ REGISTER_OPERATOR(crop,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
                   ops::GropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(crop,
-                       ops::CropKernel<phi::CPUContext, float>,
-                       ops::CropKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(crop_grad,
-                       ops::CropGradKernel<phi::CPUContext, float>,
-                       ops::CropGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(crop,
-                        ops::CropKernel<phi::GPUContext, float>,
-                        ops::CropKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(crop_grad,
-                        ops::CropGradKernel<phi::GPUContext, float>,
-                        ops::CropGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    crop, CPU, ALL_LAYOUT, ops::CropKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    crop_grad, CPU, ALL_LAYOUT, ops::CropGradKernel, float, double) {}
+
+PD_REGISTER_STRUCT_KERNEL(
+    crop, GPU, ALL_LAYOUT, ops::CropKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    crop_grad, GPU, ALL_LAYOUT, ops::CropGradKernel, float, double) {}

@@ -78,7 +78,7 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -386,7 +386,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -446,14 +446,17 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    c_softmax_with_cross_entropy,
-    ops::CSoftmaxWithCrossEntropyOpCUDAKernel<float>,
-    ops::CSoftmaxWithCrossEntropyOpCUDAKernel<double>,
-    ops::CSoftmaxWithCrossEntropyOpCUDAKernel<plat::float16>);
-
-REGISTER_OP_CUDA_KERNEL(
-    c_softmax_with_cross_entropy_grad,
-    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<float>,
-    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<paddle::platform::float16>,
-    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyGradCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}
