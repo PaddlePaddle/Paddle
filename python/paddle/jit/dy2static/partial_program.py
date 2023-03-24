@@ -21,8 +21,10 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
+from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
@@ -232,8 +234,6 @@ class PartialProgramLayer:
         ):
             lr_scheduler = main_program.lr_sheduler
             lr_var = main_program.lr_var
-            from paddle.fluid.data_feeder import convert_dtype
-            from paddle.optimizer.lr import LRScheduler
 
             assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
             lr_sheduler = self._origin_main_program.lr_sheduler
