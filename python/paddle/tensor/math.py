@@ -5164,7 +5164,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
     """
     if mode == 'sum':
         sum_mode = paddle.sum
@@ -5227,11 +5227,10 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
         dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
-        If :attr:`y` is a 1-dimensional tensor, then the result is a float. If n is greater than 1, then the result is an n-1 dimensional tensor.
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
+        If :attr:`y` is a 1D tensor, then the result is a float. If N is greater than 1, then the result is an (N-1)-D tensor.
 
     Examples:
         .. code-block:: python
@@ -5286,11 +5285,10 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
         dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
-        If n is greater than 1, then the result is an n-1 dimensional tensor.
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
+        The result is an N-D tensor.
 
     Examples:
         .. code-block:: python
