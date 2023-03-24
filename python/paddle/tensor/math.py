@@ -5156,15 +5156,15 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
-            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
-        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
     """
     if mode == 'sum':
         sum_mode = paddle.sum
@@ -5222,14 +5222,15 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
-            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
-        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
 
     Examples:
         .. code-block:: python
@@ -5280,14 +5281,15 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
-            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
-        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
 
     Examples:
         .. code-block:: python
