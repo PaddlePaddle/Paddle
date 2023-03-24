@@ -63,7 +63,7 @@ def supports_selected_rows_kernel(op):
 
 
 def supports_inplace(op):
-    return op['inplace'] is not None
+    return op['inplace'] is not None and len(op['inplace']) == 1
 
 
 def supports_no_need_buffer(op):

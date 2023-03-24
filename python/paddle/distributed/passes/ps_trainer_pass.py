@@ -277,7 +277,7 @@ class DistributedOpsPass(PassBase):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -334,11 +334,11 @@ class DistributedOpsPass(PassBase):
                     assert global_block.desc.op(i) == global_block.ops[i].desc
 
         if attrs['use_ps_gpu']:
-            gpups_inputs_idxs = list()
-            gpups_outputs_idxs = list()
-            gpups_inputs = list()
-            gpups_outputs = list()
-            gpups_w_size = list()
+            gpups_inputs_idxs = []
+            gpups_outputs_idxs = []
+            gpups_inputs = []
+            gpups_outputs = []
+            gpups_w_size = []
             gpups_min_distributed_idx = len(_program.global_block().ops) + 1
 
         for param, ops in pull_sparse_ops.items():

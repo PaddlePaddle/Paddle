@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from test_kldiv_loss_op import kldiv_loss
@@ -137,8 +137,8 @@ class TestKLDivLossDygraph(unittest.TestCase):
         self.run_kl_loss('none')
 
     def test_kl_loss_static_api(self):
-        input = paddle.fluid.data(name='input', shape=[5, 20])
-        label = paddle.fluid.data(name='label', shape=[5, 20])
+        input = paddle.static.data(name='input', shape=[5, 20])
+        label = paddle.static.data(name='label', shape=[5, 20])
 
         pred_loss = paddle.nn.functional.kl_div(input, label)
 

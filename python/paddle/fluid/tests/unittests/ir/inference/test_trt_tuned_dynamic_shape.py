@@ -31,7 +31,7 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             conv_out = paddle.static.nn.conv2d(

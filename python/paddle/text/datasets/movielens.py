@@ -170,10 +170,10 @@ class Movielens(Dataset):
 
     def _load_meta_info(self):
         pattern = re.compile(r'^(.*)\((\d+)\)$')
-        self.movie_info = dict()
-        self.movie_title_dict = dict()
-        self.categories_dict = dict()
-        self.user_info = dict()
+        self.movie_info = {}
+        self.movie_title_dict = {}
+        self.categories_dict = {}
+        self.user_info = {}
         with zipfile.ZipFile(self.data_file) as package:
             for info in package.infolist():
                 assert isinstance(info, zipfile.ZipInfo)

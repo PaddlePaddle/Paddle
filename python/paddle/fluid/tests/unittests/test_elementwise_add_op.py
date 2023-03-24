@@ -32,6 +32,7 @@ class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_input_output()
@@ -163,6 +164,7 @@ class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.dtype = np.uint16
 
@@ -568,8 +570,8 @@ class TestAddApi(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = self._executed_api(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
@@ -583,8 +585,8 @@ class TestAddApi(unittest.TestCase):
                     "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[3], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
             place = fluid.CPUPlace()
