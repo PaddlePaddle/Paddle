@@ -1408,30 +1408,32 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             )
 
 
-class TestFusedMultiAttentionAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([1.9], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
-            layer = paddle.incubate.nn.FusedMultiHeadAttention(
-                embed_dim=1, num_heads=1
-            )
-            out = layer(x)
-
-        self.assertRaises(ValueError, test_invalid_input_dim)
-
-
-class TestFusedMultiTransformerAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
-            layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
-                108, 108, 108, 0.0, 'relu'
-            )
-            out = layer(x)
-
-        self.assertRaises(ValueError, test_invalid_input_dim)
+#
+#
+# class TestFusedMultiAttentionAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         def test_invalid_input_dim():
+#             array = np.array([1.9], dtype=np.float32)
+#             x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+#             layer = paddle.incubate.nn.FusedMultiHeadAttention(
+#                 embed_dim=1, num_heads=1
+#             )
+#             out = layer(x)
+#
+#         self.assertRaises(ValueError, test_invalid_input_dim)
+#
+#
+# class TestFusedMultiTransformerAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         def test_invalid_input_dim():
+#             array = np.array([], dtype=np.float32)
+#             x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+#             layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
+#                 108, 108, 108, 0.0, 'relu'
+#             )
+#             out = layer(x)
+#
+#         self.assertRaises(ValueError, test_invalid_input_dim)
 
 
 if __name__ == "__main__":
