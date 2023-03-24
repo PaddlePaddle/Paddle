@@ -355,7 +355,7 @@ class CompositeGradOpMakerBase {
           "please use GetOptionalSingleOutputGrad replaced. ",
           name));
     }
-    auto var_name = this->SingleForwardOutputVarName(name);
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
