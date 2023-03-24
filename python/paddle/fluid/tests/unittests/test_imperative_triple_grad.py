@@ -89,17 +89,17 @@ class TestDygraphTripleGradMatmul(TestCase):
         np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
 
         x_grad_ref = np.ones([3, 3]) * 0.0
-        assert x.grad is None
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
         y_grad_ref = np.ones([3, 3]) * 0.0
-        assert y.grad is None
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
         new_out_g_ref = np.ones([3, 3]) * 3.0
         np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
 
         new_x_g_g_ref = np.ones([3, 3]) * 0.0
         new_y_g_g_ref = np.ones([3, 3]) * 3.0
-        assert new_x_g_g.grad is None
+        np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
         np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 
@@ -359,14 +359,13 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             retain_graph=True,
             create_graph=True,
         )
-        # d_x, d_y should be none because ddd_out = None
-        d_dout, d_ddx, d_ddy = paddle.grad(
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
             [dx_double_grad, dy_double_grad],
-            [dout, ddx, ddy],
+            [x, y, dout, ddx, ddy],
             retain_graph=False,
             create_graph=False,
         )
-        return d_dout, d_ddx, d_ddy
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -378,10 +377,14 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
         d_dout_expected = np.ones([3, 3], dtype="float32") * 6
         d_ddx_expected = np.ones([3, 3], dtype="float32") * 3
         d_ddy_expected = np.ones([3, 3], dtype="float32") * 3
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
             d_ddy_expected,
@@ -415,6 +418,18 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             self.input_numpy_ddy = np.ones([3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
         d_dout_expected = np.ones([1], dtype="float32") * 6
         d_ddx_expected = np.ones(
             [
@@ -429,6 +444,8 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             dtype="float32",
         )
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
             d_ddy_expected,
@@ -458,6 +475,8 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             self.input_numpy_ddy = np.ones([1], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
         d_dout_expected = (
             np.ones(
                 [
@@ -470,6 +489,8 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
         d_ddx_expected = np.ones([3, 1], dtype="float32")
         d_ddy_expected = np.ones([1], dtype="float32") * 3
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
             d_ddy_expected,
@@ -486,7 +507,6 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
                 )
 
 
-'''
 # d_ddout is none, dtype is complex64
 class TestDygraphTripleGradMatmulcase2(TestCase):
     def setUp(self):
@@ -646,7 +666,6 @@ class TestDygraphTripleGradMatmulcase2(TestCase):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
-'''
 
 
 # d_ddout is none, d_dx is none, dtype is float32
@@ -689,15 +708,13 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             retain_graph=True,
             create_graph=True,
         )
-        # d_x d_y is None because (double grad out_put ddout grad tensor)d_ddout is None
-        # d_ddy is None because (double grad out_put dx grad tensor) d_dx and d_ddout is None
-        d_dout, d_ddx = paddle.grad(
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
             [dy_double_grad],
-            [dout, ddx],
+            [x, y, dout, ddx, ddy],
             retain_graph=False,
             create_graph=False,
         )
-        return d_dout, d_ddx
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, d_dx is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -709,11 +726,17 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
         d_dout_expected = np.ones([3, 3], dtype="float32") * 3
         d_ddx_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddy_expected = np.zeros([3, 3], dtype="float32")
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
+            d_ddy_expected,
         )
 
         for place in self.places:
@@ -744,6 +767,18 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             self.input_numpy_ddy = np.ones([3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
         d_dout_expected = np.ones([1], dtype="float32") * 3
         d_ddx_expected = np.ones(
             [
@@ -751,9 +786,18 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             ],
             dtype="float32",
         )
+        d_ddy_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
+            d_ddy_expected,
         )
 
         for place in self.places:
@@ -780,6 +824,8 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             self.input_numpy_ddy = np.ones([1], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
         d_dout_expected = np.ones(
             [
                 3,
@@ -787,9 +833,13 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             dtype="float32",
         )
         d_ddx_expected = np.ones([3, 1], dtype="float32")
+        d_ddy_expected = np.zeros([1], dtype="float32")
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
             d_ddx_expected,
+            d_ddy_expected,
         )
 
         for place in self.places:
@@ -803,7 +853,6 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
                 )
 
 
-'''
 # d_ddout is none, d_dx is none, dtype is complex64
 class TestDygraphTripleGradMatmulcase4(TestCase):
     def setUp(self):
@@ -950,7 +999,6 @@ class TestDygraphTripleGradMatmulcase4(TestCase):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
-'''
 
 
 # d_ddout is none, d_dy is none, dtype is float32
@@ -993,13 +1041,13 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             retain_graph=True,
             create_graph=True,
         )
-        d_dout, d_ddy = paddle.grad(
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
             [dx_double_grad],
-            [dout, ddy],
+            [x, y, dout, ddx, ddy],
             retain_graph=False,
             create_graph=False,
         )
-        return d_dout, d_ddy
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, d_dy is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -1011,10 +1059,16 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
         d_dout_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddx_expected = np.zeros([3, 3], dtype="float32") * 3
         d_ddy_expected = np.ones([3, 3], dtype="float32") * 3
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
+            d_ddx_expected,
             d_ddy_expected,
         )
 
@@ -1046,7 +1100,25 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             self.input_numpy_ddy = np.ones([3], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
         d_dout_expected = np.ones([1], dtype="float32") * 3
+        d_ddx_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
         d_ddy_expected = np.ones(
             [
                 3,
@@ -1054,7 +1126,10 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             dtype="float32",
         )
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
+            d_ddx_expected,
             d_ddy_expected,
         )
 
@@ -1082,15 +1157,21 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             self.input_numpy_ddy = np.ones([1], dtype="float32")
 
         init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
         d_dout_expected = np.ones(
             [
                 3,
             ],
             dtype="float32",
         )
+        d_ddx_expected = np.zeros([3, 1], dtype="float32")
         d_ddy_expected = np.ones([1], dtype="float32") * 3
         expected_results = (
+            d_x_expected,
+            d_y_expected,
             d_dout_expected,
+            d_ddx_expected,
             d_ddy_expected,
         )
 
@@ -1105,8 +1186,6 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
                 )
 
 
-'''
-TODO(Ruting) test complex dtype when composite api support
 # d_ddout is none, d_dy is none, dtype is complex64
 class TestDygraphTripleGradMatmulcase6(TestCase):
     def setUp(self):
@@ -1253,7 +1332,7 @@ class TestDygraphTripleGradMatmulcase6(TestCase):
                 np.testing.assert_allclose(
                     expected_result, actual_result, rtol=1e-6
                 )
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
