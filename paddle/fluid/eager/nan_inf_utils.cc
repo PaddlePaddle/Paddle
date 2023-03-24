@@ -46,7 +46,7 @@ static void InitDumpListFormEnv() {
   if (check_op_list) {
     std::stringstream ss(check_op_list);
     std::string op_type;
-    LOG(INFO) << "Please set op list according to the "
+    LOG(INFO) << "Please set op's name according to the "
                  "paddle.amp.low_precision_op_list()";
     while (std::getline(ss, op_type, ',')) {
       nan_inf_check_op_list().emplace(op_type);
@@ -56,7 +56,7 @@ static void InitDumpListFormEnv() {
   if (skip_op_list) {
     std::stringstream ss(skip_op_list);
     std::string op_type;
-    LOG(INFO) << "Please set op list according to the "
+    LOG(INFO) << "Please set op's name according to the "
                  "paddle.amp.low_precision_op_list()";
     while (std::getline(ss, op_type, ',')) {
       nan_inf_skip_op_list().emplace(op_type);
@@ -64,22 +64,28 @@ static void InitDumpListFormEnv() {
   }
 
   for (auto const& key : nan_inf_check_op_list()) {
-    if (nan_inf_skip_op_list().count(key) != 0) {
-      LOG(INFO) << "Check nan inf op list: " << key;
-    }
+    LOG(INFO) << "Check nan inf op list: " << key;
+  }
+
+  for (auto const& key : nan_inf_skip_op_list()) {
+    LOG(INFO) << "Skip nan inf op list: " << key;
   }
 }
+
 bool CheckOp(const std::string& api_name) {
   if (nan_inf_skip_op_list().count("all") ||
       nan_inf_skip_op_list().count(api_name)) {
+    VLOG(4) << "Current op is in skipped_op_list : " << api_name;
     return false;
   }
 
-  if (nan_inf_check_op_list().count("all") ||
-      nan_inf_check_op_list().count(api_name)) {
-    return true;
+  if (nan_inf_check_op_list().size() != 0 &&
+      (!nan_inf_check_op_list().count(api_name))) {
+    VLOG(4) << "Current op isn't in checked_op_list : " << api_name;
+    return false;
   }
 
+  VLOG(6) << "Current check nan inf Op is : " << api_name;
   return true;
 }
 
@@ -119,7 +125,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
                         paddle::platform::errors::Unavailable(
                             "Cannot open %s to save tensor.", str_file_name));
 
-      VLOG(4) << "The Dump file path is " << str_file_name;
+      VLOG(4) << "The dump file's path is " << str_file_name;
       paddle::framework::SerializeToStream(fout, *dense_tensor);
       fout.close();
       return;

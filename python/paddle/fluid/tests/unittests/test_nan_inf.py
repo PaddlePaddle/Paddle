@@ -70,6 +70,18 @@ class TestNanInfEnv(TestNanInf):
         )
 
 
+class TestCheckSkipEnv(TestNanInf):
+    def setUp(self):
+        super().setUp()
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        # windows python have some bug with env, so need use str to pass ci
+        # otherwise, "TypeError: environment can only contain strings"
+        self.env[str("Paddle_check_nan_inf_op_list")] = str("elementwise_mul")
+        self.env[str("Paddle_skip_nan_inf_op_list")] = str("elementwise_add")
+
+
 class TestNanInfCheckResult(unittest.TestCase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
@@ -160,6 +172,27 @@ class TestNanInfCheckResult(unittest.TestCase):
         )
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
+    def test_check_nan_inf_level_for_dump(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 4}
+        )
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
+    def test_check_numerics(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
+        shape = [8, 8]
+        x_np, y_np = self.generate_inputs(shape, "float16")
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        paddle.fluid.core.check_numerics("check_numerics", x)
+        paddle.fluid.core.check_numerics("check_numerics", y)
 
 
 if __name__ == '__main__':
