@@ -43,9 +43,23 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
 
   if (bias_dims_rank == 2) {
     return 0;
-  } else {
+  }
+
+  if (bias_dims[0] == q_dims[0] && bias_dims[1] == q_dims[2]) {
     return q_dims[2] * q_dims[1] * k_dims[1];
   }
+
+  PADDLE_ENFORCE_EQ(
+      bias_dims[0],
+      1,
+      phi::errors::InvalidArgument(
+          "The first dim of attn_bias should be 1 or batch size."));
+  PADDLE_ENFORCE_EQ(
+      bias_dims[1],
+      1,
+      phi::errors::InvalidArgument(
+          "The second dim of attn_bias should be 1 or num_heads."));
+  return 0;
 }
 
 }  // namespace cutlass_internal
