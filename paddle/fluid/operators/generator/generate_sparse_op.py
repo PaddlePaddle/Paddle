@@ -18,7 +18,9 @@ from pathlib import Path
 
 import yaml
 from filters import (
+    assert_dense_or_sr,
     cartesian_prod_mapping,
+    find_optinal_inputs_name,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -59,6 +61,8 @@ env.filters["to_scalar_tensor_name"] = to_scalar_tensor_name
 env.filters["to_int_array_tensor_name"] = to_int_array_tensor_name
 env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
+env.filters["assert_dense_or_sr"] = assert_dense_or_sr
+env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name

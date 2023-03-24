@@ -311,7 +311,7 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
             self.outputs['WarpCTCGrad'] = self.gradient
