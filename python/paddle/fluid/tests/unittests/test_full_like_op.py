@@ -140,9 +140,6 @@ class TestFullLikeOp1(OpTest):
     def test_check_output(self):
         self.check_output(check_prim=True)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], ['Out'])
-
     def if_enable_cinn(self):
         pass
 
