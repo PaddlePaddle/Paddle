@@ -42,17 +42,17 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        logit = paddle.fluid.data(
+        logit = paddle.static.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         feed_dict = {"logit": logit_np, "label": label_np}
 
         normalizer = None
         if normalizer_np is not None:
-            normalizer = paddle.fluid.data(
+            normalizer = paddle.static.data(
                 name='normalizer', shape=normalizer_np.shape, dtype='float64'
             )
             feed_dict["normalizer"] = normalizer_np

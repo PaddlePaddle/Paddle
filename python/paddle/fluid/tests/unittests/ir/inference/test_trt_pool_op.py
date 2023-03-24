@@ -59,7 +59,7 @@ class TensorRTPoolTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.height, self.width],
                 dtype='float32',

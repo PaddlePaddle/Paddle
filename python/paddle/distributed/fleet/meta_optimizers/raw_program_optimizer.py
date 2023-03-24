@@ -68,8 +68,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
             return False
         if self.user_defined_strategy.sharding:
             return False
-        if self.user_defined_strategy.amp:
-            return False
 
         if self.without_graph_optimization:
             return True

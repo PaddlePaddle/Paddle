@@ -23,6 +23,7 @@ import paddle
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.python_api = paddle.flatten
+        self.public_python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.prim_op_type = "comp"
@@ -131,7 +132,7 @@ class TestFlattenOp_5(TestFlattenOp):
 
 class TestFlattenOp_6(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = tuple()
+        self.in_shape = ()
         self.start_axis = 0
         self.stop_axis = -1
         self.new_shape = (1,)
@@ -316,7 +317,7 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
 class TestFlatten0DTensorOpError(unittest.TestCase):
     def test_errors(self):
-        image_shape = tuple()
+        image_shape = ()
         x = np.random.uniform(-1.0, 1.0, []).astype('float32')
 
         def test_ValueError1():

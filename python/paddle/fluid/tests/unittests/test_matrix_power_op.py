@@ -249,7 +249,9 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 4], dtype="float64")
+            input_x = paddle.static.data(
+                name="input_x", shape=[4, 4], dtype="float64"
+            )
             result = paddle.linalg.matrix_power(x=input_x, n=-2)
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.matrix_power(input_np, -2)
@@ -290,35 +292,45 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
         # n must be int
         for n in [2.0, '2', -2.0]:
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input_float32", shape=[4, 4], dtype='float32'
             )
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, n)
 
         # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
-            input = fluid.data(name="input_" + dtype, shape=[4, 4], dtype=dtype)
+            input = paddle.static.data(
+                name="input_" + dtype, shape=[4, 4], dtype=dtype
+            )
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2)
 
         # When out is set, the data type must be the same as input.
-        input = fluid.data(name="input_1", shape=[4, 4], dtype="float32")
-        out = fluid.data(name="output", shape=[4, 4], dtype="float64")
+        input = paddle.static.data(
+            name="input_1", shape=[4, 4], dtype="float32"
+        )
+        out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
         self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
 
         # The number of dimensions of input must be >= 2.
-        input = fluid.data(name="input_2", shape=[4], dtype="float32")
+        input = paddle.static.data(name="input_2", shape=[4], dtype="float32")
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
         # The inner-most 2 dimensions of input should be equal to each other
-        input = fluid.data(name="input_3", shape=[4, 5], dtype="float32")
+        input = paddle.static.data(
+            name="input_3", shape=[4, 5], dtype="float32"
+        )
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
         # The size of input should not be 0
-        input = fluid.data(name="input_4", shape=[1, 1, 0, 0], dtype="float32")
+        input = paddle.static.data(
+            name="input_4", shape=[1, 1, 0, 0], dtype="float32"
+        )
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
         # The size of input should not be 0
-        input = fluid.data(name="input_5", shape=[0, 0], dtype="float32")
+        input = paddle.static.data(
+            name="input_5", shape=[0, 0], dtype="float32"
+        )
         self.assertRaises(
             ValueError, paddle.linalg.matrix_power, input, -956301312
         )
@@ -332,7 +344,9 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.linalg.matrix_power(x=input, n=-2)
 
             input_np = np.zeros([4, 4]).astype("float64")

@@ -142,9 +142,11 @@ class TestClipAPI(unittest.TestCase):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
-        images = fluid.data(name='image', shape=data_shape, dtype='float32')
-        min = fluid.data(name='min', shape=[1], dtype='float32')
-        max = fluid.data(name='max', shape=[1], dtype='float32')
+        images = paddle.static.data(
+            name='image', shape=data_shape, dtype='float32'
+        )
+        min = paddle.static.data(name='min', shape=[1], dtype='float32')
+        max = paddle.static.data(name='max', shape=[1], dtype='float32')
 
         place = (
             fluid.CUDAPlace(0)
@@ -292,8 +294,8 @@ class TestClipAPI(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-        x1 = fluid.data(name='x1', shape=[1], dtype="int16")
-        x2 = fluid.data(name='x2', shape=[1], dtype="int8")
+        x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
+        x2 = paddle.static.data(name='x2', shape=[1], dtype="int8")
         self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
         self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
         paddle.disable_static()

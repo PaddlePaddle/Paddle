@@ -399,7 +399,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec = phi::vectorize<int>(filter->dims());
 
-      phi::DenseTensor filter_grad_fp32(experimental::DataType::FLOAT32);
+      phi::DenseTensor filter_grad_fp32(phi::DataType::FLOAT32);
       filter_grad_fp32.Resize(filter_grad->dims());
 
       if (framework::TransToProtoVarType(input->dtype()) ==

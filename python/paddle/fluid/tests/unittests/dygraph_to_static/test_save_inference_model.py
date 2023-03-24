@@ -33,7 +33,7 @@ place = (
 )
 
 
-class SimpleFcLayer(fluid.dygraph.Layer):
+class SimpleFcLayer(paddle.nn.Layer):
     def __init__(self, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
@@ -98,7 +98,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         self, model, inputs, gt_out, feed=None, fetch=None
     ):
 
-        expected_persistable_vars = set([p.name for p in model.parameters()])
+        expected_persistable_vars = {p.name for p in model.parameters()}
 
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference/model"
