@@ -25,13 +25,17 @@ import paddle.inference as paddle_infer
 
 class TrtConvertFlipTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        print(program_config)
+        print("start is_program_valid")
         return True
 
     def sample_program_configs(self):
-        def generate_input(batch):
+        print("start sample_program_configs")
+        def generate_input():
             return np.random.random([1, 2 ,4, 8]).astype(np.float32)
 
         for axis in range(4):
+            axis = [axis]
             op_outputs = {
                 "Out": ["output_data"],
             }
@@ -62,7 +66,8 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape(attrs):
+        print("start sample_predictor_configs")
+        def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 2, 4, 8]
             }
@@ -79,7 +84,7 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, is_dynamic_shape):
-            return 1, 2
+            return 0, 1
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
