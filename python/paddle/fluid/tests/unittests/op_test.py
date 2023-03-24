@@ -67,17 +67,14 @@ g_disable_legacy_dygraph = (
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
     Determines whether dtype of output tensor is as expected.
-
     Args:
         api_fn(callable):  paddle api function
         in_specs(list[tuple]): list of shape and dtype information for constructing input tensor of api_fn, such as [(shape, dtype), (shape, dtype)].
         expected_dtype(list[str]): expected dtype of output tensor.
         target_index(int): indicate which one from in_specs to infer the dtype of output.
         config(dict): other arguments of paddle api function
-
     Example:
         check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
-
     """
     paddle.enable_static()
     for i, expect_dtype in enumerate(expect_dtypes):
@@ -259,14 +256,11 @@ def get_numeric_gradient(
 
 def skip_check_grad_ci(reason=None):
     """Decorator to skip check_grad CI.
-
     Check_grad is required for Op test cases. However, there are some special
     cases that do not need to do check_grad. This decorator is used to skip the
     check_grad of the above cases.
-
     Note: the execution of unit test will not be skipped. It just avoids check_grad
     checking in tearDownClass method by setting a `no_need_check_grad` flag.
-
     Example:
         @skip_check_grad_ci(reason="For inference, check_grad is not required.")
         class TestInference(OpTest):
@@ -665,7 +659,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -1094,14 +1088,12 @@ class OpTest(unittest.TestCase):
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None
     ):
         """Compare expect outs and actual outs of an tested op.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             fetch_list (list): The outputs of tested op.
             expect_outs (list): The expect outs of tested op.
             actual_outs (list): The actual outs of tested op.
             inplace_atol (float): The tolerable error, only set when tested op doesn't ensure computational consistency, like group_norm op.
-
         Returns:
             None.
         """
@@ -1155,12 +1147,10 @@ class OpTest(unittest.TestCase):
         self, fwd_program, grad_op_desc, op_grad_to_var
     ):
         """Generate grad_program which contains the grad_op.
-
         Args:
             fwd_program (tuple): The program that contains grad_op_desc's corresponding forward op.
             grad_op_desc (OpDesc): The OpDesc of grad op.
             op_grad_to_var (dict): The relation of variables in grad op and its forward op.
-
         Returns:
             grad_program (program): The program which contains the grad_op.
         """
@@ -1202,17 +1192,14 @@ class OpTest(unittest.TestCase):
         self, place, fwd_res, grad_op_desc, op_grad_to_var
     ):
         """Generate grad_feed_map for grad_program.
-
         since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
         we use fwd outs (also inputs sometimes) to construct grad inputs.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc)
             grad_op_desc (OpDesc): The OpDesc of grad op.
             op_grad_to_var (dict): The relation of variables in grad op and its fwd_op.
-
         Returns:
             grad_feed_map (dict): The feed_map of grad_op.
         """
@@ -1250,12 +1237,10 @@ class OpTest(unittest.TestCase):
         An op needs to run druing inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
-
         Args:
             op_desc (OpDesc): The op_desc of current op.
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op.
                 Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
-
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
@@ -1297,12 +1282,10 @@ class OpTest(unittest.TestCase):
     ):
         """Check the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
-
         Returns:
             expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
                 We return this to construct grad_program and grad_feed_map for grad inplace check.
@@ -1334,17 +1317,14 @@ class OpTest(unittest.TestCase):
         self, place, fwd_res, grad_op_desc, enable_inplace=None
     ):
         """Calculate grad_output for given grad_op_desc.
-
         since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
         we use fwd outs (also inputs sometimes) to construct grad inputs.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
             enable_inplace (bool): Enable inplace or not.
-
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
@@ -1388,18 +1368,15 @@ class OpTest(unittest.TestCase):
         self, place, fwd_res, grad_op_desc, inplace_atol=None
     ):
         """Check the inplace correctness of given grad_op_desc.
-
         Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
         It works like _check_forward_inplace, but the way to construct program and feed_map differs.
         So we define a new function for grad, grad_grad, etc.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
-
         Returns:
             expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
                 We return this to construct grad_program and grad_feed_map for grad inplace check.
@@ -1424,15 +1401,12 @@ class OpTest(unittest.TestCase):
         self, place, no_check_set=None, inplace_atol=None
     ):
         """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
-
         (1) Get all ops need to run. (see conditions in _get_need_run_ops())
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
-
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
-
         Returns:
             None
         """
@@ -1491,6 +1465,7 @@ class OpTest(unittest.TestCase):
         self,
         place,
         atol=0,
+        rtol=0,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -1498,7 +1473,9 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
     ):
+
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
@@ -1599,12 +1576,29 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
                     "Output ("
@@ -1663,7 +1657,6 @@ class OpTest(unittest.TestCase):
             def check(self):
                 """
                 return None means ok, raise Error means failed.
-
                 the main enter point of Checker class
                 """
                 self.init()
@@ -1706,11 +1699,9 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                if actual_np.dtype == np.uint16:
+                    if expect_np.dtype in [np.float32, np.float64]:
+                        actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1770,10 +1761,7 @@ class OpTest(unittest.TestCase):
                     return imperative_expect, imperative_expect_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
+                if actual_np.dtype == np.uint16:
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1810,12 +1798,29 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
                         "Output ("
@@ -2052,6 +2057,7 @@ class OpTest(unittest.TestCase):
     def check_output(
         self,
         atol=1e-5,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -2076,6 +2082,7 @@ class OpTest(unittest.TestCase):
             res = self.check_output_with_place(
                 place,
                 atol,
+                rtol,
                 no_check_set,
                 equal_nan,
                 check_dygraph,
@@ -2279,6 +2286,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self,
@@ -2299,9 +2307,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
@@ -2378,21 +2386,7 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
-                output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
-            )
-            for input_to_check in inputs_to_check
-        ]
-
-        if self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -2402,6 +2396,20 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
             )
             self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
 
         analytic_grads = self._get_gradient(
             inputs_to_check,

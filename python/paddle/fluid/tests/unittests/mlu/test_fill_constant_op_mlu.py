@@ -271,10 +271,10 @@ class TestFillConstantAPI(unittest.TestCase):
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
 
-        shape_tensor_int32 = fluid.data(
+        shape_tensor_int32 = paddle.static.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
-        shape_tensor_int64 = fluid.data(
+        shape_tensor_int64 = paddle.static.data(
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 
@@ -446,7 +446,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             # The shape dtype of fill_constant_op must be int32 or int64.
             def test_shape_tensor_dtype():
-                shape = fluid.data(
+                shape = paddle.static.data(
                     name="shape_tensor", shape=[2], dtype="float32"
                 )
                 paddle.tensor.fill_constant(
@@ -456,7 +456,7 @@ class TestFillConstantOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_dtype)
 
             def test_shape_tensor_list_dtype():
-                shape = fluid.data(
+                shape = paddle.static.data(
                     name="shape_tensor_list", shape=[1], dtype="bool"
                 )
                 paddle.tensor.fill_constant(

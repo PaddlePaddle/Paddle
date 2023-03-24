@@ -113,6 +113,12 @@ class TestBeta(unittest.TestCase):
                 == case.get('expect')
             )
 
+    def test_errors(self):
+        with self.assertRaises(ValueError):
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            paddle.distribution.Beta(alpha=x, beta=x)
+
 
 if __name__ == '__main__':
     unittest.main()

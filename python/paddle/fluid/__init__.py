@@ -46,8 +46,6 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from .data import *
-
 from . import trainer_desc
 
 from . import io
@@ -117,7 +115,6 @@ __all__ = (
         'initializer',
         'layers',
         'contrib',
-        'data',
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
