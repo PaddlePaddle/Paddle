@@ -20,9 +20,9 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
-int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
-                                      const phi::DDim &q_dims,
-                                      const phi::DDim &k_dims) {
+inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
+                                             const phi::DDim &q_dims,
+                                             const phi::DDim &k_dims) {
   int bias_dims_rank = bias_dims.size();
   if (bias_dims_rank != 2) {
     PADDLE_ENFORCE_EQ(bias_dims_rank,
