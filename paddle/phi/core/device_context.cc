@@ -150,11 +150,12 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
-    bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    bool must_cuda_graph_allocator =
+        (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {

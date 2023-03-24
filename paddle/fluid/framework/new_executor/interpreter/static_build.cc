@@ -50,6 +50,8 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
+    "pow2_decay_with_linear_warmup",
+    "sequence_mask",
     "sequence_pool",
     "stft"};
 
@@ -172,8 +174,8 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::SelectedRows>();
     } else if (var->template IsType<phi::SparseCooTensor>()) {
       return var->template GetMutable<phi::SparseCooTensor>();
-    } else if (var->template IsType<framework::LoDTensorArray>()) {
-      return var->template GetMutable<framework::LoDTensorArray>();
+    } else if (var->template IsType<phi::TensorArray>()) {
+      return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<framework::Strings>()) {
       return var->template GetMutable<framework::Strings>();
     } else if (var->template IsType<paddle::framework::RawTensor>()) {
@@ -193,11 +195,11 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 }
 
 template <class TensorType>
-void FakeInitialzeTensor(const platform::DeviceContext& dev_ctx,
-                         const phi::Place& place,
-                         const phi::DataType& dtype,
-                         const phi::DataLayout& layout,
-                         TensorType* tensor) {
+void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+                          const phi::Place& place,
+                          const phi::DataType& dtype,
+                          const phi::DataLayout& layout,
+                          TensorType* tensor) {
   PADDLE_ENFORCE_NE(place.GetType(),
                     phi::AllocationType::UNDEFINED,
                     phi::errors::InvalidArgument(
@@ -260,26 +262,29 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
                               const phi::DataLayout& layout,
                               phi::TensorBase* tensor) {
   if (phi::DenseTensor::classof(tensor)) {
-    FakeInitialzeTensor(
+    FakeInitializeTensor(
         dev_ctx, place, dtype, layout, dynamic_cast<phi::DenseTensor*>(tensor));
   } else if (phi::SelectedRows::classof(tensor)) {
-    FakeInitialzeTensor(dev_ctx,
-                        place,
-                        dtype,
-                        layout,
-                        dynamic_cast<phi::SelectedRows*>(tensor));
+    FakeInitializeTensor(dev_ctx,
+                         place,
+                         dtype,
+                         layout,
+                         dynamic_cast<phi::SelectedRows*>(tensor));
   } else if (phi::SparseCooTensor::classof(tensor)) {
-    FakeInitialzeTensor(dev_ctx,
-                        place,
-                        dtype,
-                        layout,
-                        dynamic_cast<phi::SparseCooTensor*>(tensor));
+    FakeInitializeTensor(dev_ctx,
+                         place,
+                         dtype,
+                         layout,
+                         dynamic_cast<phi::SparseCooTensor*>(tensor));
   } else if (phi::SparseCsrTensor::classof(tensor)) {
-    FakeInitialzeTensor(dev_ctx,
-                        place,
-                        dtype,
-                        layout,
-                        dynamic_cast<phi::SparseCsrTensor*>(tensor));
+    FakeInitializeTensor(dev_ctx,
+                         place,
+                         dtype,
+                         layout,
+                         dynamic_cast<phi::SparseCsrTensor*>(tensor));
+  } else if (phi::TensorArray::classof(tensor)) {
+    FakeInitializeTensor(
+        dev_ctx, place, dtype, layout, dynamic_cast<phi::TensorArray*>(tensor));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported `%s` type when fake initialize tensor.",
