@@ -26,7 +26,7 @@ def gather(tensor, gather_list=None, dst=0, group=None, sync_op=True):
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
-        gather_list list: A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
+        gather_list (list): A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16. Default value is None.
         dst (int): The dst rank id. Default value is 0.
         group (Group, optional): The group instance return by new_group or None for global default group.

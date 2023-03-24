@@ -545,7 +545,7 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place(), use_calc_stream);
                 distributed::GatherOptions gather_ops{dst};
                 auto task = self.Gather(
                     out_dense, in_dense, gather_ops, sync_op, use_calc_stream);

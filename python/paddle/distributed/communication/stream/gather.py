@@ -25,20 +25,20 @@ from paddle.distributed.communication.group import (
 
 
 def _gather_in_dygraph(
-        tensor, tensor_list, dst_rank_in_group, group, sync_op, use_calc_stream
+        tensor, gather_list, dst_rank_in_group, group, sync_op, use_calc_stream
 ):
     nranks = group.nranks
     if group.rank == dst_rank_in_group:
-        if len(tensor_list) == 0:
-            tensor_list += [paddle.empty_like(tensor) for _ in range(nranks)]
+        if len(gather_list) == 0:
+            gather_list += [paddle.empty_like(tensor) for _ in range(nranks)]
     else:
-        tensor_list = [tensor for _ in range(nranks)]
+        gather_list = [tensor for _ in range(nranks)]
 
-    assert (len(tensor_list) == nranks
-            ), "tens_list length {} and nrankd {} not equal".format(len(tensor_list), nranks)
+    assert (len(gather_list) == nranks
+            ), " gather_list length {} and nrankd {} not equal".format(len(gather_list), nranks)
 
     task = group.process_group.gather(
-        tensor, tensor_list, dst_rank_in_group, sync_op, use_calc_stream)
+        tensor, gather_list, dst_rank_in_group, sync_op, use_calc_stream)
 
     if sync_op:
         task.wait()
@@ -48,7 +48,7 @@ def _gather_in_dygraph(
 
 def gather(
         tensor,
-        tensor_list=None,
+        gather_list=None,
         dst=0,
         group=None,
         sync_op=True,
@@ -62,7 +62,7 @@ def gather(
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
-        gather_list list: A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
+        gather_list (list): A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16. Default value is None.
         dst (int): The dst rank id. Default value is 0.
         group (Group, optional): The group instance return by new_group or None for global default group.
@@ -108,25 +108,24 @@ def gather(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    # NOTE(liuzhenhai): Only the dst rank needs to specific the tensor_list argument.
+    # NOTE(liuzhenhai): Only the dst rank needs to specific the gather_list argument.
     # Other ranks which pass this argument in will be ignored with a warning.
     # The passed in type for non-dst rank is meaningless, for it will be ignored.
     if dst != dist.get_rank():
-        if tensor_list is not None:
+        if gather_list is not None:
             warnings.warn(
-                "Specific `tensor_list` is meaningless for rank which is not dst."
+                "Specific `gather_list` is meaningless for rank which is not dst."
             )
-        tensor_list = []
+        gather_list = []
     else:
-        assert (
-            tensor_list is not None
-        ), "tensor_list must not be none for dst rank"
+        assert ( gather_list is not None
+        ), "gather_list must not be none for dst rank"
 
     group = _get_global_group() if group is None else group
     dst_rank_in_group = _get_or_throw_group_rank(dst, group)
     return _gather_in_dygraph(
         tensor,
-        tensor_list,
+        gather_list,
         dst_rank_in_group,
         group,
         sync_op,

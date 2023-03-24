@@ -501,7 +501,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_ENFORCE_GT(size_, opts.root_rank, \
-                    phi::errors::InvalidArgument("root world size [%d]  le root rank [%d]", size_, opts.root_rank));
+                    phi::errors::InvalidArgument("root world size [%d]  is less than root rank [%d]",
+                                                 size_, opts.root_rank));
   auto gather_func = [&](ncclComm_t comm, gpuStream_t stream) {
     // shape check
     if (FLAGS_enable_nccl_dynamic_check) {
