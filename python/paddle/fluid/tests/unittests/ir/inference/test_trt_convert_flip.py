@@ -84,7 +84,7 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, is_dynamic_shape):
-            return 0, 1
+            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

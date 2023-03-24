@@ -102,7 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         "atanh",      "ceil",        "celu",
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
-        "reciprocal", "tanh_shrink", "logsigmoid" };
+        "reciprocal", "tanh_shrink", "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
