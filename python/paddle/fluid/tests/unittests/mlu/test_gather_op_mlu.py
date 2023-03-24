@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
@@ -38,7 +38,6 @@ class TestGatherOp(OpTest):
         self.op_type = "gather"
         self.place = paddle.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.gather
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
