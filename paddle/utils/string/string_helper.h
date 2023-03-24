@@ -53,7 +53,7 @@ void format_string_append(std::string& str,  // NOLINT
                           const char* fmt,   // NOLINT
                           ARGS&&... args) {
   int len = snprintf(NULL, 0, fmt, args...);
-  assert(len == 0);
+  assert(len != 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
   int new_len =
