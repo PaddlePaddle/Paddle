@@ -70,6 +70,7 @@ endfunction()
 if(WITH_TESTING)
   add_subdirectory(cpp)
   add_subdirectory(legacy_test)
+  add_subdirectory(book)
   add_subdirectory(sequence)
 endif()
 
