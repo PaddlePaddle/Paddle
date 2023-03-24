@@ -28,9 +28,9 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_add_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a + 10
-        ab = fluid.layers.concat(input=[a, b], axis=1)
+        ab = paddle.concat([a, b], axis=1)
         c = ab + 10
         d = ab + a
         # e = a + ab
@@ -48,7 +48,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_radd_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 + a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -60,7 +60,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_sub_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a - 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -72,7 +72,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rsub_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 - a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -84,7 +84,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_mul_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a * 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -96,7 +96,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rmul_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 * a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -108,7 +108,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_div_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a / 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -120,7 +120,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rdiv_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 / a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -133,8 +133,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_div_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a / b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -149,8 +149,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_mul_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a * b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -165,8 +165,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_add_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a + b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -181,8 +181,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_sub_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a - b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -197,7 +197,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_integer_div(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='int64')
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='int64')
         b = a / 7
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -211,8 +211,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_equal(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
-        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
+        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
         c = a == b
 
         place = fluid.CPUPlace()
@@ -231,9 +231,10 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_equal_and_cond(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
-        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
-
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
+        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
+        b.desc.set_need_check_feed(False)
         one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
@@ -241,8 +242,8 @@ class TestMathOpPatches(unittest.TestCase):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float')
-        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float')
+        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
+        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, "b": b_np},
@@ -253,7 +254,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_neg(self):
-        a = fluid.layers.data(name="a", shape=[10, 1])
+        a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
         b = -a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -266,7 +268,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_astype(self):
-        a = fluid.layers.data(name="a", shape=[10, 1])
+        a = paddle.static.data(name="a", shape=[-1, 10, 1])
+        a.desc.set_need_check_feed(False)
         b = a.astype('float32')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

@@ -168,6 +168,13 @@ void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
                                      int dim2,
                                      MetaTensor* x_grad);
 
+void FlashAttnGradInferMeta(const MetaTensor& q,
+                            const MetaTensor& k,
+                            const MetaTensor& v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -410,5 +417,25 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            int axis,
                            MetaTensor* x_grad,
                            MetaTensor* add_tensor_grad);
+
+void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
+                                           const MetaTensor& key,
+                                           const MetaTensor& value,
+                                           const MetaTensor& bias,
+                                           const MetaTensor& cu_seqlens_q,
+                                           const MetaTensor& cu_seqlens_k,
+                                           const MetaTensor& output,
+                                           const MetaTensor& logsumexp,
+                                           const MetaTensor& seed_and_offset,
+                                           const MetaTensor& output_grad,
+                                           const Scalar& max_seqlen_q,
+                                           const Scalar& max_seqlen_k,
+                                           const bool causal,
+                                           const double dropout_p,
+                                           const float scale,
+                                           MetaTensor* query_grad,
+                                           MetaTensor* key_grad,
+                                           MetaTensor* value_grad,
+                                           MetaTensor* bias_grad);
 
 }  // namespace phi

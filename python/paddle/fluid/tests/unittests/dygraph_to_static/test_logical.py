@@ -21,11 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
 from paddle.utils import gast
-
-program_translator = ProgramTranslator()
 
 SEED = 2020
 np.random.seed(22)
@@ -186,7 +183,7 @@ class TestLogicalBase(unittest.TestCase):
         )
 
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(self.place):
             result = self.dygraph_func(self.input)
             return result.numpy()

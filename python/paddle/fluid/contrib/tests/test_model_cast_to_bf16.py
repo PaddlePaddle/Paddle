@@ -96,14 +96,22 @@ class TestModelCastBF16(unittest.TestCase):
         nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
 
         with self.static_graph():
-            t_bf16 = layers.data(
-                name='t_bf16', shape=[size, size], dtype=np.int32
+            t_bf16 = paddle.static.data(
+                name='t_bf16', shape=[-1, size, size], dtype='int32'
             )
-            tt_bf16 = layers.data(
-                name='tt_bf16', shape=[size, size], dtype=np.int32
+            t_bf16.desc.set_need_check_feed(False)
+            tt_bf16 = paddle.static.data(
+                name='tt_bf16', shape=[-1, size, size], dtype='int32'
             )
-            t = layers.data(name='t', shape=[size, size], dtype='float32')
-            tt = layers.data(name='tt', shape=[size, size], dtype='float32')
+            tt_bf16.desc.set_need_check_feed(False)
+            t = paddle.static.data(
+                name='t', shape=[-1, size, size], dtype='float32'
+            )
+            t.desc.set_need_check_feed(False)
+            tt = paddle.static.data(
+                name='tt', shape=[-1, size, size], dtype='float32'
+            )
+            tt.desc.set_need_check_feed(False)
 
             ret = paddle.add(t, tt)
             ret = paddle.multiply(ret, t)
@@ -143,8 +151,14 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
         with self.static_graph():
-            t = layers.data(name='t', shape=[size, size], dtype='float32')
-            tt = layers.data(name='tt', shape=[size, size], dtype='float32')
+            t = paddle.static.data(
+                name='t', shape=[-1, size, size], dtype='float32'
+            )
+            t.desc.set_need_check_feed(False)
+            tt = paddle.static.data(
+                name='tt', shape=[-1, size, size], dtype='float32'
+            )
+            tt.desc.set_need_check_feed(False)
 
             with amp.bf16.bf16_guard():
                 ret = paddle.add(t, tt)

@@ -20,7 +20,6 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 def apply_pass(use_amp=False, level=None):
@@ -30,6 +29,8 @@ def apply_pass(use_amp=False, level=None):
     if use_amp:
         amp = strategy.amp
         amp.enable = True
+        amp.dtype = "float16"
+        amp.level = level
         amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
         amp.custom_black_list = [
             'c_softmax_with_cross_entropy',
@@ -38,8 +39,6 @@ def apply_pass(use_amp=False, level=None):
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
-        amp.use_pure_fp16 = level in ["o2", "o3"]
-        amp.use_optimizer_fp16 = level == "o3"
         print("amp level: ", level)
     return strategy
 
@@ -62,7 +61,7 @@ class TestAMPPass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_amp=False, level=None):
@@ -89,31 +88,31 @@ class TestAMPPass(unittest.TestCase):
         )
 
     def test_amp_pass(self):
-        # # mp2 training
-        # mp_engine = self.get_engine()
-        # history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # mp_losses = np.array(history.history["loss"])
+        # mp2 training
+        mp_engine = self.get_engine()
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         amp_o1_engine = self.get_engine(True, "o1")
         history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         amp_o1_losses = np.array(history.history["loss"])
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # # self.check_results(mp_losses, amp_o1_losses)
+        # self.check_results(mp_losses, amp_o1_losses)
 
-        # # mp2 amp-o2 training
-        # amp_o2_engine = self.get_engine(True, "o2")
-        # history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # amp_o2_losses = np.array(history.history["loss"])
-        # amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # # self.check_results(mp_losses, amp_o2_losses)
+        # mp2 amp-o2 training
+        amp_o2_engine = self.get_engine(True, "o2")
+        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o2_losses = np.array(history.history["loss"])
+        amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        # self.check_results(mp_losses, amp_o2_losses)
 
-        # # mp2 amp-o3 training
-        # amp_o3_engine = self.get_engine(True, "o3")
-        # history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # amp_o3_losses = np.array(history.history["loss"])
-        # amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # # self.check_results(mp_losses, amp_o3_losses)
+        # mp2 amp-o3 training
+        amp_o3_engine = self.get_engine(True, "o3")
+        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o3_losses = np.array(history.history["loss"])
+        amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        # self.check_results(mp_losses, amp_o3_losses)
 
 
 if __name__ == "__main__":

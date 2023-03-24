@@ -16,14 +16,15 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
+from paddle.utils import convert_to_list
 
+from ..fluid import core
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid.initializer import Normal
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import utils
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
+from ..nn.initializer import Normal
 
 __all__ = [  # noqa
     'yolo_loss',
@@ -492,11 +493,6 @@ def prior_box(
                 flip=True)
 
     """
-    helper = LayerHelper("prior_box", **locals())
-    dtype = helper.input_dtype()
-    check_variable_and_dtype(
-        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
-    )
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
@@ -541,6 +537,11 @@ def prior_box(
         return box, var
 
     else:
+        helper = LayerHelper("prior_box", **locals())
+        dtype = helper.input_dtype()
+        check_variable_and_dtype(
+            input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+        )
         attrs = {
             'min_sizes': min_sizes,
             'aspect_ratios': aspect_ratios,
@@ -679,15 +680,8 @@ def box_coder(
                 box_normalized=False)
 
     """
-    check_variable_and_dtype(
-        prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
-    )
-    check_variable_and_dtype(
-        target_box, 'target_box', ['float32', 'float64'], 'box_coder'
-    )
-
     if in_dygraph_mode():
-        if isinstance(prior_box_var, Variable):
+        if isinstance(prior_box_var, core.eager.Tensor):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -712,6 +706,12 @@ def box_coder(
         return output_box
 
     else:
+        check_variable_and_dtype(
+            prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+        )
+        check_variable_and_dtype(
+            target_box, 'target_box', ['float32', 'float64'], 'box_coder'
+        )
         helper = LayerHelper("box_coder", **locals())
 
         output_box = helper.create_variable_for_type_inference(
@@ -864,9 +864,9 @@ def deform_conv2d(
           # returns
           [8, 16, 26, 26]
     """
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    stride = convert_to_list(stride, 2, 'stride')
+    padding = convert_to_list(padding, 2, 'padding')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     use_deform_conv2d_v1 = True if mask is None else False
 
@@ -900,9 +900,9 @@ def deform_conv2d(
         helper = LayerHelper('deformable_conv', **locals())
         dtype = helper.input_dtype()
 
-        stride = utils.convert_to_list(stride, 2, 'stride')
-        padding = utils.convert_to_list(padding, 2, 'padding')
-        dilation = utils.convert_to_list(dilation, 2, 'dilation')
+        stride = convert_to_list(stride, 2, 'stride')
+        padding = convert_to_list(padding, 2, 'padding')
+        dilation = convert_to_list(dilation, 2, 'dilation')
 
         pre_bias = helper.create_variable_for_type_inference(dtype)
 
@@ -1107,21 +1107,21 @@ class DeformConv2D(Layer):
         self._out_channels = out_channels
         self._channel_dim = 1
 
-        self._stride = utils.convert_to_list(stride, 2, 'stride')
-        self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
-        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
+        self._stride = convert_to_list(stride, 2, 'stride')
+        self._dilation = convert_to_list(dilation, 2, 'dilation')
+        self._kernel_size = convert_to_list(kernel_size, 2, 'kernel_size')
 
         if in_channels % groups != 0:
             raise ValueError("in_channels must be divisible by groups.")
 
-        self._padding = utils.convert_to_list(padding, 2, 'padding')
+        self._padding = convert_to_list(padding, 2, 'padding')
 
         filter_shape = [out_channels, in_channels // groups] + self._kernel_size
 
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
             std = (2.0 / filter_elem_num) ** 0.5
-            return Normal(0.0, std, 0)
+            return Normal(0.0, std)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
@@ -1319,7 +1319,7 @@ def read_file(filename, name=None):
     if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
     else:
-        inputs = dict()
+        inputs = {}
         attrs = {'filename': filename}
 
         helper = LayerHelper("read_file", **locals())
@@ -1425,6 +1425,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
     assert len(x.shape) == 4, "Input features with shape should be (N, C, H, W)"
+    if pooled_height * pooled_width == 0:
+        raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
         return _C_ops.psroi_pool(
@@ -2268,21 +2270,6 @@ def matrix_nms(
                                  nms_top_k=400, keep_top_k=200, normalized=False)
 
     """
-    check_variable_and_dtype(
-        bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
-    )
-    check_variable_and_dtype(
-        scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
-    )
-    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
-    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
-    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
-    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
-    check_type(normalized, 'normalized', bool, 'matrix_nms')
-    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
-    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
-    check_type(background_label, 'background_label', int, 'matrix_nms')
-
     if in_dygraph_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
@@ -2302,6 +2289,20 @@ def matrix_nms(
             rois_num = None
         return out, rois_num, index
     else:
+        check_variable_and_dtype(
+            bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
+        )
+        check_variable_and_dtype(
+            scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
+        )
+        check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+        check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+        check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+        check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+        check_type(normalized, 'normalized', bool, 'matrix_nms')
+        check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+        check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+        check_type(background_label, 'background_label', int, 'matrix_nms')
         helper = LayerHelper('matrix_nms', **locals())
         output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
         index = helper.create_variable_for_type_inference(dtype='int32')

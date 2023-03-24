@@ -78,14 +78,5 @@ class TestFullNameDecorator(unittest.TestCase):
                 DoubleDecorated().double_decorated_func2(x)
 
 
-class TestImportProgramTranslator(unittest.TestCase):
-    def test_diff_pkg_same_cls(self):
-        dygraph_prog_trans = paddle.jit.ProgramTranslator()
-        dy_to_stat_prog_trans = paddle.jit.ProgramTranslator()
-        full_pkg_prog_trans = paddle.jit.ProgramTranslator()
-        self.assertEqual(dygraph_prog_trans, dy_to_stat_prog_trans)
-        self.assertEqual(dygraph_prog_trans, full_pkg_prog_trans)
-
-
 if __name__ == '__main__':
     unittest.main()

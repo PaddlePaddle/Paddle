@@ -33,11 +33,11 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.unique_name.guard():
-                input_x = paddle.fluid.layers.data(
-                    name="x", shape=[32], dtype='float32'
+                input_x = paddle.static.data(
+                    name="x", shape=[-1, 32], dtype='float32'
                 )
-                input_y = paddle.fluid.layers.data(
-                    name="y", shape=[1], dtype='int64'
+                input_y = paddle.static.data(
+                    name="y", shape=[-1, 1], dtype='int64'
                 )
 
                 fc_1 = paddle.static.nn.fc(
@@ -122,10 +122,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def test_lars_apply_with_amp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32'
-        )
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')

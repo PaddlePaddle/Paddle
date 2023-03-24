@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 from test_conv2d_transpose_op import conv2dtranspose_forward_naive
 
@@ -429,11 +429,11 @@ class TestWithEvenUpsample_NHWC_output_padding_FP16(
 
 class TestConv2DTransposeAPI(unittest.TestCase):
     def test_case1(self):
-        data1 = fluid.layers.data(
-            name='data1', shape=[3, 5, 5], dtype='float32'
+        data1 = paddle.static.data(
+            name='data1', shape=[-1, 3, 5, 5], dtype='float32'
         )
-        data2 = fluid.layers.data(
-            name='data2', shape=[5, 5, 3], dtype='float32'
+        data2 = paddle.static.data(
+            name='data2', shape=[-1, 5, 5, 3], dtype='float32'
         )
         out1 = paddle.static.nn.conv2d_transpose(
             input=data1,

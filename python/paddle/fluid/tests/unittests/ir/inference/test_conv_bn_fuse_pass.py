@@ -60,7 +60,6 @@ class TestConvBnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
         )
-        has_bias = draw(st.booleans())
         use_mkldnn = draw(st.booleans())
         epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
@@ -110,7 +109,7 @@ class TestConvBnFusePass(PassAutoScanTest):
             paddings=paddings,
             strides=strides,
             use_mkldnn=use_mkldnn,
-            has_bias=has_bias,
+            has_bias=False,
             is_test=True,
         )
         bn_op = OpConfig(
@@ -135,8 +134,6 @@ class TestConvBnFusePass(PassAutoScanTest):
             data_layout=data_format,
             is_test=True,
         )
-        if has_bias:
-            conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, bn_op]
 
         program_config = ProgramConfig(
@@ -157,10 +154,6 @@ class TestConvBnFusePass(PassAutoScanTest):
             },
             outputs=["batch_norm_Y"],
         )
-        if has_bias:
-            program_config.weights["conv2d_bias"] = TensorConfig(
-                data_gen=partial(generate_conv2d_Bias)
-            )
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -185,10 +178,7 @@ class TestConvBnFusePass(PassAutoScanTest):
                 use_static=False,
                 use_calib_mode=False,
             )
-            if program_config.ops[0].attrs['has_bias']:
-                yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
-            else:  # it will enter conv_elementwise_add_fuse_pass
-                yield config, ['conv2d_fusion'], (1e-5, 1e-5)
+            yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
@@ -199,23 +189,10 @@ class TestConvBnFusePass(PassAutoScanTest):
                 return True
             return False
 
-        # mkldnn Output has diff with bias!
-        def teller2(program_config, predictor_config):
-            return (
-                predictor_config.mkldnn_enabled()
-                and program_config.ops[0].attrs['has_bias']
-            )
-
         self.add_ignore_check_case(
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC",
-        )
-
-        self.add_ignore_check_case(
-            teller2,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "Currently mkldnn Output has diff with bias!",
         )
 
     def test(self):

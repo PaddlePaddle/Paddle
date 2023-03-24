@@ -250,18 +250,6 @@ void Conv2DOpMaker::Make() {
            "H is the height of the filter, and W is the width of the filter. "
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
-  AddInput("Bias",
-           "(Tensor) Bias to be added to each output of filter application."
-           "The format of output tensor is X (one-dimensional) of size equal"
-           "to the number of output channels. Only used with MKL-DNN.")
-      .AsDispensable()
-      .AsExtra();
-  AddInput("ResidualData",
-           "(Tensor) Tensor with residual data "
-           "to which convolution output will be added."
-           "Used with fuse_residual_connection fusion.")
-      .AsDispensable()
-      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "It has same data fromat and data type as the Input.");
@@ -448,7 +436,6 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 phi::KernelKey ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   return phi::KernelKey(data_type, ctx.GetPlace());
 }

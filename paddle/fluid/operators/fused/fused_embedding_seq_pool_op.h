@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -108,17 +108,17 @@ struct EmbeddingVSumFunctor {
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
 
-    jit::emb_seq_pool_attr_t attr(table_height,
-                                  table_width,
-                                  0,
-                                  idx_width,
-                                  out_width,
-                                  jit::SeqPoolType::kSum);
+    phi::jit::emb_seq_pool_attr_t attr(table_height,
+                                       table_width,
+                                       0,
+                                       idx_width,
+                                       out_width,
+                                       phi::jit::SeqPoolType::kSum);
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
-      auto emb_seqpool =
-          jit::KernelFuncs<jit::EmbSeqPoolTuple<T>, platform::CPUPlace>::Cache()
-              .At(attr);
+      auto emb_seqpool = phi::jit::KernelFuncs<phi::jit::EmbSeqPoolTuple<T>,
+                                               platform::CPUPlace>::Cache()
+                             .At(attr);
       emb_seqpool(
           table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
     }
@@ -197,7 +197,9 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       const int m = batch_size * idx_width;
       const int n = table_width;
       const int k = table_height;
-      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+
+      auto &dev_ctx = context.template device_context<phi::CPUContext>();
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
       blas.CSRMM(&transa,
                  &m,
                  &n,
@@ -256,7 +258,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto lod = ids->lod()[0];
       int64_t out_width = d_output->dims()[1];
 
-      framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
+      phi::Vector<int64_t> *new_rows = d_table->mutable_rows();
       new_rows->resize(ids_num);
       std::memcpy(&(*new_rows)[0], ids_data, ids_num * sizeof(int64_t));
 
@@ -265,9 +267,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
-      auto vbroadcast =
-          jit::KernelFuncs<jit::VBroadcastTuple<T>, platform::CPUPlace>::Cache()
-              .At(out_width);
+      auto vbroadcast = phi::jit::KernelFuncs<phi::jit::VBroadcastTuple<T>,
+                                              platform::CPUPlace>::Cache()
+                            .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
         const T *src = d_output_data + i * out_width;
@@ -316,7 +318,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                           padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+      auto &dev_ctx = context.template device_context<phi::CPUContext>();
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
       LOG(INFO) << "num seq = " << num_seq << " width = " << width;

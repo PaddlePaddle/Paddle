@@ -52,6 +52,13 @@ class CommContextManager {
                                     int size);
 #endif
 
+#if defined(PADDLE_WITH_GLOO)
+  static void CreateGlooCommContext(const std::shared_ptr<Store>& store,
+                                    int ring_id,
+                                    int rank,
+                                    int size);
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(CommContextManager);
 

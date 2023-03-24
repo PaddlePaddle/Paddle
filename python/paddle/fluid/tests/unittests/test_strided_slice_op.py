@@ -548,22 +548,15 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 class TestStridedSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
-        minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-        starts = fluid.layers.data(
-            name='starts', shape=[3], dtype='int32', append_batch_size=False
-        )
-        ends = fluid.layers.data(
-            name='ends', shape=[3], dtype='int32', append_batch_size=False
-        )
-        strides = fluid.layers.data(
-            name='strides', shape=[3], dtype='int32', append_batch_size=False
-        )
+        minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
+        minus_3 = paddle.tensor.fill_constant([1], "int32", -3)
+        starts = paddle.static.data(name='starts', shape=[3], dtype='int32')
+        ends = paddle.static.data(name='ends', shape=[3], dtype='int32')
+        strides = paddle.static.data(name='strides', shape=[3], dtype='int32')
 
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[3, 4, 5, 6],
-            append_batch_size=False,
             dtype="float64",
         )
         out_1 = paddle.strided_slice(

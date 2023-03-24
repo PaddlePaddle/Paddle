@@ -19,7 +19,6 @@ import unittest
 import astor
 import numpy as np
 from ifelse_simple_func import (
-    dyfunc_with_if_else,
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
 )
@@ -27,7 +26,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
@@ -205,7 +203,7 @@ class StaticCode2:
         return __return_value_1
 
 
-class NetWithError(fluid.dygraph.layers.Layer):
+class NetWithError(paddle.nn.Layer):
     @to_static
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
@@ -213,121 +211,25 @@ class NetWithError(fluid.dygraph.layers.Layer):
         return y
 
 
-class TestDygraphToStaticCode(unittest.TestCase):
-    def setUp(self):
-        # set to print all string diff when assertEqual fails
-        self.maxDiff = None
-
-    def test_decorator(self):
-        program_translator = ProgramTranslator()
-        code = program_translator.get_code(dyfunc_with_if_else)
-        print(code)
-        answer = get_source_code(StaticCode1.dyfunc_with_if_else)
-        self.assertEqual(
-            answer.replace('\n', '').replace(' ', ''),
-            code.replace('\n', '').replace(' ', ''),
-        )
-
-    def test_program_translator(self):
-        answer = get_source_code(StaticCode2.dyfunc_with_if_else)
-        program_translator = ProgramTranslator()
-        code = program_translator.get_code(dyfunc_with_if_else)
-        print(code)
-        self.assertEqual(
-            answer.replace('\n', '').replace(' ', ''),
-            code.replace('\n', '').replace(' ', ''),
-        )
-
-
 class TestEnableDeclarative(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
-        self.program_translator = ProgramTranslator()
 
     def test_raise_error(self):
         with fluid.dygraph.guard():
-            self.program_translator.enable(True)
+            paddle.jit.enable_to_static(True)
             net = NetWithError()
             with self.assertRaises(ValueError):
                 net(fluid.dygraph.to_variable(self.x))
 
-    def test_enable_disable_get_output(self):
-        self.program_translator.enable(True)
-        with fluid.dygraph.guard():
-            static_output = self.program_translator.get_output(
-                simple_func, self.x, self.weight
-            )
-
-        self.program_translator.enable(False)
-        with fluid.dygraph.guard():
-            dygraph_output = self.program_translator.get_output(
-                simple_func, self.x, self.weight
-            )
-            np.testing.assert_allclose(
-                static_output.numpy(),
-                dygraph_output.numpy(),
-                rtol=1e-05,
-                atol=1e-4,
-            )
-
-    def test_enable_disable_get_func(self):
-
-        self.program_translator.enable(True)
-        with fluid.dygraph.guard():
-            static_func = self.program_translator.get_func(simple_func)
-            self.assertTrue(callable(static_func))
-            static_output = static_func(self.x, self.weight)
-            self.assertTrue(isinstance(static_output, fluid.Variable))
-
-        self.program_translator.enable(False)
-        with fluid.dygraph.guard():
-            dygraph_func = self.program_translator.get_func(simple_func)
-            self.assertTrue(callable(dygraph_func))
-            dygraph_output = dygraph_func(self.x, self.weight)
-            self.assertTrue(
-                isinstance(
-                    dygraph_output,
-                    (fluid.core.VarBase, fluid.core.eager.Tensor),
-                )
-            )
-
-    def test_enable_disable_get_program(self):
-
-        self.program_translator.enable(True)
-        static_output = self.program_translator.get_program(
-            simple_func, self.x, self.weight
-        )
-        self.assertTrue(isinstance(static_output, tuple))
-        self.assertEqual(len(static_output), 4)
-        self.assertTrue(isinstance(static_output[0], fluid.Program))
-        self.assertTrue(isinstance(static_output[1], fluid.Program))
-        # Check all inputs and outputs are Variable
-        for var in static_output[2]:
-            self.assertTrue(isinstance(var, fluid.Variable))
-
-        for var in static_output[3]:
-            self.assertTrue(isinstance(var, fluid.Variable))
-
-        self.program_translator.enable(False)
-        with fluid.dygraph.guard():
-            dygraph_output = self.program_translator.get_program(
-                simple_func, self.x, self.weight
-            )
-            self.assertTrue(
-                isinstance(
-                    dygraph_output,
-                    (fluid.core.VarBase, fluid.core.eager.Tensor),
-                )
-            )
-
     def test_enable_disable_declarative(self):
 
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             static_output = decorated_simple_func(self.x, self.weight)
 
-        self.program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             dygraph_output = decorated_simple_func(self.x, self.weight)
             np.testing.assert_allclose(
@@ -338,34 +240,12 @@ class TestEnableDeclarative(unittest.TestCase):
             )
 
 
-class Net(fluid.dygraph.layers.Layer):
+class Net(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
         return x + 1
-
-
-class TestErrorWithInitFromStaticMode(unittest.TestCase):
-    def setUp(self):
-        self.program_translator = ProgramTranslator()
-        self.x = np.random.randn(10, 32).astype('float32')
-
-    def test_raise_error(self):
-        # disable imperative
-        paddle.enable_static()
-        net = Net()
-
-        self.program_translator.enable(True)
-        with self.assertRaisesRegex(
-            RuntimeError, "only available in dynamic mode"
-        ):
-            self.program_translator.get_output(net.forward, self.x)
-
-        with self.assertRaisesRegex(
-            RuntimeError, "only available in dynamic mode"
-        ):
-            self.program_translator.get_program(net.forward, self.x)
 
 
 class SwitchModeNet(paddle.nn.Layer):
@@ -455,7 +335,7 @@ obj = Obj()
 
 class Net2:
     def __init__(self):
-        super(Net2, self).__init__()
+        super().__init__()
         self.layer1 = paddle.nn.Linear(10, 10)
 
     def forward(self, data):

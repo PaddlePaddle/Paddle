@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/phi/api/profiler/trace_event_collector.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -146,47 +146,43 @@ class CustomDevice : public DeviceInterface {
                         stream::Stream::Priority::kNormal,
                     const stream::Stream::Flag& flag =
                         stream::Stream::Flag::kDefaultFlag) override {
-    if (priority != stream::Stream::Priority::kNormal ||
-        flag != stream::Stream::Flag::kDefaultFlag) {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "priority != stream::Stream::Priority::kNormal || flag != "
-          "stream::Stream::Flag::kDefaultFlag is not allowed on "
-          "CustomDevice."));
-    }
     const auto device = &devices_pool[dev_id];
     C_Stream c_stream;
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-        pimpl_->create_stream(device, &c_stream));
+    if (pimpl_->create_stream) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->create_stream(device, &c_stream));
+    } else {
+      c_stream = nullptr;
+    }
     stream->set_stream(c_stream);
   }
 
   void DestroyStream(size_t dev_id, stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_stream(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+    if (pimpl_->destroy_stream) {
+      const auto device = &devices_pool[dev_id];
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_stream(
+          device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+    }
   }
 
   void SynchronizeStream(size_t dev_id, const stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->synchronize_stream(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+    if (pimpl_->synchronize_stream) {
+      const auto device = &devices_pool[dev_id];
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->synchronize_stream(
+          device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+    }
   }
 
   bool QueryStream(size_t dev_id, const stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
     if (!pimpl_->query_stream) {
       SynchronizeStream(dev_id, stream);
       return true;
+    } else {
+      const auto device = &devices_pool[dev_id];
+      return pimpl_->query_stream(
+                 device, reinterpret_cast<C_Stream>(stream->raw_stream())) ==
+             C_SUCCESS;
     }
-    if (pimpl_->query_stream(
-            device, reinterpret_cast<C_Stream>(stream->raw_stream())) ==
-        C_SUCCESS) {
-      return true;
-    }
-    return false;
   }
 
   void AddCallback(size_t dev_id,
@@ -266,12 +262,14 @@ class CustomDevice : public DeviceInterface {
   void StreamWaitEvent(size_t dev_id,
                        const stream::Stream* stream,
                        const event::Event* event) override {
-    const auto device = &devices_pool[dev_id];
+    if (pimpl_->stream_wait_event) {
+      const auto device = &devices_pool[dev_id];
 
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->stream_wait_event(
-        device,
-        reinterpret_cast<C_Stream>(stream->raw_stream()),
-        reinterpret_cast<C_Event>(event->raw_event())));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->stream_wait_event(
+          device,
+          reinterpret_cast<C_Stream>(stream->raw_stream()),
+          reinterpret_cast<C_Event>(event->raw_event())));
+    }
   }
 
   void MemoryCopyH2D(size_t dev_id,
@@ -286,9 +284,8 @@ class CustomDevice : public DeviceInterface {
       C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
-    } else {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+    } else if (pimpl_->memory_copy_h2d) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_h2d(device, dst, src, size));
@@ -307,9 +304,8 @@ class CustomDevice : public DeviceInterface {
       C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
-    } else {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+    } else if (pimpl_->memory_copy_d2h) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2h(device, dst, src, size));
@@ -328,9 +324,8 @@ class CustomDevice : public DeviceInterface {
       C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
-    } else {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+    } else if (pimpl_->memory_copy_d2d) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2d(device, dst, src, size));
@@ -361,14 +356,12 @@ class CustomDevice : public DeviceInterface {
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        std::unique_ptr<uint8_t> tmp(
-            reinterpret_cast<uint8_t*>(new uint8_t[size]));
+        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
         MemoryCopyD2H(src_dev_id, tmp.get(), src, size);
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
         auto src_place = CustomPlace(Type(), src_dev_id);
-        paddle::platform::DeviceContextPool& pool =
-            paddle::platform::DeviceContextPool::Instance();
+        phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
         pool.Get(src_place)->Wait();
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->memory_copy_p2p(dst_device, src_device, dst, src, size));
@@ -454,32 +447,40 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_memory_set(device, ptr, value, size));
     } else {
-      std::unique_ptr<uint8_t> tmp(
-          reinterpret_cast<uint8_t*>(new uint8_t[size]));
+      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
       memset(tmp.get(), value, size);
       MemoryCopyH2D(dev_id, ptr, tmp.get(), size);
     }
   }
 
   void MemoryStats(size_t dev_id, size_t* total, size_t* free) override {
-    const auto device = &devices_pool[dev_id];
+    if (pimpl_->device_memory_stats) {
+      const auto device = &devices_pool[dev_id];
 
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-        pimpl_->device_memory_stats(device, total, free));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->device_memory_stats(device, total, free));
 
-    size_t used = *total - *free;
-    VLOG(10) << Type() << " memory usage " << (used >> 20) << "M/"
-             << (*total >> 20) << "M, " << (*free >> 20)
-             << "M available to allocate";
+      size_t used = *total - *free;
+      VLOG(10) << Type() << " memory usage " << (used >> 20) << "M/"
+               << (*total >> 20) << "M, " << (*free >> 20)
+               << "M available to allocate";
+    } else {
+      *total = 0;
+      *free = 0;
+    }
   }
 
   size_t GetMinChunkSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
+    if (pimpl_->device_min_chunk_size) {
+      const auto device = &devices_pool[dev_id];
 
-    size_t size = 0;
-    pimpl_->device_min_chunk_size(device, &size);
-    VLOG(10) << Type() << " min chunk size " << size << "B";
-    return size;
+      size_t size = 0;
+      pimpl_->device_min_chunk_size(device, &size);
+      VLOG(10) << Type() << " min chunk size " << size << "B";
+      return size;
+    } else {
+      return 1;
+    }
   }
 
   size_t GetMaxChunkSize(size_t dev_id) override {
@@ -613,18 +614,18 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
-  C_DataType ToCDatatType(paddle::experimental::DataType data_type) {
+  C_DataType ToCDatatType(phi::DataType data_type) {
 #define return_result(in, ret) \
   case in:                     \
     return C_DataType::ret
     switch (data_type) {
-      return_result(paddle::experimental::DataType::FLOAT64, FLOAT64);
-      return_result(paddle::experimental::DataType::FLOAT32, FLOAT32);
-      return_result(paddle::experimental::DataType::FLOAT16, FLOAT16);
-      return_result(paddle::experimental::DataType::INT64, INT64);
-      return_result(paddle::experimental::DataType::INT32, INT32);
-      return_result(paddle::experimental::DataType::INT16, INT16);
-      return_result(paddle::experimental::DataType::INT8, INT8);
+      return_result(phi::DataType::FLOAT64, FLOAT64);
+      return_result(phi::DataType::FLOAT32, FLOAT32);
+      return_result(phi::DataType::FLOAT16, FLOAT16);
+      return_result(phi::DataType::INT64, INT64);
+      return_result(phi::DataType::INT32, INT32);
+      return_result(phi::DataType::INT16, INT16);
+      return_result(phi::DataType::INT8, INT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
@@ -801,7 +802,7 @@ class CustomDevice : public DeviceInterface {
 
   void BlasAXPBY(size_t dev_id,
                  const stream::Stream& stream,
-                 paddle::experimental::DataType dtype,
+                 phi::DataType dtype,
                  size_t numel,
                  float alpha,
                  void* x,
@@ -821,45 +822,44 @@ class CustomDevice : public DeviceInterface {
   }
 
   // Profiler
-  void ProfilerInitialize(paddle::platform::TraceEventCollector* collector,
+  void ProfilerInitialize(phi::TraceEventCollector* collector,
                           void** user_data) override {
     CHECK_PTR(pimpl_->profiler_initialize);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_initialize(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerFinalize(paddle::platform::TraceEventCollector* collector,
+  void ProfilerFinalize(phi::TraceEventCollector* collector,
                         void* user_data) override {
     CHECK_PTR(pimpl_->profiler_finalize);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_finalize(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerPrepareTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerPrepareTracing(phi::TraceEventCollector* collector,
                               void* user_data) override {
     CHECK_PTR(pimpl_->profiler_prepare_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_prepare_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerStartTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerStartTracing(phi::TraceEventCollector* collector,
                             void* user_data) override {
     CHECK_PTR(pimpl_->profiler_start_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_start_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerStopTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerStopTracing(phi::TraceEventCollector* collector,
                            void* user_data) override {
     CHECK_PTR(pimpl_->profiler_stop_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_stop_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerCollectTraceData(
-      paddle::platform::TraceEventCollector* collector,
-      uint64_t start_ns,
-      void* user_data) override {
+  void ProfilerCollectTraceData(phi::TraceEventCollector* collector,
+                                uint64_t start_ns,
+                                void* user_data) override {
     CHECK_PTR(pimpl_->profiler_collect_trace_data);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_collect_trace_data(
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
@@ -918,8 +918,8 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_device, true);
   CHECK_INTERFACE(deinit_device, false);
 
-  CHECK_INTERFACE(create_stream, true);
-  CHECK_INTERFACE(destroy_stream, true);
+  CHECK_INTERFACE(create_stream, false);
+  CHECK_INTERFACE(destroy_stream, false);
   CHECK_INTERFACE(query_stream, false);
   CHECK_INTERFACE(stream_add_callback, false);
 
@@ -929,9 +929,9 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(query_event, false);
 
   CHECK_INTERFACE(synchronize_device, false);
-  CHECK_INTERFACE(synchronize_stream, true);
+  CHECK_INTERFACE(synchronize_stream, false);
   CHECK_INTERFACE(synchronize_event, true);
-  CHECK_INTERFACE(stream_wait_event, true);
+  CHECK_INTERFACE(stream_wait_event, false);
 
   CHECK_INTERFACE(device_memory_allocate, true);
   CHECK_INTERFACE(device_memory_deallocate, true);
@@ -939,9 +939,9 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(host_memory_deallocate, false);
   CHECK_INTERFACE(unified_memory_allocate, false);
   CHECK_INTERFACE(unified_memory_deallocate, false);
-  CHECK_INTERFACE(memory_copy_h2d, true);
-  CHECK_INTERFACE(memory_copy_d2h, true);
-  CHECK_INTERFACE(memory_copy_d2d, true);
+  CHECK_INTERFACE(memory_copy_h2d, false);
+  CHECK_INTERFACE(memory_copy_d2h, false);
+  CHECK_INTERFACE(memory_copy_d2d, false);
   CHECK_INTERFACE(memory_copy_p2p, false);
   CHECK_INTERFACE(async_memory_copy_h2d, false);
   CHECK_INTERFACE(async_memory_copy_d2h, false);
@@ -950,9 +950,9 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
 
   CHECK_INTERFACE(get_device_count, true);
   CHECK_INTERFACE(get_device_list, true);
-  CHECK_INTERFACE(device_memory_stats, true);
+  CHECK_INTERFACE(device_memory_stats, false);
 
-  CHECK_INTERFACE(device_min_chunk_size, true);
+  CHECK_INTERFACE(device_min_chunk_size, false);
   CHECK_INTERFACE(device_max_chunk_size, false);
   CHECK_INTERFACE(device_max_alloc_size, false);
   CHECK_INTERFACE(device_extra_padding_size, false);

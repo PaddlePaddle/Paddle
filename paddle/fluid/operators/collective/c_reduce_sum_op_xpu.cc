@@ -18,4 +18,5 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(c_reduce_sum,
+                       ops::CReduceOpXPUKernel<ops::kRedSum, plat::float16>,
                        ops::CReduceOpXPUKernel<ops::kRedSum, float>)

@@ -16,7 +16,7 @@ import copy
 import logging
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
+from paddle.framework import core
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
@@ -257,7 +257,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping
                             )
                             changed = True
-            # Find the most compatible implemenetations from the distributed operator
+            # Find the most compatible implementations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=True
             )
@@ -329,7 +329,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping
                             )
                             changed = True
-            # Find the most compatible implemenetations from the distributed operator
+            # Find the most compatible implementations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False
             )
@@ -550,7 +550,7 @@ class Completer:
         def _find_nodes_related_to_cond(source_node):
             related_nodes = []
             visited = set()
-            frontier = list()
+            frontier = []
             frontier.append(source_node)
             # BFS
             while len(frontier) != 0:
@@ -685,7 +685,7 @@ class Completer:
             cond_tensor_related_nodes.extend(
                 _find_nodes_related_to_cond(cond_tensor_node)
             )
-            # Step 2.3: Add the StepScops output of while_op
+            # Step 2.3: Add the StepScopes output of while_op
             stepscopes_tensor_name = while_op_node.op().output("StepScopes")[0]
             stepscopes_tensor_node = None
             for output_node in while_op_node.outputs:
@@ -723,6 +723,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.inputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
             # Step 4: set the process meshes of the outputs in while_op to the process meshes of the outside output nodes
             while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
@@ -749,6 +757,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.outputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
         # Amend the process meshes related to array
         for array_node_list in self._array_nodes.values():
@@ -901,28 +917,20 @@ class Completer:
                     self._array_nodes[array_var_name].append(node.outputs[0])
             if node.is_var() and node.var() is not None:
                 if node.node.graph_id() != 0:
-                    for before_node in reversed(all_nodes[:idx]):
-                        if (
-                            before_node.is_var()
-                            and before_node.var() is not None
-                            and before_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and before_node.var().name() == node.var().name()
-                        ):
+                    parent_nodes = (
+                        self._dist_context._tensor_nodes_with_same_name[
+                            node.node.graph_id() - 1
+                        ].get(node.var().name(), None)
+                    )
+                    if parent_nodes is not None:
+                        sorted_parent_nodes = sorted(
+                            parent_nodes, key=lambda x: x[0]
+                        )
+                        for _, parent_node in sorted_parent_nodes:
                             self._node_pairs_between_graphs.append(
-                                (before_node, node)
+                                (parent_node, node)
                             )
-                    for after_node in all_nodes[idx + 1 :]:
-                        if (
-                            after_node.is_var()
-                            and after_node.var() is not None
-                            and after_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and after_node.var().name() == node.var().name()
-                        ):
-                            self._node_pairs_between_graphs.append(
-                                (after_node, node)
-                            )
+
         self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):
@@ -939,7 +947,6 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         if not is_naive_data_parallel(self._dist_context):
-            print("$$$$$$ here 0", flush=True)
             self._dist_context.initialize(with_graph=True)
             self._prepare()
             self._update_process_mesh()
@@ -947,7 +954,6 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            print("$$$$$$ here 2", flush=True)
             self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
@@ -1399,7 +1405,7 @@ class Completer:
                 )
                 forward_var = vars[forward_var_name]
 
-                # TODO complete other attribte for grad var
+                # TODO complete other attribute for grad var
                 tensor_dist_attr = TensorDistAttr()
                 process_mesh = (
                     self._dist_context.get_tensor_dist_attr_for_program(
@@ -1852,11 +1858,11 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, ref_dims_mapping
                             )
-
-                        input_var_attr.process_mesh = ref_process_mesh
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            input_var, input_var_attr
-                        )
+                        if "SkipUpdate" not in input_name:
+                            input_var_attr.process_mesh = ref_process_mesh
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                input_var, input_var_attr
+                            )
 
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr

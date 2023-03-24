@@ -69,10 +69,14 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 #if IS_TRT_VERSION_GE(8400)
     case FluidDT::VarType_Type_BOOL:
       return TRT_DT::kBOOL;
+
 #endif
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "unknown fluid datatype in TRT op converter"));
+          "unsupported datatype in TRT op converter, type: %s. "
+          "Boolean type is supported as TRT input/output "
+          "using TensorRT v8.4+.",
+          VarType_Type_Name(type)));
   }
   return TRT_DT::kINT32;
 }
@@ -292,6 +296,9 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name and
+  // data type.
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
@@ -355,7 +362,15 @@ class TensorRTEngine {
   bool WithFp16() {
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    return enable_fp16 && support_fp16;
+    // below is consistent with setFlag in engine.cc
+    bool fall_back_fp16 = WithInt8() && !use_dla_;
+    return (enable_fp16 || fall_back_fp16) && support_fp16;
+  }
+
+  bool WithInt8() {
+    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool support_int8 = infer_builder_->platformHasFastInt8();
+    return enable_int8 && support_int8;
   }
 
   int GetDeviceId() { return device_id_; }

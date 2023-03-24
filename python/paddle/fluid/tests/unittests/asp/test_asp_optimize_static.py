@@ -31,10 +31,12 @@ class TestASPStaticOptimize(unittest.TestCase):
         self.startup_program = fluid.Program()
 
         def build_model():
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 3, 24, 24], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
@@ -215,11 +217,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with fluid.program_guard(self.main_program, self.startup_program):
-                self.optimizer = (
-                    fluid.contrib.mixed_precision.decorator.decorate(
-                        self.optimizer
-                    )
-                )
+                self.optimizer = paddle.static.amp.decorate(self.optimizer)
                 self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 

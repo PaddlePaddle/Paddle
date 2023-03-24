@@ -32,8 +32,8 @@ class TestPullGpupsSparse(unittest.TestCase):
         slots = []
         with fluid.program_guard(train_program, startup_program):
 
-            l = fluid.layers.data(
-                name='input', shape=[1], dtype="int64", lod_level=1
+            l = paddle.static.data(
+                name='input', shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots.append(l)
             output = _pull_gpups_sparse(

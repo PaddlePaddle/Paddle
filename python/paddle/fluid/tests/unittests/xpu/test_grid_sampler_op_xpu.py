@@ -170,6 +170,7 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.op_type = 'grid_sampler'
+            self.epsilon_xpu2xpu = 0.000001
 
             self.use_cudnn = False
             self.align_corners = True

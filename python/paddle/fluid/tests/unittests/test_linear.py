@@ -50,14 +50,14 @@ class LinearTestCase(unittest.TestCase):
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
-            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         bias_attr = fluid.ParamAttr(
             name="linear_bias",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
-            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         linear = paddle.nn.Linear(
             2, 2, weight_attr=weight_attr, bias_attr=bias_attr

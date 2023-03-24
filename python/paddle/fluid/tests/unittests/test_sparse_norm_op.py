@@ -25,7 +25,6 @@ from paddle.sparse import nn
 
 class TestSparseBatchNorm(unittest.TestCase):
     def test(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         paddle.seed(0)
         channels = 4
         shape = [2, 3, 6, 6, channels]
@@ -41,6 +40,7 @@ class TestSparseBatchNorm(unittest.TestCase):
         dense_x2 = copy.deepcopy(dense_x)
         dense_x2.stop_gradient = False
         sparse_x = dense_x2.to_sparse_coo(sparse_dim)
+        sparse_x.retain_grads()
         sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
         # set same params
         sparse_batch_norm._mean.set_value(batch_norm._mean)
@@ -64,7 +64,6 @@ class TestSparseBatchNorm(unittest.TestCase):
             atol=1e-5,
             rtol=1e-5,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_error_layout(self):
         with self.assertRaises(ValueError):

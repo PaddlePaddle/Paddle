@@ -172,6 +172,16 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
+def _destroy_process_group_id_map():
+    """
+
+    Destroy the custom process group. Designed for CustomDevice.
+
+
+    """
+    core.ProcessGroupIdMap.destroy()
+
+
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -294,7 +304,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                     ring_id
                 )
             else:
-                assert False, "no cuda device found"
+                raise AssertionError("no cuda device found")
         else:
             return gp
 
@@ -344,7 +354,11 @@ def _init_parallel_env(backend):
             is_master,
             world_size,
         )
-        if backend == "nccl":
+        if backend == "gloo":
+            core.CommContextManager.create_gloo_comm_context(
+                store, 0, rank, world_size
+            )
+        elif backend == "nccl":
             core.CommContextManager.create_nccl_comm_context(
                 store, dev_id, 0, rank, world_size
             )

@@ -30,8 +30,8 @@ import paddle.fluid.core as core
 
 
 def simple_fc_net_with_accuracy(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     hidden = img
     for _ in range(4):
@@ -40,7 +40,7 @@ def simple_fc_net_with_accuracy(use_feed):
             size=200,
             activation='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
@@ -53,12 +53,12 @@ def simple_fc_net_with_accuracy(use_feed):
 
 
 def cond_net(use_feed=None):
-    x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-    label = fluid.layers.data('label', shape=[1], dtype='int64')
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
     prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(pred, label):
-        x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+        x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
         loss = paddle.nn.functional.cross_entropy(
             input=pred, label=label, reduction='none', use_softmax=False
         )
@@ -72,7 +72,7 @@ def cond_net(use_feed=None):
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
-    two = fluid.layers.fill_constant([1], 'int32', 2)
+    two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(prediction, label))],
@@ -82,12 +82,12 @@ def cond_net(use_feed=None):
 
 
 def optimization_in_cond_net(with_optimize=False):
-    x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-    label = fluid.layers.data('label', shape=[1], dtype='int64')
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
     prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(opt, pred, label, with_optimize):
-        x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+        x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
         loss = paddle.nn.functional.cross_entropy(
             input=pred, label=label, reduction='none', use_softmax=False
         )
@@ -106,7 +106,7 @@ def optimization_in_cond_net(with_optimize=False):
         return avg_loss
 
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
-    two = fluid.layers.fill_constant([1], 'int32', 2)
+    two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],

@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -51,7 +51,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
         def init_data(self):
@@ -90,6 +90,16 @@ class XPUTestClipOp(XPUOpTestWrapper):
             paddle.enable_static()
             self.check_output_with_place(self.place)
             paddle.disable_static()
+
+        def test_check_grad(self):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
+                return
+            if core.is_compiled_with_xpu():
+                paddle.enable_static()
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', check_dygraph=True
+                )
+                paddle.disable_static()
 
     class TestClipOp1(TestClipOp):
         def init_data(self):
@@ -145,9 +155,11 @@ class TestClipAPI(unittest.TestCase):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
-        images = fluid.data(name='image', shape=data_shape, dtype='float32')
-        min = fluid.data(name='min', shape=[1], dtype='float32')
-        max = fluid.data(name='max', shape=[1], dtype='float32')
+        images = paddle.static.data(
+            name='image', shape=data_shape, dtype='float32'
+        )
+        min = paddle.static.data(name='min', shape=[1], dtype='float32')
+        max = paddle.static.data(name='max', shape=[1], dtype='float32')
 
         place = (
             fluid.XPUPlace(0)
@@ -211,8 +223,8 @@ class TestClipAPI(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-        x1 = fluid.data(name='x1', shape=[1], dtype="int16")
-        x2 = fluid.data(name='x2', shape=[1], dtype="int8")
+        x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
+        x2 = paddle.static.data(name='x2', shape=[1], dtype="int8")
         self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
         self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
         paddle.disable_static()

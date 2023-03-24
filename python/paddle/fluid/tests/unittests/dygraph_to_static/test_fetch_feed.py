@@ -18,13 +18,12 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 
 SEED = 2020
 
 
-class Pool2D(fluid.dygraph.Layer):
+class Pool2D(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
@@ -39,7 +38,7 @@ class Pool2D(fluid.dygraph.Layer):
         return pre
 
 
-class Linear(fluid.dygraph.Layer):
+class Linear(paddle.nn.Layer):
     def __init__(self, input_dim=10, output_dim=5):
         super().__init__()
         self.fc = paddle.nn.Linear(
@@ -68,8 +67,7 @@ class TestPool2D(unittest.TestCase):
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     def train(self, to_static=False):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()

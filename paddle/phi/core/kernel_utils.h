@@ -265,6 +265,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
@@ -342,8 +343,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 inline bool recompute_reduce_all(const DenseTensor& x,
                                  const IntArray& dims,
                                  bool reduce_all = false) {
-  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size() ||
-      reduce_all) {
+  if (dims.size() == 0 || x.dims().size() == 0 ||
+      static_cast<int>(dims.size()) == x.dims().size() || reduce_all) {
+    // when input 0D, it can only reduce_all
     return true;
   } else {
     return false;

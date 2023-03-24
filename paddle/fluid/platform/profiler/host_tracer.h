@@ -15,33 +15,13 @@
 #pragma once
 
 #include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/phi/api/profiler/host_tracer.h"
 
 namespace paddle {
 namespace platform {
 
-class HostTraceLevel {
- public:
-  static constexpr int64_t kDisabled = -1;
-
-  static HostTraceLevel& GetInstance() {
-    static HostTraceLevel instance;
-    return instance;
-  }
-
-  bool NeedTrace(uint32_t level) {
-    return trace_level_ >= static_cast<int64_t>(level);
-  }
-
-  void SetLevel(int64_t trace_level) { trace_level_ = trace_level; }
-
- private:
-  // Verbose trace level, works like VLOG(level)
-  int trace_level_ = kDisabled;
-};
-
-struct HostTracerOptions {
-  uint32_t trace_level = 0;
-};
+using HostTraceLevel = phi::HostTraceLevel;
+using HostTracerOptions = phi::HostTracerOptions;
 
 class HostTracer : public TracerBase {
  public:

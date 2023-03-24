@@ -110,7 +110,7 @@ class AMPTest2(unittest.TestCase):
     def test_find_op_index(self):
         block = fluid.default_main_program().global_block()
         op_desc = core.OpDesc()
-        idx = amp.bf16.amp_utils.find_op_index(block.desc, op_desc)
+        idx = amp.fp16_utils.find_op_index(block.desc, op_desc)
         assert idx == -1
 
     def test_is_in_fp32_varnames(self):

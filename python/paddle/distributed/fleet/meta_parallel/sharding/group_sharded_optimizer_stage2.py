@@ -29,7 +29,7 @@ from collections import OrderedDict
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import ParallelMode, fleet
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
@@ -149,6 +149,11 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[0]
 
+        if self._dp_group is not None and self._dp_group.nranks > 1:
+            assert (
+                not offload
+            ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
+
         # Synchronous all ranks models
         if pertrain_sync_models:
             self._sync_params_and_buffers()
@@ -164,6 +169,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if (
                 hcg
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+                and not offload
             ):
                 self._optim._grad_clip = HybridParallelClipGrad(
                     self._optim._grad_clip, hcg
@@ -196,6 +202,10 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
+
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self._optim._set_auxiliary_var(key, val)
 
     @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):

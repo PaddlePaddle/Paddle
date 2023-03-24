@@ -26,7 +26,7 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     _set_use_system_allocator,
 )
@@ -46,7 +46,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of SyncBatchNorm must be float16 or float32
             # float16 only can be set on GPU place and NPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 

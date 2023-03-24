@@ -24,10 +24,9 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
+from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-program_translator = ProgramTranslator()
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
@@ -127,11 +126,11 @@ class TestBert(unittest.TestCase):
             return loss, ppl
 
     def train_dygraph(self, bert_config, data_reader):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         return self.train(bert_config, data_reader, False)
 
     def train_static(self, bert_config, data_reader):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         return self.train(bert_config, data_reader, True)
 
     def predict_static(self, data):
@@ -157,7 +156,7 @@ class TestBert(unittest.TestCase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
@@ -235,6 +234,20 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
         self.verify_predict()
+
+    def test_train_composite(self):
+        core._set_prim_backward_enabled(True)
+        # core._add_skip_comp_ops("layer_norm")
+        static_loss, static_ppl = self.train_static(
+            self.bert_config, self.data_reader
+        )
+        core._set_prim_backward_enabled(False)
+        # core._add_skip_comp_ops("layer_norm")
+        dygraph_loss, dygraph_ppl = self.train_dygraph(
+            self.bert_config, self.data_reader
+        )
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
     def verify_predict(self):
         for data in self.data_reader.data_generator()():

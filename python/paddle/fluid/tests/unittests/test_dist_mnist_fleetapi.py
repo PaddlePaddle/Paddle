@@ -45,8 +45,8 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
 class FleetCollectiveTest(unittest.TestCase):
     def test_open_sync_batch_norm(self):
         import paddle.fluid as fluid
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        from paddle.fluid.incubate.fleet.collective import (
+        import paddle.incubate.distributed.fleet.role_maker as role_maker
+        from paddle.incubate.distributed.fleet.collective import (
             DistributedStrategy,
             fleet,
         )
@@ -55,7 +55,7 @@ class FleetCollectiveTest(unittest.TestCase):
             # Operator "gen_nccl_id" has not been registered
             return
 
-        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+        data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
 

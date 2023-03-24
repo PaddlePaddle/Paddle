@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
@@ -34,7 +34,7 @@ def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
         ids = random.sample([i for i in range(num_prior)], gt_num)
         match_indices[n, ids] = [i for i in range(gt_num)]
 
-        ret_ids = set([i for i in range(num_prior)]) - set(ids)
+        ret_ids = {i for i in range(num_prior)} - set(ids)
         l = neg_lod[n]
         neg_ids = random.sample(ret_ids, l)
         neg_indices[offset : offset + neg_lod[n], :] = (
@@ -135,7 +135,8 @@ class TestTargetAssginFloatType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestTargetAssginIntType(OpTest):
@@ -182,7 +183,7 @@ class TestTargetAssginIntType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

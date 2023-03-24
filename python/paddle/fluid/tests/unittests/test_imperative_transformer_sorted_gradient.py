@@ -20,9 +20,9 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Layer, core
+from paddle.fluid import core
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
 
@@ -209,7 +209,7 @@ def create_feed_dict_list(data, init=False):
             + decoder_data_input_fields[:-1]
             + label_data_input_fields
         )
-    feed_dict_list = dict()
+    feed_dict_list = {}
     for i in range(len(data_input_names)):
         feed_dict_list[data_input_names[i]] = data[i]
     return feed_dict_list
@@ -221,14 +221,13 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = fluid.layers.data(
+        input_var = paddle.static.data(
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
             lod_level=input_descs[input_field][2]
             if len(input_descs[input_field]) == 3
             else 0,
-            append_batch_size=False,
         )
         inputs.append(input_var)
     return inputs
@@ -400,10 +399,10 @@ class PrePostProcessLayer(Layer):
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                        initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0)
+                        initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
 
@@ -606,7 +605,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._preprocess_layer = PrePostProcessLayer(
@@ -663,7 +662,9 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -677,7 +678,7 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
             ),
         )
@@ -885,7 +886,7 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
-        self._decoder_sub_layers = list()
+        self._decoder_sub_layers = []
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -1154,8 +1155,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=0.003, parameter_list=transformer.parameters()
                 )
-            dy_param_init = dict()
-            dy_param_updated = dict()
+            dy_param_init = {}
+            dy_param_updated = {}
 
             helper = DyGraphProgramDescTracerTestHelper(self)
             program = None
@@ -1237,9 +1238,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ]
             label = all_inputs[-2]
             weights = all_inputs[-1]
-            static_param_updated = dict()
-            static_param_init = dict()
-            static_param_name_list = list()
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
             (
                 static_sum_cost,
                 static_avg_cost,

@@ -18,13 +18,12 @@ import numpy as np
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
 def _feed_data_helper():
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     return img, label
 
 

@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -33,7 +33,7 @@ void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -50,35 +50,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, activation_out, fc_act_pattern);
 
-    auto *fc_op = fc->Op();
-    auto *act_op = act->Op();
-
-    if (fc_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          PADDLE_GET_CONST(bool, fc_op->GetAttr("use_mkldnn")),
-          platform::errors::PreconditionNotMet(
-              "The FC+Act fusion may happen only when oneDNN library "
-              "is used."));
-    }
-
-    auto attr_map = phi::funcs::GetAttributeMap(act_type);
-    for (const auto &attr : attr_map) {
-      if (act_op->HasAttr(attr.first)) {
-        fc_op->SetAttr(attr.second, act_op->GetAttr(attr.first));
-      }
-    }
-
-    if (act_type == "gelu" && act_op->HasAttr("approximate")) {
-      std::string gelu_act_type =
-          PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
-                                                                 : "gelu_erf";
-      fc_op->SetAttr("fuse_activation", gelu_act_type);
-    } else {
-      fc_op->SetAttr("fuse_activation", act_type);
-    }
-
-    fc_op->SetAttr("use_mkldnn", true);
-    fc_op->SetOutput("Out", {act_out->Name()});
+    SetActivationAttrs(fc->Op(), act->Op(), act_type);
+    fc->Op()->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
     GraphSafeRemoveNodes(g, {act, fc_out});

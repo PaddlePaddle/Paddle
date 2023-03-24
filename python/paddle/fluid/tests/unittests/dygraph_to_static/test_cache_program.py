@@ -20,7 +20,6 @@ from test_fetch_feed import Linear, Pool2D
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
@@ -91,8 +90,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()

@@ -19,6 +19,7 @@ from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.proto import framework_pb2
 from ..framework import (
@@ -28,7 +29,6 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..static import Variable
 
 __all__ = []
 
@@ -224,7 +224,7 @@ def generate_layer_fn(op_type):
 
         dtype = infer_and_check_dtype(op_proto, *args, **kwargs)
 
-        inputs = dict()
+        inputs = {}
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
             val = kwargs.pop(name, [])
@@ -235,7 +235,7 @@ def generate_layer_fn(op_type):
                 args = args[1:]
             inputs[ipt.name] = val
 
-        outputs = dict()
+        outputs = {}
         out = kwargs.pop(_convert_(o_name), [])
         if out:
             out_var = (

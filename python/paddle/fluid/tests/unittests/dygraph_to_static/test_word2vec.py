@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
@@ -50,7 +49,7 @@ corpus = data_preprocess(corpus)
 
 
 def build_dict(corpus, min_freq=3):
-    word_freq_dict = dict()
+    word_freq_dict = {}
     for line in corpus:
         for word in line:
             if word not in word_freq_dict:
@@ -61,9 +60,9 @@ def build_dict(corpus, min_freq=3):
         word_freq_dict.items(), key=lambda x: x[1], reverse=True
     )
 
-    word2id_dict = dict()
-    word2id_freq = dict()
-    id2word_dict = dict()
+    word2id_dict = {}
+    word2id_freq = {}
+    id2word_dict = {}
 
     word2id_freq[0] = 1.0
     word2id_dict['[oov]'] = 0
@@ -220,7 +219,7 @@ def build_batch(dataset, batch_size, epoch_num):
         )
 
 
-class SkipGram(fluid.dygraph.Layer):
+class SkipGram(paddle.nn.Layer):
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
         super().__init__(name_scope)
         self.vocab_size = vocab_size
@@ -231,7 +230,7 @@ class SkipGram(fluid.dygraph.Layer):
             self.embedding_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
@@ -243,7 +242,7 @@ class SkipGram(fluid.dygraph.Layer):
             self.embedding_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
@@ -278,8 +277,7 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)

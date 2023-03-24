@@ -35,7 +35,7 @@ struct PrelnGroupNormAct : public PatternBase {
   PrelnGroupNormAct(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "preln_groupnorm_act") {}
 
-  void operator()(PDNode *x, PDNode *y);
+  void operator()(PDNode *x, PDNode *y, bool with_act);
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(group_norm);
@@ -49,7 +49,7 @@ struct PrelnGroupNormAct : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
-void PrelnGroupNormAct::operator()(PDNode *x, PDNode *y) {
+void PrelnGroupNormAct::operator()(PDNode *x, PDNode *y, bool with_act) {
   auto *elementwise =
       pattern->NewNode(elementwise_repr())->assert_is_op("elementwise_add");
 
@@ -74,26 +74,28 @@ void PrelnGroupNormAct::operator()(PDNode *x, PDNode *y) {
 
   auto *group_norm_out_var = pattern->NewNode(group_norm_out_repr())
                                  ->AsOutput()
-                                 ->assert_is_op_output("group_norm", "Y")
-                                 ->assert_is_op_input("silu", "X");
+                                 ->assert_is_op_output("group_norm", "Y");
 
   // Add links for group_norm op.
   group_norm
       ->LinksFrom(
           {elementwise_out_var, group_norm_bias_var, group_norm_scale_var})
       .LinksTo({group_norm_out_var});
+  if (with_act) {
+    group_norm_out_var->assert_is_op_input("silu", "X");
+    auto *act = pattern->NewNode(act_repr())->assert_is_op("silu");
+    auto *act_out = pattern->NewNode(act_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("silu", "Out");
 
-  auto *act = pattern->NewNode(act_repr())->assert_is_op("silu");
-  auto *act_out = pattern->NewNode(act_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("silu", "Out");
-
-  act->LinksFrom({group_norm_out_var}).LinksTo({act_out});
+    act->LinksFrom({group_norm_out_var}).LinksTo({act_out});
+  }
 }
 
 }  // namespace patterns
 
-int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
+int PrelnGroupNormActFusePass::ApplyAddGNPattern(ir::Graph *graph,
+                                                 bool with_act) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_groupnorm_silu_fuse", graph);
@@ -118,7 +120,7 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
 
   patterns::PrelnGroupNormAct fused_pattern(gpd.mutable_pattern(),
                                             "preln_groupnorm_act_fuse");
-  fused_pattern(x, y);
+  fused_pattern(x, y, with_act);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *graph) {
@@ -129,6 +131,9 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
 
     VLOG(4) << "handle preln groupnorm act fuse";
 
+    Node *act = nullptr;
+    Node *act_out = nullptr;
+
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(group_norm, group_norm, fused_pattern);
@@ -136,8 +141,12 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(
         group_norm_scale, group_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(group_norm_out, group_norm_out, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(act, act, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, fused_pattern);
+    if (with_act) {
+      GET_IR_NODE_FROM_SUBGRAPH(tmp_act, act, fused_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(tmp_act_out, act_out, fused_pattern);
+      act = tmp_act;
+      act_out = tmp_act_out;
+    }
 
     if (!IsCompat(subgraph, graph)) {
       LOG(WARNING) << "preln groupnorm act pass in op compat failed.";
@@ -150,8 +159,13 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
     new_desc.SetType("preln_groupnorm_act");
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
+    new_desc.SetAttr("with_silu", with_act);
     new_desc.SetOutput("Out_0", {elementwise_out->Name()});
-    new_desc.SetOutput("Out_1", {act_out->Name()});
+    if (with_act) {
+      new_desc.SetOutput("Out_1", {act_out->Name()});
+    } else {
+      new_desc.SetOutput("Out_1", {group_norm_out->Name()});
+    }
     new_desc.RemoveOutput("Y");
     new_desc.Flush();
 
@@ -159,15 +173,21 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
 
     del_node_set.insert(elementwise);
     del_node_set.insert(group_norm);
-    del_node_set.insert(group_norm_out);
-    del_node_set.insert(act);
+    if (with_act) {
+      del_node_set.insert(act);
+      del_node_set.insert(group_norm_out);
+    }
     GraphSafeRemoveNodes(graph, del_node_set);
 
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
     IR_NODE_LINK_TO(subgraph.at(y), fused_node);
     IR_NODE_LINK_TO(group_norm_scale, fused_node);
     IR_NODE_LINK_TO(group_norm_bias, fused_node);
-    IR_NODE_LINK_TO(fused_node, act_out);
+    if (with_act) {
+      IR_NODE_LINK_TO(fused_node, act_out);
+    } else {
+      IR_NODE_LINK_TO(fused_node, group_norm_out);
+    }
     IR_NODE_LINK_TO(fused_node, elementwise_out);
     found_subgraph_count++;
   };
@@ -178,7 +198,8 @@ int PrelnGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
 
 void PrelnGroupNormActFusePass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("preln_groupnorm_act_fuse_pass", graph);
-  int found_subgraph_count = ApplyGNSiluPattern(graph);
+  int found_subgraph_count = ApplyAddGNPattern(graph, true);
+  found_subgraph_count += ApplyAddGNPattern(graph, false);
   AddStatis(found_subgraph_count);
 }
 

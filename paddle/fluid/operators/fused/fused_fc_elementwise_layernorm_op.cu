@@ -276,9 +276,9 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
       half tmp_0 = __hdiv(__hsub(save_ptr[save_index], mean_i), std_i);
       half tmp_1 = scale ? __hmul(scale[j], tmp_0) : tmp_0;
 #else
-      half tmp_0 = static_cast<half>(static_cast<float>(save_ptr[save_index]) -
-                                     static_cast<float>(mean_i) /
-                                         static_cast<float>(std_i));
+      half tmp_0 = static_cast<half>((static_cast<float>(save_ptr[save_index]) -
+                                      static_cast<float>(mean_i)) /
+                                     static_cast<float>(std_i));
       half tmp_1 = scale ? static_cast<half>(static_cast<float>(scale[j]) *
                                              static_cast<float>(tmp_0))
                          : tmp_0;
@@ -394,19 +394,16 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    blas.GEMM(false,
-              false,
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
               M,
               N,
               K,
               static_cast<T>(1.0),
               x_data,
-              K,
               w_data,
-              N,
               static_cast<T>(0.0),
-              out_data,
-              N);
+              out_data);
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
     auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");

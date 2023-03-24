@@ -23,11 +23,13 @@ paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
-    def run_fleet_executor(self, place, fleet_opt=dict()):
+    def run_fleet_executor(self, place, fleet_opt={}):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = fluid.layers.data(name='x', shape=[1], dtype=paddle.float32)
+            x = paddle.static.data(
+                name='x', shape=[-1, 1], dtype=paddle.float32
+            )
         empty_program._pipeline_opt = {
             "fleet_opt": fleet_opt,
             "section_program": empty_program,

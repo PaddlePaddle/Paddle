@@ -15,7 +15,7 @@
 import copy
 
 import paddle
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr
 from .utils import (
@@ -221,7 +221,14 @@ class DistributedOperator:
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():
-            dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
+            try:
+                dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
+            except IndexError:
+                raise IndexError(
+                    "There is not input var '{}''s dist_attr in current op '{}'".format(
+                        arg_name, self.serial_op.desc.type()
+                    )
+                )
             if self.dist_attr.is_annotated_input_dims_mapping(arg_name):
                 annotated_str = "annotated"
             else:
@@ -238,7 +245,14 @@ class DistributedOperator:
             )
 
         for arg_name in self.serial_op.desc.output_arg_names():
-            dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
+            try:
+                dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
+            except IndexError:
+                raise IndexError(
+                    "There is not output var '{}''s dist_attr in current op '{}'".format(
+                        arg_name, self.serial_op.desc.type()
+                    )
+                )
             if self.dist_attr.is_annotated_output_dims_mapping(arg_name):
                 annotated_str = "annotated"
             else:
@@ -303,7 +317,7 @@ class DistributedOperatorHelper:
                 tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
             index += 1
 
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
         output = self._serial_op(*args, **kwargs)
@@ -314,7 +328,7 @@ class DistributedOperatorHelper:
         elif isinstance(output, Variable):
             new_output = [output]
         else:
-            raise ValueError("Unrecognized outpout.")
+            raise ValueError("Unrecognized output.")
 
         if self._out_dims_mappings:
             assert len(new_output) == len(

@@ -17,11 +17,10 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
 
 
@@ -29,13 +28,15 @@ from paddle.fluid import Program, core, program_guard
 class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
         self.init_data()
         self.python_api = paddle.expand
-
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
+        self.enable_cinn = True
 
     def init_data(self):
         self.ori_shape = [100]
@@ -43,10 +44,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -81,6 +82,9 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 class TestExpandV2OpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
@@ -121,6 +125,9 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
 class TestExpandV2OpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.init_data()
 
         self.inputs = {
@@ -147,6 +154,9 @@ class TestExpandV2OpRank1_tensor(OpTest):
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -158,10 +168,13 @@ class TestExpandV2OpInteger(OpTest):
         self.check_output()
 
 
-# Situation 5: input x is Bool
+#  Situation 5: input x is Bool
 class TestExpandV2OpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -171,10 +184,13 @@ class TestExpandV2OpBoolean(OpTest):
         self.check_output()
 
 
-# Situation 56: input x is Integer
+#  Situation 6: input x is Integer
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
@@ -194,9 +210,9 @@ class TestExpandV2Error(unittest.TestCase):
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
 
@@ -205,15 +221,12 @@ class TestExpandV2Error(unittest.TestCase):
 class TestExpandV2API(unittest.TestCase):
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
-        )
+        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
-        expand_shape = fluid.layers.data(
+        positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
+        expand_shape = paddle.static.data(
             name="expand_shape",
             shape=[2],
-            append_batch_size=False,
             dtype="int32",
         )
 
@@ -273,7 +286,7 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -281,7 +294,6 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -305,7 +317,7 @@ class TestExpandTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -313,7 +325,6 @@ class TestExpandTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -325,6 +336,112 @@ class TestExpandTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+# Situation 7: comp case, shape is a list(without tensor)
+class TestExpandV2CompOpRank1(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.init_data()
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'shape': self.shape}
+        output = np.tile(self.inputs['X'], self.expand_times)
+        self.outputs = {'Out': output}
+        self.enable_cinn = True
+
+    def init_data(self):
+        self.ori_shape = [100]
+        self.shape = [100]
+        self.expand_times = [1]
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestExpandV2OpCompRank2_DimExpanding(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = [120]
+        self.shape = [2, 120]
+        self.expand_times = [2, 1]
+
+
+class TestExpandV2CompOpRank2(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 140]
+        self.shape = [12, 140]
+        self.expand_times = [12, 1]
+
+
+class TestExpandV2CompOpRank3_Corner(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 10, 5)
+        self.shape = (2, 10, 5)
+        self.expand_times = (1, 1, 1)
+
+
+class TestExpandV2CompOpRank4(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 4, 5, 7)
+        self.shape = (-1, -1, -1, -1)
+        self.expand_times = (1, 1, 1, 1)
+
+
+# Situation 8: comp case, input x is Integer
+class TestExpandV2CompOpInteger(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
+        }
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+
+#  Situation 9: comp case, input x is Bool
+class TestExpandV2CompOpBoolean(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
+        self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+
+#  Situation 10: comp case, input x is Integer
+class TestExpandV2CompOpInt64_t(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
+        }
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
 
 if __name__ == "__main__":

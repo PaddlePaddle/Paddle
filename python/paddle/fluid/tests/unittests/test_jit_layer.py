@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.fluid.framework import _dygraph_place_guard
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 
@@ -61,11 +60,10 @@ class TestMultiLoad(unittest.TestCase):
 
         x = paddle.full([2, 4], 2)
         model = Net()
-        program_translator = ProgramTranslator()
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         forward_out1 = model.forward(x)
         infer_out1 = model.infer(x)
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
 
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
         paddle.jit.save(model, model_path, combine_params=True)

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 from . import io
 from .spawn import spawn  # noqa: F401
 from .launch.main import launch  # noqa: F401
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
-
+from .parallel import ParallelEnv  # noqa: F401
+from .parallel import DataParallel
 from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
@@ -29,8 +31,8 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import is_available  # noqa: F401
-
+from .collective import is_available
+from .collective import _destroy_process_group_id_map
 from .communication import (
     stream,
     ReduceOp,
@@ -67,11 +69,6 @@ from .fleet import BoxPSDataset  # noqa: F401
 from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
-
-# (TODO: GhostScreaming) It needs migration of ParallelEnv. However,
-# it's hard to migrate APIs in paddle.fluid.dygraph.parallel completely.
-# It will be replaced later.
-from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
 
@@ -123,3 +120,5 @@ __all__ = [  # noqa
     "is_available",
     "get_backend",
 ]
+
+atexit.register(_destroy_process_group_id_map)

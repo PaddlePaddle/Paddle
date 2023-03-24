@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -122,12 +122,14 @@ class TestLUOp(OpTest):
         lshape = np.array(sL.shape)
         ushape = np.array(sU.shape)
 
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-        )
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-        )
+        lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - lshape)[-2]),
+            (0, (ashape - lshape)[-1]),
+        ]
+        upad = (len(sU.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - ushape)[-2]),
+            (0, (ashape - ushape)[-1]),
+        ]
 
         NsL = np.pad(sL, lpad)
         NsU = np.pad(sU, upad)
@@ -154,10 +156,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], check_eager=True)
+        self.check_grad(['X'], ['Out'])
 
 
 # m = n 2D
@@ -262,18 +264,20 @@ class TestLUAPI(unittest.TestCase):
                     lshape = np.array(sL.shape)
                     ushape = np.array(sU.shape)
 
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-                    )
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-                    )
+                    lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - lshape)[-2]),
+                        (0, (ashape - lshape)[-1]),
+                    ]
+                    upad = (len(sU.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - ushape)[-2]),
+                        (0, (ashape - ushape)[-1]),
+                    ]
 
                     NsL = np.pad(sL, lpad)
                     NsU = np.pad(sU, upad)
                     NLU = NsL + NsU
 
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     lu, p = paddle.linalg.lu(x, pivot=pivot)
@@ -301,6 +305,20 @@ class TestLUAPI(unittest.TestCase):
         dtypes = ["float32", "float64"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_static(tensor_shape, dtype)
+
+
+class TestLUAPIError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in lu should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [0, 0, 0]), dtype='float32'
+                )
+                paddle.linalg.lu(x, get_infos=True)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

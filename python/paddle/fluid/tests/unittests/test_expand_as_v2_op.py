@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -24,7 +24,9 @@ import paddle.fluid as fluid
 class TestExpandAsBasic(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(100).astype("float64")
         target_tensor = np.random.rand(2, 100).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -34,16 +36,18 @@ class TestExpandAsBasic(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandAsOpRank2(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(10, 12).astype("float64")
         target_tensor = np.random.rand(10, 12).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -56,7 +60,9 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 class TestExpandAsOpRank3(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(2, 3, 20).astype("float64")
         target_tensor = np.random.rand(2, 3, 20).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -69,7 +75,9 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 class TestExpandAsOpRank4(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(1, 1, 7, 16).astype("float64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -84,7 +92,9 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(1, 1, 7, 16).astype("int64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -100,10 +110,10 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand_as, x3, x2)
 
@@ -113,14 +123,11 @@ class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
-        )
+        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        y = fluid.layers.data(
+        y = paddle.static.data(
             name='target_tensor',
             shape=[2, 12, 14],
-            append_batch_size=False,
             dtype="float32",
         )
 

@@ -87,6 +87,14 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,  // for compatibility, no use now
+      int64_t numel,   // for compatibility, no use now
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
@@ -101,19 +109,32 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream) override;
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,  // for compatibility, no use now
-      int64_t numel,   // for compatibility, no use now
-      bool sync_op,
-      bool use_calc_stream) override;
-
   std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,
                                              const ReduceOptions& opts,
                                              bool sync_op,
                                              bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const ReduceScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;

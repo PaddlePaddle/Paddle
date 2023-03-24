@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -48,7 +48,7 @@ class SimpleNet(fluid.Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -57,7 +57,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -65,7 +65,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -130,8 +130,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         learning_rate=1e-3,
                         parameter_list=simple_net.parameters(),
                     )
-                    dy_param_updated = dict()
-                    dy_param_init = dict()
+                    dy_param_updated = {}
+                    dy_param_init = {}
                     dy_loss = None
 
                     fluid.set_flags(
@@ -173,16 +173,17 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
-                    x = fluid.layers.data(
+                    x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
-                    y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
-
+                    x.desc.set_need_check_feed(False)
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
+                    y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
-                    static_param_updated = dict()
-                    static_param_init = dict()
-                    static_param_name_list = list()
+                    static_param_updated = {}
+                    static_param_init = {}
+                    static_param_name_list = []
                     for param in simple_net.parameters():
                         static_param_name_list.append(param.name)
 

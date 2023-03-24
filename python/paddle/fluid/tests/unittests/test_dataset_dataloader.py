@@ -86,11 +86,11 @@ class DatasetLoaderTestBase(unittest.TestCase):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=IMAGE_SHAPE, dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
             )
-            label = fluid.layers.data(
-                name='label', shape=LABEL_SHAPE, dtype='int64'
+            label = paddle.static.data(
+                name='label', shape=[-1] + LABEL_SHAPE, dtype='int64'
             )
 
             simple_fc_net_with_inputs(image, label)
@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 10
+            file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = fluid.cpu_places()
+            places = [fluid.CPUPlace()]
             use_cuda = False
         else:
-            file_num = fluid.core.get_cuda_device_count()
-            places = fluid.cuda_places()
+            file_num = 1
+            places = [fluid.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -145,7 +145,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
+        prog = fluid.CompiledProgram(main_prog)
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)

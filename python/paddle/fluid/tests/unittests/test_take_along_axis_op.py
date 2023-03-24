@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.framework import core
@@ -27,6 +27,7 @@ class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
@@ -82,8 +83,8 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
-            index = paddle.fluid.data('Index', self.index_shape, "int64")
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place[0])
             res = exe.run(

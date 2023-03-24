@@ -36,6 +36,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
                                  const int bias_num,
                                  float eps,
                                  int groups,
+                                 bool with_silu,
                                  bool with_fp16,
                                  std::shared_ptr<void> scale_gpu = nullptr,
                                  std::shared_ptr<void> bias_gpu = nullptr)
@@ -43,6 +44,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
         bias_gpu_(bias_gpu),
         groups_(groups),
         eps_(eps),
+        with_silu_(with_silu),
         with_fp16_(with_fp16) {
     scale_.resize(scale_num);
     bias_.resize(bias_num);
@@ -69,6 +71,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &bias_);
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &groups_);
+    DeserializeValue(&serialData, &serialLength, &with_silu_);
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
 
     {
@@ -97,6 +100,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
                                                    bias_.size(),
                                                    eps_,
                                                    groups_,
+                                                   with_silu_,
                                                    with_fp16_,
                                                    scale_gpu_,
                                                    bias_gpu_);
@@ -112,13 +116,14 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(scale_) + SerializedSize(bias_) +
            SerializedSize(eps_) + SerializedSize(groups_) +
-           SerializedSize(with_fp16_);
+           SerializedSize(with_silu_) + SerializedSize(with_fp16_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, bias_);
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, groups_);
+    SerializeValue(&buffer, with_silu_);
     SerializeValue(&buffer, with_fp16_);
   }
   nvinfer1::DimsExprs getOutputDimensions(
@@ -171,6 +176,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   GroupNormNHWCParams params_;
   int groups_;
   float eps_;
+  bool with_silu_;
   bool with_fp16_;
 };
 

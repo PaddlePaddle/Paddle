@@ -38,12 +38,10 @@ def runtime_main():
     fleet.init(role)
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
@@ -91,7 +89,7 @@ def runtime_main():
 if __name__ == "__main__":
     # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
-    # paddle.fluid.incubate.fleet.collective which is not support by sharding (paddle.distributed.fleet).
+    # paddle.incubate.distributed.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.
     # runtime_main(TestDistMnist2x2)
     runtime_main()

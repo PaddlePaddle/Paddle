@@ -23,6 +23,7 @@ from paddle.fluid import core
 SEED = 1
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
+paddle.enable_static()
 
 
 # random seed must set before configuring the network.
@@ -58,9 +59,7 @@ def cnn_model(data):
         size=SIZE,
         activation="softmax",
         weight_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.NormalInitializer(
-                loc=0.0, scale=scale
-            )
+            initializer=paddle.nn.initializer.Normal(loc=0.0, scale=scale)
         ),
     )
     return predict
@@ -68,8 +67,10 @@ def cnn_model(data):
 
 def get_model(batch_size):
     # Input data
-    images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    images = paddle.static.data(
+        name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     # Train program
     predict = cnn_model(images)
@@ -186,7 +187,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            img = fluid.layers.data(name='image', shape=[784])
+            img = paddle.static.data(name='image', shape=[-1, 784])
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
             hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
@@ -194,7 +195,9 @@ class TestCloneWithStopGradient(unittest.TestCase):
                 input=paddle.static.nn.fc(
                     hidden2, size=10, activation='softmax'
                 ),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                label=paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                ),
                 reduction='none',
                 use_softmax=False,
             )
@@ -205,7 +208,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
             test_program.block(0).var(hidden1.name).stop_gradient, True
         )
         self.assertEqual(
-            test_program.block(0).var(hidden2.name).stop_gradient, False
+            test_program.block(0).var(hidden2.name).stop_gradient, True
         )
 
 
@@ -214,7 +217,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            img = fluid.layers.data(name='image', shape=[784])
+            img = paddle.static.data(name='image', shape=[-1, 784])
             true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
@@ -236,7 +239,9 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
                 input=paddle.static.nn.fc(
                     hidden2, size=10, activation='softmax'
                 ),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                label=paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                ),
                 reduction='none',
                 use_softmax=False,
             )
@@ -259,7 +264,7 @@ class TestCloneWithRaise(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            img = fluid.layers.data(name='image', shape=[784])
+            img = paddle.static.data(name='image', shape=[-1, 784])
             true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
@@ -280,7 +285,9 @@ class TestCloneWithRaise(unittest.TestCase):
                 input=paddle.static.nn.fc(
                     hidden2, size=10, activation='softmax'
                 ),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                label=paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                ),
                 reduction='none',
                 use_softmax=False,
             )

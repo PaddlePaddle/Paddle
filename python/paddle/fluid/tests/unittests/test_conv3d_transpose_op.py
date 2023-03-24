@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid.core as core
 
@@ -134,6 +134,34 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
+def conv3d_transpose_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    output_padding=[],
+    output_size=[],
+    padding_algorithm="EXPLICIT",
+    groups=1,
+    dilation=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.conv3d_transpose(
+        x,
+        weight,
+        stride,
+        padding,
+        output_padding,
+        output_size,
+        padding_algorithm,
+        groups,
+        dilation,
+        data_format,
+    )
+
+
 class TestConv3DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
@@ -234,6 +262,7 @@ class TestConv3DTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 class TestWithSymmetricPad(TestConv3DTransposeOp):
@@ -335,6 +364,7 @@ class TestCUDNN(TestConv3DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -353,6 +383,7 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -371,6 +402,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -389,6 +421,7 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -407,6 +440,7 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -425,6 +459,7 @@ class TestCUDNNWithStride(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -443,21 +478,22 @@ class TestCUDNNWithGroups(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
-
-# Please Don't remove the following code.
-# Currently, CI use cudnn V5.0 which not support dilation conv.
-# class TestCUDNNWithDilation(TestWithDilation):
-#     def init_test_case(self):
-#         self.pad = [1, 1, 1]
-#         self.stride = [2, 2, 2]
-#         self.dilations = [2, 2, 2]
-#         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
-#         f_c = self.input_size[1]
-#         self.filter_size = [f_c, 6, 3, 3, 3]
-#
-#     def init_op_type(self):
-#         self.op_type = "conv3d_transpose"
+        # Please Don't remove the following code.
+        # Currently, CI use cudnn V5.0 which not support dilation conv.
+        # class TestCUDNNWithDilation(TestWithDilation):
+        #     def init_test_case(self):
+        #         self.pad = [1, 1, 1]
+        #         self.stride = [2, 2, 2]
+        #         self.dilations = [2, 2, 2]
+        #         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        #         f_c = self.input_size[1]
+        #         self.filter_size = [f_c, 6, 3, 3, 3]
+        #
+        #     def init_op_type(self):
+        #         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -477,6 +513,7 @@ class TestCUDNN_NHWC(TestConv3DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -496,6 +533,7 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -515,6 +553,7 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -534,6 +573,7 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
 
 
 @unittest.skipIf(
@@ -553,6 +593,20 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+        self.python_api = conv3d_transpose_wrapper
+
+
+class TestConv3dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(
+            np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+        )
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv3d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
 
 
 if __name__ == '__main__':

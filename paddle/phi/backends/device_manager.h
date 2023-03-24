@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 
 #include <unordered_map>
 
@@ -243,30 +242,25 @@ class DeviceManager {
                       const stream::Stream& stream);
 
   // profiler
-  static void ProfilerInitialize(
-      const std::string& dev_type,
-      paddle::platform::TraceEventCollector* collector,
-      void** context);
+  static void ProfilerInitialize(const std::string& dev_type,
+                                 phi::TraceEventCollector* collector,
+                                 void** context);
   static void ProfilerFinalize(const std::string& dev_type,
-                               paddle::platform::TraceEventCollector* collector,
+                               phi::TraceEventCollector* collector,
                                void* context);
-  static void ProfilerPrepareTracing(
-      const std::string& dev_type,
-      paddle::platform::TraceEventCollector* collector,
-      void* context);
-  static void ProfilerStartTracing(
-      const std::string& dev_type,
-      paddle::platform::TraceEventCollector* collector,
-      void* context);
-  static void ProfilerStopTracing(
-      const std::string& dev_type,
-      paddle::platform::TraceEventCollector* collector,
-      void* context);
-  static void ProfilerCollectTraceData(
-      const std::string& dev_type,
-      paddle::platform::TraceEventCollector* collector,
-      uint64_t start_ns,
-      void* context);
+  static void ProfilerPrepareTracing(const std::string& dev_type,
+                                     phi::TraceEventCollector* collector,
+                                     void* context);
+  static void ProfilerStartTracing(const std::string& dev_type,
+                                   phi::TraceEventCollector* collector,
+                                   void* context);
+  static void ProfilerStopTracing(const std::string& dev_type,
+                                  phi::TraceEventCollector* collector,
+                                  void* context);
+  static void ProfilerCollectTraceData(const std::string& dev_type,
+                                       phi::TraceEventCollector* collector,
+                                       uint64_t start_ns,
+                                       void* context);
 
   static void Clear();
 
@@ -285,12 +279,14 @@ class DeviceManager {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir);
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle);
 
 void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
                           const std::string& dso_lib_path,
                           void* dso_handle);
+#endif
 
 class Registrar {
  public:
@@ -303,5 +299,3 @@ class Registrar {
 };
 
 }  // namespace phi
-
-#endif

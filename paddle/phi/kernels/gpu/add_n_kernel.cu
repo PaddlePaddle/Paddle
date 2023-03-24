@@ -14,11 +14,9 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
-
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-
 namespace phi {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
@@ -38,16 +36,18 @@ __global__ void Sum2CUDAKernel(const T *in_0,
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(read_dst ? out[id] : static_cast<T>(0));
+    MPType total(read_dst ? static_cast<MPType>(out[id])
+                          : static_cast<MPType>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
-        total += tmp[id];
+        total += static_cast<MPType>(tmp[id]);
       }
     }
-    out[id] = total;
+    out[id] = static_cast<T>(total);
     id += blockDim.x * gridDim.x;
   }
 }
@@ -74,6 +74,13 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  for (int i = 0; i < in_num; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "This argument is invalid, %d-th tensor is uninitialized.", i));
+  }
 
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
@@ -116,11 +123,12 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
+      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0);
-      auto in_1_e = EigenVector<T>::Flatten(in_1);
-      result.device(place) = in_0_e + in_1_e;
+      auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
+      auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
+      result.device(place) = (in_0_e + in_1_e).template cast<T>();
     } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
@@ -196,15 +204,15 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = paddle::memory::Alloc(
+      auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
-      paddle::memory::Copy(dev_ctx.GetPlace(),
-                           tmp_sr_in_out_array->ptr(),
-                           phi::CPUPlace(),
-                           reinterpret_cast<void *>(sr_in_out_data.data()),
-                           sr_in_out_data.size() * sizeof(T *),
-                           dev_ctx.stream());
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         tmp_sr_in_out_array->ptr(),
+                         phi::CPUPlace(),
+                         reinterpret_cast<void *>(sr_in_out_data.data()),
+                         sr_in_out_data.size() * sizeof(T *),
+                         dev_ctx.stream());
 
       T **sr_in_out_array_data =
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
@@ -217,15 +225,15 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        paddle::memory::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
+    auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
+                                                 in_data.size() * sizeof(T *));
 
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         tmp_in_array->ptr(),
-                         phi::CPUPlace(),
-                         reinterpret_cast<void *>(in_data.data()),
-                         in_data.size() * sizeof(T *),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_in_array->ptr(),
+                       phi::CPUPlace(),
+                       reinterpret_cast<void *>(in_data.data()),
+                       in_data.size() * sizeof(T *),
+                       dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);

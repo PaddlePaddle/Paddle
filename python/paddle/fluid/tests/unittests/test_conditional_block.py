@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import ConditionalBlock
@@ -30,13 +29,13 @@ class ConditionalBlockTest(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            data = layers.data(name='X', shape=[1], dtype='float32')
+            data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             data.stop_gradient = False
             cond = ConditionalBlock(inputs=[data])
             out = paddle.tensor.create_tensor(dtype='float32')
             with cond.block():
                 hidden = paddle.static.nn.fc(x=data, size=10)
-                layers.assign(hidden, out)
+                paddle.assign(hidden, out)
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)
@@ -67,7 +66,7 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             step_scope = global_block.create_var(
                 type=core.VarDesc.VarType.STEP_SCOPES
             )
-            cond_var = layers.fill_constant(
+            cond_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='bool', value=False
             )
 

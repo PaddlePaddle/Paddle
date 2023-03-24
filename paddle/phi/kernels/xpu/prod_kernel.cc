@@ -22,21 +22,25 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ProdRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out) {
+void ProdKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const IntArray& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              XPUType* y,
+              const T* x,
+              T* y,
               const std::vector<int>& xdims,
               const std::vector<int>& reduce_dims) {
-    return xpu::reduce_prod<XPUType>(ctx, x, y, xdims, reduce_dims);
+    return xpu::reduce_prod<XPUType>(ctx,
+                                     reinterpret_cast<const XPUType*>(x),
+                                     reinterpret_cast<XPUType*>(y),
+                                     xdims,
+                                     reduce_dims);
   };
 
   int r = XPUReduce<Context, T>(
@@ -46,4 +50,4 @@ void ProdRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prod_raw, XPU, ALL_LAYOUT, phi::ProdRawKernel, float) {}
+PD_REGISTER_KERNEL(prod, XPU, ALL_LAYOUT, phi::ProdKernel, float) {}

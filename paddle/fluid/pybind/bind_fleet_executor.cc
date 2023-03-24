@@ -65,6 +65,7 @@ struct npy_format_descriptor<paddle::platform::float16> {
 namespace paddle {
 namespace pybind {
 
+using paddle::distributed::DependType;
 using paddle::distributed::DistModel;
 using paddle::distributed::DistModelConfig;
 using paddle::distributed::DistModelDataBuf;
@@ -164,16 +165,15 @@ void BindFleetExecutor(py::module* m) {
       .def(
           "run", &FleetExecutor::Run, py::call_guard<py::gil_scoped_release>());
 
+  py::enum_<DependType>(*m, "DependType")
+      .value("NORMAL", DependType::NORMAL)
+      .value("LOOP", DependType::LOOP)
+      .value("STOP_LOOP", DependType::STOP_LOOP);
+
   py::class_<TaskNode>(*m, "TaskNode")
-      .def(py::init<framework::ProgramDesc*,
-                    int64_t,
-                    int64_t,
-                    int64_t,
-                    int64_t>())
       .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
       .def(py::init<int32_t,
                     const std::vector<framework::OpDesc*>&,
-                    int64_t,
                     int64_t,
                     int64_t,
                     int64_t>())
@@ -183,6 +183,7 @@ void BindFleetExecutor(py::module* m) {
       .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
       .def("set_type", &TaskNode::SetType)
+      .def("set_cond_var_name", &TaskNode::SetCondVarName)
       .def("role", &TaskNode::role)
       .def("init", [](TaskNode& self) { self.Init(); })
       .def("set_program", &TaskNode::SetProgram);

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle import fluid, nn
 
@@ -98,12 +97,14 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
                 else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
                 y_var = paddle.static.nn.conv3d_transpose(
                     x_var,
                     self.num_filters,
@@ -133,11 +134,13 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
                 y_var = F.conv3d_transpose(

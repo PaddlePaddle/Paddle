@@ -25,7 +25,6 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -90,7 +89,7 @@ def optimizer_setting(params, parameter_list):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -121,7 +120,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class SqueezeExcitation(fluid.dygraph.Layer):
+class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
         super().__init__()
@@ -132,7 +131,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels,
             num_channels // reduction_ratio,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
@@ -140,7 +139,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels // reduction_ratio,
             num_channels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -155,7 +154,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -219,7 +218,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return y
 
 
-class SeResNeXt(fluid.dygraph.Layer):
+class SeResNeXt(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
@@ -317,7 +316,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -374,8 +373,7 @@ class TestSeResnet(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         np.random.seed(SEED)
 
@@ -473,8 +471,7 @@ class TestSeResnet(unittest.TestCase):
             )
 
     def predict_dygraph(self, data):
-        program_translator = ProgramTranslator()
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             se_resnext = SeResNeXt()
 

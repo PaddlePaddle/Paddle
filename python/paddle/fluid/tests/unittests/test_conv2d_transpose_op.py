@@ -21,7 +21,7 @@ import paddle
 import paddle.nn as nn
 
 paddle.enable_static()
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle.fluid as fluid
@@ -137,6 +137,36 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
+def conv2dtranspose_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    output_padding=[],
+    output_size=[],
+    padding_algorithm="EXPLICIT",
+    groups=1,
+    dilation=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv2d_transpose(
+        x,
+        weight,
+        stride,
+        padding,
+        output_padding,
+        output_size,
+        padding_algorithm,
+        groups,
+        dilation,
+        data_format,
+    )
+
+
 class TestConv2DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
@@ -244,6 +274,7 @@ class TestConv2DTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 class TestWithSymmetricPad(TestConv2DTransposeOp):
@@ -453,6 +484,7 @@ class TestCUDNN(TestConv2DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -471,6 +503,7 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -489,6 +522,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -507,6 +541,7 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -525,6 +560,7 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -543,6 +579,7 @@ class TestCUDNNWithStride(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -561,6 +598,7 @@ class TestCUDNNWithGroups(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 # ------------ test_cudnn ------------
@@ -571,6 +609,7 @@ class TestCUDNNWithEvenUpsample(TestWithEvenUpsample):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 # Please Don't remove the following code.
@@ -605,6 +644,7 @@ class TestCUDNN_NHWC(TestConv2DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -624,6 +664,7 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -643,6 +684,7 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -662,6 +704,7 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -681,6 +724,7 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -701,6 +745,7 @@ class TestCUDNNWithEvenUpsample_NHWC(TestWithEvenUpsample):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -721,6 +766,7 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
         self.need_check_grad = False
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+        self.python_api = conv2dtranspose_wrapper
 
     def test_check_output(self):
         if self.use_cudnn:
@@ -831,11 +877,11 @@ class TestCUDNNWithEvenUpsample_NHWC_FP16(TestCUDNN_FP16):
 
 class TestConv2DTransposeAPI(unittest.TestCase):
     def test_case1(self):
-        data1 = fluid.layers.data(
-            name='data1', shape=[3, 5, 5], dtype='float32'
+        data1 = paddle.static.data(
+            name='data1', shape=[-1, 3, 5, 5], dtype='float32'
         )
-        data2 = fluid.layers.data(
-            name='data2', shape=[5, 5, 3], dtype='float32'
+        data2 = paddle.static.data(
+            name='data2', shape=[-1, 5, 5, 3], dtype='float32'
         )
         out1 = paddle.static.nn.conv2d_transpose(
             input=data1,
@@ -918,7 +964,9 @@ class TestConv2DTransposeAPI(unittest.TestCase):
 
 class TestConv2DTransposeOpException(unittest.TestCase):
     def test_exception(self):
-        data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
+        data = paddle.static.data(
+            name='data', shape=[-1, 3, 5, 5], dtype="float32"
+        )
 
         def attr_data_format():
             out = paddle.static.nn.conv2d_transpose(
@@ -965,8 +1013,8 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
 
-        error_input = fluid.layers.data(
-            name='error_data', shape=[1], dtype="float32"
+        error_input = paddle.static.data(
+            name='error_data', shape=[-1, 1], dtype="float32"
         )
 
         def error_input_size():
@@ -987,6 +1035,17 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, error_groups)
 
+        def error_0_filter_number():
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
+                groups=1,
+                num_filters=0,
+                filter_size=3,
+                data_format='NCHW',
+            )
+
+        self.assertRaises(ValueError, error_0_filter_number)
+
 
 class TestConv2DTransposeRepr(unittest.TestCase):
     def test_case(self):
@@ -998,6 +1057,17 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         y_np = y_var.numpy()
         self.assertIsNotNone(y_np)
         paddle.enable_static()
+
+
+class TestConv2dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [1, 1, 1, 1]), dtype='float32')
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv2d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
 
 
 class TestTensorOutputSize1(UnittestBase):

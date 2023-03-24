@@ -35,6 +35,10 @@ void Expand(const Context& ctx,
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
+  if (Rank == 0) {
+    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+    return;
+  }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
         expand_shape[i],
@@ -74,7 +78,6 @@ void Expand(const Context& ctx,
       repeat_times[i] = 1;
     }
   }
-
   Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
@@ -112,7 +115,7 @@ void ExpandKernel(const Context& ctx,
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be positive, "
           "but the value received is %d.",
@@ -145,6 +148,9 @@ void ExpandKernel(const Context& ctx,
           MAX_RANK_SUPPORTED));
   rank = std::max(rank, static_cast<int>(shape_size));
   switch (rank) {
+    case 0:
+      Expand<Context, T, 0>(ctx, x, shape, out);
+      break;
     case 1:
       Expand<Context, T, 1>(ctx, x, shape, out);
       break;

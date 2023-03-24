@@ -40,14 +40,18 @@ namespace paddle {
 namespace framework {
 
 class InterpreterCore {
+  using ExecutionConfig = interpreter::ExecutionConfig;
+  using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
+  using SchedulingQueue =
+      std::priority_queue<size_t,
+                          std::vector<size_t>,
+                          InstructionSchedulingPriorityLess>;
+
  public:
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
-                  const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
-                  bool used_for_jit = false,
-                  bool used_for_control_flow_op = false,
-                  bool used_for_cinn = false);
+                  const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~InterpreterCore();
 
@@ -79,10 +83,7 @@ class InterpreterCore {
   const platform::Place& GetPlace() const { return place_; }
 
  private:
-  using InstructionPriorityLess = std::function<bool(size_t, size_t)>;
-  using SchedulingQueue =
-      std::priority_queue<size_t, std::vector<size_t>, InstructionPriorityLess>;
-
+  DISABLE_COPY_AND_ASSIGN(InterpreterCore);
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
   void BuildOperatorDependences();
@@ -96,6 +97,10 @@ class InterpreterCore {
   bool BuildInplaceCheckVarIsOnlyInput(
       const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+
+  // cuda graph
+  void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
+  void PrepareForCUDAGraphCapture();
 
   // execution
   void RunImpl();
@@ -128,12 +133,12 @@ class InterpreterCore {
 
  private:
   bool is_build_{false};
+  bool static_build_{false};
 
-  platform::Place place_;
+  const platform::Place place_;
   const BlockDesc& block_;  // not owned
 
   interpreter::DependencyBuilder dependency_builder_;
-  interpreter::ExecutionConfig execution_config_;
   interpreter::StreamAnalyzer stream_analyzer_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
@@ -150,6 +155,9 @@ class InterpreterCore {
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::atomic<size_t> unfinished_op_number_{0};
+
+  ExecutionConfig execution_config_;
+
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
 
@@ -177,15 +185,16 @@ class InterpreterCore {
   int64_t sync_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
-  InstructionPriorityLess instruction_prority_less;
+  InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const platform::Place& place,
     const ProgramDesc& prog,
-    Scope* global_scope,
+    Scope* scope,
     const std::vector<std::string>& fetch_names = {},
-    const std::set<std::string>& skip_gc_vars = {});
+    const interpreter::ExecutionConfig& execution_config =
+        interpreter::ExecutionConfig());
 
 }  // namespace framework
 }  // namespace paddle
