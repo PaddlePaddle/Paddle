@@ -42,7 +42,7 @@ def generate_data(shape, dtype="float32"):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self, approximate):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
         self.approximate = approximate
 

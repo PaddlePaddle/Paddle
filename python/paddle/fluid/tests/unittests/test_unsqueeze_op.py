@@ -108,6 +108,22 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
+# axis is empty, x is ND
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = ()
+        self.new_shape = ()
+
+
+# axis is empty, x is 0D
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = ()
+        self.new_shape = (10, 2, 5)
+
+
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = ()

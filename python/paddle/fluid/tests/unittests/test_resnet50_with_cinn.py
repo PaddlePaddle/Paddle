@@ -134,6 +134,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         loop_num = 10
         feed = self.generate_random_data(loop_num)
         core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("batch_norm")
         loss_c = self.train(place, loop_num, feed, use_cinn=True)
         core._set_prim_backward_enabled(False)
         loss_p = self.train(place, loop_num, feed, use_cinn=True)

@@ -2872,9 +2872,9 @@ def clip(x, min=None, max=None, name=None):
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
-            min = min.numpy().item(0)
+            min = min.item(0)
         if isinstance(max, Variable):
-            max = max.numpy().item(0)
+            max = max.item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.clip(x, min, max)
@@ -2939,9 +2939,9 @@ def clip_(x, min=None, max=None, name=None):
     fmin = float(np.finfo(np.float32).min)
     fmax = float(np.finfo(np.float32).max)
     if isinstance(min, Variable):
-        min = min.numpy().item(0)
+        min = min.item(0)
     if isinstance(max, Variable):
-        max = max.numpy().item(0)
+        max = max.item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
 
@@ -4611,7 +4611,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x (Tensor): The input tensor to compute the forward difference on
+        x (Tensor): The input tensor to compute the forward difference on, the data type is float16(GPU), float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
@@ -4706,7 +4706,10 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.subtract(input_back, input_front)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+            'diff',
         )
         check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())

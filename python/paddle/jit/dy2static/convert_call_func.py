@@ -23,7 +23,7 @@ from typing import Any, List
 
 import numpy
 
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 from .convert_operators import (
     convert_enumerate,
@@ -304,6 +304,7 @@ def convert_call(func):
             converted_call = None
 
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
+
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
@@ -312,7 +313,7 @@ def convert_call(func):
                 # Bound mothod will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                setattr(func, 'forward', forward_func.__get__(func))
+                func.forward = forward_func.__get__(func)
             except (IOError, OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

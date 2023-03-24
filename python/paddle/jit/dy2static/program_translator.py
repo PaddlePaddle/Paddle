@@ -22,8 +22,12 @@ import weakref
 from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.fluid.dygraph.base import (
+    _switch_declarative_mode_guard_,
+    param_guard,
+    switch_to_static_graph,
+)
+from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -314,8 +318,8 @@ class StaticFunction:
         # save the instance `self` while decorating a method of class.
 
         if inspect.ismethod(function):
-            self._dygraph_function = getattr(function, '__func__')
-            self._class_instance = getattr(function, '__self__')
+            self._dygraph_function = function.__func__
+            self._class_instance = function.__self__
 
             if not hasattr(self._class_instance, '_original_funcs'):
                 raise TypeError(
@@ -885,7 +889,7 @@ class HookHelper:
         self.need_apply_hook = (
             with_hook
             and isinstance(self.class_instance, layers.Layer)
-            and getattr(func, "__name__") == "forward"
+            and func.__name__ == "forward"
         )
 
     def apply_pre_hooks(self, inputs):
@@ -989,8 +993,6 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
-
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
@@ -1081,7 +1083,7 @@ class ParametersRecorder:
         return id(program)
 
 
-class FallbackProgramLayer(object):
+class FallbackProgramLayer:
     __slots__ = [
         '_instance',
         '_dy_func',

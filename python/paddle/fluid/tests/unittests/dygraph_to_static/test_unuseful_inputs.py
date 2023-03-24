@@ -33,7 +33,7 @@ def apply_to_static(support_to_static, model, image_shape=None):
 
 class Layer0(nn.Layer):
     def __init__(self, level):
-        super(Layer0, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 5)
         self._linear2 = nn.Linear(10, 5)
         self.layer1 = Layer1(level)
@@ -51,7 +51,7 @@ class Layer0(nn.Layer):
 
 class Layer1(nn.Layer):
     def __init__(self, level):
-        super(Layer1, self).__init__()
+        super().__init__()
         self.level = level
         self._linear = nn.Linear(5, 2)
 
