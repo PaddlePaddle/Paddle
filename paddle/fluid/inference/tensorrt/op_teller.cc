@@ -1954,7 +1954,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bitwise_not") {
-#if !IS_TRT_VERSION_GE(8500)
+#if !IS_TRT_VERSION_GE(8400)
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "

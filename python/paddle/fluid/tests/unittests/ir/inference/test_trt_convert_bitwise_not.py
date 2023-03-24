@@ -25,11 +25,6 @@ import paddle.inference as paddle_infer
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        ver = paddle_infer.get_trt_compile_version()
-        trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
-        if trt_version < 8400:
-            if program_config.inputs['input_data'].dtype == bool:
-                return False
         return True
 
     def sample_program_configs(self):
@@ -105,9 +100,19 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1 and not dynamic_shape:
-                return 0, 3
-            return 1, 2
+            ver = paddle_infer.get_trt_compile_version()
+            trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
+            if trt_version >= 8400:
+                if self.dims == 1 and not dynamic_shape:
+                    return 0, 3
+                return 1, 2
+            else:
+                if (self.dims == 1 and not dynamic_shape) or (
+                    program_config.inputs['input_data'].dtype
+                    in ['bool', 'int8', 'uint8']
+                ):
+                    return 0, 3
+                return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
