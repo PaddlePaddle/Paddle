@@ -17,7 +17,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 from paddle.fluid import core
 import paddle.fluid as fluid
@@ -107,7 +107,6 @@ class TestYoloBoxOp(OpTest):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
         self.__class__.no_need_check_grad = True
-        self.python_api = paddle.vision.ops.yolo_box
         x = np.random.random(self.x_shape).astype('float32')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
         self.attrs = {
@@ -125,7 +124,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
