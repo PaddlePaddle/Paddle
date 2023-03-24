@@ -5154,7 +5154,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
     Integrate along the given axis using the composite trapezoidal rule.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
             It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
@@ -5164,7 +5164,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
     """
     if mode == 'sum':
         sum_mode = paddle.sum
@@ -5220,7 +5220,7 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
             It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
@@ -5230,7 +5230,8 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
         sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
+        If :attr:`y` is a 1-dimensional tensor, then the result is a float. If n is greater than 1, then the result is an n-1 dimensional tensor.
 
     Examples:
         .. code-block:: python
@@ -5261,7 +5262,6 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
             print(paddle.trapezoid(y, x))
             # Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [-8.])
-
             y = paddle.arange(6).reshape((2, 3)).astype('float32')
 
             print(paddle.trapezoid(y, axis=0))
@@ -5279,7 +5279,7 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
             It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
@@ -5289,7 +5289,8 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
         sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
-        Tensor, Definite integral of :math:`y = n-dimensional` array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :math:`y = n-dimensional` tensor as approximated along a single axis by the trapezoidal rule.
+        If n is greater than 1, then the result is an n-1 dimensional tensor.
 
     Examples:
         .. code-block:: python
