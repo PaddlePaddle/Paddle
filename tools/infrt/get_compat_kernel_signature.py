@@ -65,8 +65,8 @@ def get_compat_kernels_info():
                     data = (
                         content.replace("\n", "")
                         .replace(" ", "")
-                        .strip("return", '')
-                        .strip("KernelSignature(", '')
+                        .strip("return")
+                        .strip("KernelSignature(")
                         .strip(r"\);")
                         .replace("\"", "")
                         .replace("\\", "")

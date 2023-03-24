@@ -96,7 +96,7 @@ class FP16Utils:
             output_name = op.desc.output_arg_names()[0]
             # TODO (JZ-LIANG) revise this for uniform mixed parallelism
             param_name = (
-                output_name.strip("@GRAD@MERGED", '')
+                output_name.strip("@GRAD@MERGED")
                 if "@MERGED" in output_name
                 else output_name.strip("@GRAD")
             )
@@ -125,7 +125,7 @@ class FP16Utils:
                 for input_name in op.desc.input('X'):
                     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
                     if "@MERGED" in input_name:
-                        param_name = input_name.strip("@GRAD@MERGED", '')
+                        param_name = input_name.strip("@GRAD@MERGED")
                     else:
                         param_name = input_name.strip("@GRAD")
                     if param_name not in shard.global_params:
