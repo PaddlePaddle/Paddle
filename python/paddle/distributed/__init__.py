@@ -83,6 +83,7 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "gather",
     "scatter_object_list",
     "broadcast",
     "broadcast_object_list",

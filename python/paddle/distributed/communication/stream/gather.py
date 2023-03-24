@@ -30,11 +30,12 @@ def _gather_in_dygraph(
     nranks = group.nranks
     if group.rank == dst_rank_in_group:
         if len(tensor_list) == 0:
-            raise RuntimeError(
-                "The tensor_list should not be empty on dst rank."
-            )
+            tensor_list += [paddle.empty_like(tensor) for _ in range(nranks)]
     else:
         tensor_list = [tensor for _ in range(nranks)]
+
+    assert (len(tensor_list) == nranks
+            ), "tens_list length {} and nrankd {} not equal".format(len(tensor_list), nranks)
 
     if use_calc_stream:
         group.process_group.gather_on_calc_stream(tensor, tensor_list, dst_rank_in_group)

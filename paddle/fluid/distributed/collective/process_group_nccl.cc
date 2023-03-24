@@ -486,7 +486,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
   size_t offset = 0;
   size_t numel = out_tensor->numel() / size_;
   for(auto i = 0; i < size_; i++) {
-    GetPartialTensor(*out_tensor, offset, numel);
+    partial_tensors.emplace(GetPartialTensor(*out_tensor, offset, numel));
     offset += numel;
   }
   return Gather(in_tensor, partial_tensors, opts, sync_op, use_calc_stream);
