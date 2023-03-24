@@ -24,7 +24,7 @@ import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
