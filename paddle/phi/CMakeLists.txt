@@ -45,7 +45,19 @@ set(PHI_DEPS ${PHI_CORE} ${PHI_BACKENDS} ${PHI_API})
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
 
-cc_library(phi DEPS ${PHI_DEPS})
+cc_library(phi_base DEPS ${PHI_DEPS})
+
+file(GLOB PHI_SRCS "api/lib/*.cc" "phi_main.cc")
+
+set(PHI_SHARED_DEPS phi_api)
+if(WIN32)
+  list(APPEND PHI_SHARED_DEPS shlwapi.lib)
+endif()
+
+cc_library(
+  phi SHARED
+  SRCS ${PHI_SRCS}
+  DEPS ${PHI_SHARED_DEPS})
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
@@ -60,87 +72,3 @@ generate_unify_header(backends EXCLUDES context_pool_utils.h)
 generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)
-
-file(
-  GLOB
-  PHI_SRCS
-  "api/lib/api*.cc"
-  "api/lib/context_pool.cc "
-  "api/lib/data_transform.cc"
-  "api/lib/dygraph_api.cc"
-  "api/lib/int_array.cc"
-  "api/lib/kernel_dispatch.cc"
-  "api/lib/op*.cc"
-  "api/lib/scalar.cc"
-  "api/lib/sparse_api.cc"
-  "api/lib/strings_api.cc"
-  "api/lib/tensor*.cc"
-  "kernels/*.cc"
-  "kernels/cpu/*.cc"
-  "kernels/funcs/*.cc"
-  "kernels/selected_rows/*.cc"
-  "kernels/sparse/*.cc"
-  "kernels/sparse/cpu/*.cc"
-  "kernels/strings/*.cc"
-  "kernels/strings/cpu/*.cc")
-
-if(WITH_MKLDNN)
-  file(GLOB PHI_SRCS ${PHI_SRCS} "backends/onednn/*.cc"
-       "kernels/fusion/onednn/*.cc" "kernels/onednn/*.cc")
-endif()
-
-list(
-  APPEND
-  PHI_API
-  phi_function_api
-  sparse_api
-  phi_dygraph_api
-  strings_api
-  phi_tensor_operants
-  operants_manager
-  tensor_api)
-
-set(PHI_SHARED_DEPS
-    eigen3
-    simple_threadpool
-    warpctc
-    warprnnt
-    pocketfft
-    utf8proc
-    cblas
-    ${PHI_CORE}
-    ${PHI_BACKENDS}
-    ${PHI_API})
-
-if(WITH_GPU)
-  set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} external_error_proto)
-endif()
-
-if(WITH_MKLML)
-  file(GLOB PHI_SRCS ${PHI_SRCS} "backends/dynload/mklml.cc")
-  set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} mklml)
-endif()
-
-if(WITH_XBYAK)
-  list(APPEND PHI_SHARED_DEPS xbyak)
-endif()
-
-if(WITH_MKLDNN)
-  list(APPEND PHI_SHARED_DEPS mkldnn)
-endif()
-
-if(WITH_GLOO)
-  list(APPEND PHI_SHARED_DEPS gloo)
-endif()
-
-# On Windows (including MinGW), the Shlwapi library is used by gflags if available.
-if(WIN32)
-  list(APPEND PHI_SHARED_DEPS shlwapi.lib)
-endif()
-
-cc_library(
-  phi_shared SHARED
-  SRCS ${PHI_SRCS}
-  DEPS ${PHI_SHARED_DEPS})
-
-set_target_properties(phi_shared PROPERTIES OUTPUT_NAME phi)

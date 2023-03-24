@@ -466,7 +466,8 @@ function(cc_test_build TARGET_NAME)
       memory
       gtest
       gflags
-      glog)
+      glog
+      phi)
     add_dependencies(
       ${TARGET_NAME}
       ${cc_test_DEPS}
@@ -680,7 +681,7 @@ function(nv_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main)
+                          ${os_dependency_modules} paddle_gtest_main phi)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -786,6 +787,7 @@ function(hip_test TARGET_NAME)
       gtest
       gflags
       glog
+      phi
       ${os_dependency_modules})
     add_dependencies(
       ${TARGET_NAME}
