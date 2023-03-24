@@ -78,7 +78,7 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL|PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
@@ -90,7 +90,9 @@ function(kernel_declare TARGET_LIST)
         endif()
       endif()
       # parse the registerd kernel message
-      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${first_registry}")
+      string(REPLACE "PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(" "" kernel_msg
+                     "${first_registry}")
+      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
       string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
                      "${kernel_msg}")
       string(REPLACE "," ";" kernel_msg "${kernel_msg}")
@@ -100,7 +102,9 @@ function(kernel_declare TARGET_LIST)
       list(GET kernel_msg 0 kernel_name)
       list(GET kernel_msg 1 kernel_backend)
       list(GET kernel_msg 2 kernel_layout)
-
+      if(kernel_backend STREQUAL "ALL_DEVICE")
+        set(kernel_backend "CPU")
+      endif()
       # append kernel declare into declarations.h
       file(
         APPEND ${kernel_declare_file}

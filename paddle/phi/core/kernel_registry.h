@@ -1388,6 +1388,85 @@ struct KernelRegistrar {
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
+/** PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL
+ *
+ * Used to register a instantiated kernel function
+ * for all backend with one template argument.
+ */
+#define PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(\
+  kernel_name, backend, layout, meta_kernel_fn)\
+  _PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(kernel_name,\
+                                          layout,\
+                                          meta_kernel_fn,\
+                                          BACKEND_LIST)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#define _DEVICE GPU,
+#elif defined(PADDLE_WITH_XPU)
+#define _DEVICE XPU,
+#else
+#define _DEVICE
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#define _CUSTOM  Custom,
+#else
+#define _CUSTOM
+#endif
+
+#define BACKEND_LIST  _DEVICE _CUSTOM CPU
+
+#define _PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(kernel_name,    \
+                                                layout,         \
+                                                meta_kernel_fn, \
+                                                ...)            \
+  __PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(kernel_name,         \
+                                           layout,              \
+                                           meta_kernel_fn,      \
+                                           PD_NARGS(__VA_ARGS__),\
+                                           __VA_ARGS__)
+
+#define __PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(kernel_name, \
+                                                 layout,      \
+                                                 meta_kernel_fn,\
+                                                 N,           \
+                                                 ...)\
+  PD_CONCATENATE(_PD_UNROLL_ALL_BACKEND_, N)(kernel_name,\
+                                             layout,\
+                                             meta_kernel_fn,\
+                                             __VA_ARGS__)
+
+#define _PD_UNROLL_ALL_BACKEND_1(kernel_name, layout, meta_kernel_fn, backend)\
+  PD_REGISTER_GENERAL_KERNEL(kernel_name,\
+                             backend,\
+                             layout,\
+                             meta_kernel_fn<::phi::backend##Context>,\
+                             ALL_TYPE) {}
+
+#define _PD_UNROLL_ALL_BACKEND_2(kernel_name,\
+                                 layout,\
+                                 meta_kernel_fn,\
+                                 backend, ...)\
+  _PD_UNROLL_ALL_BACKEND_1(kernel_name,\
+                           layout,\
+                           meta_kernel_fn,\
+                           backend)  \
+  _PD_UNROLL_ALL_BACKEND_1(kernel_name,\
+                           layout,\
+                           meta_kernel_fn,\
+                           __VA_ARGS__)
+#define _PD_UNROLL_ALL_BACKEND_3(kernel_name,\
+                                 layout,\
+                                 meta_kernel_fn,\
+                                 backend, ...)\
+  _PD_UNROLL_ALL_BACKEND_1(kernel_name,\
+                           layout,\
+                           meta_kernel_fn,\
+                           backend)  \
+  _PD_UNROLL_ALL_BACKEND_2(kernel_name,\
+                           layout,\
+                           meta_kernel_fn,\
+                           __VA_ARGS__)
+
 /** PD_DECLARE_KERNEL
  *
  * Used to export the symbols of the file where the kernel is located,
