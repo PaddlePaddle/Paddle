@@ -971,15 +971,19 @@ class PartialProgramLayer:
         return tmp_scope_vec
 
     def _create_cuda_graph_vec(self):
-        var = core.VarBase(
-            core.VarDesc.VarType.FP32,
-            [],
-            "cuda_graph",
-            core.VarDesc.VarType.RAW,
-            True,
-        )
-        var.stop_gradient = True
-        return var
+        # if not framework.global_var._in_eager_mode_:
+        #     var = core.VarBase(
+        #         core.VarDesc.VarType.FP32,
+        #         [],
+        #         "cuda_graph",
+        #         core.VarDesc.VarType.RAW,
+        #         True,
+        #     )
+        #     var.stop_gradient = True
+        # else:
+        #     var = [core.CUDAGraphWithInOuts()]
+        # return var
+        return []
 
     def _restore_out(self, out_vars):
         """

@@ -56,9 +56,10 @@ static void clear_no_grad_edges_with_partial_block(
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
-    std::vector<paddle::Tensor*>& out,                   // NOLINT
-    std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
+    std::vector<paddle::Tensor*>& out,                                // NOLINT
+    std::vector<paddle::framework::Scope*>& step_scope,               // NOLINT
+    std::vector<paddle::Tensor*>& dout,                               // NOLINT
+    std::vector<paddle::operators::CUDAGraphWithInOuts*> cuda_graph,  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
@@ -77,7 +78,15 @@ inline void run_program_ad_func(
           << require_any_grad;
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  // RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  RunProgramAPI(x,
+                params,
+                out,
+                step_scope,
+                dout,
+                std::move(cuda_graph),
+                require_any_grad,
+                attrs);
   VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {

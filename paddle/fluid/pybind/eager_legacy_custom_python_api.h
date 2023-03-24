@@ -32,13 +32,16 @@ static PyObject *eager_api_run_program(PyObject *self,
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
+    auto CUDAGraph =
+        GetCUDAGraphPtrListFromArgs("run_program", "CUDAGraph", args, 5, true);
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     ConstructAttrMapFromPyArgs(
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, attrs);
+    // run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;

@@ -37,6 +37,9 @@ typedef SSIZE_T ssize_t;
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
+#endif
 namespace paddle {
 class CustomOpKernelContext;
 namespace framework {
@@ -332,6 +335,13 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
 paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
+
+std::vector<paddle::operators::CUDAGraphWithInOuts*>
+GetCUDAGraphPtrListFromArgs(const std::string& op_type,
+                            const std::string& arg_name,
+                            PyObject* args,
+                            ssize_t arg_idx,
+                            bool dispensable);
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     const std::string& op_type,
