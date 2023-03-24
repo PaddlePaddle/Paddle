@@ -43,8 +43,8 @@ class TestNanInf(unittest.TestCase):
         out, err = proc.communicate()
         returncode = proc.returncode
 
-        print(out)
-        print(err)
+        # print(out)
+        # print(err)
 
         # in python3, type(out+err) is 'bytes', need use encode
         assert (out + err).find('There are NAN or INF'.encode()) != -1
@@ -73,12 +73,9 @@ class TestNanInfEnv(TestNanInf):
 class TestCheckSkipEnv(TestNanInf):
     def setUp(self):
         super().setUp()
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-        )
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
-        self.env[str("Paddle_check_nan_inf_op_list")] = str("elementwise_mul")
+        self.env[str("Paddle_check_nan_inf_op_list")] = str("mean")
         self.env[str("Paddle_skip_nan_inf_op_list")] = str("elementwise_add")
 
 
