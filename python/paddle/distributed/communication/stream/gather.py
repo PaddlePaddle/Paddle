@@ -37,12 +37,9 @@ def _gather_in_dygraph(
     assert (len(tensor_list) == nranks
             ), "tens_list length {} and nrankd {} not equal".format(len(tensor_list), nranks)
 
-    if use_calc_stream:
-        group.process_group.gather_on_calc_stream(tensor, tensor_list, dst_rank_in_group)
-
     task = group.process_group.gather(
-        tensor, tensor_list, dst_rank_in_group, sync_op
-    )
+        tensor, tensor_list, dst_rank_in_group, sync_op, use_calc_stream)
+
     if sync_op:
         task.wait()
 

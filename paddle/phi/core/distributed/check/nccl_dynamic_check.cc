@@ -64,7 +64,7 @@ void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(dtype_device,
                                                          dtype_device,
-                                                         kSize,
+                                                         1,
                                                          ncclInt64,
                                                          root_rank,
                                                          comm,
@@ -106,7 +106,7 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(shape_device,
                                                          shape_device,
-                                                         kSize,
+                                                         1,
                                                          ncclInt64,
                                                          root_rank,
                                                          comm,
@@ -141,10 +141,9 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&in_shape_device, kSize));
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         in_shape_device, &in_shape_host, kSize, gpuMemcpyHostToDevice));
-    // this line seems a bug, kSize -> 1
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
                                                         in_shape_device,
-                                                        kSize,
+                                                        1,
                                                         ncclInt64,
                                                         ncclSum,
                                                         rank,

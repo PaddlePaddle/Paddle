@@ -482,12 +482,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     bool sync_op,
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> partial_tensors;
-  partial_tensors.reserve(size_);
-  size_t offset = 0;
-  size_t numel = out_tensor->numel() / size_;
-  for(auto i = 0; i < size_; i++) {
-    partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
-    offset += numel;
+  if(rank_ == opts.root_rank) {
+    partial_tensors.reserve(size_);
+    size_t offset = 0;
+    size_t numel = out_tensor->numel() / size_;
+    for (auto i = 0; i < size_; i++) {
+      partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
+      offset += numel;
+    }
   }
   return Gather(in_tensor, partial_tensors, opts, sync_op, use_calc_stream);
 }
@@ -499,7 +501,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_ENFORCE_GT(size_, opts.root_rank, \
-                    phi::errors::InvalidArgument("root world size [%d]  le root rank [5d]", size_, opts.root_rank));
+                    phi::errors::InvalidArgument("root world size [%d]  le root rank [%d]", size_, opts.root_rank));
   auto gather_func = [&](ncclComm_t comm, gpuStream_t stream) {
     // shape check
     if (FLAGS_enable_nccl_dynamic_check) {
