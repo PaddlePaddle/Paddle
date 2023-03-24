@@ -2172,10 +2172,15 @@ void MomentumInferMeta(const MetaTensor& param,
 
   auto param_dim = param.dims();
   param_out->set_dims(param_dim);
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
   velocity_out->set_dims(param_dim);
-
+  velocity_out->set_dtype(MPType);
   if (master_param_out) {
     master_param_out->set_dims(param_dim);
+    master_param_out->set_dtype(MPType);
   }
 }
 
