@@ -445,8 +445,7 @@
     data_type : dtype
 
 - op: fused_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor
-  key_padding_mask, Tensor attn_mask, float scale_qk_coeff=1.0, float dropout_rate=0.0)
+  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask, float scale_qk_coeff=1.0, float dropout_rate=0.0)
   output : Tensor(out), Tensor(softmax)
   infer_meta :
     func : sparse::FusedAttentionInferMeta
