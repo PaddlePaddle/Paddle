@@ -206,6 +206,7 @@ void InterpreterCore::RunImpl() {
   }
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  op_status.assign(vec_instruction_.size(), 0);
 
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0) && FLAGS_enable_tracer) {
@@ -275,7 +276,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
   op_status.clear();
-  op_status.assign(block_.OpSize(), 0);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -1045,7 +1045,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       interpreter::LogDeviceMemoryStats(place_);
     }
 
-    op_status[instr_node.Id()] = 1;
+    if (instr_node.Id() > op_status.size() - 1) {
+      PADDLE_THROW(platform::errors::Fatal("ffff"));
+    } else {
+      op_status[instr_node.Id()] = 1;
+    }
 
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {

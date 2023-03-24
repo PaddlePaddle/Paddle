@@ -18,7 +18,6 @@ TestDir='build/python/paddle/fluid/tests/unittests/dygraph_to_static/'
 LogDir=$(pwd)'/log_dy2st_model_tests'
 
 test_files=$(ls $TestDir | egrep 'test.*.py$')
-# test_files=$(ls $TestDir | egrep 'test_bert.py$')
 regex="(test.*)\.py$"
 
 export GLOG_v=0
@@ -29,15 +28,12 @@ do
     if [[ $f =~ $regex ]]
     then
         name="${BASH_REMATCH[1]}\$"
-        echo $name" start"
         cd build
         ctest -VV -R $name > $LogDir/log_$name 2>&1 
         status=$?
-        if [ $status -eq 0 ]  
+        if [ $status -ne 0 ]  
         then
-            echo $name" yes"
-        else
-            echo $name" failed" 
+            echo $LogDir/log_$name" failed" 
         fi
         cd ..
     else
@@ -52,7 +48,6 @@ unset FLAGS_enable_tracer
 LogDir=$(pwd)'/log_dy2st_model_tests_no_trace'
 
 test_files=$(ls $TestDir | egrep 'test.*.py$')
-# test_files=$(ls $TestDir | egrep 'test_bert.py$')
 regex="(test.*)\.py$"
 
 export GLOG_v=0
@@ -63,15 +58,12 @@ do
     if [[ $f =~ $regex ]]
     then
         name="${BASH_REMATCH[1]}\$"
-        echo $name" start"
         cd build
         ctest -VV -R $name > $LogDir/log_$name 2>&1 
         status=$?
-        if [ $status -eq 0 ]  
+        if [ $status -ne 0 ]  
         then
-            echo $name" yes"
-        else
-            echo $name" failed" 
+            echo $LogDir/log_$name" failed" 
         fi
         cd ..
     else
