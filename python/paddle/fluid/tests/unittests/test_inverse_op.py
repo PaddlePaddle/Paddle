@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -40,10 +40,10 @@ class TestInverseOp(OpTest):
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_grad(self):
-        self.check_grad(['Input'], 'Output', check_eager=True)
+        self.check_grad(['Input'], 'Output')
 
 
 class TestInverseOpBatched(TestInverseOp):
@@ -60,9 +60,7 @@ class TestInverseOpLarge(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-6, check_eager=True
-        )
+        self.check_grad(['Input'], 'Output', max_relative_error=1e-6)
 
 
 class TestInverseOpFP32(TestInverseOp):
@@ -72,9 +70,7 @@ class TestInverseOpFP32(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-2, check_eager=True
-        )
+        self.check_grad(['Input'], 'Output', max_relative_error=1e-2)
 
 
 class TestInverseOpBatchedFP32(TestInverseOpFP32):
