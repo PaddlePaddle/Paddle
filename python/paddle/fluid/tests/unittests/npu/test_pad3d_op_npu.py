@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-import op_test
+import eager_op_test
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -26,7 +26,7 @@ from paddle.fluid import Program, program_guard, Executor, default_main_program
 import paddle.fluid as fluid
 
 
-class TestPad3dNPUOp(op_test.OpTest):
+class TestPad3dNPUOp(eager_op_test.OpTest):
     def setUp(self):
         paddle.enable_static()
         self.__class__.use_npu = True
