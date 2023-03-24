@@ -26,7 +26,7 @@ from google.protobuf import text_format
 
 import paddle
 import paddle.framework as framework
-from paddle.fluid import core, debugger
+from paddle.fluid import core
 from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
 
@@ -358,7 +358,7 @@ class UtilBase:
         block = program.global_block()
         dot_path = os.path.join(output_dir, output_filename + '.dot')
         pdf_path = os.path.join(output_dir, output_filename + '.pdf')
-        debugger.draw_block_graphviz(block, path=dot_path)
+        draw_block_graphviz(block, path=dot_path)
         cmd = ["dot", "-Tpdf", dot_path, "-o", pdf_path]
         p = subprocess.Popen(
             cmd,
