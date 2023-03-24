@@ -120,8 +120,7 @@ void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
 template <typename T>
-PaddleBuf PaddleBufCreate(
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+PaddleBuf PaddleBufCreate(py::array_t<T, py::array::c_style> data) {
   PaddleBuf buf(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()),
               data.size(),
@@ -130,9 +129,8 @@ PaddleBuf PaddleBufCreate(
 }
 
 template <typename T>
-void PaddleBufReset(
-    PaddleBuf &buf,                                                    // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
+void PaddleBufReset(PaddleBuf &buf,                             // NOLINT
+                    py::array_t<T, py::array::c_style> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()),
               data.size(),
@@ -141,7 +139,7 @@ void PaddleBufReset(
 
 template <typename T>
 PaddleTensor PaddleTensorCreate(
-    py::array_t<T, py::array::c_style | py::array::forcecast> data,
+    py::array_t<T, py::array::c_style> data,
     const std::string name = "",
     const std::vector<std::vector<size_t>> &lod = {},
     bool copy = true) {
@@ -208,9 +206,8 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
 }
 
 template <typename T>
-void ZeroCopyTensorCreate(
-    ZeroCopyTensor &tensor,  // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                          py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
