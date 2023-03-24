@@ -37,7 +37,6 @@ if(WITH_TESTING)
   # add_subdirectory(ps)
   # add_subdirectory(tokenizer)
   # add_subdirectory(xpu)
-
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
