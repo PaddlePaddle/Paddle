@@ -22,6 +22,7 @@ import paddle  # noqa: F401
 import paddle.fluid as fluid  # noqa: F401
 import paddle.fluid.dygraph as dygraph  # noqa: F401
 import paddle.fluid.layers as layers  # noqa: F401
+from paddle import to_tensor  # noqa: F401
 from paddle.fluid.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
@@ -68,7 +69,6 @@ def is_api_in_module(node, module_prefix):
     try:
 
         import paddle.jit.dy2static as _jst  # noqa: F401
-        from paddle import to_tensor  # noqa: F401
 
         return eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
