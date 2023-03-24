@@ -42,7 +42,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.op import Operator
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append("../")
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
