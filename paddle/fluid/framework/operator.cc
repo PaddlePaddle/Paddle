@@ -1589,18 +1589,21 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
     // different type with variable. The PhiKernelContext need be reconstructed.
     // We use kernel_signature_'s output to retrieve tensor. Because the tensor
     // in phi_kernel_context stored in the order of kernel_signature_'s output.
-    if (phi_kernel_context->OutputsSize() >= phi_tensor_index ||
-        kernel_signature_ == nullptr) {
+    if (kernel_signature_ == nullptr) {
       need_prepare_phi_data_ = true;
       return;
     }
-
+    size_t phi_output_tensor_size = phi_kernel_context->OutputsSize();
     const auto& phi_output_names = kernel_signature_->output_names;
     for (auto& phi_output_name : phi_output_names) {
       const auto& iter = outnames.find(phi_output_name);
       if (iter != outnames.end()) {
         for (auto& var_name : iter->second) {
           auto var_output = scope.FindVar(var_name);
+          if (phi_tensor_index >= phi_output_tensor_size) {
+            need_prepare_phi_data_ = true;
+            return;
+          }
           auto phi_output =
               phi_kernel_context->MutableOutputAt<phi::TensorBase>(
                   phi_tensor_index);
