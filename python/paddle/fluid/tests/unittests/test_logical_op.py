@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@ import numpy as np
 import paddle
 from paddle.framework import _non_static_mode
 from paddle.static import Executor, Program, program_guard
+from op_test import OpTest, convert_float_to_uint16
 
 SUPPORTED_DTYPES = [
     bool,
     np.int8,
     np.int16,
+    np.uint16,
     np.int32,
     np.int64,
     np.float16,
@@ -119,6 +121,9 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 def np_data_generator(np_shape, dtype, *args, **kwargs):
     if dtype == bool:
         return np.random.choice(a=[True, False], size=np_shape).astype(bool)
+    elif dtype == np.uint16:
+        x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
+        return convert_float_to_uint16(x)
     else:
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
@@ -160,6 +165,8 @@ def test(unit_test, use_gpu=False, test_error=False):
                     np_result = np_op(meta_data['x_np'], meta_data['y_np'])
                 else:
                     np_result = np_op(meta_data['x_np'])
+                if data_type == np.uint16:
+                    np_result = convert_float_to_uint16(np_result)
                 unit_test.assertTrue((static_result == np_result).all())
                 unit_test.assertTrue(
                     (dygraph_result.numpy() == np_result).all()

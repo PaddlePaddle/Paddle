@@ -60,6 +60,8 @@ void LogicalNotKernel(const Context& dev_ctx,
                      phi::Logical##func_type##Kernel,       \
                      float,                                 \
                      double,                                \
+                     phi::dtype::float16,                   \
+                     phi::dtype::bfloat16,                  \
                      bool,                                  \
                      int64_t,                               \
                      int,                                   \
