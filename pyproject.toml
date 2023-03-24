@@ -115,6 +115,9 @@ select = [
     # "B030",
     "B032",
     # "B904",
+
+    # Pylint
+    "PLC0414",
 ]
 unfixable = [
     "NPY001"
