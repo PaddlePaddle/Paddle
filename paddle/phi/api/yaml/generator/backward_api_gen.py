@@ -310,7 +310,10 @@ namespace experimental {
 
 
 def generate_backward_api(
-    backward_yaml_path, header_file_path, source_file_path
+    backward_yaml_path,
+    is_fused_backward_yaml,
+    header_file_path,
+    source_file_path,
 ):
 
     bw_apis = []
@@ -319,10 +322,6 @@ def generate_backward_api(
             api_list = yaml.load(f, Loader=yaml.FullLoader)
             if api_list:
                 bw_apis.extend(api_list)
-
-    is_fused_op = (
-        True if backward_yaml_path[0].endswith("fused_backward.yaml") else False
-    )
 
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
@@ -335,12 +334,12 @@ def generate_backward_api(
 
     include_header_file = (
         "paddle/phi/api/backward/fused_backward_api.h"
-        if is_fused_op
+        if is_fused_backward_yaml
         else "paddle/phi/api/backward/backward_api.h"
     )
     include_fw_header_file = (
         "paddle/phi/api/include/fused_api.h"
-        if is_fused_op
+        if is_fused_backward_yaml
         else "paddle/phi/api/include/api.h"
     )
     source_file.write(
@@ -348,7 +347,7 @@ def generate_backward_api(
     )
     source_file.write(namespace[0])
     # not all fused ops supoort dygraph
-    if is_fused_op is True:
+    if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api
             for bw_api in bw_apis
@@ -379,6 +378,13 @@ def main():
         nargs='+',
         default=['paddle/phi/api/yaml/backward.yaml'],
     )
+
+    parser.add_argument(
+        '--is_fused_backward_yaml',
+        help='flag of fused backward yaml',
+        action='store_true',
+    )
+
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
@@ -394,11 +400,15 @@ def main():
     options = parser.parse_args()
 
     backward_yaml_path = options.backward_yaml_path
+    is_fused_backward_yaml = options.is_fused_backward_yaml
     header_file_path = options.backward_header_path
     source_file_path = options.backward_source_path
 
     generate_backward_api(
-        backward_yaml_path, header_file_path, source_file_path
+        backward_yaml_path,
+        is_fused_backward_yaml,
+        header_file_path,
+        source_file_path,
     )
 
 

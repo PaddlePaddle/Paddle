@@ -197,8 +197,8 @@ add_custom_command(
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${fused_api_yaml_file}
-    --api_header_path ${fused_api_header_file_tmp} --api_source_path
-    ${fused_api_source_file_tmp}
+    --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
+    --api_source_path ${fused_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_api_header_file_tmp}
           ${fused_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_api_source_file_tmp}
@@ -213,7 +213,7 @@ add_custom_command(
          ${fused_bw_api_header_file_tmp} ${fused_bw_api_source_file_tmp}
   COMMAND
     ${PYTHON_EXECUTABLE} ${fused_bw_api_gen_file} --backward_yaml_path
-    ${fused_bw_api_yaml_file} --backward_header_path
+    ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
     ${fused_bw_api_header_file_tmp} --backward_source_path
     ${fused_bw_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_bw_api_header_file_tmp}
