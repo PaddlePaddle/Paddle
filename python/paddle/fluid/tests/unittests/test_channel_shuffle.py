@@ -45,6 +45,7 @@ def channel_shuffle_np(x, groups, data_format="NCHW"):
 class TestChannelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
+        self.init_dtype()
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
         self.python_api = paddle.nn.functional.channel_shuffle
@@ -56,12 +57,15 @@ class TestChannelShuffleOp(OpTest):
 
         groups = 3
 
-        x = np.random.random(shape).astype("float64")
+        x = np.random.random(shape).astype(self.dtype)
         npresult = channel_shuffle_np(x, groups, self.format)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'groups': groups, "data_format": self.format}
+
+    def init_dtype(self):
+        self.dtype = 'float64'
 
     def init_data_format(self):
         self.format = "NCHW"
@@ -268,44 +272,9 @@ class TestChannelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_data_format_layer)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestChannelShuffleFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "channel_shuffle"
-        self.python_api = paddle.nn.functional.channel_shuffle
-        self.init_data_format()
-        n, c, h, w = 2, 9, 4, 4
+class TestChannelShuffleFP16OP(TestChannelShuffleOp):
+    def init_dtype(self):
         self.dtype = np.float16
-
-        if self.format == "NCHW":
-            shape = [n, c, h, w]
-        if self.format == "NHWC":
-            shape = [n, h, w, c]
-
-        groups = 3
-
-        x = np.random.random(shape).astype(self.dtype)
-        out = channel_shuffle_np(x, groups, self.format)
-
-        self.inputs = {'X': x}
-        self.attrs = {'groups': groups, "data_format": self.format}
-        self.outputs = {'Out': out}
-
-    def init_data_format(self):
-        self.format = "NCHW"
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
 
 
 @unittest.skipIf(
@@ -339,10 +308,13 @@ class TestChannelShuffleBF16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
+        place = core.CUDAPlace(0)
         self.check_grad(
+            place,
             ['X'],
             'Out',
         )
