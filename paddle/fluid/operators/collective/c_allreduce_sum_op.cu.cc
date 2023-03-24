@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-DEFINE_C_ALLREDUCE_CUDA_KERNEL(CAllReduceSum, ops::kRedSum)
+DEFINE_C_ALLREDUCE_CUDA_KERNEL(CAllReduceSum, kRedSum)
 }  // namespace operators
 }  // namespace paddle
 
