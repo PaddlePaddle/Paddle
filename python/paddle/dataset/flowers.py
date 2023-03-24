@@ -14,7 +14,7 @@
 """
 This module will download dataset from
 http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html
-and parse train/test set intopaddle reader creators.
+and parse train/test dataset into paddle reader creators.
 
 This set contains images of flowers belonging to 102 different categories.
 The images were acquired by searching the web and taking pictures. There are a

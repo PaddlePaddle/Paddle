@@ -27,7 +27,6 @@ import paddle.utils as utils
 from paddle import static
 from paddle.distributed import fleet
 from paddle.fluid.executor import _to_name_str
-from paddle.fluid.layers.utils import flatten
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
 from paddle.framework import core, in_dygraph_mode
@@ -247,7 +246,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDatset, but received {}.".format(
+                "Data should be a Dataset or IterableDataset, but received {}.".format(
                     type(data).__name__
                 )
             )
@@ -602,7 +601,7 @@ class Engine:
         feed_vars = {"inputs": self._inputs, "labels": self._labels}
 
         fetch_vars = {
-            "outputs": flatten(outputs),
+            "outputs": paddle.utils.flatten(outputs),
             "loss": self._losses,
             "metrics": metrics,
         }
@@ -699,7 +698,7 @@ class Engine:
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
-        # because we may use it to complete the annotation of the backwarkward and update.
+        # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
             self._planners[mode].completer,
@@ -1558,6 +1557,19 @@ class Engine:
         cur_dist_attr = auto_utils.get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
+        for name, param in program.state_dict().items():
+            param_array = np.array(param)
+            if name not in state_dict:
+                continue
+            if param_array.dtype != state_dict[name].dtype:
+                self._logger.info(
+                    "cast {}'s dtype from '{}' to '{}'".format(
+                        name,
+                        str(state_dict[name].dtype),
+                        str(param_array.dtype),
+                    )
+                )
+                state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
 
     def save(self, path, training=True):

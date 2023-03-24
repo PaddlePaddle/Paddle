@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -40,6 +41,12 @@ extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
+AnalysisConfig::AnalysisConfig() {
+  // NOTE(liuyuanle): Why put the following code here?
+  // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
+  inference::InitGflagsFromEnv();
+}
+
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
@@ -52,6 +59,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
+    } else if (use_custom_device_) {
+      LOG(INFO) << "Create CUSTOM DEVICE IR passes";
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -548,6 +558,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_custom_device_) {
+    pass_builder_.reset(new CustomDevicePassStrategy(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
   } else if (use_npu_) {
     pass_builder_.reset(new NpuPassStrategy(
         *static_cast<NpuPassStrategy *>(other.pass_builder())));

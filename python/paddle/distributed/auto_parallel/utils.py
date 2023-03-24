@@ -22,8 +22,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
@@ -273,7 +273,7 @@ def _get_comm_group(processes, shape, axis, rank):
     Given a rank and the processes mesh the rank belongs to,
     compute the communication peers of the rank based on the give axis in the mesh.
 
-    Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
+    Example: 16 processes managed in a 4-Dimensional mesh with shape of [2, 2, 2, 2].
     the rank communication peers of rank 0 (included) are following:
     in axis 0: [0, 1]
     in axis 1: [0, 2]
@@ -347,7 +347,7 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     # that the processes in mesh are
     #    1. starts from 0
     #    2. continuous
-    # it will be wrong if ths above condition doesnot meet,
+    # it will be wrong if ths above condition does not meet,
     # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
     # if you want a more general mapping, you should use cartesian product
 
@@ -594,7 +594,7 @@ def save_distributed_checkpoint(
     dist_context=None,
 ):
     """
-    Save model parameter state, optimzer state, distributed attribute and
+    Save model parameter state, optimizer state, distributed attribute and
     additional information of each rank.
 
     Args:
@@ -1790,7 +1790,9 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
         return
     # Third, print error infomation if we cannot find the original id
     else:
-        assert False, "Cannot find the original id in the distributed context"
+        raise AssertionError(
+            "Cannot find the original id in the distributed context"
+        )
 
 
 def to_list(value):

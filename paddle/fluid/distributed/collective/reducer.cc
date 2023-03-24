@@ -77,12 +77,11 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   // Key: the var type
   // Value: should use which index in group_size_limits for group size limit
-  std::map<experimental::DataType, size_t> group_limit_index;
+  std::map<phi::DataType, size_t> group_limit_index;
 
   // Key: the var type
   // Value: <the var index in input tensors, total numel in this group>
-  std::map<experimental::DataType, std::pair<std::vector<size_t>, size_t>>
-      next_group;
+  std::map<phi::DataType, std::pair<std::vector<size_t>, size_t>> next_group;
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     const auto &var = tensors[i];
@@ -114,7 +113,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     }
 
     group_info.first.push_back(tensor_real_index);
-    group_info.second += experimental::SizeOf(var_dtype) * var_size;
+    group_info.second += phi::SizeOf(var_dtype) * var_size;
     // group_info.second += framework::SizeOfType(var_dtype) * var_size;
 
     if (group_limit_index.find(var_dtype) == group_limit_index.end()) {
@@ -803,7 +802,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         "parameters participate in the backward calculation "
         "again at a later time (e.g. after the forward function, "
         "the loss calculation uses the unused "
-        "paramters of the forward and trigger backward), "
+        "parameters of the forward and trigger backward), "
         "its gradient will be wrong.";
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
@@ -868,7 +867,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "parameters without generating gradients during training. "
             "For example, if is_sparese=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
-            "because of stop_gradient/detatch, where error will occur.",
+            "because of stop_gradient/detach, where error will occur.",
             var_index,
             tensors_[var_index].name()));
 
@@ -996,7 +995,7 @@ void EagerReducer::ProcessUnusedDenseVars() {
 
       // NOTE(haohongxiang): Calling SetFakeEmpty here is to make sure that
       // gradient accumulation can continue normally after clear_gradients()
-      // especiall in cases including complex control flow.
+      // especially in cases including complex control flow.
       std::static_pointer_cast<egr::GradNodeAccumulation>(
           GetGradNodeFromTensor(&tensors_[var_index]))
           ->SetFakeEmpty(false);

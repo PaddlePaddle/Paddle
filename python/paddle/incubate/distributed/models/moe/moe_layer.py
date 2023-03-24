@@ -25,6 +25,7 @@ import paddle
 import paddle.nn as nn
 from paddle.autograd import PyLayer
 from paddle.distributed.utils.moe_utils import global_gather, global_scatter
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 from paddle.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
@@ -335,7 +336,7 @@ class MoELayer(nn.Layer):
         self.recompute_ctx = recompute_ctx
 
         if gate is None:
-            gate = dict()
+            gate = {}
 
         assert isinstance(
             gate, (dict, BaseGate)
@@ -350,6 +351,9 @@ class MoELayer(nn.Layer):
         self.recompute_interval = recompute_interval
         assert experts is not None
         self.experts = experts
+
+        if self.world_size > 1:
+            check_nccl_version_for_p2p()
 
         self.mp_group = mp_group
         self.d_model = d_model
@@ -380,12 +384,10 @@ class MoELayer(nn.Layer):
                     group=self.group,
                 )
             else:
-                assert (
-                    False
-                ), "We only support naive gate, \
-                                gshard gate and switch gate, \
-                                but you choose {} gate.".format(
-                    str(gate)
+                raise AssertionError(
+                    "We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {} gate.".format(
+                        str(gate)
+                    )
                 )
         elif isinstance(gate, NaiveGate):
             self.top_k = gate.top_k

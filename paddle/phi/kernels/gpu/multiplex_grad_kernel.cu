@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/multiplex_grad_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -47,12 +47,12 @@ void MultiplexGradKernel(const Context& ctx,
   for (auto i = 0; i < rows; i++) {
     size_t k = static_cast<size_t>(index[i]);
     if (ins_grad[k]) {
-      paddle::memory::Copy(ctx.GetPlace(),
-                           ins_grad[k]->data<T>() + i * cols,
-                           ctx.GetPlace(),
-                           out_grad.data<T>() + i * cols,
-                           cols * sizeof(T),
-                           stream);
+      memory_utils::Copy(ctx.GetPlace(),
+                         ins_grad[k]->data<T>() + i * cols,
+                         ctx.GetPlace(),
+                         out_grad.data<T>() + i * cols,
+                         cols * sizeof(T),
+                         stream);
     }
   }
 }

@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

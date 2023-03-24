@@ -18,7 +18,7 @@ elseif(NEW_RELEASE_PYPI)
   add_definitions(-DNEW_RELEASE_PYPI)
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80 86")
   set(paddle_known_gpu_archs10 "")
-  set(paddle_known_gpu_archs11 "60 61 70 75 80")
+  set(paddle_known_gpu_archs11 "61 70 75 80")
 elseif(NEW_RELEASE_JIT)
   message("Using New Release Strategy - JIT Packge")
   add_definitions(-DNEW_RELEASE_JIT)
@@ -27,7 +27,7 @@ elseif(NEW_RELEASE_JIT)
   set(paddle_known_gpu_archs11 "35 50 60 70 75 80")
 else()
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80")
-  set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs10 "50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
 
@@ -96,7 +96,7 @@ endfunction()
 # Function for selecting GPU arch flags for nvcc based on CUDA_ARCH_NAME
 # Usage:
 #   select_nvcc_arch_flags(out_variable)
-function(select_nvcc_arch_flags out_variable)
+function(select_nvcc_arch_flags out_variable out_arch_bin)
   # List of arch names
   set(archs_names
       "Kepler"
@@ -244,6 +244,9 @@ function(select_nvcc_arch_flags out_variable)
   set(${out_variable}_real_archs
       ${nvcc_real_archs}
       PARENT_SCOPE)
+  set(${out_arch_bin}
+      ${cuda_arch_bin}
+      PARENT_SCOPE)
 endfunction()
 
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
@@ -273,7 +276,7 @@ add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
 add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
 
 # setting nvcc arch flags
-select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
+select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 

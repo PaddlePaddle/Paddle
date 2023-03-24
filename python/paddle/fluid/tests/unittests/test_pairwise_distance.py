@@ -58,8 +58,8 @@ def test_static(
     )
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
-        x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-        y = paddle.fluid.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
+        x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+        y = paddle.static.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
 
         if functional:
             distance = call_pairwise_distance_functional(
@@ -285,6 +285,15 @@ class TestPairwiseDistance(unittest.TestCase):
         np.testing.assert_allclose(
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
+
+    def test_pairwise_distance_fp16(self):
+        shape = [100, 100]
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        x_np = np.random.random(shape).astype('float16')
+        y_np = np.random.random(shape).astype('float16')
+        static_ret = test_static(place, x_np, y_np)
 
 
 if __name__ == "__main__":

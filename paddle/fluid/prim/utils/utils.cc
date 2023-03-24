@@ -27,6 +27,14 @@ void PrimCommonUtils::SetBwdPrimEnabled(bool enable_prim) {
   StaticCompositeContext::Instance().SetBwdPrimEnabled(enable_prim);
 }
 
+bool PrimCommonUtils::IsEagerPrimEnabled() {
+  return StaticCompositeContext::Instance().IsEagerPrimEnabled();
+}
+
+void PrimCommonUtils::SetEagerPrimEnabled(bool enable_prim) {
+  StaticCompositeContext::Instance().SetEagerPrimEnabled(enable_prim);
+}
+
 bool PrimCommonUtils::IsFwdPrimEnabled() {
   return StaticCompositeContext::Instance().IsFwdPrimEnabled();
 }

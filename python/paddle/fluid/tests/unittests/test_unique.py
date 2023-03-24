@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -82,7 +81,7 @@ class TestUniqueRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data = fluid.data(shape=[10], dtype="float16", name="input")
+            data = paddle.static.data(shape=[10], dtype="float16", name="input")
             paddle.unique(data)
 
         self.assertRaises(TypeError, test_dtype)
@@ -295,7 +294,7 @@ class TestUniqueAPI(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data(name='x', shape=[3, 2], dtype='float64')
+            x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
             unique, inverse, counts = paddle.unique(
                 x, return_inverse=True, return_counts=True, axis=0
             )
@@ -320,14 +319,16 @@ class TestUniqueError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.static.data(
+                    name='x', shape=[10, 10], dtype='float16'
+                )
                 result = paddle.unique(x)
 
             self.assertRaises(TypeError, test_x_dtype)
 
     def test_attr(self):
         paddle.enable_static()
-        x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+        x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
 
         def test_return_index():
             result = paddle.unique(x, return_index=0)

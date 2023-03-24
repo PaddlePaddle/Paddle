@@ -62,7 +62,8 @@ def assign_configs_value(msg, config):
                 # LABEL_REPEATED = 3
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
-                    getattr(msg, f.name).extend(config[f.name])
+                    if config[f.name] is not None:
+                        getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 
@@ -1672,6 +1673,8 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+
         Examples:
             .. code-block:: python
 
@@ -1680,7 +1683,8 @@ class DistributedStrategy:
                 strategy.hybrid_configs = {
                     "dp_degree": 1,
                     "mp_degree": 2,
-                    "pp_degree": 1}
+                    "pp_degree": 1,
+                    "order":['dp','pp','sharding','mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)

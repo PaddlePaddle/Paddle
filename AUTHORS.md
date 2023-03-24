@@ -31,6 +31,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | helinwang | He-Lin Wang |
 | heliqi | Li-Qi He |
 | houj04 | HOU Jue |
+| HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
@@ -121,3 +122,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
 | [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
+| [gouzil](https://github.com/gouzil) | Chuan Tian |

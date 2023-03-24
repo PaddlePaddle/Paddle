@@ -16,7 +16,6 @@
 
 import os
 import shutil
-import subprocess
 import tempfile
 
 import numpy as np
@@ -34,6 +33,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -61,7 +61,7 @@ class MLP(paddle.nn.Layer):
 
 class Encoder(paddle.nn.Layer):
     def __init__(self, encoder):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.first_stage = paddle.nn.Linear(1024, 1024)
         self.encoder = encoder
 
@@ -73,7 +73,7 @@ class Encoder(paddle.nn.Layer):
 
 class Decoder(paddle.nn.Layer):
     def __init__(self, decoder):
-        super(Decoder, self).__init__()
+        super().__init__()
         self.decoder = decoder
         self.final_stage = paddle.nn.Linear(1024, 1024)
         self.group_norm = paddle.nn.GroupNorm(64, 1024)
@@ -87,7 +87,7 @@ class Decoder(paddle.nn.Layer):
 
 class SpecialModel(paddle.nn.Layer):
     def __init__(self):
-        super(SpecialModel, self).__init__()
+        super().__init__()
         self.shared = paddle.nn.Linear(1024, 1024, bias_attr=False)
         self.encoder = Encoder(self.shared)
         self.decoder = Decoder(self.shared)
@@ -366,11 +366,7 @@ def test_stage2_stage3():
     # bfp16
     # NOTE: this is a hack to get int format nccl version, like 2134
     # if current platform is not linux, version number will be 0
-    nccl_version_str = subprocess.check_output(
-        r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-        stderr=subprocess.DEVNULL,
-        shell=True,
-    ).decode('utf-8')
+    nccl_version_str = get_nccl_version_str()
     nccl_version = (
         int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
     )

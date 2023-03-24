@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -130,10 +130,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
@@ -411,7 +411,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
         ).astype("float32")
 
-        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
         output, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, return_mask=True
         )

@@ -17,8 +17,8 @@ from collections import OrderedDict
 import paddle
 from paddle import _legacy_C_ops
 from paddle.framework import core, in_dygraph_mode
+from paddle.tensor import fill_constant
 
-from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
 
 
@@ -57,7 +57,7 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
             cur_key = ''.join(map(str, sorted(pg.ranks)))
             if pg_id != 0 and new_key == cur_key:
                 return pg
-    # If not matching the existing one, construt a new process group
+    # If not matching the existing one, construct a new process group
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
@@ -115,8 +115,8 @@ class ProcessGroup:
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
-            assert False, "Rank {} doesn't belong to this group".format(
-                global_rank
+            raise AssertionError(
+                "Rank {} doesn't belong to this group".format(global_rank)
             )
 
     def is_instantiate(self):
@@ -149,7 +149,7 @@ class ProcessGroup:
                     ring_id
                 )
             else:
-                assert False, "No CUDA device found"
+                raise AssertionError('No CUDA device found')
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
