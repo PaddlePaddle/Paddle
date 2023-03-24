@@ -36,7 +36,7 @@ struct BinaryOPWithZeroCompareFunctor {
                                     const T* b,
                                     T* result,
                                     const int64_t len) const {
-    bool is_zero = true;
+    bool is_zero = false;
     for (int64_t i = 0; i < len; ++i) {
       result[i] = functor_(a[i], b[i]);
       if (result[i] != 0) {

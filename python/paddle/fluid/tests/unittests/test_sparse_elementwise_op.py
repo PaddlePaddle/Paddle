@@ -63,6 +63,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
             csr_y = s_dense_y.to_sparse_csr()
 
             actual_res = get_actual_res(csr_x, csr_y, op)
+            actual_res.backward(actual_res)
 
             expect_res = op(dense_x, dense_y)
             expect_res.backward(expect_res)
@@ -74,7 +75,6 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 equal_nan=True,
             )
             if not (op == __truediv__ and dtype in ['int32', 'int64']):
-                actual_res.backward(actual_res)
                 np.testing.assert_allclose(
                     dense_x.grad.numpy(),
                     csr_x.grad.to_dense().numpy(),
