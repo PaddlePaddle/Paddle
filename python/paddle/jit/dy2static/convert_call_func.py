@@ -301,7 +301,7 @@ def convert_call(func):
             # NOTE: func may have been decorated.
             converted_call = None
 
-    elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
+    elif hasattr(func, '__class__') and callable(func.__class__):
         from paddle.nn import Layer
 
         if hasattr(func, 'forward') and isinstance(func, Layer):
