@@ -120,6 +120,7 @@ def gather(
             )
         gather_list = []
     else:
+
         assert (
             gather_list is not None
         ), "gather_list must not be none for dst rank"
