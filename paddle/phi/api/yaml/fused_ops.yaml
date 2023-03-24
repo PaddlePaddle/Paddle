@@ -1,7 +1,7 @@
 # This file is designed for fusion C++ farward operators, which manages the
 # generated code for dynamic mode and static mode.
 # The operators in the file have extra configuration item "support_dygraph_mode".
-# If one operator have "support_dygraph_mode : True", it has dygraph function.
+# If one operator have "support_dygraph_mode : True", it supports dygraph mode.
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
@@ -42,6 +42,7 @@
   kernel:
     func : fused_linear_param_grad_add
     data_type : dout
+  support_dygraph_mode : true
 
 - op : fused_multi_transformer_xpu
   args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[] qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax, Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id)

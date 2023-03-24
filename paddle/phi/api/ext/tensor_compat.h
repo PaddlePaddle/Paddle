@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/api.h"
-#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
 
 // Note(chenweihang): In order to be compatible with the original custom

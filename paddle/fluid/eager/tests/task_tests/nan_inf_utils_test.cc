@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/api.h"
-#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/core/kernel_registry.h"
 
