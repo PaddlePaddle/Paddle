@@ -48,7 +48,7 @@ class GradientClipHelper:
                     deperate_op = True
                 # TODO (JZ-LIANG) revise this for uniform mixed parallelism
                 if "@MERGED" in input_name:
-                    param_name = input_name.strip("@GRAD@MERGED")
+                    param_name = input_name.strip("@GRAD@MERGED", '')
                 else:
                     param_name = input_name.strip("@GRAD")
                 if shard.is_param(param_name) and not shard.has_param(

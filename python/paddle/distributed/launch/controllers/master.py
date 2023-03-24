@@ -180,7 +180,7 @@ class ETCDMaster(Master):
 
         if self.ctx.args.master:
             # etcd://localhost:2379
-            self.endpoint = self.ctx.args.master.strip("etcd://")
+            self.endpoint = self.ctx.args.master.strip("etcd://", '')
 
         import etcd3
 
