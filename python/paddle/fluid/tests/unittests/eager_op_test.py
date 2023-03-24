@@ -842,17 +842,17 @@ class OpTest(unittest.TestCase):
                 ), "Duplicable {} should be set as list".format(name)
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[name]:
+                for (np_key, np_value) in np_list[name]:
                     v = create_var(
                         np_value,
-                        name,
+                        np_key,
                         is_input,
                         if_return_inputs_grad_dict,
                         self.is_calc_ref,
                     )
                     var_list.append(v)
                     if if_return_inputs_grad_dict:
-                        inputs_grad_dict[name] = v
+                        inputs_grad_dict[np_key] = v
                 var_dict[slot_name] = var_list
             else:
                 nplist_value_temp = None
