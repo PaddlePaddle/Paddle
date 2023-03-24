@@ -46,6 +46,8 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
+                # use assign to skip inplace operator
+                tensor = paddle.assign(tensor)
                 return tensor
 
             @staticmethod
