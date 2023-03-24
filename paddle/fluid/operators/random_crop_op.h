@@ -176,7 +176,7 @@ struct RandomCropFunctor {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

@@ -152,7 +152,7 @@ However, the output only shares the LoD information with input X.
 };
 
 template <typename T>
-class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");
@@ -182,8 +182,7 @@ class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::CPUPlace, T>
-    : public framework::OpKernel<T> {
+class ConvShiftGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");

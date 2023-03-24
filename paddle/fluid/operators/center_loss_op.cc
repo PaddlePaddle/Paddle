@@ -145,6 +145,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(center_loss,
                   ops::CenterLossOp,
@@ -156,17 +157,11 @@ REGISTER_OPERATOR(center_loss_grad,
                   ops::CenterLossGradOp,
                   ops::CenterLossGradNoNeedBufVarsInferer);
 
-PD_REGISTER_STRUCT_KERNEL(center_loss,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CenterLossKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(
+    center_loss, CPU, ALL_LAYOUT, ops::CenterLossKernel, float, double) {}
 PD_REGISTER_STRUCT_KERNEL(center_loss_grad,
                           CPU,
                           ALL_LAYOUT,
                           ops::CenterLossGradKernel,
                           float,
-                          double,
-                          plat::float16) {}
+                          double) {}

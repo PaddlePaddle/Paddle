@@ -122,7 +122,7 @@ __global__ void ConvShiftDy(const T *x,
 }  // namespace
 
 template <typename T, typename DeviceContext>
-class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
@@ -150,8 +150,8 @@ class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
-class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+template <typename T>
+class ConvShiftGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");

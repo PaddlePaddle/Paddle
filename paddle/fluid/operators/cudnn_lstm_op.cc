@@ -314,8 +314,6 @@ REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(
     cudnn_lstm, CPU, ALL_LAYOUT, ops::NotImpleKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    cudnn_lstm_grad, CPU, ALL_LAYOUT, ops::NotImpleKernel, float) {}
 
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)

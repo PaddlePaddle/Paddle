@@ -31,9 +31,9 @@ namespace operators {
 class CReduceMaxOpMaker : public CReduceOpMaker {
  protected:
   std::string GetName() const override { return "Max"; }
-
-  DEFINE_C_REDUCE_CPU_KERNEL(CReduceMax, kRedMax)
 };
+
+DEFINE_C_REDUCE_CPU_KERNEL(CReduceMax, kRedMax)
 
 }  // namespace operators
 }  // namespace paddle

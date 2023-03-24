@@ -17,13 +17,9 @@
 namespace ops = paddle::operators;
 template <typename T>
 using Kernel = ops::RandomCropKernel<phi::GPUContext, T>;
-
-PD_REGISTER_STRUCT_KERNEL(random_crop,
-                          GPU,
-                          ALL_LAYOUT,
-                          Kernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          uint8_t) {}
+REGISTER_OP_CUDA_KERNEL(random_crop,
+                        Kernel<float>,
+                        Kernel<int>,
+                        Kernel<double>,
+                        Kernel<uint8_t>,
+                        Kernel<int16_t>);

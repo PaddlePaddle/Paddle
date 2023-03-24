@@ -31,10 +31,9 @@ namespace operators {
 class CReduceMinOpMaker : public CReduceOpMaker {
  protected:
   std::string GetName() const override { return "Min"; }
-
-  DEFINE_C_REDUCE_CPU_KERNEL(CReduceMin, kRedMin)
 };
 
+DEFINE_C_REDUCE_CPU_KERNEL(CReduceMin, kRedMin)
 }  // namespace operators
 }  // namespace paddle
 

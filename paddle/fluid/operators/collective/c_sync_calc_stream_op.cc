@@ -32,6 +32,7 @@ Call calculation stream synchronization.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
                              ops::CSyncCalcStreamOp,
@@ -41,7 +42,7 @@ PD_REGISTER_STRUCT_KERNEL(
     c_sync_calc_stream, GPU, ALL_LAYOUT, ops::CSyncCalcStreamKernel, float) {}
 
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float, platform::NPUPlace>);
+                       ops::CSyncCalcStreamKernel<float, plat::NPUPlace>);
 
 REGISTER_OP_MLU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float, platform::MLUPlace>);
+                       ops::CSyncCalcStreamKernel<float, plat::MLUPlace>);

@@ -220,13 +220,3 @@ REGISTER_OPERATOR(crop,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
                   ops::GropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(
-    crop, CPU, ALL_LAYOUT, ops::CropKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    crop_grad, CPU, ALL_LAYOUT, ops::CropGradKernel, float, double) {}
-
-PD_REGISTER_STRUCT_KERNEL(
-    crop, GPU, ALL_LAYOUT, ops::CropKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    crop_grad, GPU, ALL_LAYOUT, ops::CropGradKernel, float, double) {}
