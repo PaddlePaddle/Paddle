@@ -35,7 +35,7 @@ from test_sync_batch_norm_base_npu import (
     TestSyncBatchNormRunnerBase,
     runtime_main,
 )
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     _set_use_system_allocator,
 )

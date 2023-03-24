@@ -17,7 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import _set_use_system_allocator
+from eager_op_test import _set_use_system_allocator
 
 import paddle
 import paddle.fluid as fluid
