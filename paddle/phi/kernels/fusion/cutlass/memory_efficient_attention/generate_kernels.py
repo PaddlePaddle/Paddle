@@ -40,7 +40,7 @@ def convert_to_arch_list(arch):
     if arch == "all":
         return [50, 70, 75, 80]
 
-    arch = [int(s.strip()) for s in arch.split(' ') if s.strip()]
+    arch = [int(s.strip()) for s in arch.split(';') if s.strip()]
     arch = list(set(arch))
     arch.sort()
     for each_arch in arch:
