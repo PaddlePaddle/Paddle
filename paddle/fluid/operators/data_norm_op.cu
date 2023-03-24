@@ -267,9 +267,8 @@ class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(data_norm,
-                        ops::DataNormKernel<phi::GPUContext, float>,
-                        ops::DataNormKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(data_norm_grad,
-                        ops::DataNormGradKernel<phi::GPUContext, float>,
-                        ops::DataNormGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm, GPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm_grad, GPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}

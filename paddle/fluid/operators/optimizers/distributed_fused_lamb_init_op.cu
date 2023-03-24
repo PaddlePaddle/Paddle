@@ -790,6 +790,8 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb_init,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DistributedFusedLambInitOpKernel,
+                          float) {}

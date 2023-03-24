@@ -764,12 +764,11 @@ REGISTER_OPERATOR(data_norm,
                   ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
-REGISTER_OP_CPU_KERNEL(data_norm,
-                       ops::DataNormKernel<phi::CPUContext, float>,
-                       ops::DataNormKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(data_norm_grad,
-                       ops::DataNormGradKernel<phi::CPUContext, float>,
-                       ops::DataNormGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm, CPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm_grad, CPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}
+
 REGISTER_OP_VERSION(data_norm).AddCheckpoint(
     R"ROC(
               upgrad data_norm op by adding scale_w to support scale and shift.)ROC",

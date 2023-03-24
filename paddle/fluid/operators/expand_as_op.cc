@@ -144,27 +144,41 @@ REGISTER_OPERATOR(expand_as,
 REGISTER_OPERATOR(expand_as_grad,
                   ops::ExpandAsGradOp,
                   ops::ExpandAsGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(expand_as,
-                       ops::ExpandAsKernel<phi::CPUContext, float>,
-                       ops::ExpandAsKernel<phi::CPUContext, double>,
-                       ops::ExpandAsKernel<phi::CPUContext, int>,
-                       ops::ExpandAsKernel<phi::CPUContext, int64_t>,
-                       ops::ExpandAsKernel<phi::CPUContext, bool>);
-REGISTER_OP_CPU_KERNEL(expand_as_grad,
-                       ops::ExpandAsGradKernel<phi::CPUContext, int>,
-                       ops::ExpandAsGradKernel<phi::CPUContext, int64_t>,
-                       ops::ExpandAsGradKernel<phi::CPUContext, float>,
-                       ops::ExpandAsGradKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(expand_as,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          bool) {}
+PD_REGISTER_STRUCT_KERNEL(expand_as_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(expand_as,
-                        ops::ExpandAsKernel<phi::GPUContext, float>,
-                        ops::ExpandAsKernel<phi::GPUContext, double>,
-                        ops::ExpandAsKernel<phi::GPUContext, int>,
-                        ops::ExpandAsKernel<phi::GPUContext, int64_t>,
-                        ops::ExpandAsKernel<phi::GPUContext, bool>);
-REGISTER_OP_CUDA_KERNEL(expand_as_grad,
-                        ops::ExpandAsGradKernel<phi::GPUContext, int>,
-                        ops::ExpandAsGradKernel<phi::GPUContext, int64_t>,
-                        ops::ExpandAsGradKernel<phi::GPUContext, float>,
-                        ops::ExpandAsGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(expand_as,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          bool) {}
+PD_REGISTER_STRUCT_KERNEL(expand_as_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 #endif

@@ -348,7 +348,6 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 REGISTER_OPERATOR(
     deformable_psroi_pooling,
     ops::DeformablePSROIPoolOp,
@@ -357,9 +356,16 @@ REGISTER_OPERATOR(
     ops::DeformablePSROIPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(deformable_psroi_pooling_grad,
                   ops::DeformablePSROIPoolGradOp);
-REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling,
-                       ops::DeformablePSROIPoolCPUKernel<CPU, float>,
-                       ops::DeformablePSROIPoolCPUKernel<CPU, double>);
-REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling_grad,
-                       ops::DeformablePSROIPoolGradCPUKernel<CPU, float>,
-                       ops::DeformablePSROIPoolGradCPUKernel<CPU, double>);
+
+PD_REGISTER_STRUCT_KERNEL(deformable_psroi_pooling,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DeformablePSROIPoolCPUKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(deformable_psroi_pooling_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DeformablePSROIPoolGradCPUKernel,
+                          float,
+                          double) {}
