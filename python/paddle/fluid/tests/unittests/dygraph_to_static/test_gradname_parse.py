@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
-import collections
 import unittest
 
 import paddle
@@ -24,9 +22,9 @@ from paddle.nn import BatchNorm, Linear
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
-        self.linear0 = Linear(100,50)
-        self.linear1 = Linear(50,10)
+        super().__init__()
+        self.linear0 = Linear(100, 50)
+        self.linear1 = Linear(50, 10)
 
         param_attr0 = ParamAttr(name="aaaprefix_bn_scale")
         bias_attr0 = ParamAttr(name="aaaprefix_bn_offset")
@@ -43,12 +41,17 @@ class SimpleNet(paddle.nn.Layer):
         x = self.bn1(x)
         return x
 
+
 class TestGradNameParse(unittest.TestCase):
     def test_grad_name_parse(self):
         net = SimpleNet()
-        opt = paddle.optimizer.Adam(learning_rate=0.1, parameters=net.parameters(), weight_decay=paddle.regularizer.L1Decay(0.01))
+        opt = paddle.optimizer.Adam(
+            learning_rate=0.1,
+            parameters=net.parameters(),
+            weight_decay=paddle.regularizer.L1Decay(0.01),
+        )
         net = paddle.jit.to_static(net)
-        inp = paddle.rand([100,100], dtype="float32")
+        inp = paddle.rand([100, 100], dtype="float32")
         out = net(inp)
         loss = out.mean()
         loss.backward()
@@ -58,6 +61,7 @@ class TestGradNameParse(unittest.TestCase):
                 assert param.shape == param.grad.shape
 
         opt.minimize(loss)
+
 
 if __name__ == "__main__":
     unittest.main()
