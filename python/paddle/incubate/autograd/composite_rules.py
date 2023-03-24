@@ -570,6 +570,17 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     # original GroupNorm op cannot support NHWC format
     assert data_layout == 'NCHW'
     N, C, H, W = x.shape
+
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # when inputs are float16, convert to float32 in computing
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+        scale = cast(scale, "float32")
+        bias = cast(bias, "float32")
+
     x = reshape(x, (N * groups, -1))
     mean_ = mean(x, axis=1, keepdim=True)
     var_ = mean(x * x, axis=1, keepdim=True) - mean_ * mean_
@@ -583,5 +594,7 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
         out = out + reshape(bias, (-1, 1, 1))
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
-
+    # return output in float16, mean and var in float32
+    if is_amp:
+        out = cast(out, "float16")
     return out, ret_mean_, ret_var_

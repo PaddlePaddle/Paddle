@@ -569,7 +569,17 @@ def apply_to_static(net, use_cinn):
 
 # The original GroupNorm cannot support NHWC format
 @param.parameterized_class(
-    ('name', 'shape', 'epsilon', 'groups', 'data_format', 'places', 'dtype'),
+    (
+        'name',
+        'shape',
+        'epsilon',
+        'groups',
+        'data_format',
+        'places',
+        'dtype',
+        'threshold_list',
+        'special_threshold',
+    ),
     (
         (
             'test0',
@@ -579,6 +589,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'test1',
@@ -588,6 +603,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'test2',
@@ -597,6 +617,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'bigeps1',
@@ -606,6 +631,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'bigeps2',
@@ -615,6 +645,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'bigeps3',
@@ -624,6 +659,11 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
         (
             'largedata',
@@ -633,6 +673,14 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float32',
+            [
+                [5e-5, 5e-5, 5e-5],  # cpu thresholds for static, jit, jit_cinn
+                [1e-5, 1e-5, 1e-5],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [
+                5e-2,
+                5e-3,
+            ],  # threshold for cpu x_grad (5e-2), cpu scale_grad (5e-2) and gpu scale_grad (5e-3)
         ),
         (
             'test0_fp64',
@@ -642,6 +690,18 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [
+                5e-14,
+                2e-14,
+            ],  # threshold for cpu x_grad, cpu scale_grad and gpu scale_grad
         ),
         (
             'test1_fp64',
@@ -651,6 +711,18 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [
+                5e-14,
+                2e-14,
+            ],  # threshold for cpu x_grad, cpu scale_grad and gpu scale_grad
         ),
         (
             'test2_fp64',
@@ -660,6 +732,15 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [5e-14, 2e-14],  # threshold for scale_grad on cpu and gpu
         ),
         (
             'bigeps1_fp64',
@@ -669,6 +750,15 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [5e-14, 2e-14],  # threshold for scale_grad on cpu and gpu
         ),
         (
             'bigeps2_fp64',
@@ -678,6 +768,15 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [5e-14, 2e-14],  # threshold for scale_grad on cpu and gpu
         ),
         (
             'bigeps3_fp64',
@@ -687,6 +786,15 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [5e-14, 2e-14],  # threshold for scale_grad on cpu and gpu
         ),
         (
             'largedata_fp64',
@@ -696,6 +804,15 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float64',
+            [
+                [
+                    5e-14,
+                    5e-14,
+                    5e-14,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            [5e-11, 5e-12],  # threshold for scale_grad on cpu and gpu
         ),
         (
             'test0_fp16',
@@ -705,6 +822,8 @@ def apply_to_static(net, use_cinn):
             'NCHW',
             places,
             'float16',
+            [[1e-3, 1e-3, 1e-3]],  # gpu thresholds for static, jit, jit_cinn
+            None,
         ),
     ),
 )
@@ -730,26 +849,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
             self.places = []
             if paddle.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
-
-        self.threshold = {}
-        self.threshold['float32'] = []
-        self.threshold['float64'] = []
-        self.threshold['float16'] = []
-        self.threshold['float32'].append(
-            [5e-5, 5e-5, 5e-5]
-        )  # cpu threshold for static, jit and jit_cinn
-        self.threshold['float32'].append(
-            [1e-5, 1e-5, 1e-5]
-        )  # gpu threshold for static, jit and jit_cinn
-        self.threshold['float64'].append(
-            [5e-14, 5e-14, 5e-14]
-        )  # cpu threshold for static, jit and jit_cinn
-        self.threshold['float64'].append(
-            [1e-14, 1e-14, 1e-14]
-        )  # gpu threshold for static, jit and jit_cinn
-        self.threshold['float16'].append(
-            [5e-3, 5e-3, 5e-3]
-        )  # gpu threshold for static, jit and jit_cinn
 
         self.static_fwd_desire = []
         self.static_rev_desire = []
@@ -988,9 +1087,15 @@ class TestCompositeGroupNorm(unittest.TestCase):
             self.assertTrue(
                 'group_norm' not in [op.type for op in mps[i].block(0).ops]
             )
-            atol = self.threshold[self.dtype][i][0]
-            rtol = self.threshold[self.dtype][i][0]
+            atol = self.threshold_list[i][0]
+            rtol = self.threshold_list[i][0]
             for j in range(len(self.static_fwd_desire[i])):
+                # in float16 type, Y is float16, mean and var are float16
+                # so check mean and var with float32 gpu threshold
+                if self.dtype == 'float16' and j > 0:
+                    atol = 1e-5
+                    rtol = 1e-5
+
                 np.testing.assert_allclose(
                     self.static_fwd_desire[i][j],
                     fwd_actual[i][j],
@@ -1020,20 +1125,17 @@ class TestCompositeGroupNorm(unittest.TestCase):
             for j in range(len(self.static_rev_desire[i])):
                 # TODO: fix the diff between cpu and gpu grad is large in original op
                 # now use larger threshold when testing cpu grads to bypass cpu grad test
-                if isinstance(self.places[i], fluid.CPUPlace):
-                    atol = self.threshold[self.dtype][i][0] * 50
-                    rtol = self.threshold[self.dtype][i][0] * 50
-                # bypass the test of cpu scale_grad as the diff is too large
-                if j == 1:
-                    if self.dtype == 'float16':
-                        atol *= 10
-                        rtol *= 10
-                    else:
-                        atol *= 100
-                        rtol *= 100
+                if self.special_threshold is not None and j <= 1:
+                    atol = self.special_threshold[i]
+                    rtol = self.special_threshold[i]
+                else:
+                    atol = self.threshold_list[i][0]
+                    rtol = self.threshold_list[i][0]
+
                 max_abs_diff = np.max(
                     np.abs(self.static_rev_desire[i][j] - rev_actual[i][j])
                 )
+
                 print(
                     self.shape,
                     self.dtype,
@@ -1041,6 +1143,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     vars_name[j + 3],
                     max_abs_diff,
                 )
+
                 np.testing.assert_allclose(
                     self.static_rev_desire[i][j],
                     rev_actual[i][j],
@@ -1048,6 +1151,12 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     atol=atol,
                     err_msg=f"Check diff failed of place:{self.places[i]}, output: {vars_name[j + 3]}",
                 )
+
+            # TODO: fix the diff between cpu and gpu grad is large in original op
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None and i == 0:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
             # compare with eager_desire
             np.testing.assert_allclose(
                 self.rev_desire[i],
@@ -1093,8 +1202,8 @@ class TestCompositeGroupNorm(unittest.TestCase):
             rev_actual.append(grad[0].numpy())
 
         for i in range(len(self.places)):
-            atol = self.threshold[self.dtype][i][1]
-            rtol = self.threshold[self.dtype][i][1]
+            atol = self.threshold_list[i][1]
+            rtol = self.threshold_list[i][1]
             np.testing.assert_allclose(
                 self.fwd_desire[i],
                 fwd_actual[i],
@@ -1105,9 +1214,10 @@ class TestCompositeGroupNorm(unittest.TestCase):
 
             # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
-            if isinstance(self.places[i], fluid.CPUPlace):
-                atol *= 50
-                rtol *= 50
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+
             np.testing.assert_allclose(
                 self.rev_desire[i],
                 rev_actual[i],
@@ -1151,8 +1261,8 @@ class TestCompositeGroupNorm(unittest.TestCase):
             rev_actual.append(grad[0].numpy())
 
         for i in range(len(self.places)):
-            atol = self.threshold[self.dtype][i][2]
-            rtol = self.threshold[self.dtype][i][2]
+            atol = self.threshold_list[i][2]
+            rtol = self.threshold_list[i][2]
             np.testing.assert_allclose(
                 self.fwd_desire[i],
                 fwd_actual[i],
@@ -1162,9 +1272,9 @@ class TestCompositeGroupNorm(unittest.TestCase):
             )
             # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
-            if isinstance(self.places[i], fluid.CPUPlace):
-                atol *= 50
-                rtol *= 50
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
             np.testing.assert_allclose(
                 self.rev_desire[i],
                 rev_actual[i],
