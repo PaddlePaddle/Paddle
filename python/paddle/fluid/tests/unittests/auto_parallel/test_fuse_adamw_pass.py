@@ -28,7 +28,7 @@ def apply_passes(main_prog, startup_prog):
 
 class MLPLayer(nn.Layer):
     def __init__(self, input_size, hidden_size, output_size, n):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         self.linear_first = nn.Linear(input_size, hidden_size)
         self.decoder_layers = nn.LayerList()
         for i in range(n):
