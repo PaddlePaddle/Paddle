@@ -134,6 +134,7 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
 
 // handle inplace mechanism
 // Find out non-inplace output tensors.
+// TODO(HongyuJia): Add cache for inplace_tensor_map_ to optimize performance
 void CustomOpKernelContext::MapPlainOutputs(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,

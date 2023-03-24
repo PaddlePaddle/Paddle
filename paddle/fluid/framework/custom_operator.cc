@@ -268,15 +268,15 @@ static void RunKernelFunc(
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
-      PADDLE_ENFORCE(i == 0UL && outputs.size() == 1UL,
-                     platform::errors::PreconditionNotMet(
-                         "If custom operator's outputs contains `paddle::Vec("
-                         ")` type, "
-                         "it only can hold one output."));
+      PADDLE_ENFORCE(
+          !inplace_map.empty() || (i == 0UL && outputs.size() == 1UL),
+          phi::errors::PreconditionNotMet(
+              "If custom operator's outputs contains `paddle::Vec()` type "
+              "without setting InplaceMap, it only can hold one output."));
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
       PADDLE_ENFORCE_NE(vec_out.empty(),
                         true,
-                        platform::errors::NotFound(
+                        phi::errors::NotFound(
                             "Output vector<tensor> (%s) is empty.", out_name));
       std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
@@ -604,9 +604,14 @@ static void RunDefaultInferDtypeFunc(
             outputs.size(),
             inplace_map.size()));
     for (auto const& pair : inplace_map) {
+      VLOG(3) << "Custom Operator: InferDtype - inplace dtype: " << pair.first
+              << "->" << pair.second;
       if (detail::IsDuplicableVar(pair.first)) {
-        auto dtype = ctx->GetInputDataTypes(pair.first);
-        ctx->SetOutputDataTypes(pair.second, dtype);
+        size_t size = ctx->InputSize(pair.first);
+        for (size_t i = 0; i < size; ++i) {
+          auto dtype = ctx->GetInputDataType(pair.first, i);
+          ctx->SetOutputDataType(pair.second, dtype, i);
+        }
       } else {
         auto dtype = ctx->GetInputDataType(pair.first);
         ctx->SetOutputDataType(pair.second, dtype);
@@ -1257,6 +1262,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                             const AttributeMap& attrs) {
       return new CustomOperator(type, inputs, outputs, attrs);
     };
+
+    // Inplace
+    if (!grad_op_inplace_map.empty()) {
+      grad_info.infer_inplace_ = [grad_op_inplace_map](bool use_cuda) {
+        return grad_op_inplace_map;
+      };
+    }
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
