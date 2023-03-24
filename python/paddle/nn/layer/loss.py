@@ -2004,6 +2004,7 @@ class GaussianNLLLoss(Layer):
 
     Examples::
         .. code-block:: python
+
             import paddle
             import paddle.nn as nn
 

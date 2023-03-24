@@ -3937,6 +3937,7 @@ def gaussian_nll_loss(
 
     Examples::
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
 
