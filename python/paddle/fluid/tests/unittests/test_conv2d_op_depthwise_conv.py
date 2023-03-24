@@ -34,6 +34,32 @@ import paddle.fluid.core as core
 # ----------------TestDepthwiseConv -----
 
 
+def depthwise_conv2d_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    padding_algorithm="EXPLICIT",
+    groups=1,
+    dilation=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.depthwise_conv2d(
+        x,
+        weight,
+        stride,
+        padding,
+        padding_algorithm,
+        groups,
+        dilation,
+        data_format,
+    )
+
+
 class TestDepthwiseConv(TestConv2DOp):
     def init_test_case(self):
         self.use_cuda = True
@@ -45,6 +71,7 @@ class TestDepthwiseConv(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConv2(TestConv2DOp):
@@ -58,6 +85,7 @@ class TestDepthwiseConv2(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConv3(TestConv2DOp):
@@ -71,6 +99,7 @@ class TestDepthwiseConv3(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConvWithDilation(TestConv2DOp):
@@ -85,6 +114,7 @@ class TestDepthwiseConvWithDilation(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConvWithDilation2(TestConv2DOp):
@@ -99,6 +129,7 @@ class TestDepthwiseConvWithDilation2(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConvandFuse(TestConv2DOp):
@@ -113,6 +144,7 @@ class TestDepthwiseConvandFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConv2andFuse(TestConv2DOp):
@@ -127,6 +159,7 @@ class TestDepthwiseConv2andFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConv3andFuse(TestConv2DOp):
@@ -141,6 +174,7 @@ class TestDepthwiseConv3andFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConvWithDilationandFuse(TestConv2DOp):
@@ -156,6 +190,7 @@ class TestDepthwiseConvWithDilationandFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConvWithDilation2andFuse(TestConv2DOp):
@@ -171,6 +206,7 @@ class TestDepthwiseConvWithDilation2andFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
 
 class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
@@ -183,6 +219,7 @@ class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 1, 0, 1]
@@ -199,6 +236,7 @@ class TestDepthwiseConv2_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [0, 1, 0, 2]
@@ -215,6 +253,7 @@ class TestDepthwiseConv3_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 1, 0, 0]
@@ -233,6 +272,7 @@ class TestDepthwiseConvWithDilation_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 1, 2, 1]
@@ -251,6 +291,7 @@ class TestDepthwiseConvWithDilation2_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [0, 1, 1, 0]
@@ -269,6 +310,7 @@ class TestDepthwiseConvandFuse_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [2, 1, 2, 3]
@@ -287,6 +329,7 @@ class TestDepthwiseConv2andFuse_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 1, 1, 2]
@@ -305,6 +348,7 @@ class TestDepthwiseConv3andFuse_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 2, 0, 2]
@@ -324,6 +368,7 @@ class TestDepthwiseConvWithDilationandFuse_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [2, 1, 1, 0]
@@ -343,6 +388,7 @@ class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2DOp_v2):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        self.python_api = depthwise_conv2d_wrapper
 
     def init_paddings(self):
         self.pad = [1, 3, 1, 3]

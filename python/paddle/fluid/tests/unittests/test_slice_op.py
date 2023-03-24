@@ -161,176 +161,6 @@ class TestSliceOp_decs_dim(OpTest):
         )
 
 
-class TestSliceOpForEager(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-        }
-
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [1, 0, 2]
-        self.ends = [3, 3, 4]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1:3, 0:3, 2:4, :]
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
-
-class TestCase1ForEager(TestSliceOpForEager):
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-3, 0, 2]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[-3:3, 0:100, 2:-1, :]
-
-
-class TestCase2ForEager(TestSliceOpForEager):
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-3, 0, 2]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[-3:3, 0:100, :, 2:-1]
-
-
-class TestSliceZerosShapeTensorForEager(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
-        }
-
-    def config(self):
-        self.input = np.random.random([0, 0, 0]).astype("float32")
-        self.starts = [1]
-        self.ends = [2]
-        self.axes = [0]
-        self.infer_flags = []
-        self.out = self.input[1:2]
-
-    def test_check_output(self):
-        self.check_output_with_place(paddle.CPUPlace())
-
-
-# 1.2 with attr(decrease)
-class TestSliceOp_decs_dimForEager(OpTest):
-    def setUp(self):
-        self.enable_cinn = True
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-            'decrease_axis': self.decrease_axis,
-        }
-
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [1, 0, 2]
-        self.ends = [2, 3, 4]
-        self.axes = [0, 1, 2]
-        self.decrease_axis = [0]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1, 0:3, 2:4, :]
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
-
-class TestSliceOp_decs_dim_2ForEager(TestSliceOp_decs_dimForEager):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [1, 0, 2]
-        self.ends = [2, 1, 4]
-        self.axes = [0, 1, 2]
-        self.decrease_axis = [0, 1]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1, 0, 2:4, :]
-
-
-class TestSliceOp_decs_dim_3ForEager(TestSliceOp_decs_dimForEager):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-1, 0, 2]
-        self.ends = [1000000, 1, 4]
-        self.axes = [0, 1, 2]
-        self.decrease_axis = [0, 1]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[-1, 0, 2:4, :]
-
-
-class TestSliceOp_decs_dim_4ForEager(TestSliceOp_decs_dimForEager):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 7]).astype("float64")
-        self.starts = [0, 1, 2, 3]
-        self.ends = [1, 2, 3, 4]
-        self.axes = [0, 1, 2, 3]
-        self.decrease_axis = [0, 1, 2, 3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[0, 1, 2, 3:4]
-
-
-class TestSliceOp_decs_dim_5ForEager(TestSliceOp_decs_dimForEager):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-1]
-        self.ends = [1000000]
-        self.axes = [3]
-        self.decrease_axis = [3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[:, :, :, -1]
-
-
-# test_6 with test_2 with test_3
-class TestSliceOp_decs_dim_6ForEager(TestSliceOp_decs_dimForEager):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [0, 1, 2, 3]
-        self.ends = [1, 2, 3, 4]
-        self.axes = [0, 1, 2, 3]
-        self.decrease_axis = [0, 1, 2, 3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[0, 1, 2, 3:4]
-
-
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
 # without attr(decrease)
 class TestSliceOp_starts_ListTensor(OpTest):
@@ -628,45 +458,6 @@ class TestFP16(OpTest):
             )
 
 
-class TestFP16ForEager(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-        }
-
-    def config(self):
-        self.dtype = "float16"
-        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-        self.starts = [-3, 0, 2]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 3]
-        self.out = self.input[-3:3, 0:100, :, 2:-1]
-        self.infer_flags = [1, 1, 1]
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place)
-
-    def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        print("core:", core.is_float16_supported(place))
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place,
-                ['Input'],
-                'Out',
-            )
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -718,79 +509,6 @@ class TestBF16(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.public_python_api = paddle.slice
-        self.config()
-        self.inputs = {'Input': convert_float_to_uint16(self.input)}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-        }
-
-    def config(self):
-        self.dtype = np.uint16
-        self.input = np.random.random([3, 4, 5, 6]).astype(np.float32)
-        self.starts = [-3, 0, 2]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 3]
-        self.out = self.input[-3:3, 0:100, :, 2:-1]
-        self.infer_flags = [1, 1, 1]
-
-    def test_check_output(self):
-        self.check_output()
-
-    # pad not support bfloat16, so we can't test prim.
-    def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out')
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestFP16_2ForEager(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags,
-        }
-
-    def config(self):
-        self.dtype = "float16"
-        self.input = np.random.random([3, 4, 10]).astype(self.dtype)
-        self.starts = [0]
-        self.ends = [1]
-        self.axes = [1]
-        self.out = self.input[:, 0:1, :]
-        self.infer_flags = [1]
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place)
-
-    def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place,
-                ['Input'],
-                'Out',
-                numeric_grad_delta=0.5,
-            )
-
-
-class TestBF16ForEager(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.python_api = slice_wrapper
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -996,10 +714,10 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     value_int64 = paddle.tensor.fill_constant(
                         [1], "int64", 2147483648
                     )
-                self.sliced_arr = slice_arr = arr[self.start : value_int64]
-                output, _ = tensor_array_to_tensor(
-                    slice_arr, axis=self.axis, use_stack=True
-                )
+                    self.sliced_arr = slice_arr = arr[self.start : value_int64]
+                    output, _ = tensor_array_to_tensor(
+                        slice_arr, axis=self.axis, use_stack=True
+                    )
 
                 loss = paddle.sum(output)
                 fluid.backward.append_backward(loss)
@@ -1016,18 +734,15 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                 )
 
     def test_case_1(self):
-        with paddle_static_guard():
-            main_program = fluid.Program()
-            self.set_program_and_run(main_program, 1)
+        main_program = fluid.Program()
+        self.set_program_and_run(main_program, 1)
 
-            self.assertTrue(
-                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR
-            )
-            self.assertEqual(self.sliced_arr.shape, self.shape)
-            np.testing.assert_array_equal(self.out, self.data)
-            np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-            np.testing.assert_array_equal(self.g_x1, np.zeros_like(self.data))
-            np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
+        self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
+        np.testing.assert_array_equal(self.out, self.data)
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.zeros_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_2(self):
         with paddle_static_guard():

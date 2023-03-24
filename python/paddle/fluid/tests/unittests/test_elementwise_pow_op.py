@@ -351,12 +351,12 @@ class TestElementwisePowBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output()
         else:
-            self.check_output(check_eager=True)
+            self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == '__main__':
