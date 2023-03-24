@@ -147,7 +147,14 @@ def train(to_static, enable_prim, enable_cinn):
 class TestBert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ[
+            'FLAGS_deny_cinn_ops'
+        ] = 'dropout;gaussian_random;uniform_random'
         download(URL, MODULE_NAME, MD5SUM, SAVE_NAME)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.environ.pop('FLAGS_deny_cinn_ops')
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),

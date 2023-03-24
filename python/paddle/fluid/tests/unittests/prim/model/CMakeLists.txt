@@ -13,8 +13,5 @@ set_tests_properties(test_bert_prim_cinn PROPERTIES TIMEOUT 500)
 
 if(WITH_CINN)
   set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
-  set_tests_properties(
-    test_bert_prim_cinn
-    PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-               FLAGS_deny_cinn_ops="dropout;gaussian_random;uniform_random")
+  set_tests_properties(test_bert_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
