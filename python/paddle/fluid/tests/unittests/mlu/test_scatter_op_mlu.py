@@ -20,7 +20,7 @@ import numpy as np
 import os
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -32,7 +32,6 @@ class TestScatterOp(OpTest):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.scatter
         ref_np = np.ones((3, 50)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 50)).astype("float32")
@@ -42,10 +41,10 @@ class TestScatterOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out")
 
 
 class TestScatterOp0(OpTest):
@@ -53,7 +52,6 @@ class TestScatterOp0(OpTest):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -64,10 +62,10 @@ class TestScatterOp0(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out")
 
 
 class TestScatterOp1(OpTest):
@@ -75,7 +73,6 @@ class TestScatterOp1(OpTest):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         zeros_np = np.zeros([2, 3]).astype('float32')
         index_np = np.array([1, 1]).astype("int32")
@@ -89,10 +86,10 @@ class TestScatterOp1(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out")
 
 
 class TestScatterOp2(OpTest):
@@ -100,7 +97,6 @@ class TestScatterOp2(OpTest):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int64")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -110,10 +106,10 @@ class TestScatterOp2(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 class TestScatterAPI(unittest.TestCase):
@@ -230,7 +226,6 @@ class TestScatterOpFp16(OpTest):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float16")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float16")
@@ -241,10 +236,10 @@ class TestScatterOpFp16(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out")
 
 
 class TestScatterInplaceAPI(TestScatterAPI):
