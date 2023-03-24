@@ -910,6 +910,7 @@
     param: [out]
   kernel :
     func : log_softmax_grad
+    data_type : out_grad
 
 - backward_op : logit_grad
   forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)

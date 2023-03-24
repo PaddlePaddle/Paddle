@@ -941,6 +941,7 @@
     func : UnchangedInferMetaCheckAxis
   kernel :
     func : log_softmax
+    data_type : x
   backward : log_softmax_grad
 
 - op : logit
