@@ -79,9 +79,7 @@ class TestSpaceToDepthOp(OpTest):
             if fluid.core.is_compiled_with_cuda()
             else fluid.core.CPUPlace()
         )
-        self.check_output_with_place(
-            place=place, atol=1e-5, no_check_set=None, equal_nan=False
-        )
+        self.check_output_with_place(place, 1e-5, None, False)
 
     def test_check_grad(self):
         place = (

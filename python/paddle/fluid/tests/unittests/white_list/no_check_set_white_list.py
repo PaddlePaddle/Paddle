@@ -38,5 +38,4 @@ no_check_set_white_list = [
     'einsum',
     'rmsprop',
     'rrelu',
-    'layer_norm',
 ]

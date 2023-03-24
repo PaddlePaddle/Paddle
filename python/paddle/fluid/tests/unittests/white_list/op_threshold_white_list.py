@@ -52,11 +52,9 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'cholesky_solve',
     'solve',
     'qr',
-    'layer_norm',
 ]
 
 NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = [
     'bilinear_interp',
     'bilinear_interp_v2',
-    'layer_norm',
 ]
