@@ -96,26 +96,19 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             << ", activation=" << activation << ", fused_type=" << fused_type
             << ", reserve_space=" << reserve_space;
 
-    auto fused_impl =
-        phi::funcs::MatmulPlanner(vectorize(x->dims()),
-                                  vectorize(y->dims()),
-                                  trans_x,
-                                  trans_y,
-                                  phi::CppTypeToDataType<T>::Type(),
-                                  fused_type,
-                                  static_cast<const void*>(bias->data<T>()),
-                                  reserve_data);
-
-    phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
-                                           x->data<T>(),
-                                           y->data<T>(),
-                                           out->data<T>(),
-                                           M,
-                                           N,
-                                           K,
-                                           trans_x,
-                                           trans_y,
-                                           &fused_impl);
+    phi::funcs::LinearWithCublasLt<T>::Run(
+        dev_ctx,
+        x,
+        y,
+        out,
+        static_cast<const void*>(bias->data<T>()),
+        reserve_data,
+        M,
+        N,
+        K,
+        trans_x,
+        trans_y,
+        fused_type);
   }
 };
 
