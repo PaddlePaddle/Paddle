@@ -981,6 +981,17 @@
     func : maxout
   backward : maxout_grad
 
+- op : memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test)
+  output : Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
+  infer_meta :
+    func : MemoryEfficientAttentionInferMeta
+  kernel :
+    func : memory_efficient_attention
+    data_type : query
+  optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
+  backward : memory_efficient_attention_grad
+
 - op : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
