@@ -278,6 +278,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         for mapping in ids_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
+
+        if is_dim_shard(ids_dims_mapping[0]) and is_dim_shard(
+            w_dims_mapping[-2]
+        ):
+            if ids_dims_mapping[0] == w_dims_mapping[-2]:
+                return False
         return True
 
     def is_output_compatible(self, dist_op):

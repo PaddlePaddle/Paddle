@@ -26,6 +26,7 @@ from paddle.fluid.tests.unittests.test_softmax_op import (
     TestSoftmaxOp4,
     TestSoftmaxOp5,
     TestSoftmaxOp6,
+    TestSoftmaxOp_ZeroDim1,
 )
 
 
@@ -95,26 +96,38 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        # oneDNN doesn't support float64 dtype
+        self.dtype = np.float32
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
+
+
+class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.dtype = np.float32
 
 
 # Check if primitives already exist in backward

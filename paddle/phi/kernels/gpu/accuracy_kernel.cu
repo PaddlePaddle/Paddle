@@ -20,6 +20,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -34,6 +36,7 @@ __global__ void AccuracyCudaKernel(const int N,
                                    int* correct_data,
                                    T* accuracy,
                                    int* total_data) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int count = 0;
   __shared__ int total[BlockSize];
 
@@ -64,7 +67,7 @@ __global__ void AccuracyCudaKernel(const int N,
 #endif
   if (threadIdx.x == 0) {
     *correct_data = result;
-    *accuracy = static_cast<T>(result) / static_cast<T>(N);
+    *accuracy = static_cast<T>(static_cast<MT>(result) / static_cast<MT>(N));
     *total_data = N;
   }
 }
@@ -136,6 +139,7 @@ PD_REGISTER_KERNEL(accuracy,
                    ALL_LAYOUT,
                    phi::AccuracyRawKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);
