@@ -541,8 +541,8 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices();
     paddle::framework::InitMemoryMethod();
+    paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
