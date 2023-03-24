@@ -23,6 +23,90 @@ import paddle.fluid.core as core
 from paddle.nn.functional import interpolate
 
 
+def create_test_case0(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [2, 3, 5, 5]
+    self.out_h = 2
+    self.out_w = 2
+    self.scale = []
+    self.out_size = np.array([3, 3]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case1(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [4, 1, 7, 8]
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case2(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case3(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case4(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [4, 1, 7, 8]
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.out_size = np.array([2, 2]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case5(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.out_size = np.array([11, 11]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case6(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.out_size = np.array([65, 33]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case7(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = [2.0, 0.5]
+    self.align_corners = False
+    self.align_mode = 1
+
+
 def bilinear_interp_test(
     x,
     OutSize=None,
@@ -226,94 +310,42 @@ class TestBilinearInterpOp(OpTest):
         self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 5, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
 
 
 class TestBilinearInterpCase2(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
 
 
 class TestBilinearInterpCase3(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
 
 
 class TestBilinearInterpCase4(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.out_size = np.array([65, 33]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
 
 
 class TestBilinearInterpCase7(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = [2.0, 0.5]
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case7(self)
 
 
 class TestBilinearInterpSame(TestBilinearInterpOp):
@@ -360,101 +392,49 @@ class TestBilinearInterpOpFP16(TestBilinearInterpOp):
         self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
 
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 5, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase1FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase2FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase3FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase4FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = 0.0
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase5FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = 0.0
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase6FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = 0.0
-        self.out_size = np.array([65, 33]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
         self.dtype = np.float16
 
 
 class TestBilinearInterpCase7FP16(TestBilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = [2.0, 0.5]
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case7(self)
         self.dtype = np.float16
 
 
@@ -539,14 +519,7 @@ class TestBilinearInterpOpBF16(OpTest):
         self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
 
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 5, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 @unittest.skipIf(
@@ -556,13 +529,7 @@ class TestBilinearInterpOpBF16(OpTest):
 )
 class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
 
 
 @unittest.skipIf(
@@ -572,13 +539,7 @@ class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
 
 
 @unittest.skipIf(
@@ -588,13 +549,7 @@ class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = 0.0
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
 
 
 @unittest.skipIf(
@@ -604,14 +559,7 @@ class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = 0.0
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
 
 
 @unittest.skipIf(
@@ -621,14 +569,7 @@ class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = 0.0
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
 
 
 @unittest.skipIf(
@@ -638,14 +579,7 @@ class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = 0.0
-        self.out_size = np.array([65, 33]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
 
 
 @unittest.skipIf(
@@ -655,13 +589,7 @@ class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
 )
 class TestBilinearInterpCase7BF16(TestBilinearInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = [2.0, 0.5]
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case7(self)
 
 
 class TestBilinearInterpOpUint8(OpTest):

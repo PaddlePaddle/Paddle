@@ -25,6 +25,74 @@ from paddle.nn.functional import interpolate
 paddle.enable_static()
 
 
+def create_test_case0(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [2, 3, 4, 5]
+    self.out_h = 2
+    self.out_w = 2
+    self.scale = []
+    self.out_size = np.array([3, 3]).astype("int32")
+    self.align_corners = True
+
+
+def create_test_case1(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [4, 1, 1, 7, 8]
+    self.out_d = 1
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.align_corners = True
+
+
+def create_test_case2(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.align_corners = True
+
+
+def create_test_case3(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.align_corners = True
+
+
+def create_test_case4(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [4, 1, 7, 8]
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.out_size = np.array([2, 2]).astype("int32")
+    self.align_corners = True
+
+
+def create_test_case5(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.out_size = np.array([11, 11]).astype("int32")
+    self.align_corners = True
+
+
+def create_test_case6(self):
+    self.interp_method = 'nearest'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.out_size = np.array([65, 129]).astype("int32")
+    self.align_corners = True
+
+
 def nearest_interp_test(
     x,
     OutSize=None,
@@ -321,77 +389,37 @@ class TestNearestInterpOp(OpTest):
         self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
+        create_test_case0(self)
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 1, 7, 8]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
+        create_test_case1(self)
 
 
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
+        create_test_case2(self)
 
 
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.align_corners = True
+        create_test_case3(self)
 
 
 class TestNearestNeighborInterpCase4(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
+        create_test_case4(self)
 
 
 class TestNearestNeighborInterpCase5(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
+        create_test_case5(self)
 
 
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.out_size = np.array([65, 129]).astype("int32")
-        self.align_corners = True
+        create_test_case6(self)
 
 
 class TestNearestNeighborInterpSame(TestNearestInterpOp):
@@ -417,95 +445,55 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
 
 class TestNearestInterpOpFP16(TestNearestInterpOp):
     def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-3)
+        self.check_output(check_dygraph=True, atol=1e-3)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             in_place=True,
-            check_eager=True,
+            check_dygraph=True,
             max_relative_error=1e-2,
         )
 
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
+        create_test_case0(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase1FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 1, 7, 8]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
+        create_test_case1(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase2FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
+        create_test_case2(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase3FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.align_corners = True
+        create_test_case3(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase4FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
+        create_test_case4(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase5FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
+        create_test_case5(self)
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase6FP16(TestNearestInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.out_size = np.array([65, 129]).astype("int32")
-        self.align_corners = True
+        create_test_case6(self)
         self.dtype = np.float16
 
 
@@ -627,36 +615,24 @@ class TestNearestInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-2)
+        self.check_output(check_dygraph=True, atol=1e-2)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             in_place=True,
-            check_eager=True,
+            check_dygraph=True,
             max_relative_error=1e-2,
         )
 
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
+        create_test_case0(self)
 
 
 class TestNearestNeighborInterpCase1BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 1, 7, 8]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
+        create_test_case1(self)
 
 
 @unittest.skipIf(
@@ -666,12 +642,7 @@ class TestNearestNeighborInterpCase1BF16(TestNearestInterpOpBF16):
 )
 class TestNearestNeighborInterpCase2BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
+        create_test_case2(self)
 
 
 @unittest.skipIf(
@@ -681,12 +652,7 @@ class TestNearestNeighborInterpCase2BF16(TestNearestInterpOpBF16):
 )
 class TestNearestNeighborInterpCase3BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.align_corners = True
+        create_test_case3(self)
 
 
 @unittest.skipIf(
@@ -696,13 +662,7 @@ class TestNearestNeighborInterpCase3BF16(TestNearestInterpOpBF16):
 )
 class TestNearestNeighborInterpCase4BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
+        create_test_case4(self)
 
 
 @unittest.skipIf(
@@ -712,13 +672,7 @@ class TestNearestNeighborInterpCase4BF16(TestNearestInterpOpBF16):
 )
 class TestNearestNeighborInterpCase5BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
+        create_test_case5(self)
 
 
 @unittest.skipIf(
@@ -728,13 +682,7 @@ class TestNearestNeighborInterpCase5BF16(TestNearestInterpOpBF16):
 )
 class TestNearestNeighborInterpCase6BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.out_size = np.array([65, 129]).astype("int32")
-        self.align_corners = True
+        create_test_case6(self)
 
 
 class TestNearestNeighborInterpDataLayout(TestNearestInterpOp):

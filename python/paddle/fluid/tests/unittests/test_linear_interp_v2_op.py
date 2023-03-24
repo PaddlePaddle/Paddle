@@ -25,6 +25,20 @@ from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
 
 
+def create_test_case0(self):
+    self.interp_method = 'linear'
+    self.input_shape = [1, 3, 100]
+    self.out_w = 50
+    self.scale = 0.5
+    self.out_size = np.array(
+        [
+            50,
+        ]
+    ).astype("int32")
+    self.align_corners = False
+    self.align_mode = 1
+
+
 def linear_interp_test(
     x,
     OutSize=None,
@@ -187,17 +201,7 @@ class TestLinearInterpOp(OpTest):
         self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'linear'
-        self.input_shape = [1, 3, 100]
-        self.out_w = 50
-        self.scale = 0.5
-        self.out_size = np.array(
-            [
-                50,
-            ]
-        ).astype("int32")
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 class TestLinearInterpOpDataLayout(TestLinearInterpOp):
@@ -348,17 +352,7 @@ class TestLinearInterpOpFP16(TestLinearInterpOp):
         )
 
     def init_test_case(self):
-        self.interp_method = 'linear'
-        self.input_shape = [1, 3, 100]
-        self.out_w = 50
-        self.scale = 0.5
-        self.out_size = np.array(
-            [
-                50,
-            ]
-        ).astype("int32")
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case0(self)
         self.dtype = np.float16
 
 
@@ -433,17 +427,7 @@ class TestLinearInterpOpBF16(OpTest):
         )
 
     def init_test_case(self):
-        self.interp_method = 'linear'
-        self.input_shape = [1, 3, 100]
-        self.out_w = 50
-        self.scale = 0.5
-        self.out_size = np.array(
-            [
-                50,
-            ]
-        ).astype("int32")
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 class TestResizeLinearOpUint8(OpTest):

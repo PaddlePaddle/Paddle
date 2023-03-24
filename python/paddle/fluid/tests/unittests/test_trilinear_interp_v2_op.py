@@ -25,6 +25,87 @@ from paddle.nn.functional import interpolate
 np.random.seed(123)
 
 
+def create_test_case0(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [2, 3, 4, 4, 4]
+    self.out_d = 2
+    self.out_h = 2
+    self.out_w = 2
+    self.scale = []
+    self.out_size = np.array([3, 3, 3]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case1(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [2, 1, 7, 8, 9]
+    self.out_d = 1
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case2(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [2, 3, 9, 6, 8]
+    self.out_d = 12
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case3(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [3, 2, 16, 8, 4]
+    self.out_d = 32
+    self.out_h = 16
+    self.out_w = 8
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case4(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [4, 1, 7, 8, 9]
+    self.out_d = 1
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.out_size = np.array([2, 2, 2]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case5(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [3, 3, 9, 6, 8]
+    self.out_d = 12
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.out_size = np.array([11, 11, 11]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case6(self):
+    self.interp_method = 'trilinear'
+    self.input_shape = [1, 1, 16, 8, 4]
+    self.out_d = 8
+    self.out_h = 32
+    self.out_w = 16
+    self.scale = []
+    self.out_size = np.array([17, 9, 5]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
 def trilinear_interp_test(
     x,
     OutSize=None,
@@ -288,90 +369,37 @@ class TestTrilinearInterpOp(OpTest):
         self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 4, 4, 4]
-        self.out_d = 2
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 class TestTrilinearInterpCase1(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
 
 
 class TestTrilinearInterpCase2(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
 
 
 class TestTrilinearInterpCase3(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 2, 16, 8, 4]
-        self.out_d = 32
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
 
 
 class TestTrilinearInterpCase4(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [4, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
 
 
 class TestTrilinearInterpCase5(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
 
 
 class TestTrilinearInterpCase6(TestTrilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [1, 1, 16, 8, 4]
-        self.out_d = 8
-        self.out_h = 32
-        self.out_w = 16
-        self.scale = []
-        self.out_size = np.array([17, 9, 5]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
 
 
 class TestTrilinearInterpSame(TestTrilinearInterpOp):
@@ -439,96 +467,43 @@ class TestTrilinearInterpOpFP16(TestTrilinearInterpOp):
         )
 
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 4, 4, 4]
-        self.out_d = 2
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase1FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase2FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase3FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 2, 16, 8, 4]
-        self.out_d = 32
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase4FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [4, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase5FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
         self.dtype = np.float16
 
 
 class TestTrilinearInterpCase6FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [1, 1, 16, 8, 4]
-        self.out_d = 8
-        self.out_h = 32
-        self.out_w = 16
-        self.scale = []
-        self.out_size = np.array([17, 9, 5]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
         self.dtype = np.float16
 
 
@@ -638,15 +613,7 @@ class TestNearestInterpOpBF16(OpTest):
         )
 
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 4, 4, 4]
-        self.out_d = 2
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 @unittest.skipIf(
@@ -656,14 +623,7 @@ class TestNearestInterpOpBF16(OpTest):
 )
 class TestTrilinearInterpCase1BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
 
 
 @unittest.skipIf(
@@ -673,14 +633,7 @@ class TestTrilinearInterpCase1BF16(TestNearestInterpOpBF16):
 )
 class TestTrilinearInterpCase2BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
 
 
 @unittest.skipIf(
@@ -690,14 +643,7 @@ class TestTrilinearInterpCase2BF16(TestNearestInterpOpBF16):
 )
 class TestTrilinearInterpCase3BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 2, 16, 8, 4]
-        self.out_d = 32
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
 
 
 @unittest.skipIf(
@@ -707,15 +653,7 @@ class TestTrilinearInterpCase3BF16(TestNearestInterpOpBF16):
 )
 class TestTrilinearInterpCase4BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [4, 1, 7, 8, 9]
-        self.out_d = 1
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
 
 
 @unittest.skipIf(
@@ -725,15 +663,7 @@ class TestTrilinearInterpCase4BF16(TestNearestInterpOpBF16):
 )
 class TestTrilinearInterpCase5BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 3, 9, 6, 8]
-        self.out_d = 12
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
 
 
 @unittest.skipIf(
@@ -743,15 +673,7 @@ class TestTrilinearInterpCase5BF16(TestNearestInterpOpBF16):
 )
 class TestTrilinearInterpCase6BF16(TestNearestInterpOpBF16):
     def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [1, 1, 16, 8, 4]
-        self.out_d = 8
-        self.out_h = 32
-        self.out_w = 16
-        self.scale = []
-        self.out_size = np.array([17, 9, 5]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
 
 
 class TestTrilinearInterpOpUint8(OpTest):
