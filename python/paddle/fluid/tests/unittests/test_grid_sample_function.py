@@ -50,8 +50,10 @@ class GridSampleTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("x", self.x_shape, dtype=self.dtype)
-                grid = fluid.data("grid", self.grid_shape, dtype=self.dtype)
+                x = paddle.static.data("x", self.x_shape, dtype=self.dtype)
+                grid = paddle.static.data(
+                    "grid", self.grid_shape, dtype=self.dtype
+                )
                 y_var = F.grid_sample(
                     x,
                     grid,

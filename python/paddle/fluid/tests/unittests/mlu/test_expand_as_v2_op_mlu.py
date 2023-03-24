@@ -17,7 +17,7 @@ import sys
 
 sys.path.append('..')
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle.fluid as fluid
 import paddle
 
@@ -29,7 +29,6 @@ def test_class1(op_type, typename):
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
-            self.python_api = paddle.expand_as
             x = np.random.rand(100).astype(typename)
             target_tensor = np.random.rand(2, 100).astype(typename)
             self.inputs = {'X': x}
@@ -56,7 +55,6 @@ def test_class2(op_type, typename):
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
-            self.python_api = paddle.expand_as
             x = np.random.rand(10, 12).astype(typename)
             target_tensor = np.random.rand(10, 12).astype(typename)
             self.inputs = {'X': x}
@@ -83,7 +81,6 @@ def test_class3(op_type, typename):
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
-            self.python_api = paddle.expand_as
             x = np.random.rand(2, 3, 20).astype(typename)
             target_tensor = np.random.rand(2, 3, 20).astype(typename)
             self.inputs = {'X': x}
@@ -110,7 +107,6 @@ def test_class4(op_type, typename):
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
-            self.python_api = paddle.expand_as
             x = np.random.rand(1, 1, 7, 16).astype(typename)
             target_tensor = np.random.rand(4, 6, 7, 16).astype(typename)
             self.inputs = {'X': x}

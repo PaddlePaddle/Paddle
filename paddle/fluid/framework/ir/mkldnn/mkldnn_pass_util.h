@@ -25,7 +25,7 @@ namespace ir {
 using StringPairMap =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
-static void SaveInfoInTheFirstOp(
+static void SaveInfoInTheTmpOp(
     ir::Graph* graph,
     const std::string& flag,
     const std::string& key_suffix,
@@ -33,48 +33,39 @@ static void SaveInfoInTheFirstOp(
   VLOG(3) << "save variables in the first op's attr";
 
   const std::string suffix = "_" + key_suffix + "_" + flag;
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch" ||
-        op_node->Op()->Type() == "fill_constant")
-      continue;
+  OpDesc op_desc;
+  op_desc.SetType("save");
+  auto* op_node = graph->CreateOpNode(&op_desc);
 
-    op_node->Op()->SetAttr(flag, true);
-    for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-      op_node->Op()->SetAttr(iter->first + suffix, iter->second);
-    }
-    break;
+  op_node->Op()->SetAttr(flag, true);
+  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
+    op_node->Op()->SetAttr(iter->first + suffix, iter->second);
   }
 }
 
-static void SaveInfoInTheFirstOp(ir::Graph* graph,
-                                 const std::string& flag,
-                                 const std::string& key_suffix,
-                                 const StringPairMap& info_map) {
+static void SaveInfoInTheTmpOp(ir::Graph* graph,
+                               const std::string& flag,
+                               const std::string& key_suffix,
+                               const StringPairMap& info_map) {
   VLOG(3) << "save variables in the first op's attr";
 
   const std::string suffix = "_" + key_suffix + "_" + flag;
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch" ||
-        op_node->Op()->Type() == "fill_constant")
-      continue;
 
-    op_node->Op()->SetAttr(flag, true);
-    for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-      auto* data = iter->second.second.data<float>();
-      std::vector<float> data_v(data, data + iter->second.second.numel());
-      op_node->Op()->SetAttr(iter->first + suffix + "_unsigned",
-                             iter->second.first);
-      op_node->Op()->SetAttr(iter->first + suffix, data_v);
-    }
-    break;
+  OpDesc op_desc;
+  op_desc.SetType("save");
+  auto* op_node = graph->CreateOpNode(&op_desc);
+
+  op_node->Op()->SetAttr(flag, true);
+  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
+    auto* data = iter->second.second.data<float>();
+    std::vector<float> data_v(data, data + iter->second.second.numel());
+    op_node->Op()->SetAttr(iter->first + suffix + "_unsigned",
+                           iter->second.first);
+    op_node->Op()->SetAttr(iter->first + suffix, data_v);
   }
 }
 
-static void GetInfoFromTheFirstOp(
+static void GetInfoFromTheTmpOp(
     ir::Graph* graph,
     const std::string& flag,
     const std::string& key_suffix,
@@ -84,9 +75,7 @@ static void GetInfoFromTheFirstOp(
   const std::string suffix = "_" + key_suffix + "_" + flag;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
-      continue;
+    if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
 
     auto* op_desc = op_node->Op();
     if (op_desc->GetAttrIfExists<bool>(flag)) {
@@ -102,24 +91,23 @@ static void GetInfoFromTheFirstOp(
           op_desc->RemoveAttr(fake_name);
         }
       }
+      graph->RemoveNode(op_node);
       break;
     }
   }
 }
 
-static void GetInfoFromTheFirstOp(ir::Graph* graph,
-                                  const std::string& flag,
-                                  const std::string& key_suffix,
-                                  StringPairMap* info_map) {
+static void GetInfoFromTheTmpOp(ir::Graph* graph,
+                                const std::string& flag,
+                                const std::string& key_suffix,
+                                StringPairMap* info_map) {
   VLOG(3) << "get variables from the first op's attr";
   const std::string unsigned_flag = "_unsigned";
   const std::string suffix = "_" + key_suffix + "_" + flag;
   const std::string suffix_is_unsigned = suffix + unsigned_flag;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
-      continue;
+    if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
 
     auto* op_desc = op_node->Op();
     if (op_desc->GetAttrIfExists<bool>(flag)) {
@@ -150,6 +138,7 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
           op_desc->RemoveAttr(vector_name);
         }
       }
+      graph->RemoveNode(op_node);
       break;
     }
   }
@@ -161,7 +150,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
       {"depthwise_conv2d", "fused_conv2d"},
       {"matmul", "fused_matmul"},
       {"matmul_v2", "fused_matmul"},
-      {"softplus", "fused_softplus"}};
+      {"softplus", "fused_softplus"},
+      {"transpose2", "fused_transpose"}};
 
   if (op->Type() == "matmul") {
     op->SetAttr("trans_x", op->GetAttr("transpose_X"));
@@ -173,6 +163,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
   if (it != fused_ops.end()) {
     op->SetType(it->second);
     VLOG(3) << "Converted " << it->first << " to " << it->second;
+  } else {
+    VLOG(3) << "Fused op for " << op->Type() << " is not implemented yet.";
   }
 }
 

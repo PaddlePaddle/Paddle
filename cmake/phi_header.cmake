@@ -51,3 +51,6 @@ phi_header_path_compat(
 file(RENAME
      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h)
+# Included header file of training and inference can be unified as single file: paddle/extension.h
+file(COPY ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h
+     DESTINATION ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/extension.h)

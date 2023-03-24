@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
+from eager_op_test import OpTest
 
 paddle.enable_static()
 
@@ -30,7 +30,6 @@ class TestClipOp(OpTest):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
         self.max_relative_error = 0.006
-        self.python_api = paddle.clip
 
         self.inputs = {}
         self.initTestCase()

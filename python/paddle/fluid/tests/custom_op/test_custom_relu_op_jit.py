@@ -17,7 +17,13 @@ import unittest
 
 import numpy as np
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
-from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import (
+    IS_MAC,
+    extra_cc_args,
+    extra_nvcc_args,
+    paddle_includes,
+    paddle_libraries,
+)
 
 import paddle
 from paddle.utils.cpp_extension import get_build_directory, load
@@ -44,6 +50,7 @@ custom_module = load(
     name='custom_relu_module_jit',
     sources=sources,
     extra_include_paths=paddle_includes,  # add for Coverage CI
+    extra_library_paths=paddle_libraries,
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True,
