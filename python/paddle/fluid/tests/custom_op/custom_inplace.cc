@@ -19,18 +19,18 @@
 #include "paddle/extension.h"
 
 template <typename data_t>
-void add_forward_kernel(data_t* x_data, const data_t* y_data, int64_t numel) {
+void add_data_pointer(const data_t* x_data, data_t* out_data, int64_t numel) {
   for (size_t i = 0; i < numel; ++i) {
-    x_data[i] += y_data[i];
+    out_data[i] += x_data[i];
   }
 }
 
 template <typename data_t>
-void add_backward_kernel(data_t* y_grad_data,
-                         const data_t* out_grad_data,
+void assign_data_pointer(const data_t* x_data,
+                         data_t* out_data,
                          int64_t numel) {
   for (size_t i = 0; i < numel; ++i) {
-    y_grad_data[i] = out_grad_data[i];
+    out_data[i] = x_data[i];
   }
 }
 
@@ -54,11 +54,10 @@ void relu_backward_kernel(const data_t* out_data,
 void AddForward(paddle::Tensor& x, const paddle::Tensor& y) {  // NOLINT
   PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
 
-  PD_DISPATCH_FLOATING_TYPES(x.type(), "AddForward", ([&] {
-                               add_forward_kernel<data_t>(x.data<data_t>(),
-                                                          y.data<data_t>(),
-                                                          x.size());
-                             }));
+  PD_DISPATCH_FLOATING_TYPES(
+      x.type(), "AddForward", ([&] {
+        add_data_pointer<data_t>(y.data<data_t>(), x.data<data_t>(), x.size());
+      }));
 }
 
 std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
@@ -71,8 +70,8 @@ std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
 
   PD_DISPATCH_FLOATING_TYPES(
       out_grad.type(), "AddBackward", ([&] {
-        add_backward_kernel<data_t>(
-            y_grad.data<data_t>(), out_grad.data<data_t>(), out_grad.size());
+        assign_data_pointer<data_t>(
+            out_grad.data<data_t>(), y_grad.data<data_t>(), out_grad.size());
       }));
 
   return {y_grad};
@@ -90,6 +89,58 @@ PD_BUILD_GRAD_OP(custom_add)
     .SetInplaceMap({{paddle::Grad("Out"), paddle::Grad("X")}})
     .SetKernelFn(PD_KERNEL(AddBackward));
 
+// out[i] = x[i] + y
+void AddVectorForward(std::vector<paddle::Tensor>& x,  // NOLINT
+                      const paddle::Tensor& y) {
+  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+
+  PD_DISPATCH_FLOATING_TYPES(y.type(), "AddVectorForward", ([&] {
+                               for (size_t i = 0; i < x.size(); ++i) {
+                                 add_data_pointer<data_t>(y.data<data_t>(),
+                                                          x[i].data<data_t>(),
+                                                          y.size());
+                               }
+                             }));
+}
+
+// dout[i] / dx[i] = out_grad[i] (do not need any code, inplace automatically)
+// dout / dy = out_grad[0] + ... + out_grad[n - 1]
+std::vector<paddle::Tensor> AddVectorBackward(
+    const std::vector<paddle::Tensor>& x,
+    const paddle::Tensor& y,
+    std::vector<paddle::Tensor>& out_grad) {  // NOLINT
+  PD_CHECK(x[0].place() == paddle::PlaceType::kCPU,
+           "x[0] must be a CPU Tensor.");
+  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+  PD_CHECK(x.size() == out_grad.size(),
+           "x must have the same size as out_grad.");
+
+  paddle::Tensor y_grad = paddle::zeros(y.shape(), y.dtype(), y.place());
+
+  PD_DISPATCH_FLOATING_TYPES(
+      y.type(), "AddVectorBackward", ([&] {
+        // y_grad = out_grad[0] + ... + out_grad[n - 1]
+        for (size_t i = 0; i < out_grad.size(); ++i) {
+          add_data_pointer<data_t>(
+              out_grad[i].data<data_t>(), y_grad.data<data_t>(), y_grad.size());
+        }
+      }));
+  return {y_grad};
+}
+
+PD_BUILD_OP(custom_add_vec)
+    .Inputs({paddle::Vec("X"), "Y"})
+    .Outputs({paddle::Vec("Out")})
+    .SetInplaceMap({{paddle::Vec("X"), paddle::Vec("Out")}})
+    .SetKernelFn(PD_KERNEL(AddVectorForward));
+
+PD_BUILD_GRAD_OP(custom_add_vec)
+    .Inputs({paddle::Vec("X"), "Y", paddle::Grad(paddle::Vec("Out"))})
+    .Outputs({paddle::Grad(paddle::Vec("X")), paddle::Grad("Y")})
+    .SetInplaceMap({{paddle::Grad(paddle::Vec("Out")),
+                     paddle::Grad(paddle::Vec("X"))}})
+    .SetKernelFn(PD_KERNEL(AddVectorBackward));
+
 void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
                          const paddle::Tensor& y,
                          paddle::Tensor& a,  // NOLINT
@@ -99,10 +150,8 @@ void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "MultiInplaceForward", ([&] {
-        add_forward_kernel<data_t>(
-            x.data<data_t>(), y.data<data_t>(), x.size());
-        add_forward_kernel<data_t>(
-            a.data<data_t>(), b.data<data_t>(), a.size());
+        add_data_pointer<data_t>(y.data<data_t>(), x.data<data_t>(), x.size());
+        add_data_pointer<data_t>(b.data<data_t>(), a.data<data_t>(), a.size());
       }));
 }
 
@@ -123,11 +172,11 @@ std::vector<paddle::Tensor> MultiInplaceBackward(
 
   PD_DISPATCH_FLOATING_TYPES(
       outxy_grad.type(), "MultiInplaceBackward", ([&] {
-        add_backward_kernel<data_t>(y_grad.data<data_t>(),
-                                    outxy_grad.data<data_t>(),
+        assign_data_pointer<data_t>(outxy_grad.data<data_t>(),
+                                    y_grad.data<data_t>(),
                                     outxy_grad.size());
-        add_backward_kernel<data_t>(b_grad.data<data_t>(),
-                                    outab_grad.data<data_t>(),
+        assign_data_pointer<data_t>(outab_grad.data<data_t>(),
+                                    b_grad.data<data_t>(),
                                     outab_grad.size());
       }));
 
