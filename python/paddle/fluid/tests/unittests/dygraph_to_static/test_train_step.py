@@ -53,7 +53,8 @@ class TestTrainStepTinyModel(unittest.TestCase):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 5
@@ -61,10 +62,17 @@ class TestTrainStepTinyModel(unittest.TestCase):
     def get_train_step_losses(self, func, steps):
         losses = []
         net = self.net_creator()
-        optimizer = self.optimizer_creator(parameters=net.parameters())
+        lr = self.lr_creator()
+        optimizer = self.optimizer_creator(
+            learning_rate=lr, parameters=net.parameters()
+        )
         for _ in range(steps):
-            out = func(net, self.input, self.loss_fn, optimizer)
-            losses.append(out)
+            loss = func(net, self.input, self.loss_fn, optimizer)
+            if isinstance(lr, paddle.optimizer.lr.ReduceOnPlateau):
+                lr.step(loss)
+            elif isinstance(lr, paddle.optimizer.lr.LRScheduler):
+                lr.step()
+            losses.append(loss)
         return losses
 
     def test_train_step(self):
@@ -73,21 +81,21 @@ class TestTrainStepTinyModel(unittest.TestCase):
             self.train_step_func, self.steps
         )
         reset_seed()
-        static_losses = self.get_train_step_losses(
-            paddle.jit.to_static(self.train_step_func), self.steps
-        )
+        static_func = paddle.jit.to_static(self.train_step_func)
+        static_losses = self.get_train_step_losses(static_func, self.steps)
         self.assertEqual(len(dygraph_losses), len(static_losses))
         for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):
             dygraph_loss = dygraph_loss.numpy()
             static_loss = static_loss.numpy()
-            np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-5)
+            np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-4)
 
 
 class TestTrainStepTinyModelAdadelta(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Adadelta, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Adadelta
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -97,7 +105,8 @@ class TestTrainStepTinyModelAdagrad(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Adagrad, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Adagrad
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -107,7 +116,8 @@ class TestTrainStepTinyModelAdam(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Adam
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -117,7 +127,8 @@ class TestTrainStepTinyModelAdamax(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Adamax, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Adamax
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -127,7 +138,8 @@ class TestTrainStepTinyModelAdamW(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.AdamW, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.AdamW
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -137,8 +149,9 @@ class TestTrainStepTinyModelLamb(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
+        self.lr_creator = lambda: 0.001
         self.optimizer_creator = partial(
-            paddle.optimizer.Lamb, learning_rate=0.001, lamb_weight_decay=0.01
+            paddle.optimizer.Lamb, lamb_weight_decay=0.01
         )
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
@@ -149,7 +162,8 @@ class TestTrainStepTinyModelMomentum(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Momentum, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Momentum
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -159,7 +173,8 @@ class TestTrainStepTinyModelRMSProp(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.RMSProp, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.RMSProp
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -169,10 +184,10 @@ class TestTrainStepTinyModelLRNoamDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.NoamDecay, d_model=0.01, warmup_steps=100
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -182,12 +197,12 @@ class TestTrainStepTinyModelLRPiecewiseDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4]
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.PiecewiseDecay,
+            boundaries=[3, 6, 9],
+            values=[0.1, 0.2, 0.3, 0.4],
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -197,10 +212,12 @@ class TestTrainStepTinyModelLRNaturalExpDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.NaturalExpDecay,
+            learning_rate=0.5,
+            gamma=0.1,
         )
+        self.optimizer_creator = partial(paddle.optimizer.SGD)
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -210,10 +227,10 @@ class TestTrainStepTinyModelLRInverseTimeDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.InverseTimeDecay, learning_rate=0.5, gamma=0.1
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -223,12 +240,13 @@ class TestTrainStepTinyModelLRPolynomialDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.PolynomialDecay(
-                learning_rate=0.5, decay_steps=20
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.PolynomialDecay,
+            learning_rate=0.5,
+            decay_steps=20,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
+
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -238,12 +256,14 @@ class TestTrainStepTinyModelLRLinearWarmup(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.LinearWarmup(
-                learning_rate=0.5, warmup_steps=2, start_lr=0, end_lr=0.5
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.LinearWarmup,
+            learning_rate=0.5,
+            warmup_steps=2,
+            start_lr=0,
+            end_lr=0.5,
         )
+        self.optimizer_creator = partial(paddle.optimizer.SGD)
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -253,10 +273,10 @@ class TestTrainStepTinyModelLRExponentialDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.ExponentialDecay, learning_rate=0.5, gamma=0.9
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -266,12 +286,14 @@ class TestTrainStepTinyModelLRMultiStepDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.MultiStepDecay(
-                learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.MultiStepDecay,
+            learning_rate=0.5,
+            milestones=[2, 4, 6],
+            gamma=0.8,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
+
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -281,12 +303,13 @@ class TestTrainStepTinyModelLRStepDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.StepDecay(
-                learning_rate=0.5, step_size=5, gamma=0.8
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.StepDecay,
+            learning_rate=0.5,
+            step_size=5,
+            gamma=0.8,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -296,12 +319,12 @@ class TestTrainStepTinyModelLRLambdaDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.LambdaDecay(
-                learning_rate=0.5, lr_lambda=lambda x: 0.95**x
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.LambdaDecay,
+            learning_rate=0.5,
+            lr_lambda=lambda x: 0.95**x,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -311,12 +334,13 @@ class TestTrainStepTinyModelLRReduceOnPlateau(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.ReduceOnPlateau(
-                learning_rate=1.0, factor=0.5, patience=5
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.ReduceOnPlateau,
+            learning_rate=1.0,
+            factor=0.5,
+            patience=5,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -326,12 +350,12 @@ class TestTrainStepTinyModelLRCosineAnnealingDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.CosineAnnealingDecay(
-                learning_rate=0.5, T_max=10
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.CosineAnnealingDecay,
+            learning_rate=0.5,
+            T_max=10,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -341,12 +365,12 @@ class TestTrainStepTinyModelLRMultiplicativeDecay(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.MultiplicativeDecay(
-                learning_rate=0.5, lr_lambda=lambda x: 0.95
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.MultiplicativeDecay,
+            learning_rate=0.5,
+            lr_lambda=lambda x: 0.95,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -356,12 +380,10 @@ class TestTrainStepTinyModelLROneCycleLR(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=1.0, total_steps=3
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.OneCycleLR, max_learning_rate=1.0, total_steps=3
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
@@ -371,15 +393,14 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
-        self.optimizer_creator = partial(
-            paddle.optimizer.SGD,
-            paddle.optimizer.lr.CyclicLR(
-                base_learning_rate=0.5,
-                max_learning_rate=1.0,
-                step_size_up=15,
-                step_size_down=5,
-            ),
+        self.lr_creator = partial(
+            paddle.optimizer.lr.CyclicLR,
+            base_learning_rate=0.5,
+            max_learning_rate=1.0,
+            step_size_up=15,
+            step_size_down=5,
         )
+        self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from functools import partial
 
 from test_train_step import (
     TestTrainStepTinyModel,
@@ -29,7 +28,8 @@ class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
     def setUp(self):
         self.input = paddle.randn([64, 3, 224, 224])
         self.net_creator = resnet18
-        self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
+        self.lr_creator = lambda: 0.001
+        self.optimizer_creator = paddle.optimizer.Adam
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
