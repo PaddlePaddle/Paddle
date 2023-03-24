@@ -40,6 +40,10 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 #else
@@ -48,6 +52,11 @@ namespace cub {
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+
+template <>
+struct NumericTraits<phi::dtype::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
+};
 }  // namespace cub
 #endif
 
