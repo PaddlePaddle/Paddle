@@ -17,7 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import _set_use_system_allocator
+from eager_op_test import _set_use_system_allocator
 
 import paddle
 import paddle.fluid as fluid
@@ -265,8 +265,8 @@ class TestLayerNormOp(unittest.TestCase):
             test_with_place(place, shape, begin_norm_axis)
 
     def test_check_forward_backward_with_scale_and_bias(self):
-        self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
+        self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(
             shape=[2, 3, 4, 5],
             begin_norm_axis=1,
@@ -290,6 +290,7 @@ class TestLayerNormOp(unittest.TestCase):
             shape=[92, 513, 129], begin_norm_axis=2, y_grad_scale=0.1
         )
         self.check_forward_backward(shape=[3, 34, 1134], begin_norm_axis=2)
+        self.check_forward_backward(shape=[3, 2, 1133], begin_norm_axis=2)
         self.check_forward_backward(
             shape=[92, 513, 1134], begin_norm_axis=2, y_grad_scale=0.1
         )

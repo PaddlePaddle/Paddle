@@ -25,11 +25,10 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         self.inputs = {'X': ['x']}
         self.outputs = {'Out': ['y']}
         self.no_grad_var = set()
-        self.grad_sub_block = tuple()
+        self.grad_sub_block = ()
         self.desired_ops = 'tanh_grad'
         self.desired_ops_no_skip = (
-            'fill_constant',
-            'elementwise_pow',
+            'elementwise_mul',
             'fill_constant',
             'elementwise_sub',
             'elementwise_mul',
@@ -60,7 +59,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
                 self.fwd, self.no_grad_var, self.grad_sub_block
             )[0]
         )
-        self.assertEquals(actual, self.desired_ops_no_skip)
+        self.assertEqual(actual, self.desired_ops_no_skip)
         core._set_prim_backward_enabled(False)
 
     def test_get_grad_op_desc_with_skip(self):
@@ -73,7 +72,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
             )[0]
         )
         core._remove_skip_comp_ops("tanh")
-        self.assertEquals(actual[0], self.desired_ops)
+        self.assertEqual(actual[0], self.desired_ops)
         core._set_prim_backward_enabled(False)
 
 

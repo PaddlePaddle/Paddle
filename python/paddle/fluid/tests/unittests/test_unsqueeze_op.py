@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -106,6 +106,22 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+# axis is empty, x is ND
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = ()
+        self.new_shape = ()
+
+
+# axis is empty, x is 0D
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = ()
+        self.new_shape = (10, 2, 5)
 
 
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):

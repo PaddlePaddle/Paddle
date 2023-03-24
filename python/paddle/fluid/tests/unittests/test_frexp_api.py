@@ -39,7 +39,7 @@ class TestFrexpAPI(unittest.TestCase):
         # 开启静态图模式
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            input_data = paddle.fluid.data(
+            input_data = paddle.static.data(
                 'X', self.x_np.shape, self.x_np.dtype
             )
             out = paddle.frexp(input_data)

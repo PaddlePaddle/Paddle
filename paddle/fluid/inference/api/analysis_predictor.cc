@@ -190,7 +190,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
-        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        t->numel() * phi::SizeOf(t->dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
@@ -240,9 +240,27 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUSTOM_DEVICE, should not reach here."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -523,8 +541,8 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices();
     paddle::framework::InitMemoryMethod();
+    paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
@@ -1740,7 +1758,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1796,7 +1815,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2385,6 +2405,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_mod_weight);
 USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
@@ -2394,12 +2415,14 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(elementwise_mod_tensor);
 USE_TRT_CONVERTER(less_than);
 USE_TRT_CONVERTER(greater_than);
 USE_TRT_CONVERTER(logical_or);
 USE_TRT_CONVERTER(logical_xor);
 USE_TRT_CONVERTER(logical_and);
 USE_TRT_CONVERTER(less_equal);
+USE_TRT_CONVERTER(greater_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2417,6 +2440,9 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(pad3d);
+#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -2539,8 +2565,13 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
 #endif
+#if IS_TRT_VERSION_GE(8510)
+USE_TRT_CONVERTER(grid_sampler)
+#endif
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(set_value)
+USE_TRT_CONVERTER(index_select);
+USE_TRT_CONVERTER(temporal_shift)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

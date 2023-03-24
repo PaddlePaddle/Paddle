@@ -129,7 +129,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         is_unsigned = (fuse_activation == "relu" || fuse_activation == "relu6");
       } else if (op->Type() == "relu") {
         is_unsigned = true;
-      } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||
+      } else if (op->Type() == "transpose2" ||
+                 op->Type() == "fused_transpose" || op->Type() == "reshape2" ||
                  op->Type() == "pool2d" || op->Type() == "nearest_interp" ||
                  op->Type() == "nearest_interp_v2" || op->Type() == "split") {
         auto input_var_name = op->Input("X")[0];

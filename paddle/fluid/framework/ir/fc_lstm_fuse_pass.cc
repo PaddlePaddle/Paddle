@@ -227,7 +227,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
           lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor.data<float>();
 
-      for (int i = 0; i < lstm_bias_tensor->numel(); i++) {
+      for (int i = 0; i < fc_bias_tensor.numel(); i++) {
         lstm_bias_data[i] += fc_bias_data[i];
       }
     }

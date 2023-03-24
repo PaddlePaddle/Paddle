@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
-    in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
 
@@ -49,6 +48,17 @@ from white_list import (
     op_accuracy_white_list,
     op_threshold_white_list,
 )
+
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+
+@signature_safe_contextmanager
+def paddle_static_guard():
+    try:
+        paddle.enable_static()
+        yield
+    finally:
+        paddle.disable_static()
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -66,37 +76,39 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    paddle.enable_static()
-    for i, expect_dtype in enumerate(expect_dtypes):
-        with paddle.static.program_guard(paddle.static.Program()):
-            input_t = []
-            for index, spec in enumerate(in_specs):
-                if len(spec) == 1:
-                    shape = spec[0]
-                    dtype = expect_dtype if target_index == index else 'float32'
-                elif len(spec) == 2:
-                    shape, dtype = spec
-                else:
-                    raise ValueError(
-                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                            index
+    with paddle_static_guard():
+        for i, expect_dtype in enumerate(expect_dtypes):
+            with paddle.static.program_guard(paddle.static.Program()):
+                input_t = []
+                for index, spec in enumerate(in_specs):
+                    if len(spec) == 1:
+                        shape = spec[0]
+                        dtype = (
+                            expect_dtype if target_index == index else 'float32'
+                        )
+                    elif len(spec) == 2:
+                        shape, dtype = spec
+                    else:
+                        raise ValueError(
+                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
+                                index
+                            )
+                        )
+                    input_t.append(
+                        paddle.static.data(
+                            name='data_%s' % index, shape=shape, dtype=dtype
                         )
                     )
-                input_t.append(
-                    paddle.static.data(
-                        name='data_%s' % index, shape=shape, dtype=dtype
-                    )
-                )
 
-            out = api_fn(*input_t, **configs)
-            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+                out = api_fn(*input_t, **configs)
+                out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
 
-            if out_dtype != expect_dtype:
-                raise ValueError(
-                    "Expected out.dtype is {}, but got {} from {}.".format(
-                        expect_dtype, out_dtype, api_fn.__name__
+                if out_dtype != expect_dtype:
+                    raise ValueError(
+                        "Expected out.dtype is {}, but got {} from {}.".format(
+                            expect_dtype, out_dtype, api_fn.__name__
+                        )
                     )
-                )
 
 
 def _set_use_system_allocator(value=None):
@@ -320,6 +332,7 @@ class OpTest(unittest.TestCase):
         cls.dtype = None
         cls.outputs = {}
         cls.input_shape_is_large = True
+        cls.is_calc_ref = False
         cls.check_prim = False
 
         np.random.seed(123)
@@ -337,6 +350,9 @@ class OpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
+
+        if hasattr(cls, 'check_prim') and os.getenv('FLAGS_prim_test_log'):
+            print("check prim end!")
 
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
@@ -434,12 +450,33 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
                 and 'mkldnn_data_type' in self.attrs
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
+            )
+        )
+
+    def is_float16_op(self):
+        # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
+        # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
+        return (
+            self.dtype == np.float16
+            or self.dtype == "float16"
+            or (
+                hasattr(self, 'output_dtype')
+                and self.output_dtype == np.float16
+            )
+            or (
+                hasattr(self, 'mkldnn_data_type')
+                and self.mkldnn_data_type == "float16"
+            )
+            or (
+                hasattr(self, 'attrs')
+                and 'mkldnn_data_type' in self.attrs
+                and self.attrs['mkldnn_data_type'] == 'float16'
             )
         )
 
@@ -456,6 +493,18 @@ class OpTest(unittest.TestCase):
             and "use_xpu" in self.attrs
             and self.attrs["use_xpu"]
         )
+
+    def is_fp16_compared_with_fp32(self):
+        return self.is_float16_op() and (
+            self.op_type
+            not in op_accuracy_white_list.NO_FP16_COMPARED_WITH_FP32_OP_LIST
+        )
+
+    def enable_cal_ref_output(self):
+        self.is_calc_ref = self.is_fp16_compared_with_fp32()
+
+    def disable_cal_ref_output(self):
+        self.is_calc_ref = False
 
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
@@ -530,19 +579,49 @@ class OpTest(unittest.TestCase):
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
-                        tensor.set_recursive_sequence_lengths(np_value[1])
+                        dtype = np.array(np_value[1]).dtype
+                        if self.is_calc_ref and dtype == np.float16:
+                            if isinstance(np_value[1], list):
+                                tensor.set_recursive_sequence_lengths(
+                                    np.array(np_value[1]).astype(np.float32)
+                                )
+                            else:
+                                tensor.set_recursive_sequence_lengths(
+                                    np_value[1].astype(np.float32)
+                                )
+                        else:
+                            tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(np_value, place)
+                        if self.is_calc_ref and np_value.dtype == np.float16:
+                            tensor.set(np_value.astype(np.float32), place)
+                        else:
+                            tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    tensor.set_recursive_sequence_lengths(
-                        self.inputs[var_name][1]
-                    )
+                    if (
+                        self.is_calc_ref
+                        and self.inputs[var_name][1].dtype == np.float16
+                    ):
+                        tensor.set_recursive_sequence_lengths(
+                            self.inputs[var_name][1].astype(np.float32)
+                        )
+                    else:
+                        tensor.set_recursive_sequence_lengths(
+                            self.inputs[var_name][1]
+                        )
                 else:
-                    tensor.set(self.inputs[var_name], place)
+                    if (
+                        self.is_calc_ref
+                        and self.inputs[var_name].dtype == np.float16
+                    ):
+                        tensor.set(
+                            self.inputs[var_name].astype(np.float32), place
+                        )
+                    else:
+                        tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
@@ -566,10 +645,10 @@ class OpTest(unittest.TestCase):
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(
-            block, op_proto, self.inputs, True, self.dtype
+            block, op_proto, self.inputs, True, self.dtype, self.is_calc_ref
         )
         outputs = append_input_output(
-            block, op_proto, self.outputs, False, self.dtype
+            block, op_proto, self.outputs, False, self.dtype, self.is_calc_ref
         )
 
         if hasattr(self, "cache_name_list"):
@@ -584,7 +663,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -689,7 +768,13 @@ class OpTest(unittest.TestCase):
     def append_input_output_for_dygraph(
         self, op_proto, np_list, is_input, if_return_inputs_grad_dict, block
     ):
-        def create_var(np_value, name, is_input, if_return_inputs_grad_dict):
+        def create_var(
+            np_value,
+            name,
+            is_input,
+            if_return_inputs_grad_dict,
+            is_calc_ref=False,
+        ):
             np_value_temp = np_value
             has_lod = False
             lod_temp = None
@@ -699,25 +784,38 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                v = self._create_var_from_numpy(np_value_temp)
+                if self.is_calc_ref and np_value_temp.dtype == np.float16:
+                    v = self._create_var_from_numpy(
+                        np_value_temp.astype(np.float32)
+                    )
+                else:
+                    v = self._create_var_from_numpy(np_value_temp)
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if hasattr(v, "retain_grads"):
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp
                     )
             else:
-                v = block.create_var(
-                    name=name,
-                    dtype=np_value_temp.dtype,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=False,
-                )
+                if self.is_calc_ref and np_value_temp.dtype == np.float16:
+                    v = block.create_var(
+                        name=name,
+                        dtype=np.float32,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False,
+                    )
+                else:
+                    v = block.create_var(
+                        name=name,
+                        dtype=np_value_temp.dtype,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False,
+                    )
             return v
 
         # prepare variable for input or output
@@ -746,7 +844,11 @@ class OpTest(unittest.TestCase):
                 slot_name = name
                 for (name, np_value) in np_list[name]:
                     v = create_var(
-                        np_value, name, is_input, if_return_inputs_grad_dict
+                        np_value,
+                        name,
+                        is_input,
+                        if_return_inputs_grad_dict,
+                        self.is_calc_ref,
                     )
                     var_list.append(v)
                     if if_return_inputs_grad_dict:
@@ -766,6 +868,7 @@ class OpTest(unittest.TestCase):
                     name_temp,
                     is_input,
                     if_return_inputs_grad_dict,
+                    self.is_calc_ref,
                 )
                 var_dict[name].append(v)
                 if if_return_inputs_grad_dict:
@@ -827,7 +930,14 @@ class OpTest(unittest.TestCase):
                 args, len(inputs_sig)
             )
             ret_tuple = python_api(*args)
-            return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            if hasattr(self, "python_out_sig_sub_name"):
+                for key in self.python_out_sig_sub_name.keys():
+                    for i in range(len(self.python_out_sig_sub_name[key])):
+                        result[key][0][i].name = self.python_out_sig_sub_name[
+                            key
+                        ][i]
+            return result
 
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -862,8 +972,14 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_outputs,
                 attrs_outputs,
             )
-            if not kernel_sig:
+            if not kernel_sig or (
+                len(kernel_sig[0]) == 0
+                and len(kernel_sig[1]) == 0
+                and len(kernel_sig[2]) == 0
+            ):
                 return None
+            if not hasattr(self, "python_api"):
+                print(kernel_sig)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
@@ -878,7 +994,14 @@ class OpTest(unittest.TestCase):
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
-    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+    def _calc_dygraph_output(
+        self,
+        place,
+        parallel=False,
+        no_check_set=None,
+        egr_inps=None,
+        egr_oups=None,
+    ):
         self.__class__.op_type = (
             self.op_type
         )  # for ci check, please not delete it for now
@@ -888,12 +1011,20 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
             # prepare input variable
-            inputs = self.append_input_output_for_dygraph(
-                op_proto, self.inputs, True, False, block
+            inputs = (
+                egr_inps
+                if egr_inps
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.inputs, True, False, block
+                )
             )
             # prepare output variable
-            outputs = self.append_input_output_for_dygraph(
-                op_proto, self.outputs, False, False, block
+            outputs = (
+                egr_oups
+                if egr_oups
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.outputs, False, False, block
+                )
             )
 
             # prepare attributes
@@ -943,11 +1074,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss.name if loss else None, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 program = compiled_prog
             fetch_list = getattr(self, "fetch_list", [])
             # if the fetch_list is customized by user, we use it directly.
@@ -971,9 +1098,7 @@ class OpTest(unittest.TestCase):
                 build_strategy.enable_inplace = enable_inplace
 
                 compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    program, build_strategy=build_strategy
                 )
                 program = compiled_prog
 
@@ -1273,9 +1398,7 @@ class OpTest(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = enable_inplace
                 compiled_program = fluid.CompiledProgram(
-                    grad_program
-                ).with_data_parallel(
-                    loss_name="", build_strategy=build_strategy, places=place
+                    grad_program, build_strategy=build_strategy
                 )
                 program = compiled_program
 
@@ -1400,8 +1523,32 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
+
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
+            for name in dygraph_outs:
+                if name == target_name:
+                    return dygraph_outs[name][0]
+                var_list = dygraph_outs[name]
+                for i, var in enumerate(var_list):
+                    if isinstance(var, list):
+                        for tensor in var:
+                            if tensor.name == target_name:
+                                return tensor
+                    elif (
+                        isinstance(var, paddle.Tensor)
+                        and var.name == target_name
+                    ):
+                        return dygraph_outs[name][i]
+            self.assertTrue(
+                False,
+                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+            )
+
+        def find_imperative_expect(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
                     return dygraph_outs[name][0]
@@ -1415,6 +1562,17 @@ class OpTest(unittest.TestCase):
             )
 
         def find_actual(target_name, fetch_list):
+            found = [
+                i
+                for i, var_name in enumerate(fetch_list)
+                if var_name == target_name
+            ]
+            self.assertTrue(
+                len(found) == 1, "Found {} {}".format(len(found), target_name)
+            )
+            return found[0]
+
+        def find_expect(target_name, fetch_list):
             found = [
                 i
                 for i, var_name in enumerate(fetch_list)
@@ -1462,7 +1620,28 @@ class OpTest(unittest.TestCase):
                 """return: (actual_tensor(var_base), actual_numpy)"""
                 raise NotImplementedError("base class, not implement!")
 
+            def find_expect_value(self, name):
+                """return: (expect_tensor(var_base), actual_numpy)"""
+                raise NotImplementedError("base class, not implement!")
+
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1485,10 +1664,18 @@ class OpTest(unittest.TestCase):
 
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
-                expect_np = expect[0] if isinstance(expect, tuple) else expect
+                # expect_np = expect[0] if isinstance(expect, tuple) else expect
+                if self.op_test.is_fp16_compared_with_fp32():
+                    expect, expect_np = self.find_expect_value(name)
+                else:
+                    expect_np = (
+                        expect[0] if isinstance(expect, tuple) else expect
+                    )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
+                # modify there for fp32 check
+
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
@@ -1537,6 +1724,14 @@ class OpTest(unittest.TestCase):
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
+                if self.op_test.is_fp16_compared_with_fp32():
+                    self.op_test.enable_cal_ref_output()
+                    ref_outs, ref_fetch_list = self.op_test._calc_output(
+                        place, no_check_set=no_check_set
+                    )
+                    self.op_test.disable_cal_ref_output()
+                    self.ref_outputs = ref_outs
+                    self.ref_fetch_list = ref_fetch_list
 
             def find_actual_value(self, name):
                 idx = find_actual(name, self.fetch_list)
@@ -1544,17 +1739,23 @@ class OpTest(unittest.TestCase):
                 actual_t = np.array(actual)
                 return actual, actual_t
 
+            def find_expect_value(self, name):
+                idx = find_expect(name, self.ref_fetch_list)
+                expect = self.ref_outputs[idx]
+                expect_t = np.array(expect)
+                return expect, expect_t
+
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
                 """
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                if actual_np.dtype == np.uint16:
+                    if expect_np.dtype in [np.float32, np.float64]:
+                        actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16:
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
                 if (
@@ -1590,6 +1791,19 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = dygraph_outs
+                if self.op_test.is_fp16_compared_with_fp32():
+                    self.op_test.enable_cal_ref_output()
+                    self.is_python_api_test = True
+                    self.ref_outputs = self.op_test._calc_python_api_output(
+                        place
+                    )
+                    if self.ref_outputs is None:
+                        self.is_python_api_test = False
+                        # missing KernelSignature, fall back to eager middle output.
+                        self.ref_outputs = self.op_test._calc_dygraph_output(
+                            place, no_check_set=no_check_set
+                        )
+                    self.op_test.disable_cal_ref_output()
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 if (
@@ -1600,6 +1814,23 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
@@ -1617,11 +1848,10 @@ class OpTest(unittest.TestCase):
                     )
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
+                if actual_np.dtype == np.uint16:
                     self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16:
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
                 if self.op_test.is_bfloat16_op():
@@ -1640,6 +1870,16 @@ class OpTest(unittest.TestCase):
                         imperative_actual.value().get_tensor()
                     )
                     return imperative_actual, imperative_actual_t
+
+            def find_expect_value(self, name):
+                with fluid.dygraph.base.guard(place=place):
+                    imperative_expect = find_imperative_expect(
+                        name, self.ref_outputs, place
+                    )
+                    imperative_expect_t = np.array(
+                        imperative_expect.value().get_tensor()
+                    )
+                    return imperative_expect, imperative_expect_t
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
@@ -1670,11 +1910,8 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
-            if prim_checker.is_only_check_prim():
-                self.only_prim = True
-                return
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
@@ -1688,14 +1925,18 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
 
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-2 if atol < 1e-2 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -1831,6 +2072,9 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(
@@ -1842,8 +2086,6 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 inplace_atol=inplace_atol,
             )
-            if hasattr(self, 'only_prim') and self.only_prim:
-                continue
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
             else:
@@ -1855,6 +2097,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)
@@ -1877,67 +2120,97 @@ class OpTest(unittest.TestCase):
         names,
         max_relative_error,
         msg_prefix,
+        atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
-            # max_relative_error is 1e-7. According to the value of np.abs(a), we
-            # change np.abs(a) to achieve dynamic threshold. For example, if
-            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
-            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
-            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
-            abs_a = np.abs(a)
-            if abs_a.ndim > 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    abs_a[abs_a < 1e-10] = 1e-3
-                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-                elif self.is_bfloat16_op():
-                    abs_a[abs_a < 1e-2] = 1
-                else:
-                    abs_a[abs_a < 1e-3] = 1
-            elif abs_a.ndim == 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    if abs_a < 1e-10:
-                        abs_a = 1e-3
-                    elif abs_a > 1e-10 and abs_a <= 1e-8:
-                        abs_a = abs_a * 1e4
-                    elif abs_a > 1e-8 and abs_a <= 1e-6:
-                        abs_a = abs_a * 1e2
-                elif self.is_bfloat16_op():
-                    abs_a = 1 if abs_a < 1e-2 else abs_a
-                else:
-                    abs_a = 1 if abs_a < 1e-3 else abs_a
-
-            diff_mat = np.abs(a - b) / abs_a
-            max_diff = np.max(diff_mat)
-
-            def err_msg():
-                offset = np.argmax(diff_mat > max_relative_error)
-                return (
-                    "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
-                    "the first error element is %d, expected %e, but got %e."
-                ) % (
-                    self.op_type,
-                    msg_prefix,
-                    name,
-                    str(a.shape),
-                    self.dtype,
-                    max_diff,
-                    max_relative_error,
-                    offset,
-                    a.flatten()[offset],
-                    b.flatten()[offset],
+            # Used by bfloat16 for now to solve precision problem
+            if self.is_bfloat16_op():
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                np.testing.assert_allclose(
+                    b,
+                    a,
+                    rtol=max_relative_error,
+                    atol=atol,
+                    equal_nan=False,
+                    err_msg=(
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
+                    )
+                    % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                    ),
                 )
+            else:
+                # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+                # max_relative_error is 1e-7. According to the value of np.abs(a), we
+                # change np.abs(a) to achieve dynamic threshold. For example, if
+                # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+                # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+                # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
+                abs_a = np.abs(a)
+                if abs_a.ndim > 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        abs_a[abs_a < 1e-10] = 1e-3
+                        abs_a[
+                            np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)
+                        ] *= 1e4
+                        abs_a[
+                            np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)
+                        ] *= 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a[abs_a < 1e-2] = 1
+                    else:
+                        abs_a[abs_a < 1e-3] = 1
+                elif abs_a.ndim == 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        if abs_a < 1e-10:
+                            abs_a = 1e-3
+                        elif abs_a > 1e-10 and abs_a <= 1e-8:
+                            abs_a = abs_a * 1e4
+                        elif abs_a > 1e-8 and abs_a <= 1e-6:
+                            abs_a = abs_a * 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a = 1 if abs_a < 1e-2 else abs_a
+                    else:
+                        abs_a = 1 if abs_a < 1e-3 else abs_a
 
-            self.assertLessEqual(max_diff, max_relative_error, err_msg())
+                if self.dtype == np.bool_:
+                    diff_mat = np.abs(a ^ b) / abs_a
+                else:
+                    diff_mat = np.abs(a - b) / abs_a
+                max_diff = np.max(diff_mat)
+
+                def err_msg():
+                    offset = np.argmax(diff_mat > max_relative_error)
+                    return (
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                        "the first error element is %d, expected %e, but got %e."
+                    ) % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                        max_diff,
+                        max_relative_error,
+                        offset,
+                        a.flatten()[offset],
+                        b.flatten()[offset],
+                    )
+
+                self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1958,7 +2231,12 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
+        atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1974,6 +2252,8 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                only_check_prim=only_check_prim,
+                atol=atol,
             )
 
     def check_grad_with_place(
@@ -1989,9 +2269,15 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
         numeric_place=None,
+        atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self,
@@ -2003,19 +2289,25 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
-            if prim_grad_checker.is_only_check_prim():
-                self.only_prim = True
+            if only_check_prim:
                 return
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
-        if self.is_bfloat16_op() and self.is_mkldnn_op():
-            check_dygraph = False
+        if self.is_bfloat16_op():
+            if self.is_mkldnn_op():
+                check_dygraph = False
+                atol = 1e-2 if atol < 1e-2 else atol
+            else:
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if (
             self.dtype == np.float64
@@ -2080,19 +2372,31 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
+            self.enable_cal_ref_output()
+            numeric_grads = self._get_gradient(
+                inputs_to_check,
+                place,
                 output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
+                no_grad_set,
+                user_defined_grad_outputs,
             )
-            for input_to_check in inputs_to_check
-        ]
+            self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
+
         analytic_grads = self._get_gradient(
             inputs_to_check,
             place,
@@ -2107,7 +2411,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2117,10 +2421,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,
@@ -2128,6 +2437,7 @@ class OpTest(unittest.TestCase):
             inputs_to_check,
             max_relative_error,
             "Gradient Check On %s" % str(place),
+            atol=atol,
         )
 
         if check_dygraph:
@@ -2157,6 +2467,7 @@ class OpTest(unittest.TestCase):
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
+                    atol=atol,
                 )
 
     def _find_var_in_dygraph(self, output_vars, name):
@@ -2165,8 +2476,14 @@ class OpTest(unittest.TestCase):
         else:
             for output_vars_index in output_vars:
                 for output_vars_selected in output_vars[output_vars_index]:
-                    if output_vars_selected.name == name:
-                        return output_vars_selected
+                    if isinstance(output_vars_selected, list):
+                        for tensor in output_vars_selected:
+                            if tensor.name == name:
+                                return [tensor]
+                    elif isinstance(output_vars_selected, paddle.Tensor):
+                        if output_vars_selected.name == name:
+                            return [output_vars_selected]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
 
     def _get_dygraph_grad(
         self,
@@ -2177,6 +2494,9 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -2203,33 +2523,40 @@ class OpTest(unittest.TestCase):
                 dygraph_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
-            # if outputs is None, kernel sig is empty or other error is happens.
-            if not check_dygraph or dygraph_outputs is None:
-                block.append_op(
-                    type=self.op_type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs_outputs if hasattr(self, "attrs") else None,
-                )
-            else:
-                outputs = dygraph_outputs
+                if dygraph_outputs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    dygraph_outputs = self._calc_dygraph_output(
+                        place, egr_inps=inputs, egr_oups=outputs
+                    )
+
+            outputs = dygraph_outputs
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(
                     outputs, output_names[0]
                 )
-                cast_outputs = block.create_var(
-                    dtype="float32", shape=cast_inputs[0].shape
-                )
-                cast_op = block.append_op(
-                    inputs={"X": cast_inputs},
-                    outputs={"Out": cast_outputs},
-                    type="cast",
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.BF16,
-                        "out_dtype": core.VarDesc.VarType.FP32,
-                    },
-                )
+                if isinstance(cast_inputs, paddle.Tensor):
+                    cast_outputs = paddle.cast(
+                        cast_inputs, core.VarDesc.VarType.FP32
+                    )
+                elif isinstance(cast_inputs, list):
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(cast_input, paddle.Tensor):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input, core.VarDesc.VarType.FP32
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
+                else:
+                    raise TypeError(
+                        "Unsupported test data type %s." % type(cast_inputs)
+                    )
                 outputs = {output_names[0]: cast_outputs}
 
             outputs_valid = {}
@@ -2240,61 +2567,16 @@ class OpTest(unittest.TestCase):
 
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
                     for outputs_valid_key in outputs_valid:
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[outputs_valid_key]},
-                            outputs={"Out": [loss]},
-                            attrs=None,
-                        )
+                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:
-                        cur_avg_loss = block.create_var(
-                            dtype=self.dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False,
-                        )
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[cur_loss]},
-                            outputs={"Out": [cur_avg_loss]},
-                            attrs=None,
-                        )
+                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
                         avg_sum.append(cur_avg_loss)
-                    loss_sum = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='sum',
-                        inputs={"X": avg_sum},
-                        outputs={"Out": loss_sum},
-                        attrs=None,
-                    )
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='scale',
-                        inputs={"X": loss_sum},
-                        outputs={"Out": loss},
-                        attrs={'scale': 1.0 / float(len(avg_sum))},
+                    loss_sum = paddle.add_n(avg_sum)
+                    loss = paddle.scale(
+                        loss_sum, scale=1.0 / float(len(avg_sum))
                     )
                 loss.backward()
 
@@ -2314,22 +2596,12 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del inputs[no_grad_val]
 
-                if in_dygraph_mode():
-                    core.eager.run_backward(
-                        fluid.layers.utils.flatten(outputs), grad_outputs, False
-                    )
-                    grad_inputs = []
-                    for inputs_list in inputs.values():
-                        for inp in inputs_list:
-                            grad_inputs.append(inp.grad.numpy())
-                    return grad_inputs
-                else:
-                    grad_inputs = paddle.grad(
-                        outputs=fluid.layers.utils.flatten(outputs),
-                        inputs=fluid.layers.utils.flatten(inputs),
-                        grad_outputs=grad_outputs,
-                    )
-                    return [grad.numpy() for grad in grad_inputs]
+                grad_inputs = paddle.grad(
+                    outputs=paddle.utils.flatten(outputs),
+                    inputs=paddle.utils.flatten(inputs),
+                    grad_outputs=grad_outputs,
+                )
+                return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
@@ -2429,9 +2701,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                    loss_name=loss.name, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(prog)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(

@@ -98,8 +98,7 @@ def monkey_patch_variable():
         return var
 
     def create_scalar(block, value, dtype):
-        # TODO(zhouwei): will change to [] which is 0-D Tensor
-        return create_tensor(block, value, dtype, shape=[1])
+        return create_tensor(block, value, dtype, shape=[])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
@@ -184,13 +183,13 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
-
+                import paddle
                 import paddle.fluid as fluid
-
+                paddle.enable_static()
                 startup_prog = fluid.Program()
                 main_prog = fluid.Program()
                 with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}".format(new_variable.dtype))
 

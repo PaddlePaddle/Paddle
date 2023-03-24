@@ -23,7 +23,7 @@ import random
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 
 sys.path.append("../rnn")
 from rnn_numpy import SimpleRNN, LSTM, GRU

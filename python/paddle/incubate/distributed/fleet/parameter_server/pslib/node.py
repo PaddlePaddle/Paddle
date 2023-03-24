@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-"""Defination of Server and Worker."""
+"""Definition of Server and Worker."""
 
 # NOTE: reduce removed in fuctools in python3
 from functools import reduce
@@ -80,7 +80,7 @@ class DownpourServer(Server):
                         % (table_id, pslib.PS_SPARSE_TABLE, table.type)
                     )
         if strategy is None:
-            strategy = dict()
+            strategy = {}
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.type = pslib.PS_SPARSE_TABLE
@@ -197,7 +197,6 @@ class DownpourServer(Server):
             if (
                 accessor_class == 'DownpourFeatureValueAccessor'
                 or accessor_class == 'DownpourCtrAccessor'
-                or accessor_class == 'DownpourCtrDymfAccessor'
                 or accessor_class == 'DownpourCtrDoubleAccessor'
             ):
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
@@ -350,6 +349,7 @@ class DownpourServer(Server):
             elif (
                 accessor_class == 'DownpourUnitAccessor'
                 or accessor_class == 'DownpourDoubleUnitAccessor'
+                or accessor_class == 'DownpourCtrDymfAccessor'
             ):
                 self.add_sparse_table_common_config(table, strategy)
                 self.add_sparse_optimizer(
@@ -393,7 +393,7 @@ class DownpourServer(Server):
                     )
 
         if strategy is None:
-            strategy = dict()
+            strategy = {}
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         support_dense_key_list = [
@@ -484,7 +484,7 @@ class DownpourServer(Server):
                         % (table_id, pslib.PS_DENSE_TABLE, table.type)
                     )
         if strategy is None:
-            strategy = dict()
+            strategy = {}
 
         support_datanorm_key_list = [
             'datanorm_table_class',

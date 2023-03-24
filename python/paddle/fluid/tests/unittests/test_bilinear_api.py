@@ -32,8 +32,8 @@ class TestBilinearAPI(unittest.TestCase):
                 place = core.CPUPlace()
             exe = fluid.Executor(place)
 
-            data1 = fluid.data(name='X1', shape=[5, 5], dtype='float32')
-            data2 = fluid.data(name='X2', shape=[5, 4], dtype='float32')
+            data1 = paddle.static.data(name='X1', shape=[5, 5], dtype='float32')
+            data2 = paddle.static.data(name='X2', shape=[5, 4], dtype='float32')
 
             layer1 = np.random.random((5, 5)).astype('float32')
             layer2 = np.random.random((5, 4)).astype('float32')

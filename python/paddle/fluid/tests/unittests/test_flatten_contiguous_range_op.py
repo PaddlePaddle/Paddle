@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -23,27 +23,29 @@ import paddle
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.python_api = paddle.flatten
+        self.public_python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
+        self.skip_cinn()
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
-        self.enable_cinn = False
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
+    def skip_cinn(self):
+        self.enable_cinn = True
+
     def test_check_output(self):
-        self.check_output(
-            no_check_set=["XShape"], check_eager=True, check_prim=True
-        )
+        self.check_output(no_check_set=["XShape"], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -130,10 +132,13 @@ class TestFlattenOp_5(TestFlattenOp):
 
 class TestFlattenOp_6(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = tuple()
+        self.in_shape = ()
         self.start_axis = 0
         self.stop_axis = -1
         self.new_shape = (1,)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
     def init_attrs(self):
         self.attrs = {
@@ -312,7 +317,7 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
 class TestFlatten0DTensorOpError(unittest.TestCase):
     def test_errors(self):
-        image_shape = tuple()
+        image_shape = ()
         x = np.random.uniform(-1.0, 1.0, []).astype('float32')
 
         def test_ValueError1():
