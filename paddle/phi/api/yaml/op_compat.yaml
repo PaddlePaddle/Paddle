@@ -391,7 +391,9 @@
 - op : cumprod
   backward : cumprod_grad
   inputs :
-    {x : X, dim : Dim}
+    x : X
+  attrs :
+    dim : dim
   outputs :
     out : Out
 
