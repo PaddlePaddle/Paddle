@@ -17,7 +17,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -29,6 +29,38 @@ from rnn_numpy import LSTM
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
+
+
+def rnn_warpper(
+    Input,
+    PreState,
+    WeightList=None,
+    SequenceLength=None,
+    dropout_prob=0.0,
+    is_bidirec=False,
+    input_size=10,
+    hidden_size=100,
+    num_layers=1,
+    mode="LSTM",
+    seed=0,
+    is_test=False,
+):
+    dropout_state_in = paddle.Tensor()
+    return paddle._C_ops.rnn(
+        Input,
+        PreState,
+        WeightList,
+        SequenceLength,
+        dropout_state_in,
+        dropout_prob,
+        is_bidirec,
+        input_size,
+        hidden_size,
+        num_layers,
+        mode,
+        seed,
+        is_test,
+    )
 
 
 class TestRNNOp(OpTest):
@@ -44,6 +76,9 @@ class TestRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
+        self.python_api = rnn_warpper
+        self.python_out_sig = ["Out", "DropoutState", "State"]
+        self.python_out_sig_sub_name = {"State": ["last_hidden", "last_cell"]}
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.sequence_length = (
             None

@@ -16,7 +16,7 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -71,13 +71,12 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             ['Q', 'R'],
-            check_eager=True,
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
         )

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
