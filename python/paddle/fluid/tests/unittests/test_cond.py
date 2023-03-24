@@ -18,9 +18,8 @@ import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 

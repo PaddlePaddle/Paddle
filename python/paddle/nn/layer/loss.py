@@ -16,8 +16,7 @@
 import paddle
 
 # TODO: define loss functions of neural network
-import paddle.fluid as fluid
-from paddle import in_dynamic_mode
+from paddle import fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from .. import functional as F
