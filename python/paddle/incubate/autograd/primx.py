@@ -606,8 +606,12 @@ def _lower_composite(block, blacklist=set()):
             ops_to_remove.append(op_idx)
 
             op_name = op.type
-
-            if (lookup_fn(op_name) is not None) and (op_name not in blacklist):
+            comp_flag = (lookup_fn(op_name) is not None) and (
+                op_name not in blacklist
+            )
+            if op.desc.attr("op_role") == 1:
+                comp_flag = False
+            if comp_flag:
                 change = True
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
