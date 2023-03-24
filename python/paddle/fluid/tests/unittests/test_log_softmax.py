@@ -63,12 +63,10 @@ class TestLogSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
@@ -85,10 +83,10 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
         self.attrs = {'axis': -1}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], check_eager=True)
+        self.check_grad(['X'], ['Out'])
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
@@ -122,7 +120,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -131,7 +129,6 @@ class TestLogSoftmaxBF16Op(OpTest):
             ['X'],
             ['Out'],
             user_defined_grads=[self.x_grad],
-            check_eager=True,
         )
 
 
@@ -151,7 +148,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         logsoftmax = paddle.nn.LogSoftmax(axis)
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = logsoftmax(x)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -185,7 +182,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             x = x.astype(dtype)
         ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = F.log_softmax(x, axis, dtype)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -204,10 +201,10 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='X1', shape=[100], dtype='int32')
+            x = paddle.static.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, F.log_softmax, x)
 
-            x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
+            x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
 
 

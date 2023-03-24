@@ -33,7 +33,6 @@ from paddle.fluid.framework import (  # noqa: F401
     in_dygraph_mode,
 )
 from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
-from paddle.fluid.layers import fill_constant  # noqa: F401
 from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
     templatedoc,
 )

@@ -32,7 +32,7 @@ if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
-class SimpleConvPool(fluid.dygraph.Layer):
+class SimpleConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -57,7 +57,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
         return x
 
 
-class CNN(fluid.dygraph.Layer):
+class CNN(paddle.nn.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
         super().__init__()
         self.dict_dim = dict_dim
@@ -112,7 +112,7 @@ class CNN(fluid.dygraph.Layer):
         return avg_cost, prediction, acc
 
 
-class BOW(fluid.dygraph.Layer):
+class BOW(paddle.nn.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
         super().__init__()
         self.dict_dim = dict_dim
@@ -157,7 +157,7 @@ class BOW(fluid.dygraph.Layer):
         return avg_cost, prediction, acc
 
 
-class GRU(fluid.dygraph.Layer):
+class GRU(paddle.nn.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
         super().__init__()
         self.dict_dim = dict_dim
@@ -205,7 +205,7 @@ class GRU(fluid.dygraph.Layer):
         return avg_cost, prediction, acc
 
 
-class BiGRU(fluid.dygraph.Layer):
+class BiGRU(paddle.nn.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
         super().__init__()
         self.dict_dim = dict_dim

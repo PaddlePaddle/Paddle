@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def smooth_l1_loss_forward(val, sigma2):
@@ -46,12 +46,10 @@ class TestSmoothL1LossOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -59,7 +57,6 @@ class TestSmoothL1LossOp1(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set("X"),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -68,7 +65,6 @@ class TestSmoothL1LossOp1(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set('Y'),
-            check_eager=True,
         )
 
 
@@ -96,12 +92,10 @@ class TestSmoothL1LossOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.03, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.03)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -109,7 +103,6 @@ class TestSmoothL1LossOp2(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -118,7 +111,6 @@ class TestSmoothL1LossOp2(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']),
-            check_eager=True,
         )
 
 

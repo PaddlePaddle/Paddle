@@ -661,16 +661,18 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
         with fluid.program_guard(prog, startup_prog):
 
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
 
-            dim = fluid.data(name="dim", shape=[1], dtype="int32")
-            shape_tensor = fluid.data(
+            dim = paddle.static.data(name="dim", shape=[1], dtype="int32")
+            shape_tensor = paddle.static.data(
                 name="shape_tensor", shape=[2], dtype="int32"
             )
-            actual_size = fluid.data(
+            actual_size = paddle.static.data(
                 name="actual_size", shape=[2], dtype="int32"
             )
-            scale_tensor = fluid.data(
+            scale_tensor = paddle.static.data(
                 name="scale_tensor", shape=[1], dtype="float32"
             )
 
@@ -742,29 +744,35 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_mode_type():
             # mode must be "BILINEAR" "TRILINEAR" "NEAREST" "BICUBIC"
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
 
             out = interpolate(
                 x, size=[12, 12], mode='UNKONWN', align_corners=False
             )
 
         def test_input_shape():
-            x = fluid.data(name="x", shape=[2], dtype="float32")
+            x = paddle.static.data(name="x", shape=[2], dtype="float32")
             out = interpolate(
                 x, size=[12, 12], mode='BICUBIC', align_corners=False
             )
 
         def test_align_corcers():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             interpolate(x, size=[12, 12], mode='BICUBIC', align_corners=3)
 
         def test_out_shape():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(x, size=[12], mode='bicubic', align_corners=False)
 
         def test_attr_data_format():
             # for 5-D input, data_format only can be NCDHW or NDHWC
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 6, 9, 4], dtype="float32"
             )
             out = interpolate(
@@ -782,7 +790,9 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_scale_value():
             # the scale must be greater than zero.
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -793,7 +803,7 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_attr_5D_input():
             # for 5-D input, data_format only can be NCDHW or NDHWC
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 6, 9, 4], dtype="float32"
             )
             out = interpolate(
@@ -802,7 +812,9 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_scale_type():
             # the scale must be greater than zero.
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             scale = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
@@ -815,7 +827,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_align_mode():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -826,7 +840,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_outshape_and_scale():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -836,7 +852,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_align_corners_and_nearest():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -846,7 +864,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_scale_shape():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -856,7 +876,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_scale_value_1():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -866,7 +888,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_size_and_scale():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=None,
@@ -876,7 +900,9 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_size_and_scale2():
-            x = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+            x = paddle.static.data(
+                name="input", shape=[2, 3, 6, 9, 4], dtype="float32"
+            )
             out = interpolate(
                 x,
                 size=[2, 2, 2],
@@ -886,27 +912,37 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
         def test_size_type():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(
                 x, size={2, 2}, mode='bicubic', align_corners=False
             )
 
         def test_size_length():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             out = interpolate(x, size=[2], mode='bicubic', align_corners=False)
 
         def test_size_tensor_ndim():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             size = paddle.to_tensor(np.array([[2, 2]]))
             out = interpolate(x, size=size, mode='bicubic', align_corners=False)
 
         def test_size_tensor_length():
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 6, 6], dtype="float32"
+            )
             size = paddle.to_tensor(np.array([2]))
             out = interpolate(x, size=size, mode='bicubic', align_corners=False)
 
         def test_input_shape_1():
-            x = fluid.data(name="x", shape=[2, 1, 0, 0], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 1, 0, 0], dtype="float32"
+            )
             out = interpolate(
                 x, size=[3, 3], mode="bicubic", align_corners=False
             )

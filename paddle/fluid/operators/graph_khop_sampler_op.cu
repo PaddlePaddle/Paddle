@@ -423,6 +423,31 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
+    auto row_dims = src->dims();
+    auto row_dims_lens = row_dims.size();
+    auto col_dims = dst_count->dims();
+    auto col_dims_lens = col_dims.size();
+    auto x_dims = vertices->dims();
+    auto x_dims_lens = x_dims.size();
+    for (int i = 0; i < row_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(
+          row_dims[i],
+          0,
+          phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+    }
+    for (int i = 0; i < col_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(col_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Col_Ptr(X) should not be 0."));
+    }
+    for (int i = 0; i < x_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(x_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Input_Node(X) should not be 0."));
+    }
+
     const T* src_data = src->data<T>();
     const T* dst_count_data = dst_count->data<T>();
     const T* p_vertices = vertices->data<T>();
