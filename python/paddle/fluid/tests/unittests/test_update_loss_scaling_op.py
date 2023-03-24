@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 import paddle.fluid as fluid
@@ -95,7 +95,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'])
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -132,188 +132,199 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestUpdateLossScalingLayer(unittest.TestCase):
     def loss_scaling_check(self, use_cuda=True, scope=fluid.Scope()):
-        a = paddle.static.data(name="a", shape=[1024, 1024], dtype='float32')
-        b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
-        x = [a, b]
-        found_inf = paddle.static.data(
-            name="found_inf", shape=[1], dtype='bool'
-        )
-        prev_loss_scaling = paddle.static.data(
-            name="prev_loss_scaling", shape=[1], dtype='float32'
-        )
-        num_good_steps = paddle.static.data(
-            name="num_good_steps", shape=[1], dtype='int32'
-        )
-        num_bad_steps = paddle.static.data(
-            name="num_bad_steps", shape=[1], dtype='int32'
-        )
-
-        a_v = np.random.random([1024, 1024]).astype('float32')
-        b_v = np.random.random([512, 128]).astype('float32')
-        found_inf_v = np.array([False]).astype('bool')
-        prev_loss_scaling_v = np.array([2048]).astype('float32')
-        num_good_steps_v = np.array([999], dtype=np.int32)
-        num_bad_steps_v = np.array([1], dtype=np.int32)
-
-        incr_every_n_steps = 1000
-        decr_every_n_nan_or_inf = 2
-        incr_ratio = 2
-        decr_ratio = 0.8
-
-        result = amp_nn.update_loss_scaling(
-            x,
-            found_inf,
-            prev_loss_scaling,
-            num_good_steps,
-            num_bad_steps,
-            incr_every_n_steps,
-            decr_every_n_nan_or_inf,
-            incr_ratio,
-            decr_ratio,
-            name="update_loss_scaling",
-        )
-
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        with fluid.scope_guard(scope):
-            exe.run(fluid.default_startup_program())
-            result_v = exe.run(
-                feed={
-                    'a': a_v,
-                    'b': b_v,
-                    'found_inf': found_inf_v,
-                    'prev_loss_scaling': prev_loss_scaling_v,
-                    'num_good_steps': num_good_steps_v,
-                    'num_bad_steps': num_bad_steps_v,
-                },
-                fetch_list=[
-                    result,
-                    x,
-                    found_inf,
-                    prev_loss_scaling,
-                    num_good_steps,
-                    num_bad_steps,
-                ],
+        with paddle_static_guard():
+            a = paddle.static.data(
+                name="a", shape=[1024, 1024], dtype='float32'
             )
-        assert np.array_equal(result_v[0], a_v)
-        assert np.array_equal(result_v[1], b_v)
-        assert np.array_equal(result_v[0], result_v[2])
-        assert np.array_equal(result_v[1], result_v[3])
-        assert np.array_equal(result_v[4], found_inf_v)
-        assert np.array_equal(result_v[5], prev_loss_scaling_v * incr_ratio)
-        assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
-        assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
+            b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
+            x = [a, b]
+            found_inf = paddle.static.data(
+                name="found_inf", shape=[1], dtype='bool'
+            )
+            prev_loss_scaling = paddle.static.data(
+                name="prev_loss_scaling", shape=[1], dtype='float32'
+            )
+            num_good_steps = paddle.static.data(
+                name="num_good_steps", shape=[1], dtype='int32'
+            )
+            num_bad_steps = paddle.static.data(
+                name="num_bad_steps", shape=[1], dtype='int32'
+            )
+
+            a_v = np.random.random([1024, 1024]).astype('float32')
+            b_v = np.random.random([512, 128]).astype('float32')
+            found_inf_v = np.array([False]).astype('bool')
+            prev_loss_scaling_v = np.array([2048]).astype('float32')
+            num_good_steps_v = np.array([999], dtype=np.int32)
+            num_bad_steps_v = np.array([1], dtype=np.int32)
+
+            incr_every_n_steps = 1000
+            decr_every_n_nan_or_inf = 2
+            incr_ratio = 2
+            decr_ratio = 0.8
+
+            result = amp_nn.update_loss_scaling(
+                x,
+                found_inf,
+                prev_loss_scaling,
+                num_good_steps,
+                num_bad_steps,
+                incr_every_n_steps,
+                decr_every_n_nan_or_inf,
+                incr_ratio,
+                decr_ratio,
+                name="update_loss_scaling",
+            )
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            with fluid.scope_guard(scope):
+                exe.run(fluid.default_startup_program())
+                result_v = exe.run(
+                    feed={
+                        'a': a_v,
+                        'b': b_v,
+                        'found_inf': found_inf_v,
+                        'prev_loss_scaling': prev_loss_scaling_v,
+                        'num_good_steps': num_good_steps_v,
+                        'num_bad_steps': num_bad_steps_v,
+                    },
+                    fetch_list=[
+                        result,
+                        x,
+                        found_inf,
+                        prev_loss_scaling,
+                        num_good_steps,
+                        num_bad_steps,
+                    ],
+                )
+
+            assert np.array_equal(result_v[0], a_v)
+            assert np.array_equal(result_v[1], b_v)
+            assert np.array_equal(result_v[0], result_v[2])
+            assert np.array_equal(result_v[1], result_v[3])
+            assert np.array_equal(result_v[4], found_inf_v)
+            assert np.array_equal(result_v[5], prev_loss_scaling_v * incr_ratio)
+            assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
+            assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
 
     def loss_scaling_check_inf(self, use_cuda=True, scope=fluid.Scope()):
-        a = paddle.static.data(name="a", shape=[1024, 1024], dtype='float32')
-        b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
-        x = [a, b]
-        found_inf = paddle.static.data(
-            name="found_inf", shape=[1], dtype='bool'
-        )
-        prev_loss_scaling = paddle.static.data(
-            name="prev_loss_scaling", shape=[1], dtype='float32'
-        )
-        num_good_steps = paddle.static.data(
-            name="num_good_steps", shape=[1], dtype='int32'
-        )
-        num_bad_steps = paddle.static.data(
-            name="num_bad_steps", shape=[1], dtype='int32'
-        )
-
-        a_v = np.random.random([1024, 1024]).astype('float32')
-        b_v = np.random.random([512, 128]).astype('float32')
-        i = np.random.randint(0, 1024, 1)
-        j = np.random.randint(0, 1024, 1)
-        a_v[i[0]][j[0]] = np.inf
-        found_inf_v = np.array([True]).astype('bool')
-        prev_loss_scaling_v = np.array([2048]).astype('float32')
-        num_good_steps_v = np.array([999], dtype=np.int32)
-        num_bad_steps_v = np.array([1], dtype=np.int32)
-
-        incr_every_n_steps = 1000
-        decr_every_n_nan_or_inf = 2
-        incr_ratio = 2
-        decr_ratio = 0.8
-
-        result = amp_nn.update_loss_scaling(
-            x,
-            found_inf,
-            prev_loss_scaling,
-            num_good_steps,
-            num_bad_steps,
-            incr_every_n_steps,
-            decr_every_n_nan_or_inf,
-            incr_ratio,
-            decr_ratio,
-            name="update_loss_scaling",
-        )
-
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        with fluid.scope_guard(scope):
-            exe.run(fluid.default_startup_program())
-            result_v = exe.run(
-                feed={
-                    'a': a_v,
-                    'b': b_v,
-                    'found_inf': found_inf_v,
-                    'prev_loss_scaling': prev_loss_scaling_v,
-                    'num_good_steps': num_good_steps_v,
-                    'num_bad_steps': num_bad_steps_v,
-                },
-                fetch_list=[
-                    result,
-                    x,
-                    found_inf,
-                    prev_loss_scaling,
-                    num_good_steps,
-                    num_bad_steps,
-                ],
+        with paddle_static_guard():
+            a = paddle.static.data(
+                name="a", shape=[1024, 1024], dtype='float32'
             )
-        assert np.array_equal(result_v[0], np.zeros_like(a_v))
-        assert np.array_equal(result_v[1], np.zeros_like(b_v))
-        assert np.array_equal(result_v[2], np.zeros_like(a_v))
-        assert np.array_equal(result_v[3], np.zeros_like(b_v))
-        assert np.array_equal(result_v[4], found_inf_v)
-        assert np.array_equal(result_v[5], prev_loss_scaling_v * decr_ratio)
-        assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
-        assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
+            b = paddle.static.data(name="b", shape=[512, 128], dtype='float32')
+            x = [a, b]
+            found_inf = paddle.static.data(
+                name="found_inf", shape=[1], dtype='bool'
+            )
+            prev_loss_scaling = paddle.static.data(
+                name="prev_loss_scaling", shape=[1], dtype='float32'
+            )
+            num_good_steps = paddle.static.data(
+                name="num_good_steps", shape=[1], dtype='int32'
+            )
+            num_bad_steps = paddle.static.data(
+                name="num_bad_steps", shape=[1], dtype='int32'
+            )
+
+            a_v = np.random.random([1024, 1024]).astype('float32')
+            b_v = np.random.random([512, 128]).astype('float32')
+            i = np.random.randint(0, 1024, 1)
+            j = np.random.randint(0, 1024, 1)
+            a_v[i[0]][j[0]] = np.inf
+            found_inf_v = np.array([True]).astype('bool')
+            prev_loss_scaling_v = np.array([2048]).astype('float32')
+            num_good_steps_v = np.array([999], dtype=np.int32)
+            num_bad_steps_v = np.array([1], dtype=np.int32)
+
+            incr_every_n_steps = 1000
+            decr_every_n_nan_or_inf = 2
+            incr_ratio = 2
+            decr_ratio = 0.8
+
+            result = amp_nn.update_loss_scaling(
+                x,
+                found_inf,
+                prev_loss_scaling,
+                num_good_steps,
+                num_bad_steps,
+                incr_every_n_steps,
+                decr_every_n_nan_or_inf,
+                incr_ratio,
+                decr_ratio,
+                name="update_loss_scaling",
+            )
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            with fluid.scope_guard(scope):
+                exe.run(fluid.default_startup_program())
+                result_v = exe.run(
+                    feed={
+                        'a': a_v,
+                        'b': b_v,
+                        'found_inf': found_inf_v,
+                        'prev_loss_scaling': prev_loss_scaling_v,
+                        'num_good_steps': num_good_steps_v,
+                        'num_bad_steps': num_bad_steps_v,
+                    },
+                    fetch_list=[
+                        result,
+                        x,
+                        found_inf,
+                        prev_loss_scaling,
+                        num_good_steps,
+                        num_bad_steps,
+                    ],
+                )
+            assert np.array_equal(result_v[0], np.zeros_like(a_v))
+            assert np.array_equal(result_v[1], np.zeros_like(b_v))
+            assert np.array_equal(result_v[2], np.zeros_like(a_v))
+            assert np.array_equal(result_v[3], np.zeros_like(b_v))
+            assert np.array_equal(result_v[4], found_inf_v)
+            assert np.array_equal(result_v[5], prev_loss_scaling_v * decr_ratio)
+            assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
+            assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
 
     def test_loss_scaling_cpu(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
-                self.loss_scaling_check(use_cuda=False)
+        with paddle_static_guard():
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.unique_name.guard():
+                with fluid.program_guard(main, startup):
+                    self.loss_scaling_check(use_cuda=False)
 
     def test_loss_scaling_cpu_inf(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
-                self.loss_scaling_check_inf(use_cuda=False)
+        with paddle_static_guard():
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.unique_name.guard():
+                with fluid.program_guard(main, startup):
+                    self.loss_scaling_check_inf(use_cuda=False)
 
     def test_loss_scaling_gpu(self):
         if fluid.core.is_compiled_with_cuda():
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
-                    self.loss_scaling_check(use_cuda=True)
+            with paddle_static_guard():
+                main = fluid.Program()
+                startup = fluid.Program()
+                with fluid.unique_name.guard():
+                    with fluid.program_guard(main, startup):
+                        self.loss_scaling_check(use_cuda=True)
 
     def test_loss_scaling_gpu_inf(self):
         if fluid.core.is_compiled_with_cuda():
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
-                    self.loss_scaling_check_inf(use_cuda=True)
+            with paddle_static_guard():
+                main = fluid.Program()
+                startup = fluid.Program()
+                with fluid.unique_name.guard():
+                    with fluid.program_guard(main, startup):
+                        self.loss_scaling_check_inf(use_cuda=True)
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -64,10 +64,10 @@ class TestTriangularSolveOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # 2D(broadcast) + 3D, test 'transpose'
