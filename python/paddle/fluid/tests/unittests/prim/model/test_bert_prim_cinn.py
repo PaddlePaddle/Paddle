@@ -32,6 +32,7 @@ MODULE_NAME = 'test_bert_prim_cinn'
 MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
 SAVE_NAME = 'bert_training_data.npz'
 
+
 DY2ST_PRIM_GT = [
     11.144556999206543,
     10.343620300292969,
@@ -147,14 +148,10 @@ def train(to_static, enable_prim, enable_cinn):
 class TestBert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        os.environ[
-            'FLAGS_deny_cinn_ops'
-        ] = 'dropout;gaussian_random;uniform_random'
         download(URL, MODULE_NAME, MD5SUM, SAVE_NAME)
 
-    @classmethod
-    def tearDownClass(cls):
-        os.environ.pop('FLAGS_deny_cinn_ops')
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_deny_cinn_ops': ''})
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
@@ -169,6 +166,7 @@ class TestBert(unittest.TestCase):
         "paddle is not compiled with CINN and CUDA",
     )
     def test_cinn(self):
+        paddle.set_flags({'FLAGS_deny_cinn_ops': "dropout"})
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
         np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
@@ -177,6 +175,9 @@ class TestBert(unittest.TestCase):
         "paddle is not compiled with CINN and CUDA",
     )
     def test_prim_cinn(self):
+        paddle.set_flags(
+            {'FLAGS_deny_cinn_ops': "gaussian_random;uniform_random"}
+        )
         core._add_skip_comp_ops("layer_norm")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
