@@ -19,7 +19,7 @@ import sys
 
 sys.path.append("..")
 
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
