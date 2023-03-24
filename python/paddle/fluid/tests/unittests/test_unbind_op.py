@@ -254,7 +254,7 @@ class TestUnbindBool(unittest.TestCase):
         x = paddle.to_tensor([[True, True], [False, False]])
         xs = paddle.unbind(x, axis=0)
         self.assertEqual(len(xs), 2)
-        self.assertTrue(np.array_equal(xs[0].numpy(), [True, True]))
+        np.testing.assert_array_equal(xs[0].numpy(), [True, True])
 
 
 if __name__ == '__main__':
