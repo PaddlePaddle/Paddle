@@ -125,8 +125,15 @@ if(WITH_CUTLASS)
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}")
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
-       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu"
+       "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
+  add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
