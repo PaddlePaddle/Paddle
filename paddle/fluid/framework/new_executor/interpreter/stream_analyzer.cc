@@ -75,8 +75,10 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
 void StreamAnalyzer::ConstructEvents(
     std::vector<Instruction>* instructions) const {
   std::vector<Instruction> cross_step_merged_instructions = *instructions;
-  for (const Instruction& instr : *instructions) {
-    cross_step_merged_instructions.emplace_back(instr);
+  if (!FLAGS_new_executor_sequential_run) {
+    for (const Instruction& instr : *instructions) {
+      cross_step_merged_instructions.emplace_back(instr);
+    }
   }
 
   DependencyBuilder dependency_builder;
@@ -100,6 +102,7 @@ void StreamAnalyzer::ConstructEvents(
   ShrinkEventInfo(dependency_builder, &event_info);
 
   // Construct events
+  VLOG(0) << "cuda event start:";
   std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;
   for (auto& context_item : event_info) {
     for (auto& waiter_item : context_item.second) {
@@ -120,6 +123,9 @@ void StreamAnalyzer::ConstructEvents(
         Instruction& waiter_instr = instructions->at(waiter_instr_id);
         platform::DeviceType waiter_type = GetWaiterType(waiter_instr);
 
+        VLOG(0) << "recorder: " << recorder_instr.Id() << ","
+                << "waiter: " << waiter_instr.Id();
+
         if (instr2event.find(recorder_instr_id) == instr2event.end()) {
           std::shared_ptr<DeviceEvent> device_event =
               std::make_shared<DeviceEvent>(
@@ -138,6 +144,7 @@ void StreamAnalyzer::ConstructEvents(
       }
     }
   }
+  VLOG(0) << "cuda event end.";
 }
 
 DeviceContext* StreamAnalyzer::ParseDeviceContext(

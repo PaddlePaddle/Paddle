@@ -98,8 +98,10 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(8) << "downstream_map: " << std::endl
+  VLOG(0) << "dependency map start:";
+  VLOG(0) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
+  VLOG(0) << "dependency map end.";
 
   is_build_ = true;
 
@@ -298,12 +300,10 @@ void DependencyBuilder::AddDependencyForReadOp() {
 void DependencyBuilder::AddDependencyForSequentialRun() {
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (!IsCpuOp(instructions_->at(op_idx))) {
-      if (dependence_op_idx != ULLONG_MAX) {
-        AddDownstreamOp(dependence_op_idx, op_idx);
-      }
-      dependence_op_idx = op_idx;
+    if (dependence_op_idx != ULLONG_MAX) {
+      AddDownstreamOp(dependence_op_idx, op_idx);
     }
+    dependence_op_idx = op_idx;
   }
 }
 

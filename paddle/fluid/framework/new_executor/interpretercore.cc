@@ -52,6 +52,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
+PADDLE_DEFINE_EXPORTED_bool(enable_tracer, true, "ggg");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -207,7 +208,7 @@ void InterpreterCore::RunImpl() {
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-      (sync_op_num_ == 0)) {
+      (sync_op_num_ == 0) && FLAGS_enable_tracer) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
@@ -273,6 +274,8 @@ paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names, bool need_fetch) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
+  op_status.clear();
+  op_status.assign(block_.OpSize(), 0);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -372,8 +375,8 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
     const auto& var_name = var_scope_.GetNameById(i);
     var_list[i] = new_scope->FindVar(var_name);
   }
-  // The index should assured valid, cause the InterpreterCore may not be fully
-  // built, but was still cached and used. For example, see unit test
+  // The index should be assured valid, cause the InterpreterCore may not be
+  // fully built, but was still cached and used. For example, see unit test
   // `test_assert.py`, it may exit before `InterpreterCore::Convert`, but still
   // was cached and used by later tests.
   for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {
@@ -1009,7 +1012,7 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
-  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+  VLOG(0) << __func__ << " OP id:" << instr_node.Id()
           << " name:" << instr_node.OpBase()->Type() << " type:"
           << (instr_node.KernelType() == OpFuncType::kCpuSync
                   ? "kCpuSync"
@@ -1017,6 +1020,15 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                          ? "kGpuSync"
                          : "kGpuAsync"))
           << " runs on " << platform::GetCurrentThreadName();
+
+  std::vector<size_t> target_op_status(op_status.size(), 0);
+  for (size_t i = 0; i < instr_node.Id(); i++) {
+    target_op_status[i] = 1;
+  }
+  VLOG(0) << "is_sequtional_run: " << (op_status == target_op_status);
+  if (FLAGS_new_executor_sequential_run) {
+    assert(op_status == target_op_status);
+  }
 
   auto* op = instr_node.OpBase();
   platform::RecordEvent instruction_event(
@@ -1032,6 +1044,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       CheckGC(instr_node);
       interpreter::LogDeviceMemoryStats(place_);
     }
+
+    op_status[instr_node.Id()] = 1;
 
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {

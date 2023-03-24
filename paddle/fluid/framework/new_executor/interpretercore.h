@@ -180,6 +180,7 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+  std::vector<size_t> op_status;
 
   // used for Trace
   int64_t sync_op_num_{-1};
