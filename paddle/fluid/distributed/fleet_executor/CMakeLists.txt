@@ -51,7 +51,7 @@ cc_library(
        collective_helper
        op_registry
        executor_gc_helper
-       gflags
+       flags
        glog
        ${BRPC_DEPS})
 
