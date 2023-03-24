@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_activation_op import ref_leaky_relu
 import paddle
 import paddle.fluid as fluid

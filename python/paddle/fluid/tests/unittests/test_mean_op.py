@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, OpTestTool, convert_float_to_uint16
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -53,10 +53,10 @@ class TestMeanOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestMeanOp_ZeroDim(OpTest):
@@ -68,10 +68,10 @@ class TestMeanOp_ZeroDim(OpTest):
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestMeanOpError(unittest.TestCase):
@@ -102,7 +102,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
@@ -126,11 +126,11 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace(), check_eager=True)
+        self.check_output_with_place(core.CPUPlace())
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -181,14 +181,14 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_eager=True, check_prim=True)
+            self.check_output(check_prim=True)
         else:
             place = paddle.CUDAPlace(0)
             self.check_output_with_place(place=place, check_prim=True)
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_eager=True, check_prim=True)
+            self.check_grad(['X'], ['Out'], check_prim=True)
         else:
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(

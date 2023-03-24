@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -58,10 +58,10 @@ class TestRepeatInterleaveOp(OpTest):
         self.index_size = self.x_shape[self.dim]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestRepeatInterleaveOp2(OpTest):
@@ -96,10 +96,10 @@ class TestRepeatInterleaveOp2(OpTest):
         self.index_size = self.x_shape[self.dim]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestIndexSelectAPI(unittest.TestCase):
