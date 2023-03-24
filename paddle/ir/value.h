@@ -15,15 +15,9 @@
 #pragma once
 
 #include "paddle/ir/type.h"
+#include "paddle/ir/value_impl.h"
 
 namespace ir {
-namespace detail {
-class ValueImpl;
-class OpResultImpl;
-class OpOperandImpl;
-}  // namespace detail
-class Operation;
-
 ///
 /// \brief OpOperand
 ///
@@ -56,7 +50,7 @@ class OpOperand {
 
   explicit operator bool() const { return impl_; }
 
-  ir::OpOperand *&back_user_addr();
+  detail::OpOperandImpl *impl() const { return impl_; }
 
  private:
   detail::OpOperandImpl *impl_{nullptr};
@@ -77,11 +71,23 @@ class Value {
 
   explicit operator bool() const { return impl_; }
 
-  ir::Type type() const;
+  ir::Type type() const { return impl_->type(); }
 
-  void SetType(ir::Type type);
+  void SetType(ir::Type type) { impl_->SetType(type); }
 
- private:
+  detail::ValueImpl *impl() const { return impl_; }
+
+  template <typename T>
+  bool isa() const {
+    return ir::isa<T>(*this);
+  }
+
+  template <typename U>
+  U dyn_cast() const {
+    return ir::dyn_cast<U>(*this);
+  }
+
+ protected:
   detail::ValueImpl *impl_{nullptr};
 };
 
@@ -92,92 +98,18 @@ class OpResult : public Value {
  public:
   using Value::Value;
 
-  OpOperand &first_user();
-};
-
-///
-/// \brief details
-///
-namespace detail {
-///
-/// \brief ValueImpl
-///
-class ValueImpl {
- public:
-  ///
-  /// \brief Value is defined by operator, return the position of this value in
-  /// the operator output list.
-  ///
-  uint32_t index();
-
-  ///
-  /// \brief Return the type of this value.
-  ///
-  ir::Type type() const { return type_; }
-
-  ///
-  /// \brief Set the type of this value.
-  ///
-  void SetType(ir::Type type) { type_ = type; }
-
-  ir::OpOperand &first_user() { return first_user_; }
-
-  friend ir::Value;
-
- protected:
-  ///
-  /// \brief Only allowed to be constructed by derived classes such as
-  /// OpResultImpl.
-  ///
-  explicit ValueImpl(ir::Type type) : type_(type) {}
-
-  ir::Type type_;
-
-  ir::OpOperand first_user_;
-};
-
-///
-/// \brief OpResultImpl
-///
-class OpResultImpl : public ValueImpl {};
-
-///
-/// \brief OpResult, idx < 5
-///
-class OpInlineResultImpl : public detail::OpResultImpl {};
-
-///
-/// \brief OpResult, idx >= 5
-///
-class OpOutlineResultImpl : public detail::OpResultImpl {
- private:
-  uint32_t index_;
-};
-
-///
-/// \brief OpOperandImpl
-///
-class OpOperandImpl {
- private:
-  OpOperandImpl(ir::OpResult source, ir::Operation *owner)
-      : source_(source), owner_(owner) {
-    back_user_addr_ = &source.first_user();
-    next_user_ = source.first_user();
-    if (next_user_) {
-      next_user_.back_user_addr() = &next_user_;
-    }
-    source.first_user() = this;
+  static bool classof(Value value) {
+    return ir::isa<detail::OpResultImpl>(value.impl());
   }
 
-  ir::OpResult source_;
+  Operation *owner() const { return impl()->owner(); }
 
-  ir::OpOperand next_user_;
+  uint32_t GetResultIndex() const { return impl()->GetResultIndex(); }
 
-  ir::OpOperand *back_user_addr_{nullptr};
-
-  ir::Operation *owner_{nullptr};
-
-  friend ir::OpOperand;
+ private:
+  detail::OpResultImpl *impl() const {
+    return reinterpret_cast<detail::OpResultImpl *>(impl_);
+  }
 };
-}  // namespace detail
+
 }  // namespace ir
