@@ -383,6 +383,20 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
+        idx = 0
+        if not self.calc_comm_same_stream:
+            for i in range(len(grad_param_segments)):
+                while block.ops[idx].type != 'c_allreduce_sum':
+                    idx += 1
+                grad_segment, param_segment = grad_param_segments[i]
+                for param in param_segment:
+                    block._insert_op_without_sync(
+                        idx + 1,
+                        type='depend',
+                        inputs={'X': param, 'Dep': fused_var},
+                        outputs={'Out': param},
+                    )
+                    idx += 1
 
         # update the outputs_name_to_idx after insertion of sync/allreduce ops
         outputs_name_to_idx = self.__get_ouputs_name_to_idx(
