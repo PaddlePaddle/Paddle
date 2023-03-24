@@ -118,6 +118,7 @@ select = [
 
     # Pylint
     "PLC3002",
+    "PLE1205"
 ]
 unfixable = [
     "NPY001"
