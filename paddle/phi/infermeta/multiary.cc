@@ -2162,7 +2162,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
                         : phi::make_ddim({first_dim[0], last_dim[1]});
   }
 
-  auto width = first_dim.at(0);
+  auto width = first_dim.at(1);
   for (size_t i = 1; i < n - 1; i++) {
     PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
                       static_cast<size_t>(2),
