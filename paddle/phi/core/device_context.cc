@@ -194,7 +194,7 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? host_zero_allocator_
             : host_allocator_;
     return tensor->AllocateFrom(
