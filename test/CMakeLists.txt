@@ -8,6 +8,7 @@ set(PYTHON_TESTS_DIR
 if(WITH_TESTING)
   add_subdirectory(cpp)
   add_subdirectory(legacy_test)
+  add_subdirectory(book)
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
