@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -50,10 +50,10 @@ class TestSolveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # x broadcast + 3D batch case
@@ -71,12 +71,10 @@ class TestSolveOpBatched_case0(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=1e-1, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-1)
 
 
 # 3D batch + y vector case
@@ -94,12 +92,10 @@ class TestSolveOpBatched_case1(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
 
 
 # 3D batch + y broadcast case
@@ -117,12 +113,10 @@ class TestSolveOpBatched_case2(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
 
 # x broadcast + 3D batch case
@@ -140,12 +134,10 @@ class TestSolveOpBatched_case3(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
 
 # 3D normal batch case
@@ -163,10 +155,10 @@ class TestSolveOpBatched_case4(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # 4D normal batch case
@@ -184,10 +176,10 @@ class TestSolveOpBatched_case5(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # 4D batch + y broadcast case
@@ -205,10 +197,10 @@ class TestSolveOpBatched_case6(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # 5D normal batch case
@@ -226,12 +218,10 @@ class TestSolveOpBatched_case7(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
 
 
 # 5D batch + y broadcast case
@@ -249,12 +239,10 @@ class TestSolveOpBatched_case8(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
-        )
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
 
 
 class TestSolveOpError(unittest.TestCase):

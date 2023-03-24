@@ -869,7 +869,6 @@ if(WITH_IPU)
   add_subdirectory(ipu)
 endif()
 
-
 add_subdirectory(asp)
 
 add_subdirectory(ir)
@@ -1114,6 +1113,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
