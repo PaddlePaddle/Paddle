@@ -566,14 +566,6 @@ class CompositeGradOpMakerBase {
     }
   }
 
-  std::string SingleForwardInputVarName(const std::string& name) const {
-    return fwd_op_.Input(name).at(0);
-  }
-
-  std::string SingleForwardOutputVarName(const std::string& name) const {
-    return fwd_op_.Output(name).at(0);
-  }
-
   std::vector<std::string> MultiForwardOutputVarName(
       const std::string& name) const {
     return fwd_op_.Output(name);
