@@ -14,7 +14,7 @@
   kernel :
     func : arange
   data_transform :
-    support_trans_dtype : start, end, step
+    skip_transform : start, end, step
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)

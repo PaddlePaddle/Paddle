@@ -99,7 +99,7 @@
 
 - op : arange(range)
   inputs :
-    {start : Start, stop : Stop, step : Step}
+    {start : Start, end : End, step : Step}
   outputs :
     out : Out
 
