@@ -164,7 +164,7 @@ def train(to_static, enable_prim, enable_cinn):
                 # avoid dataloader throw abort signaal
                 data_loader._reset()
                 break
-
+    print(losses)
     return losses
 
 
