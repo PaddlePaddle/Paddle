@@ -3916,9 +3916,13 @@ def gaussian_nll_loss(
     of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
 
     Args:
-        input (Tensor): input tensor, expectation of the Gaussian distribution, available dtype is float32, float64.
-        label (Tensor): target label tensor, sample from the Gaussian distribution, available dtype is float32, float64.
-        variance (Tensor): tensor of positive variance(s), one for each of the expectations
+        input (Tensor): input tensor, :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
+          dimensions. Expectation of the Gaussian distribution, available dtype is float32, float64.
+        label (Tensor): target label tensor, :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+          but with one dimension equal to 1 (to allow for broadcasting). Sample from the Gaussian distribution, available dtype is float32, float64.
+        variance (Tensor): tensor of positive variance(s), :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+          with one dimension equal to 1, or same shape as the input but with one fewer
+          dimension (to allow for broadcasting). One for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
@@ -4034,8 +4038,8 @@ def gaussian_nll_loss(
         loss += 0.5 * math.log(2 * math.pi)
 
     if reduction == 'mean':
-        return loss.mean()
+        return paddle.mean(loss, name=name)
     elif reduction == 'sum':
-        return loss.sum()
-    else:
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
         return loss

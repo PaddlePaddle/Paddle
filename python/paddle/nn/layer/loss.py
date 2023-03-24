@@ -1977,7 +1977,7 @@ class GaussianNLLLoss(Layer):
 
     Args:
         full (bool, optional): include the constant term in the loss
-            calculation. Default: ``False``.
+            calculation. Default: ``False``, means omit the constant term.
         epsilon (float, optional): value used to clamp ``variance`` (see note below), for
             stability. Default: 1e-6.
         reduction (str, optional): specifies the reduction to apply to the
@@ -1989,12 +1989,12 @@ class GaussianNLLLoss(Layer):
 
     Shape:
         - Input(Tensor): :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
-          dimensions
+          dimensions. Available dtype is float32, float64.
         - Label(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
-          but with one dimension equal to 1 (to allow for broadcasting)
+          but with one dimension equal to 1 (to allow for broadcasting). Available dtype is float32, float64.
         - Variance(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
           with one dimension equal to 1, or same shape as the input but with one fewer
-          dimension (to allow for broadcasting)
+          dimension (to allow for broadcasting). Available dtype is float32, float64.
         - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
           ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
           shape as the input
