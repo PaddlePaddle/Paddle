@@ -165,6 +165,15 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  
+- op : one_hot
+  args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+  output : Tensor(out)
+  infer_meta :
+    func : OneHotRawInferMeta
+  kernel :
+    func : one_hot_raw
+    data_type : x
 
 - op : reduce
   args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)

@@ -1307,6 +1307,16 @@
   outputs :
     size : Out
 
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
+
 - op : overlap_add
   backward : overlap_add_grad
   inputs :
