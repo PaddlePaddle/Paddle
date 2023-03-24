@@ -260,6 +260,6 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
     with framework.program_guard(main_program):
         print("Lowering composite forward ops begin...")
 
-        primx._lower_composite(blocks, blacklist, whitelist)
+        primx._lower_composite(blocks, blacklist)
         replace_ops = prim_config["composite_ops_record"]
         print(f"Lowering composite forward ops finish: {replace_ops}")
