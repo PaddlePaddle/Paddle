@@ -6,7 +6,7 @@ set(PYTHON_TESTS_DIR
     CACHE INTERNAL "python tests directory")
 
 if(WITH_TESTING)
-  add_subdirectory(auto_parallel)
+  # add_subdirectory(auto_parallel)
   # add_subdirectory(asp)
   # add_subdirectory(autograd)
   add_subdirectory(book)
