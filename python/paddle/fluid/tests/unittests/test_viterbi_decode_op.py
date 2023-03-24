@@ -11,7 +11,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -99,7 +99,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestViterbiAPI(unittest.TestCase):
