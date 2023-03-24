@@ -149,7 +149,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     phi::DenseTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
-  phi::DataLayout new_layout = nullptr;
+  phi::DataLayout new_layout = src_lodtensors[0]->layout();
   framework::DDim new_dim;
   LoD new_lod = src_lodtensors[0]->lod();
 
