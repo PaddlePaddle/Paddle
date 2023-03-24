@@ -37,8 +37,8 @@ def call_lambda_as_func(x):
 def call_lambda_directly(x):
     x = fluid.dygraph.to_variable(x)
 
-    y = (lambda x, y: x + y)(x, x)
-    out = (lambda x: paddle.mean(x))(y)
+    y = x + x
+    out = paddle.mean(y)
 
     return out
 
@@ -48,8 +48,8 @@ def call_lambda_in_func(x):
 
     add_func = lambda x: x + 1
 
-    y = paddle.mean((lambda x: F.relu(x))(x))
-    out = add_func(y) if y > 1 and y < 2 else (lambda x: x**2)(y)
+    y = paddle.mean((F.relu(x)))
+    out = add_func(y) if y > 1 and y < 2 else y**2
 
     return out
 
@@ -60,7 +60,7 @@ def call_lambda_with_ifExpr(x):
     add_func = lambda x: x + 1
 
     y = paddle.mean(x)
-    out = add_func(y) if y or y < 2 else (lambda x: x**2)(y)
+    out = add_func(y) if y or y < 2 else y**2
 
     return out
 
@@ -74,7 +74,7 @@ def call_lambda_with_ifExpr2(x):
 
     # NOTE: y is Variable, but z<2 is python bool value
     z = 0
-    out = add_func(y) if y or z < 2 else (lambda x: x**2)(y)
+    out = add_func(y) if y or z < 2 else y**2
 
     return out
 
