@@ -332,6 +332,32 @@ class ProcessGroup {
                                    GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Gather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const GatherOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProcessGroup%s does not support gather "
+                                   "with sync_op and use_calc_stream flag.",
+                                   GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Gather(
+      const phi::DenseTensor& in_tensor,
+      std::vector<phi::DenseTensor>& gather_tensors,
+      const GatherOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProcessGroup%s does not support gather "
+                                   "with sync_op and use_calc_stream flag.",
+                                   GetBackendName()));
+  }
+
+
+
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
                                                    bool sync_op,
