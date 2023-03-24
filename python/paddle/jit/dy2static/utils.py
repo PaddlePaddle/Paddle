@@ -1460,7 +1460,7 @@ def _param_grad_names(program_desc, params):
             for var in program_desc.block(0).all_vars()
             if var.name().endswith(param.name + '@GRAD')
         ]
-        if candidate:
+        if candidate and 'grad/' in param.name:
             names.append(max(candidate, key=lambda name: name.count('grad/')))
         else:
             names.append(param.name + '@GRAD')
