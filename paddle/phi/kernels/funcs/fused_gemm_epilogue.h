@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/utils/optional.h"
 
 DECLARE_int64(cublaslt_exhaustive_search_times);
@@ -486,63 +487,6 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cublasLtMatrixLayoutDestroy(out_desc));
 }
-
-enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
-
-template <bool TransX, bool TransY>
-struct FusedGEMMGradTrait;
-
-template <>
-struct FusedGEMMGradTrait<false, false> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = true;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = false;
-};
-
-template <>
-struct FusedGEMMGradTrait<true, false> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = true;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradATrans = false;
-  static constexpr auto kYGradBTrans = false;
-};
-
-template <>
-struct FusedGEMMGradTrait<false, true> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = false;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = false;
-};
-
-template <>
-struct FusedGEMMGradTrait<true, true> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradATrans = true;
-  static constexpr auto kXGradBTrans = true;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = true;
-};
 
 static constexpr auto BoolToCuBlasEnum(bool transpose) {
   return transpose ? CUBLAS_OP_T : CUBLAS_OP_N;

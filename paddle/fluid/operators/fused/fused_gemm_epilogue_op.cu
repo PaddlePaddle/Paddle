@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 namespace paddle {

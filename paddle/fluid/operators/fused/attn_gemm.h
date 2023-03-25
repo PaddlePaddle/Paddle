@@ -70,10 +70,10 @@ class AttnMatMul {
 
       phi::funcs::LinearWithCublasLt<T>::Run(
           dev_ctx_,
-          input,
-          weight,
-          bias_out,
-          static_cast<const void*>(bias->data<T>()),
+          input,                                      // x
+          weight,                                     // y
+          bias_out,                                   // out
+          static_cast<const void*>(bias->data<T>()),  // bias
           nullptr,
           bsz_seq_,      // M
           output_size_,  // N
