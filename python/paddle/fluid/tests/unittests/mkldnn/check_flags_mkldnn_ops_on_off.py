@@ -17,7 +17,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.layer_helper import LayerHelper
 
