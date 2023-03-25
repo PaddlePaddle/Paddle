@@ -60,6 +60,19 @@ black_ops_list = [
 ]
 
 
+# white ops list whose kernel can be deleted after performance analysis
+# original kernel and its derivative kernel can be deleted when composite_grad
+# kernel performs same to it.
+prim_white_list = ["matmul_double_grad"]
+
+# dict of special api that forward api's output will affect bacward api's output
+# bacward api's output usually affected by backward api's input
+special_prune_dict = {
+    "matmul_grad": {"x": "grad_y", "y": "grad_x"},
+    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
+}
+
+
 #########
 # Utils #
 #########
@@ -977,12 +990,25 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             grad_node_out_list.append(name)
             is_optional = name in self.optional_inputs
+            is_special_forward_api = (
+                True if forward_api_name in special_prune_dict else False
+            )
+
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
             else:
-                set_grad_out_meta = (
-                    f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                )
+                if (
+                    is_special_forward_api
+                    and name in special_prune_dict[forward_api_name]
+                ):
+                    meta_name = GetAutoGradMetaName(
+                        special_prune_dict[forward_api_name][name]
+                    )
+                    set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
+                else:
+                    set_grad_out_meta = (
+                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                    )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -2255,13 +2281,33 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
-            grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+            if composite_grad_api_name in prim_white_list:
+                grad_function_call_str = f"""
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+    }}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }}
+  """
+            else:
+                grad_function_call_str = f"""
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+    }}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }}
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-  VLOG(4) << "Fused api {backward_api_name} is called ";
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
   }}
   """
         else:

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -45,10 +45,10 @@ class TestGatherOp(OpTest):
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def config(self):
         """
@@ -194,10 +194,10 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_eager=True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
 
     def config(self):
         """
@@ -223,10 +223,10 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def config(self):
         """

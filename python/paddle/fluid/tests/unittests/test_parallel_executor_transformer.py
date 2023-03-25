@@ -212,8 +212,7 @@ def get_feed_data_reader():
         all_batch_tensors.append(tensors)
 
     def __reader__():
-        for t in all_batch_tensors:
-            yield t
+        yield from all_batch_tensors
 
     feed_data_reader = FeedDataReader(
         feed_list=transformer_model.build_inputs(

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -228,7 +228,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -237,21 +237,19 @@ class TestWarpRNNTOp(OpTest):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -261,14 +259,12 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
             )
 
 

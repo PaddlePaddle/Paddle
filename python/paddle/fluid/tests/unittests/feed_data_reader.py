@@ -19,8 +19,7 @@ from paddle.fluid.framework import Variable
 def cyclic_reader(reader):
     def __reader__():
         while True:
-            for data in reader():
-                yield data
+            yield from reader()
 
     return __reader__
 
