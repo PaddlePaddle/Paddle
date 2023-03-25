@@ -724,6 +724,32 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fused_attention = True
                      )DOC")
       .def_property(
+          "fused_feedforward",
+          [](const BuildStrategy &self) { return self.fused_feedforward_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fused_feedforward_ = b;
+          },
+          R"DOC((bool, optional): fused_feedforward indicate whether
+                to fuse the whole feed_forward part with one op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_feedforward = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {

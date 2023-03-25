@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
 

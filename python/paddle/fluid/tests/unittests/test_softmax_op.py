@@ -124,6 +124,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.init_kernel_type()
 
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)

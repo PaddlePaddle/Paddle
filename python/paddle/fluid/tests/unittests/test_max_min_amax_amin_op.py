@@ -69,8 +69,8 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
             self.np_grad[func] = grad
 
-        self.np_out = dict()
-        self.np_grad = dict()
+        self.np_out = {}
+        self.np_grad = {}
         _cal_np_out_and_gradient('amax')
         _cal_np_out_and_gradient('amin')
         _cal_np_out_and_gradient('max')

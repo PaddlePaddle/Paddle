@@ -63,12 +63,10 @@ class TestLogSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
@@ -85,10 +83,10 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
         self.attrs = {'axis': -1}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], check_eager=True)
+        self.check_grad(['X'], ['Out'])
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
@@ -122,7 +120,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -131,7 +129,6 @@ class TestLogSoftmaxBF16Op(OpTest):
             ['X'],
             ['Out'],
             user_defined_grads=[self.x_grad],
-            check_eager=True,
         )
 
 

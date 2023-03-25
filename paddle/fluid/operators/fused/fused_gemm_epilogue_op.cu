@@ -13,12 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 namespace paddle {
 namespace operators {
@@ -151,20 +151,20 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
             << ", activation=" << activation_grad
             << ", reserve_space=" << reserve_space;
 
-    ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
-                                        dout,
-                                        x,
-                                        y,
-                                        reserve_space,
-                                        M,
-                                        N,
-                                        K,
-                                        trans_x,
-                                        trans_y,
-                                        activation_grad,
-                                        dx,
-                                        dy,
-                                        dbias);
+    phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
+                                                    dout,
+                                                    x,
+                                                    y,
+                                                    reserve_space,
+                                                    M,
+                                                    N,
+                                                    K,
+                                                    trans_x,
+                                                    trans_y,
+                                                    activation_grad,
+                                                    dx,
+                                                    dy,
+                                                    dbias);
   }
 };
 #endif

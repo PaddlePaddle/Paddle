@@ -1406,7 +1406,7 @@ class GetterSetterHelper:
             names = []
         vars = self.getter()
         if vars is None:
-            return tuple()
+            return ()
         for n in names:
             assert (
                 n in self.name2id
