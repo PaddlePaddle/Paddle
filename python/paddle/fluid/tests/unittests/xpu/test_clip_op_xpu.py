@@ -97,7 +97,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
-                    self.place, ['X'], 'Out', check_eager=True
+                    self.place, ['X'], 'Out', check_dygraph=True
                 )
                 paddle.disable_static()
 

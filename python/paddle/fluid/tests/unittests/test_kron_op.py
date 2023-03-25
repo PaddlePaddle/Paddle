@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -37,16 +37,16 @@ class TestKronOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'), check_eager=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestKronOp2(TestKronOp):
@@ -168,7 +168,7 @@ class TestComplexKronOp(OpTest):
         return grad_y
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -176,7 +176,6 @@ class TestComplexKronOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -186,7 +185,6 @@ class TestComplexKronOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -196,7 +194,6 @@ class TestComplexKronOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 

@@ -665,7 +665,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -2328,9 +2328,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
@@ -2407,21 +2407,7 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
-                output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
-            )
-            for input_to_check in inputs_to_check
-        ]
-
-        if self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -2431,6 +2417,20 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
             )
             self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
 
         analytic_grads = self._get_gradient(
             inputs_to_check,

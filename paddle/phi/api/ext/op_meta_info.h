@@ -241,6 +241,26 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  template <typename... Tail>
+  struct ComputeCallHelper<const paddle::optional<std::vector<paddle::Tensor>>&,
+                           Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->InputsBetween(range.first, range.second);
+      if (arg.empty() || !arg[0].is_initialized()) {
+        ComputeCallHelper<Tail...>::
+            template Compute<in_idx + 1, attr_idx, out_idx>(
+                ctx, pargs..., paddle::none);
+      } else {
+        ComputeCallHelper<
+            Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                      pargs...,
+                                                                      arg);
+      }
+    }
+  };
+
   PD_SPECIALIZE_ComputeCallHelper(bool);
   PD_SPECIALIZE_ComputeCallHelper(int);
   PD_SPECIALIZE_ComputeCallHelper(float);
@@ -486,6 +506,33 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  template <typename... Tail>
+  struct InferShapeCallHelper<
+      const paddle::optional<std::vector<std::vector<int64_t>>>&,
+      Tail...> {
+    template <int in_idx,
+              int vec_in_idx,
+              int attr_idx,
+              typename... PreviousArgs>
+    static Return InferShape(
+        const std::vector<std::vector<int64_t>>& input_shapes,
+        const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
+        const std::vector<paddle::any>& attrs,
+        const PreviousArgs&... pargs) {
+      const std::vector<std::vector<int64_t>>& arg =
+          vec_input_shapes[vec_in_idx];
+      if (arg.empty()) {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx, vec_in_idx + 1, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., paddle::none);
+      } else {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx, vec_in_idx + 1, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., arg);
+      }
+    }
+  };
+
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(std::vector<int64_t>);
@@ -593,8 +640,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferDtypeCallHelper_FOR_DTYPES(const std::vector<DataType>&);
 
   template <typename... Tail>
-  struct InferDtypeCallHelper<const paddle::optional<paddle::DataType>&,
-                              Tail...> {
+  struct InferDtypeCallHelper<const paddle::optional<DataType>&, Tail...> {
     template <int in_idx, int vec_in_idx, typename... PreviousArgs>
     static Return InferDtype(
         const std::vector<DataType>& input_dtypes,
@@ -609,6 +655,27 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
         return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1,
                                                                   vec_in_idx>(
             input_dtypes, vec_input_dtypes, pargs..., arg);
+      }
+    }
+  };
+
+  template <typename... Tail>
+  struct InferDtypeCallHelper<const paddle::optional<std::vector<DataType>>&,
+                              Tail...> {
+    template <int in_idx, int vec_in_idx, typename... PreviousArgs>
+    static Return InferDtype(
+        const std::vector<DataType>& input_dtypes,
+        const std::vector<std::vector<DataType>>& vec_input_dtypes,
+        const PreviousArgs&... pargs) {
+      const std::vector<DataType>& arg = vec_input_dtypes[vec_in_idx];
+      if (arg.empty()) {
+        return InferDtypeCallHelper<Tail...>::
+            template InferDtype<in_idx, vec_in_idx + 1>(
+                input_dtypes, vec_input_dtypes, pargs..., paddle::none);
+      } else {
+        return InferDtypeCallHelper<Tail...>::
+            template InferDtype<in_idx, vec_in_idx + 1>(
+                input_dtypes, vec_input_dtypes, pargs..., arg);
       }
     }
   };
