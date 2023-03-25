@@ -280,8 +280,11 @@ class TestBceLossOpCase2(OpTest):
         self.shape = [2, 3, 20]
 
 
-class TestBceLossOpFloat16(TestBceLossOp):
+class TestBceLossOpFloat16(OpTest):
     def setUp(self):
+        self.init_test_case()
+        self.op_type = "bce_loss"
+        self.python_api = bce_wrapper
         input_np = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
             "float16"
         )
@@ -311,6 +314,9 @@ class TestBceLossOpFloat16(TestBceLossOp):
                     'Out',
                     max_relative_error=1e-2,
                 )
+    
+    def init_test_case(self):
+        self.shape = [10, 10]
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
