@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):

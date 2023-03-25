@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.framework import core
 
