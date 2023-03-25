@@ -44,8 +44,8 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
 
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'root': src,
             'ring_id': ring_id,
@@ -67,12 +67,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             return [tindata]
 
     def get_model_new(
-        self,
-        main_prog,
-        startup_program,
-        rank,
-        dtype='float32',
-        reduce_type=None,
+        self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(

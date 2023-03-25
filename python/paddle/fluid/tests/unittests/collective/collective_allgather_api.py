@@ -66,8 +66,8 @@ def all_gather_new(tensor_list, tensor, group=None):
     nranks = dist.get_world_size()
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [out]},
+        inputs={'x': [tensor]},
+        outputs={'out': [out]},
         attrs={
             'ring_id': ring_id,
             'nranks': nranks,
