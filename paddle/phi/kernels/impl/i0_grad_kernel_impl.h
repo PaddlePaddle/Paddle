@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void I0GradKernel(const Context& ctx,
-                       const DenseTensor& out_grad,
-                       DenseTensor* x_grad) {
+                  const DenseTensor& out_grad,
+                  DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
   functor(ctx, x_grad, static_cast<T>(0));
