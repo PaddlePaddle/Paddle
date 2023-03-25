@@ -19,7 +19,7 @@ import unittest
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 
 paddle.enable_static()
 
