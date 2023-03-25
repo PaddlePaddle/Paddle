@@ -10,6 +10,7 @@ if(WITH_TESTING)
   add_subdirectory(legacy_test)
   add_subdirectory(book)
   add_subdirectory(custom_kernel)
+  add_subdirectory(asp)
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
