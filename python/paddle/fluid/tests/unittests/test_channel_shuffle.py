@@ -313,7 +313,7 @@ class TestChannelShuffleBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad(
+        self.check_grad_with_place(
             place,
             ['X'],
             'Out',
