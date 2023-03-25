@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 import paddle.framework.dtype as dtypes
+from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.static import Program, program_guard
 

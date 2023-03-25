@@ -19,7 +19,7 @@ import paddle.fluid.core as core
 import sys
 
 sys.path.append('..')
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 

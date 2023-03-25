@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,7 @@ import numpy as np
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph.base import to_variable
 from paddle.jit.api import to_static
