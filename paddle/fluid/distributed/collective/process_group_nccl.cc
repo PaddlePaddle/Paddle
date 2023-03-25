@@ -491,15 +491,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
       offset += numel;
     }
   }
-  return Gather(in_tensor, partial_tensors, opts, sync_op, use_calc_stream);
+  return Gather(&partial_tensors, in_tensor, opts, sync_op, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    std::vector<phi::DenseTensor>* gather_tensors_ptr,
     const phi::DenseTensor& in_tensor,
-    const std::vector<phi::DenseTensor>& gather_tensors,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  auto& gather_tensors = *gather_tensors_ptr;
   PADDLE_ENFORCE_GT(size_,
                     opts.root_rank,
                     phi::errors::InvalidArgument(
