@@ -21,7 +21,7 @@ import paddle
 paddle.enable_static()
 from eager_op_test import OpTest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):

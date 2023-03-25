@@ -17,8 +17,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import layers
 
 pos_enc_param_names = (
     "src_pos_enc_table",

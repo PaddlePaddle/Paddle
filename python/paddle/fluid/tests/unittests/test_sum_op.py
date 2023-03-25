@@ -27,10 +27,9 @@ from eager_op_test import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.inference as paddle_infer
-from paddle import enable_static
+from paddle import enable_static, fluid
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.op import Operator
 

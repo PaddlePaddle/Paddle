@@ -17,8 +17,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid.framework import Program, program_guard
 
 

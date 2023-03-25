@@ -15,7 +15,7 @@
 import os
 import warnings
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
@@ -820,7 +820,7 @@ class TheOnePSRuntime(RuntimeBase):
             send_ctx, dense_map, proto_txt, string_hosts, fluid.global_scope()
         )
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         info = self._communicator.get_client_info()
@@ -1566,7 +1566,7 @@ class TheOnePSRuntime(RuntimeBase):
             )
         else:
             threshold = 0
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         if self.role_maker._is_first_worker():

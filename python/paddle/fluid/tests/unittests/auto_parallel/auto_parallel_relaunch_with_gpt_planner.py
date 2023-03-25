@@ -17,7 +17,7 @@ import sys
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.distributed import fleet
 
 sys.path.append("..")
