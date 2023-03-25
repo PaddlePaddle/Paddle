@@ -72,6 +72,12 @@ class TestStack1DOneDNNOp(TestStack2DOneDNNOp):
         self.axis = 0
 
 
+class TestStack0DOneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = ()
+        self.axis = 0
+
+
 class TestStack1DAxis1OneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
         self.input_dim = 100

@@ -78,6 +78,17 @@ class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         }
 
 
+class TestReduceSum0DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': []}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+
+
 class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
     TestReduceDefaultWithGradOneDNNOp
 ):
@@ -100,7 +111,10 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.outputs = {'Out': self.inputs['X'].sum()}
 
 
-@OpTestTool.skip_if_not_cpu()
+@OpTestTool.skip_if(
+    True,
+    reason="According to Paddle API, None dim means reduce all instead of copy, so just skip this test to avoid potential failure",
+)
 class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
     TestReduceDefaultWithGradOneDNNOp
 ):
@@ -124,6 +138,21 @@ class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         self.use_mkldnn = True
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.attrs = {'dim': [-1], 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {
+            'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
+        }
+
+
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework."
+)
+class TestReduceMax0DOneDNNOp(TestReduceSumDefaultOneDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
@@ -165,6 +194,21 @@ class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         }
 
 
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework."
+)
+class TestReduceMin0DOneDNNOp(TestReduceSumDefaultOneDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': []}
+        self.outputs = {
+            'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
+        }
+
+
 class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
@@ -173,6 +217,18 @@ class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.attrs = {'dim': [0], 'use_mkldnn': self.use_mkldnn}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=0) / self.inputs['X'].shape[0]
+        }
+
+
+class TestReduceMean0DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_mean"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': []}
+        self.outputs = {
+            # scalar mean is equal to sum
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
 
 

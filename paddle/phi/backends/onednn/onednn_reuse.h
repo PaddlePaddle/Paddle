@@ -1083,7 +1083,9 @@ class BroadcastDataOneDNNHandler
                                                  : vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
-    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
+    const auto reshape_dims =
+        extended_x_dims.size() != 0 ? extended_x_dims : std::vector<int64_t>{1};
+    const auto src1_md = x->mem_desc().reshape(reshape_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -1126,6 +1128,9 @@ class PReluOneDNNHandler
             *std::max_element(weights_dims.begin(), weights_dims.end());
       }
       weights_dims = std::move(new_weights_dims);
+    }
+    if (weights_dims.empty()) {
+      weights_dims = std::vector<int64_t>{1};
     }
     auto weights_md = memory::desc(
         weights_dims, OneDNNGetDataType<T>(), memory::format_tag::any);

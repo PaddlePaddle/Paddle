@@ -65,6 +65,20 @@ class TestReshape2OneDNNOp(OpTest):
         self.check_grad(["X"], "Out", check_dygraph=False)
 
 
+class TestReshape2OneDNNOpZeroDim(TestReshape2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = ()
+        self.new_shape = (1,)
+        self.infered_shape = (1,)
+
+
+class TestReshape2OneDNNOpZeroDim2(TestReshape2OneDNNOpZeroDim):
+    def init_data(self):
+        self.ori_shape = (1,)
+        self.new_shape = ()
+        self.infered_shape = ()
+
+
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
     def init_data(self):
         self.ori_shape = (5, 25)
