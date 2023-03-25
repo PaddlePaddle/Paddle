@@ -19,7 +19,6 @@ from eager_op_test import OpTest
 from scipy.special import erf
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
 from paddle import fluid
 
@@ -69,9 +68,6 @@ class TestErfLayer(unittest.TestCase):
             self.assertTrue('erf' in y.name)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestErfFP16OP(OpTest):
     def setUp(self):
         self.op_type = "erf"
