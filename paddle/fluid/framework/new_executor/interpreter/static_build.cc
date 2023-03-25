@@ -37,6 +37,7 @@ std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "less_equal",
     "less_than",
     "sync_batch_norm_grad",
+    "update_loss_scaling",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw"};
