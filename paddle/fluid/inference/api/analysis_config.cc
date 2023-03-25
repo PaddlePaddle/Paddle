@@ -59,6 +59,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
+    } else if (use_custom_device_) {
+      LOG(INFO) << "Create CUSTOM DEVICE IR passes";
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -555,6 +558,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_custom_device_) {
+    pass_builder_.reset(new CustomDevicePassStrategy(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
   } else if (use_npu_) {
     pass_builder_.reset(new NpuPassStrategy(
         *static_cast<NpuPassStrategy *>(other.pass_builder())));
