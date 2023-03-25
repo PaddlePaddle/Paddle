@@ -1491,6 +1491,16 @@
   kernel :
     func : solve_grad
 
+- backward_op : spectral_norm_grad
+  forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps=1e-12f) -> Tensor(out)
+  args : (Tensor weight, Tensor u, Tensor v, Tensor out_grad, int dim, int power_iters, float eps)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : SpectralNormGradInferMeta
+  kernel :
+    func : spectral_norm_grad
+    data_type : out_grad
+
 - backward_op : sqrt_double_grad
   forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)

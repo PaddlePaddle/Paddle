@@ -1483,16 +1483,6 @@
   inplace : (x -> out)
   backward : softmax_grad
 
-- op : spectral_norm
-  args : (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps)
-  output : Tensor
-  infer_meta :
-    func : SpectralNormInferMeta
-  kernel :
-    func : spectral_norm
-    data_type : weight
-  backward : spectral_norm_grad
-
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
   output : Tensor[]{sections.size()}

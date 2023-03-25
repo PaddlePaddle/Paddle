@@ -1719,6 +1719,13 @@
   outputs :
     out : Out
 
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
+  outputs :
+    out : Out
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
