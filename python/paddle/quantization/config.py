@@ -16,7 +16,7 @@ import copy
 from typing import Dict, Union
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import Layer
 
 from .factory import QuanterFactory

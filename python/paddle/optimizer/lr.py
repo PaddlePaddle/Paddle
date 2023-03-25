@@ -17,8 +17,8 @@ import warnings
 
 import numpy
 
-import paddle.fluid.core as core
 from paddle import Tensor
+from paddle.fluid import core
 
 __all__ = [  # noqa
     'LRScheduler',

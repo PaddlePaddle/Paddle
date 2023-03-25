@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import fluid, static
 
 
 class BackwardNet:

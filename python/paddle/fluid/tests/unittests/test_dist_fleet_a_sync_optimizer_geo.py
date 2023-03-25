@@ -15,7 +15,7 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -34,7 +34,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_trainer(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -65,7 +65,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
