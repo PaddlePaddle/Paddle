@@ -19,8 +19,8 @@ from test_collective_multi_nodes import (
 )
 
 import paddle
-import paddle.distributed.fleet as fleet
 from paddle import nn
+from paddle.distributed import fleet
 
 
 def weight_init(mp, shape, col=True, seed=1024):

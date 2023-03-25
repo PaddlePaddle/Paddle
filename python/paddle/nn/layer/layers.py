@@ -22,8 +22,7 @@ import weakref
 import numpy as np
 
 import paddle
-import paddle.profiler as profiler
-import paddle.utils.deprecated as deprecated
+from paddle import profiler
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -45,6 +44,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
 
 __all__ = []
 

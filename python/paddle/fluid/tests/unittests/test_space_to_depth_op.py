@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestSpaceToDepthOp(OpTest):

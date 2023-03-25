@@ -6,11 +6,12 @@ set(PYTHON_TESTS_DIR
     CACHE INTERNAL "python tests directory")
 
 if(WITH_TESTING)
-  add_subdirectory(cpp)
-  add_subdirectory(legacy_test)
   add_subdirectory(book)
   add_subdirectory(custom_kernel)
   add_subdirectory(asp)
+  add_subdirectory(cpp)
+  add_subdirectory(legacy_test)
+  add_subdirectory(quantization)
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)

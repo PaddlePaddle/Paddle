@@ -14,7 +14,7 @@
 
 import abc
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD

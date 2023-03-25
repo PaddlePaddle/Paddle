@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
