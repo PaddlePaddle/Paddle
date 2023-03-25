@@ -962,7 +962,7 @@ def conv2d(
     # padding
     def _update_padding(padding, data_format):
         def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
+            if isinstance(ele, (list, tuple)):
                 return True
             return False
 
@@ -1258,7 +1258,7 @@ def conv3d(
 
     def _update_padding(padding, data_format):
         def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
+            if isinstance(ele, (list, tuple)):
                 return True
             return False
 
@@ -1581,7 +1581,7 @@ def conv2d_transpose(
 
     def _update_padding(padding, data_format):
         def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
+            if isinstance(ele, (list, tuple)):
                 return True
             return False
 
@@ -1952,9 +1952,7 @@ def conv3d_transpose(
 
     def _update_padding(padding, data_format):
         def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
+            return isinstance(ele, (list, tuple))
 
         if is_list_or_tuple(padding) and len(padding) == 5:
             if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):

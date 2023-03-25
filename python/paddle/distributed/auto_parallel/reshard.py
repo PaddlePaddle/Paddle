@@ -1948,9 +1948,7 @@ class Resharder:
                     )
                 idx = idx_list[0]
 
-            elif isinstance(op_desc, SliceOpDesc) or isinstance(
-                op_desc, AllGatherConcatOpDesc
-            ):
+            elif isinstance(op_desc, (SliceOpDesc, AllGatherConcatOpDesc)):
                 target_tensor = None
                 if isinstance(op_desc, SliceOpDesc):
                     assert (
