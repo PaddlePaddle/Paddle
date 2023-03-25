@@ -780,9 +780,17 @@ void BuildOpFuncList(const platform::Place& place,
 
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
-              phi::Copy(*dev_ctx,
+              const phi::Place& target_place = transformed_tensor->place();
+              platform::DeviceContext* dev_ctx_for_copy;
+              if (target_place.GetType() != AllocationType::CPU) {
+                dev_ctx_for_copy = pool.Get(target_place);
+              } else {
+                dev_ctx_for_copy = pool.Get(original_tensor->place());
+              }
+
+              phi::Copy(*dev_ctx_for_copy,
                         *original_tensor,
-                        transformed_tensor->place(),
+                        target_place,
                         /*blocking=*/true,
                         original_tensor);
               original_tensor->set_type(transformed_tensor->dtype());

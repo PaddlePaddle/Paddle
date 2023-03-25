@@ -141,7 +141,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
-  if (op_type == "adam" || op_type == "adamw") {
+  if (op_type == "adam" || op_type == "adamw" || op_type == "merged_adam") {
     if (op.Attr<bool>("use_global_beta_pow") &&
         (parameter_name == "Beta1PowOut" || parameter_name == "Beta2PowOut")) {
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
@@ -226,7 +226,14 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    phi::Copy(dev_ctx, *tensor, place, /*blocking=*/true, tensor);
+    platform::DeviceContext* dev_ctx_for_copy;
+    if (place.GetType() != AllocationType::CPU) {
+      dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
+    } else {
+      dev_ctx_for_copy =
+          platform::DeviceContextPool::Instance().Get(tensor->place());
+    }
+    phi::Copy(*dev_ctx_for_copy, *tensor, place, /*blocking=*/true, tensor);
   } else {
     if (place == phi::CPUPlace()) {
       dev_ctx.HostAlloc(tensor,
@@ -407,7 +414,8 @@ void FakeInitializeOutputsForFunctionKernel(
         // analyze place
         phi::Backend backend = tensor_arg_def.backend;
         if (backend == phi::Backend::UNDEFINED) {
-          if (op_type == "adam" || op_type == "adamw") {
+          if (op_type == "adam" || op_type == "adamw" ||
+              op_type == "merged_adam") {
             phi::TensorBase* beta1_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
             phi::TensorBase* beta2_pow = GetTensorFormVar(
