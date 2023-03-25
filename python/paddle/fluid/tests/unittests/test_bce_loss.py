@@ -283,7 +283,7 @@ class TestBceLossOpCase2(OpTest):
 class TestBceLossOpFloat16(OpTest):
     def setUp(self):
         self.init_test_case()
-        self.op_type = "bce_loss"
+        self.op_type = "bce_loss_fp16"
         self.python_api = bce_wrapper
         input_np = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
             "float16"
@@ -300,9 +300,7 @@ class TestBceLossOpFloat16(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place, ['X'], 'Out', atol=1e-3
-                )
+                self.check_output_with_place(place, ['X'], 'Out', atol=1e-3)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -314,7 +312,7 @@ class TestBceLossOpFloat16(OpTest):
                     'Out',
                     max_relative_error=1e-2,
                 )
-    
+
     def init_test_case(self):
         self.shape = [10, 10]
 
@@ -335,7 +333,9 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': input_data, 'y': label_data}, fetch_list=[out])
+                out = exe.run(
+                    feed={'x': input_data, 'y': label_data}, fetch_list=[out]
+                )
 
 
 if __name__ == "__main__":
