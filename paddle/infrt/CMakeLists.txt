@@ -114,7 +114,6 @@ add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
 
-
 # MLIR td file generations
 set(infrt_mlir_incs basic_kernels_inc test_kernels_inc tensor_shape_inc
                     dense_tensor_inc pd_extra_ops_inc trt_ops_inc)
