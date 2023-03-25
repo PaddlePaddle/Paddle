@@ -39,9 +39,7 @@ class TestI0API(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
-                    name="x",
-                    shape=self.x.shape,
-                    dtype='float64'
+                    name="x", shape=self.x.shape, dtype='float64'
                 )
                 y = paddle.i0(x)
                 exe = paddle.static.Executor(place)

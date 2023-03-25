@@ -549,7 +549,7 @@ tensor_method_func = [  # noqa
     'nextafter',
     'unflatten',
     'i0',
-    'i0e'
+    'i0e',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

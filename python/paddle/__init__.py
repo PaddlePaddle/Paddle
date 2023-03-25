@@ -697,5 +697,5 @@ __all__ = [  # noqa
     'unflatten',
     'nextafter',
     'i0',
-    'i0e'
+    'i0e',
 ]
