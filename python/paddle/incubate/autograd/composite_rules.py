@@ -181,6 +181,44 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     return out, mean_, variance
 
 
+@REGISTER_COMPOSITE('instance_norm')
+def instancenorm_composite(x, scale, bias, epsilon):
+    """
+    define composite rule of op instance_norm
+    out = (x - mean(x)) / sqrt(var + epsilon))
+    var = mean((x-mean(x))^2)
+    """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
+    n, c, h, w = x.shape
+    axis = tuple(range(2, len(x.shape)))
+    saved_mean = mean(x, axis=axis, keepdim=True)
+    d_value = x - saved_mean
+    var_tmp1 = d_value * d_value
+    saved_variance = mean(var_tmp1, axis=axis, keepdim=True)
+    var_tmp3 = saved_variance + epsilon
+    sqrt_var = sqrt(var_tmp3)
+    y = d_value / sqrt_var
+
+    if scale is not None:
+        scale_tile = reshape(scale, [1, c, 1, 1])
+        y = y * scale_tile
+    if bias is not None:
+        bias_tile = reshape(bias, [1, c, 1, 1])
+        y = y + bias_tile
+
+    saved_mean = reshape(saved_mean, [-1])
+    saved_variance = reshape(saved_variance, [-1])
+    if is_amp:
+        y = cast(y, "float16")
+    return y, saved_mean, saved_variance
+
+
 @REGISTER_COMPOSITE('gelu')
 def gelu_composite(x, approximate):
     """define composite rule of op gelu"""
