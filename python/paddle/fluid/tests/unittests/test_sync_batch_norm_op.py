@@ -27,10 +27,8 @@ from decorator_helper import prog_scope
 from op_test import OpTest, _set_use_system_allocator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn as nn
-from paddle.fluid import Program, program_guard
+from paddle import fluid, nn
+from paddle.fluid import Program, core, program_guard
 
 _set_use_system_allocator(True)
 

@@ -15,9 +15,51 @@
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+import paddle.distributed as dist
+from paddle import fluid, framework
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
+
+
+def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
+    op_type = 'all_reduce'
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        op_type,
+    )
+
+    ring_id = 0 if group is None else group.id
+
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'ring_id' for all_reduce should be int.")
+
+    # TODO: Support task and use task.wait in static graph mode
+    #       Use use_calc_stream rather than sync_op
+    helper = framework.LayerHelper(op_type, **locals())
+    if not reduce_type.isdigit():
+        raise ValueError(
+            "The type of 'reduce_type' for all_reduce should be int."
+        )
+    helper.append_op(
+        type=op_type,
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
+        attrs={'ring_id': ring_id, 'reduce_type': int(reduce_type)},
+    )
+
+    return None
 
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
@@ -27,9 +69,24 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype='float32'
+                name="tindata", shape=[10, 1000], dtype='float32'
             )
             paddle.distributed.all_reduce(tindata)
+            return [tindata]
+
+    def get_model_new(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+        reduce_type=str(dist.ReduceOp.SUM),
+    ):
+        with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            all_reduce_new(tindata, reduce_type)
             return [tindata]
 
 

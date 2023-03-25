@@ -20,10 +20,8 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
-import paddle.fluid.nets as nets
+from paddle import fluid
+from paddle.fluid import framework, layers, nets
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 

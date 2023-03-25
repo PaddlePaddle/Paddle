@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestFlipOp_API(unittest.TestCase):

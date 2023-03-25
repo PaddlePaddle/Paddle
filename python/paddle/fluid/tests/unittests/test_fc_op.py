@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 SEED = 2020
