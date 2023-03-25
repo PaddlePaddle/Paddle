@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
@@ -45,7 +45,6 @@ class TestLogSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
-        self.python_api = F.log_softmax
         self.dtype = 'float32'
         self.shape = [2, 3, 4, 5]
         self.axis = -1
@@ -89,7 +88,6 @@ class TestLogSoftmaxOpFp16(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
-        self.python_api = F.log_softmax
         self.dtype = 'float16'
         self.shape = [2, 3, 4, 5]
         self.axis = -1

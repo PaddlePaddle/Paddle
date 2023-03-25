@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.static import Program, program_guard
@@ -30,10 +30,10 @@ class TestMVOp(OpTest):
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Vec'], 'Out')
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
