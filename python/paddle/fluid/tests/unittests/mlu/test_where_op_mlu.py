@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from op_test import OpTest
+from eager_op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
@@ -35,16 +35,15 @@ class TestWhereOp(OpTest):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
         self.__class__.no_need_check_grad = True
-        self.python_api = paddle.where
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float32')

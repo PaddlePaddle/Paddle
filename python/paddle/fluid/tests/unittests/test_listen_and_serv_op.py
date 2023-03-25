@@ -24,7 +24,7 @@ import unittest
 from multiprocessing import Process
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 

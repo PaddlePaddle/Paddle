@@ -17,7 +17,7 @@ import functools
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 SEED = 1
