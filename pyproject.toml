@@ -127,3 +127,4 @@ unfixable = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "setup.py" = ["UP036"]
+"python/paddle/fluid/tests/unittests/dygraph_to_static/test_lambda.py" = ["PLC3002"]
