@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 import paddle.fluid as fluid
@@ -140,31 +140,45 @@ class TestCase4(TestTDMChildOp):
 
 class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
-        x = paddle.static.data(
-            name='x', shape=[-1, 1], dtype='int32', lod_level=1
-        )
-        tdm_tree_info = create_tdm_tree()
-        tree_info_np = np.array(tdm_tree_info).astype('int32')
+        with paddle_static_guard():
+            x = paddle.static.data(
+                name='x', shape=[-1, 1], dtype='int32', lod_level=1
+            )
+            tdm_tree_info = create_tdm_tree()
+            tree_info_np = np.array(tdm_tree_info).astype('int32')
 
-        child, leaf_mask = fluid.contrib.layers.tdm_child(
-            x=x,
-            node_nums=26,
-            child_nums=2,
-            param_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(tree_info_np)
-            ),
-        )
+            child, leaf_mask = fluid.contrib.layers.tdm_child(
+                x=x,
+                node_nums=26,
+                child_nums=2,
+                param_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(tree_info_np)
+                ),
+            )
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place=place)
+            exe.run(fluid.default_startup_program())
 
-        feed = {
-            'x': np.array(
-                [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]]
-            ).astype('int32')
-        }
-        exe.run(feed=feed)
+            feed = {
+                'x': np.array(
+                    [
+                        [1],
+                        [2],
+                        [3],
+                        [4],
+                        [5],
+                        [6],
+                        [7],
+                        [8],
+                        [9],
+                        [10],
+                        [11],
+                        [12],
+                    ]
+                ).astype('int32')
+            }
+            exe.run(feed=feed)
 
 
 if __name__ == "__main__":

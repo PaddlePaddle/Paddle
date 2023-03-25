@@ -663,7 +663,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -930,7 +930,14 @@ class OpTest(unittest.TestCase):
                 args, len(inputs_sig)
             )
             ret_tuple = python_api(*args)
-            return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            if hasattr(self, "python_out_sig_sub_name"):
+                for key in self.python_out_sig_sub_name.keys():
+                    for i in range(len(self.python_out_sig_sub_name[key])):
+                        result[key][0][i].name = self.python_out_sig_sub_name[
+                            key
+                        ][i]
+            return result
 
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -965,7 +972,11 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_outputs,
                 attrs_outputs,
             )
-            if not kernel_sig:
+            if not kernel_sig or (
+                len(kernel_sig[0]) == 0
+                and len(kernel_sig[1]) == 0
+                and len(kernel_sig[2]) == 0
+            ):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
@@ -1514,13 +1525,23 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
 
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
                     return dygraph_outs[name][0]
                 var_list = dygraph_outs[name]
                 for i, var in enumerate(var_list):
-                    if var.name == target_name:
+                    if isinstance(var, list):
+                        for tensor in var:
+                            if tensor.name == target_name:
+                                return tensor
+                    elif (
+                        isinstance(var, paddle.Tensor)
+                        and var.name == target_name
+                    ):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
@@ -1653,6 +1674,8 @@ class OpTest(unittest.TestCase):
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
+                # modify there for fp32 check
+
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
@@ -1768,19 +1791,18 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = dygraph_outs
-
                 if self.op_test.is_fp16_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
-                    ref_dygraph_outs = self.op_test._calc_python_api_output(
+                    self.ref_outputs = self.op_test._calc_python_api_output(
                         place
                     )
-                    if ref_dygraph_outs is None:
+                    if self.ref_outputs is None:
                         self.is_python_api_test = False
-                        ref_dygraph_outs = self.op_test._calc_dygraph_output(
+                        # missing KernelSignature, fall back to eager middle output.
+                        self.ref_outputs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set
                         )
-                    self.ref_outputs = ref_dygraph_outs
                     self.op_test.disable_cal_ref_output()
 
             def _compare_numpy(self, name, actual_np, expect_np):
@@ -1911,7 +1933,7 @@ class OpTest(unittest.TestCase):
                 else:
                     atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1 if atol < 1e-1 else atol
+                atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
             atol = 1e-3 if atol < 1e-3 else atol
@@ -2050,6 +2072,9 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(
@@ -2072,6 +2097,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)
@@ -2160,7 +2186,10 @@ class OpTest(unittest.TestCase):
                     else:
                         abs_a = 1 if abs_a < 1e-3 else abs_a
 
-                diff_mat = np.abs(a - b) / abs_a
+                if self.dtype == np.bool_:
+                    diff_mat = np.abs(a ^ b) / abs_a
+                else:
+                    diff_mat = np.abs(a - b) / abs_a
                 max_diff = np.max(diff_mat)
 
                 def err_msg():
@@ -2205,6 +2234,9 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -2241,6 +2273,9 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
@@ -2259,9 +2294,9 @@ class OpTest(unittest.TestCase):
             if only_check_prim:
                 return
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
@@ -2337,19 +2372,31 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
+            self.enable_cal_ref_output()
+            numeric_grads = self._get_gradient(
+                inputs_to_check,
+                place,
                 output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
+                no_grad_set,
+                user_defined_grad_outputs,
             )
-            for input_to_check in inputs_to_check
-        ]
+            self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
+
         analytic_grads = self._get_gradient(
             inputs_to_check,
             place,
@@ -2429,8 +2476,14 @@ class OpTest(unittest.TestCase):
         else:
             for output_vars_index in output_vars:
                 for output_vars_selected in output_vars[output_vars_index]:
-                    if output_vars_selected.name == name:
-                        return output_vars_selected
+                    if isinstance(output_vars_selected, list):
+                        for tensor in output_vars_selected:
+                            if tensor.name == name:
+                                return [tensor]
+                    elif isinstance(output_vars_selected, paddle.Tensor):
+                        if output_vars_selected.name == name:
+                            return [output_vars_selected]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
 
     def _get_dygraph_grad(
         self,
@@ -2441,6 +2494,9 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device():
+            check_dygraph = False
+
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 

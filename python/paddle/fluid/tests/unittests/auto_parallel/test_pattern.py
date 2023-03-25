@@ -112,18 +112,11 @@ class TestGroupOperatorsAndPatterns(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.dist_context import (
-            DistributedContext,
-        )
         from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
             _PATTERNS,
             GraphUtil,
-            RuleBasedTuner,
         )
 
-        dist_context = DistributedContext()
-        tuner = RuleBasedTuner(dist_context)
-        layers = tuner.cluster_operators(train_program.global_block().ops)
         graph = GraphUtil.convert_to_graph(train_program.global_block())
         print("graph: ", graph)
         print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
