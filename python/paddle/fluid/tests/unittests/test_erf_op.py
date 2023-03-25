@@ -19,9 +19,9 @@ from eager_op_test import OpTest
 from scipy.special import erf
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 
 class TestErfOp(OpTest):
