@@ -29,7 +29,7 @@ from test_conv2d_op import (
     create_test_padding_VALID_class,
 )
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 # ----------------TestDepthwiseConv -----
 
