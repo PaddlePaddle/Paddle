@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
+from paddle.fluid import core
 
 paddle.enable_static()
 

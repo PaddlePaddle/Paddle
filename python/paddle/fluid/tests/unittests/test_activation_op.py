@@ -21,11 +21,9 @@ from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 from scipy.special import erf, expit
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-import paddle.static as static
-from paddle.fluid import Program, program_guard
+from paddle import fluid, static
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 
 

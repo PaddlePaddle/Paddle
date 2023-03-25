@@ -20,15 +20,14 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.jit as jit
-import paddle.vision.models as models
-from paddle import Model, fluid, to_tensor
+from paddle import Model, fluid, jit, to_tensor
 from paddle.hapi.model import prepare_distributed_context
 from paddle.io import Dataset, DistributedBatchSampler
 from paddle.metric import Accuracy
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec
+from paddle.vision import models
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 

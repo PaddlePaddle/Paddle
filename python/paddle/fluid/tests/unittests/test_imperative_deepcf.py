@@ -21,8 +21,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
@@ -195,7 +195,7 @@ class TestDygraphDeepCF(unittest.TestCase):
         num_items = -1
         with open(self.data_path, 'r') as f:
             for l in f.readlines():
-                uid, iid, rating = [int(v) for v in l.split('\t')]
+                uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
                 if float(rating) > 0.0:

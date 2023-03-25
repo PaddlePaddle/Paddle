@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp import ASPHelper
 
