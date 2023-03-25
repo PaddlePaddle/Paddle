@@ -231,7 +231,7 @@ struct FMaxFunctor<dtype::float16> {
 template <>
 struct FMaxFunctor<dtype::bfloat16> {
   inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                              const dtype::bfloat16 b) const {
+                                               const dtype::bfloat16 b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmax(float_a, float_b);
@@ -279,9 +279,9 @@ struct FMaxGradDx<dtype::float16> {
 template <>
 struct FMaxGradDx<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(dtype::bfloat16 x,
-                                       dtype::bfloat16 y,
-                                       dtype::bfloat16 out,
-                                       dtype::bfloat16 dout) const {
+                                        dtype::bfloat16 y,
+                                        dtype::bfloat16 out,
+                                        dtype::bfloat16 dout) const {
     return dout * static_cast<dtype::bfloat16>((x >= y) || dtype::isnan(y));
   }
 };
@@ -323,9 +323,9 @@ struct FMaxGradDy<dtype::float16> {
 template <>
 struct FMaxGradDy<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(dtype::bfloat16 x,
-                                       dtype::bfloat16 y,
-                                       dtype::bfloat16 out,
-                                       dtype::bfloat16 dout) const {
+                                        dtype::bfloat16 y,
+                                        dtype::bfloat16 out,
+                                        dtype::bfloat16 dout) const {
     return dout * static_cast<dtype::bfloat16>(!((x >= y) || dtype::isnan(y)));
   }
 };
