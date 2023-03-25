@@ -93,8 +93,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     load(neg_pattern, INS, 1)
 
     def reader():
-        for doc, label in INS:
-            yield doc, label
+        yield from INS
 
     return reader
 
