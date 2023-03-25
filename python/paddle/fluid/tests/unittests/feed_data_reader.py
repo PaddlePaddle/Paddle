@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Variable
 
 
 def cyclic_reader(reader):
     def __reader__():
         while True:
-            for data in reader():
-                yield data
+            yield from reader()
 
     return __reader__
 
@@ -39,7 +38,7 @@ class FeedDataReader:
 
     def _feed_executor(self):
         next_data = next(self._iter)
-        feed_data = dict()
+        feed_data = {}
         assert len(self._feed_list) == len(next_data)
         for key, value in zip(self._feed_list, next_data):
             feed_data[key] = value

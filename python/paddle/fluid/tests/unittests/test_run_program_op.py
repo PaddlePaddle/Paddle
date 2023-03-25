@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (

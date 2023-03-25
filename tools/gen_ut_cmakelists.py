@@ -207,7 +207,7 @@ def _process_run_type(run_type):
 class DistUTPortManager:
     def __init__(self, ignore_dirs=[]):
         self.dist_ut_port = 21200
-        self.assigned_ports = dict()
+        self.assigned_ports = {}
         self.last_test_name = ""
         self.last_test_cmake_file = ""
         self.no_cmake_dirs = []

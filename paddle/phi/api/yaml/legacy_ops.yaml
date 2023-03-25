@@ -726,6 +726,16 @@
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
+- op : fused_linear_param_grad_add
+  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
+  output : Tensor(dweight_out), Tensor(dbias_out)
+  infer_meta:
+    func : FusedLinearParamGradAddInferMeta
+  optional : dweight, dbias
+  kernel:
+    func : fused_linear_param_grad_add
+    data_type : dout
+
 - op : gather
   args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
@@ -852,18 +862,6 @@
     func : kldiv_loss
     data_type : x
   backward : kldiv_loss_grad
-
-- op : lamb_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
-  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
-  infer_meta :
-    func : LambInferMeta
-  kernel :
-    func : lamb {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
-           lamb_sr {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
-    data_type : param
-  optional : master_param, skip_update
-  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
@@ -1180,15 +1178,6 @@
   inplace : (x -> out)
   backward : multiply_grad
 
-- op : nms
-  args : (Tensor x, float threshold)
-  output : Tensor(out)
-  infer_meta :
-    func : NMSInferMeta
-  kernel :
-    func : nms
-    data_type : x
-
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
   output : Tensor(out), Tensor(norm)
@@ -1454,21 +1443,6 @@
     func : segment_pool
     data_type : x
   backward : segment_pool_grad
-
-- op : sgd_
-  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
-  output : Tensor(param_out), Tensor(master_param_out)
-  infer_meta :
-    func : SgdInferMeta
-  kernel :
-    func : sgd {dense, dense, dense, dense -> dense, dense},
-           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
-           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
-    data_type : param
-  data_transform :
-    support_trans_dtype : learning_rate
-  optional : master_param
-  inplace : (param -> param_out), (master_param -> master_param_out)
 
 - op : shape
   args : (Tensor input)
