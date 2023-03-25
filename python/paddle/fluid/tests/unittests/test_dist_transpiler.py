@@ -22,7 +22,7 @@ import numpy as np
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TranspilerTest(unittest.TestCase):

@@ -28,8 +28,8 @@ import time
 from contextlib import closing
 from distutils.util import strtobool
 
-import paddle.framework as framework
 import paddle.utils.cpp_extension.extension_utils as utils
+from paddle import framework
 
 logger = logging.getLogger("root")
 logger.propagate = False

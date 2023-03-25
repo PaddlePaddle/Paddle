@@ -19,7 +19,7 @@ from eager_op_test import check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class ApiMaxTest(unittest.TestCase):
