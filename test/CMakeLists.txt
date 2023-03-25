@@ -6,6 +6,7 @@ set(PYTHON_TESTS_DIR
     CACHE INTERNAL "python tests directory")
 
 if(WITH_TESTING)
+  add_subdirectory(autograd)
   add_subdirectory(book)
   add_subdirectory(custom_kernel)
   add_subdirectory(cpp)
