@@ -20,6 +20,7 @@ from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
 
 
@@ -66,6 +67,29 @@ class TestErfLayer(unittest.TestCase):
             x = paddle.static.data('x', [3, 4])
             y = paddle.erf(x, name='erf')
             self.assertTrue('erf' in y.name)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestErfFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "erf"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.erf
+        self.python_api = paddle.erf
+        self.dtype = np.float16
+        self.x_shape = [11, 17]
+        x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
+        y_ref = erf(x).astype(self.dtype)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': y_ref}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 if __name__ == '__main__':
