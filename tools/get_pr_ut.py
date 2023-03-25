@@ -19,6 +19,7 @@ import platform
 import re
 import ssl
 import subprocess
+import sys
 import time
 import urllib.request
 
@@ -52,7 +53,7 @@ class PRChecker:
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('PREC No PR ID')
-            exit(0)
+            sys.sys.sys.sys.exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
             self.suffix = suffix
@@ -311,7 +312,7 @@ class PRChecker:
         )
         if not ret:
             print('PREC download file_ut.json failed')
-            exit(1)
+            sys.sys.sys.sys.exit(1)
 
         with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -371,7 +372,7 @@ class PRChecker:
                         ut_list.append(ut.rstrip('\r\n'))
             else:
                 print('PREC download prec_delta failed')
-                exit(1)
+                sys.sys.sys.sys.exit(1)
             PRECISION_TEST_Cases_ratio = format(
                 float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
@@ -484,7 +485,7 @@ class PRChecker:
                                     ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
-                        exit(1)
+                        sys.sys.sys.sys.exit(1)
                     print("hitMapFiles: %s" % hitMapFiles)
                     print("ipipe_log_param_PRECISION_TEST: true")
                     print(
