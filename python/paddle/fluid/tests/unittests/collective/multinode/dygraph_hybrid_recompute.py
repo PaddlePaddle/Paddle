@@ -19,8 +19,8 @@ from test_collective_multi_nodes import (
 )
 
 import paddle
-import paddle.distributed.fleet as fleet
 from paddle import nn
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import recompute
 
 

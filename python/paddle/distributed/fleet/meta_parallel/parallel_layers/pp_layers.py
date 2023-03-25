@@ -45,8 +45,7 @@ import re
 from functools import partial
 
 import paddle
-import paddle.framework as framework
-import paddle.nn as nn
+from paddle import framework, nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ...utils.log_util import layer_to_str, logger
