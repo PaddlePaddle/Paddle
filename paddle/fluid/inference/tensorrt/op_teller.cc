@@ -1956,12 +1956,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "bitwise_not") {
 #if !IS_TRT_VERSION_GE(8400)
       auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
