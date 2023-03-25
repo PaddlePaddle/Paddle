@@ -25,7 +25,7 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 from paddle.fluid import core
 from paddle.fluid.proto import framework_pb2
 from paddle.static import Program

@@ -21,11 +21,9 @@ from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.nets as nets
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle import fluid
+from paddle.fluid import core, layers, nets
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.tensor import random

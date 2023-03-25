@@ -16,8 +16,8 @@ import sys
 import unittest
 
 import paddle
-import paddle.vision.transforms as transforms
 from paddle.io import Dataset
+from paddle.vision import transforms
 
 
 class TestDatasetAbstract(unittest.TestCase):

@@ -18,8 +18,7 @@ import sys
 from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 from paddle.jit.api import to_static

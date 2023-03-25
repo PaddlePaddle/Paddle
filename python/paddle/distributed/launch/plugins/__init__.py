@@ -39,7 +39,7 @@ def process_args(ctx):
     if ctx.args.ips:
         ips = ctx.args.ips.split(',')
         if '127.0.0.1' in ips and len(ips) != 1:
-            raise "127.0.0.1 in ips is not allowed in multi-nodes."
+            raise ValueError("127.0.0.1 in ips is not allowed in multi-nodes.")
 
 
 def collective_compatible(ctx):

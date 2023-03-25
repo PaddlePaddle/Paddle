@@ -21,12 +21,13 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
-import paddle.framework.io_utils as io_utils
-from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
+
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
+from paddle.framework import io_utils
+from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 
 __all__ = [
     "load_program",

@@ -20,9 +20,8 @@ import op_test
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.backward import append_backward
 
 
