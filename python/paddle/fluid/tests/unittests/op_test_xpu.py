@@ -23,8 +23,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 

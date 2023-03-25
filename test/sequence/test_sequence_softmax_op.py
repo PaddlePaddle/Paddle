@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest
 from softmax_op_test import stable_softmax
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestSequenceSoftmaxOp(OpTest):
