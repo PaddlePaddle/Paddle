@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):

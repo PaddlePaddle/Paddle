@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(1)

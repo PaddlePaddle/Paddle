@@ -337,7 +337,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
-    op1_view, op2_view = [g_view[op] for op in (op1, op2)]
+    op1_view, op2_view = (g_view[op] for op in (op1, op2))
 
     I1 = [idx for idx in I if op1_view[idx] >= 0]
     I2 = [idx for idx in I if op2_view[idx] >= 0]
@@ -347,7 +347,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     op2_view = np.array(op2_view)
     op2_dims = op2_view[I2 + J2 + K]
 
-    op1_mask, op2_mask = [g_supports[op] for op in (op1, op2)]
+    op1_mask, op2_mask = (g_supports[op] for op in (op1, op2))
     op1_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op1_mask)])
     op2_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op2_mask)])
     vshape = np.maximum(op1_vshape, op2_vshape)

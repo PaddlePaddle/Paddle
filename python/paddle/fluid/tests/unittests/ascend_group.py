@@ -16,11 +16,10 @@ import os
 from collections import namedtuple
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.ascend import ascend_optimizer
-from paddle.fluid import unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.layer_helper import LayerHelper
 
 Block = namedtuple('Block', ['program'])

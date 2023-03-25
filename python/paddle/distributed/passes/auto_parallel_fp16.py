@@ -764,7 +764,7 @@ class FP16Pass(AMPPass):
             __target_dtype = core.VarDesc.VarType.FP16
 
         elif self.target_dtype == "bfloat16":
-            import paddle.static.amp.bf16.amp_utils as amp_utils
+            from paddle.static.amp.bf16 import amp_utils
 
             AMPList = amp_utils.AutoMixedPrecisionListsBF16
             __target_dtype = core.VarDesc.VarType.BF16
