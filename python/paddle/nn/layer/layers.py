@@ -206,8 +206,7 @@ class LayerObjectHelper(LayerHelperBase):
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, inputs_in):
         """Get input data type
