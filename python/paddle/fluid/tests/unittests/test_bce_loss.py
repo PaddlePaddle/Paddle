@@ -324,7 +324,7 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
             y = paddle.static.data(shape=[10, 10], name='y', dtype='float16')
-            out = paddle.bce_loss(x, y)
+            out = bce_loss(x, y)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
