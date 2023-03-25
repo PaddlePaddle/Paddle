@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -28,6 +28,7 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze2"
         self.python_api = paddle.unsqueeze
+        self.public_python_api = paddle.unsqueeze
         self.python_out_sig = ["Out"]
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
@@ -38,12 +39,10 @@ class TestUnsqueezeOp(OpTest):
         self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=["XShape"], check_eager=True, check_prim=True
-        )
+        self.check_output(no_check_set=["XShape"], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -135,10 +134,10 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(no_check_set=["XShape"])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -196,10 +195,10 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(no_check_set=["XShape"])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (20, 5)

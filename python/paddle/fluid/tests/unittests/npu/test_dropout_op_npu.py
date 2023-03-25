@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 
@@ -215,7 +215,7 @@ class TestDropoutAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
+            input = paddle.static.data(name="input", shape=[40, 40], dtype="float32")
             res1 = paddle.nn.functional.dropout(
                 x=input, p=0.0, training=False, mode='upscale_in_train'
             )

@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>  // NOLINT
 
-#include "paddle/extension.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/test_custom_op_plugin.h"
+#include "paddle/phi/api/all.h"
 
 PD_BUILD_OP(custom_op)
     .Inputs({"Input"})

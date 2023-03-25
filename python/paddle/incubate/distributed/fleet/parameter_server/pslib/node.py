@@ -80,7 +80,7 @@ class DownpourServer(Server):
                         % (table_id, pslib.PS_SPARSE_TABLE, table.type)
                     )
         if strategy is None:
-            strategy = dict()
+            strategy = {}
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.type = pslib.PS_SPARSE_TABLE
@@ -393,7 +393,7 @@ class DownpourServer(Server):
                     )
 
         if strategy is None:
-            strategy = dict()
+            strategy = {}
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         support_dense_key_list = [
@@ -484,7 +484,7 @@ class DownpourServer(Server):
                         % (table_id, pslib.PS_DENSE_TABLE, table.type)
                     )
         if strategy is None:
-            strategy = dict()
+            strategy = {}
 
         support_datanorm_key_list = [
             'datanorm_table_class',
