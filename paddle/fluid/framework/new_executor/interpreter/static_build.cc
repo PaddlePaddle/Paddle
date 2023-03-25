@@ -92,7 +92,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel) &&
                             OpsWithFluidKernelNeedMoveToPhi.count(op_type);
     bool need_set_dtype =
-        !has_fluid_kernel && !has_structured_kernel &&
         OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type);
 
     KernelCode kernel_code = (in_black_list << 6) + (is_operator_base << 5) +
