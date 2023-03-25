@@ -26,8 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock

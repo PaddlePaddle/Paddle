@@ -92,7 +92,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
-class __reduce_meanMaker__ : public ops::ReduceOpMaker {
+class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_mean"; }
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
@@ -104,7 +104,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(
     PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
 
 REGISTER_OPERATOR(reduce_mean,
-                  ops::ReduceOp,
+                  ops::ReduceBaseOp,
                   __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>,

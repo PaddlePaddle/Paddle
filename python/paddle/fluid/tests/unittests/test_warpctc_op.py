@@ -20,9 +20,8 @@ from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 paddle.enable_static()
 

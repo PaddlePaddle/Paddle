@@ -25,7 +25,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 
 paddle.enable_static()
 

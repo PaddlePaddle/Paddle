@@ -17,10 +17,9 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid import core
 
-# add paddle.fluid.tests.unittests to path
 sys.path.append("..")
 from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_pool2d_op import (

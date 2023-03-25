@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling

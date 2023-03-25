@@ -18,7 +18,7 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized

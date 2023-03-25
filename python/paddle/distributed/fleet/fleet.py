@@ -267,7 +267,7 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
@@ -1557,7 +1557,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1651,7 +1651,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 
