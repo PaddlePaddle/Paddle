@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -41,9 +39,7 @@ class TestI0eAPI(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
-                    name="x",
-                    shape=self.x.shape,
-                    dtype='float64'
+                    name="x", shape=self.x.shape, dtype='float64'
                 )
                 y = paddle.i0e(x)
                 exe = paddle.static.Executor(place)
