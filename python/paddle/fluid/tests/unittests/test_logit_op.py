@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import core
@@ -59,12 +59,10 @@ class TestLogitOp(OpTest):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestLogitOpFp32(TestLogitOp):
@@ -74,12 +72,10 @@ class TestLogitOpFp32(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestLogitOpFp16(TestLogitOp):
@@ -89,12 +85,10 @@ class TestLogitOpFp16(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 @unittest.skipIf(
@@ -122,7 +116,7 @@ class TestLogitOpBf16(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -132,7 +126,6 @@ class TestLogitOpBf16(OpTest):
                 ['X'],
                 ['Out'],
                 user_defined_grads=[self.x_grad],
-                check_eager=True,
             )
 
 
