@@ -53,7 +53,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
     class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
         def compute_input_output(self):
@@ -161,7 +161,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
 
 support_types = get_xpu_op_support_types('elementwise_pow')

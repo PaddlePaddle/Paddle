@@ -32,6 +32,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define FINAL_MASK 0xffffffff
+#define WARP_SIZE 32
+#define MAX_NUM_THREADS 1024
+
+inline static size_t divide_round_up(size_t n, size_t q) {
+  return n % q == 0 ? n / q : n / q + 1;
+}
+
+inline static size_t round_up(size_t n, size_t q) {
+  return divide_round_up(n, q) * q;
+}
+
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
@@ -806,6 +817,61 @@ __device__ void RadixSearch(
   }
 
   *kth_value = RadixTypeConfig<T>::Deconvert(desired);
+}
+
+template <typename T>
+__global__ void GatherKthValue(const T* input,
+                               const int k,
+                               const int64_t num_rows,
+                               const int64_t num_cols,
+                               T* output,
+                               int64_t* indices) {
+  __shared__ int shared_mem[32];
+  int row =
+      blockIdx.z * gridDim.y * gridDim.x + blockIdx.y * gridDim.x + blockIdx.x;
+  const T* cur_input = input + row * num_cols;
+
+  // 1. Find the k-th value
+  T kth_value = static_cast<T>(0);
+  RadixSearch<T, RadixTypeConfig<T>::RadixType, false>(
+      cur_input, k, num_cols, shared_mem, &kth_value);
+  const auto converted_kth_value = RadixTypeConfig<T>::Convert(kth_value);
+
+  // 2. find the k-th index
+  int64_t kth_index = 0;
+  bool foundKValue = false;
+  for (int64_t i = threadIdx.x; i < num_cols; i += blockDim.x) {
+    bool inRange = (i < num_cols);
+    T v = inRange ? cur_input[i] : static_cast<T>(0);
+    bool isKValue =
+        inRange && ((v == kth_value) || (isnan(static_cast<float>(v)) &&
+                                         isnan(static_cast<float>(kth_value))));
+    if (isKValue) {
+      kth_index = i;
+      foundKValue = true;
+      break;
+    }
+  }
+
+  if (foundKValue) {
+    output[row] = kth_value;
+    indices[row] = kth_index;
+  }
+}
+
+template <typename T>
+void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
+                          const T* input_data,
+                          const int64_t num_cols,
+                          const int64_t num_rows,
+                          const int k,
+                          T* out_data,
+                          int64_t* indices_data) {
+  int num_threads = std::min(
+      static_cast<int>(round_up(static_cast<int>(num_cols), WARP_SIZE)),
+      MAX_NUM_THREADS);
+  GatherKthValue<T><<<num_rows, num_threads, 0, dev_ctx.stream()>>>(
+      input_data, k, num_rows, num_cols, out_data, indices_data);
 }
 
 template <typename T, bool Largest>

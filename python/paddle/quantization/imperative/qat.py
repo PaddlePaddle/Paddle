@@ -15,9 +15,9 @@
 import os
 
 import paddle
-import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.framework import IrGraph
 from paddle.framework import core
+from paddle.nn.quant import quant_layers
 
 from ...static.quantization.quantization_pass import (
     QuantWeightPass,

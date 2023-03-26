@@ -31,7 +31,7 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
