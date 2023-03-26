@@ -240,7 +240,7 @@ void ComputeImpl(const Context& dev_ctx,
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
+  memory_utils::Buffer buffer(dev_ctx.GetPlace());
   phi::funcs::SquaredL2Norm(
       dev_ctx,
       reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr

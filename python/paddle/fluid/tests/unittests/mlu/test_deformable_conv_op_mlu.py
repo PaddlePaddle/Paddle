@@ -21,8 +21,8 @@ import paddle.fluid as fluid
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
-from test_deformable_conv_op import dconv_im2col_gemm, deform_conv2d_wrapper
+from eager_op_test import OpTest
+from test_deformable_conv_op import dconv_im2col_gemm
 
 paddle.enable_static()
 
@@ -31,7 +31,6 @@ class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv"
         self.init_type()
         self.init_group()
@@ -71,7 +70,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -79,7 +78,6 @@ class TestModulatedDeformableConvOp(OpTest):
             {'Input', 'Offset', 'Mask', 'Filter'},
             'Output',
             max_relative_error=0.05,
-            check_eager=False,
         )
 
     def init_test_case(self):

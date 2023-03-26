@@ -137,7 +137,7 @@ def update_api_info_file(fail_case_list, api_info_file):
     fail_case_dict = dict(map(parse_case_id_f, fail_case_list))
 
     # list of api infos for performance check failures
-    api_info_list = list()
+    api_info_list = []
     with open(api_info_file) as f:
         for line in f:
             line_list = line.split(',')
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    check_results = dict(accuracy=list(), speed=list())
+    check_results = {"accuracy": [], "speed": []}
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir

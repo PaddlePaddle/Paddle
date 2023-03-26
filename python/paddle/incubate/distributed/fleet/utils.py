@@ -21,11 +21,11 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
-import paddle.framework.io_utils as io_utils
+from paddle import fluid
 from paddle.fluid import core, debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
+from paddle.framework import io_utils
 
 __all__ = [
     "load_program",

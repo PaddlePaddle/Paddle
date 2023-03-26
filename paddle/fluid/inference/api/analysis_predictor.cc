@@ -240,9 +240,27 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUSTOM_DEVICE, should not reach here."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -523,8 +541,8 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices();
     paddle::framework::InitMemoryMethod();
+    paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
@@ -2404,6 +2422,7 @@ USE_TRT_CONVERTER(logical_or);
 USE_TRT_CONVERTER(logical_xor);
 USE_TRT_CONVERTER(logical_and);
 USE_TRT_CONVERTER(less_equal);
+USE_TRT_CONVERTER(greater_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
