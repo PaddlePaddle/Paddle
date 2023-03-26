@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/math.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
 
 namespace paddle {
@@ -60,17 +62,38 @@ __global__ void MaskLabelByIndex(T* predicted_logits,
 }
 
 template <typename T, typename IndexT>
+__global__ void CaculateLoss(T* loss,
+                             const T* predict_logits,
+                             const T* sum_exp_logits,
+                             const IndexT* label,
+                             const int ignore_index,
+                             const int N) {
+  CUDA_KERNEL_LOOP(i, N) {
+    auto real_label = label[i];
+    loss[i] = ignore_index == real_label
+                  ? static_cast<T>(0)
+                  : phi::funcs::TolerableValue<T>()(
+                        phi::funcs::real_log(sum_exp_logits[i])) -
+                        phi::funcs::TolerableValue<T>()(predict_logits[i]);
+  }
+}
+
+template <typename T, typename IndexT>
 __global__ void MaskLabelByIndexGrad(T* logits_grad,
                                      const T* loss_grad,
                                      const IndexT* labels,
                                      const int start_index,
                                      const int end_index,
                                      const int64_t N,
-                                     const int64_t D) {
+                                     const int64_t D,
+                                     const int ignore_index) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
     auto col = i % D;
-    if ((col + start_index) == labels[row]) {
+    auto lbl = static_cast<int>(labels[row]);
+    if (lbl == ignore_index) {
+      logits_grad[i] = static_cast<T>(0.0);
+    } else if ((col + start_index) == labels[row]) {
       logits_grad[i] = (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
     } else {
       logits_grad[i] *= loss_grad[row];
@@ -102,6 +125,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
+    const int ignore_index = ctx.Attr<int>("ignore_index");
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
@@ -234,14 +258,33 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
         comm->comm(),
         stream));
 
-    auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
-    auto eigen_predicted_logits =
-        phi::funcs::EigenMatrix<T>::From(predicted_logits);
+    if (label_type == framework::proto::VarType::INT32) {
+      CaculateLoss<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_2d.data<T>(),
+                                                     predicted_logits.data<T>(),
+                                                     sum_exp_logits.data<T>(),
+                                                     labels->data<int32_t>(),
+                                                     ignore_index,
+                                                     N);
+    } else {
+      CaculateLoss<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_2d.data<T>(),
+                                                     predicted_logits.data<T>(),
+                                                     sum_exp_logits.data<T>(),
+                                                     labels->data<int64_t>(),
+                                                     ignore_index,
+                                                     N);
+    }
 
-    eigen_loss.device(*dev_ctx.eigen_device()) =
-        (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>()) -
-         eigen_predicted_logits)
-            .unaryExpr(phi::funcs::TolerableValue<T>());
+    // auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
+    // auto eigen_predicted_logits =
+    //     phi::funcs::EigenMatrix<T>::From(predicted_logits);
+
+    // eigen_loss.device(*dev_ctx.eigen_device()) =
+    //     (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>())
+    //     -
+    //      eigen_predicted_logits)
+    //         .unaryExpr(phi::funcs::TolerableValue<T>());
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
@@ -257,6 +300,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
+    const int ignore_index = ctx.Attr<int>("ignore_index");
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
@@ -371,14 +415,33 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
-    auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
-    auto eigen_predicted_logits =
-        phi::funcs::EigenMatrix<T>::From(predicted_logits);
+    if (label_type == framework::proto::VarType::INT32) {
+      CaculateLoss<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_2d.data<T>(),
+                                                     predicted_logits.data<T>(),
+                                                     sum_exp_logits.data<T>(),
+                                                     labels->data<int32_t>(),
+                                                     ignore_index,
+                                                     N);
+    } else {
+      CaculateLoss<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_2d.data<T>(),
+                                                     predicted_logits.data<T>(),
+                                                     sum_exp_logits.data<T>(),
+                                                     labels->data<int64_t>(),
+                                                     ignore_index,
+                                                     N);
+    }
 
-    eigen_loss.device(*dev_ctx.eigen_device()) =
-        (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>()) -
-         eigen_predicted_logits)
-            .unaryExpr(phi::funcs::TolerableValue<T>());
+    // auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
+    // auto eigen_predicted_logits =
+    //     phi::funcs::EigenMatrix<T>::From(predicted_logits);
+
+    // eigen_loss.device(*dev_ctx.eigen_device()) =
+    //     (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>())
+    //     -
+    //      eigen_predicted_logits)
+    //         .unaryExpr(phi::funcs::TolerableValue<T>());
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
@@ -397,6 +460,8 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
+
+    const int ignore_index = context.Attr<int>("ignore_index");
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
@@ -426,7 +491,8 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
                                                      start_index,
                                                      end_index,
                                                      N,
-                                                     D);
+                                                     D,
+                                                     ignore_index);
     } else if (label_type == framework::proto::VarType::INT64) {
       MaskLabelByIndexGrad<T, int64_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
@@ -435,7 +501,8 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
                                                      start_index,
                                                      end_index,
                                                      N,
-                                                     D);
+                                                     D,
+                                                     ignore_index);
     }
   }
 };
