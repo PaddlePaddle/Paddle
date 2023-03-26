@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
 from paddle.tensor import random
 
@@ -212,11 +212,11 @@ class TestGaussianRandomAPI(unittest.TestCase):
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2000)
 
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 500)
-        shape_tensor_int32 = fluid.data(
+        shape_tensor_int32 = paddle.static.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
 
-        shape_tensor_int64 = fluid.data(
+        shape_tensor_int64 = paddle.static.data(
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 

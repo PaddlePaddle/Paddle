@@ -19,7 +19,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
 

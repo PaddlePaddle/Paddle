@@ -33,7 +33,7 @@ TEST(AlgosCache, AlgosCache) {
   std::vector<int> paddings = {0, 0};
   std::vector<int> strides = {2, 2};
   std::vector<int> dilations = {1, 1};
-  phi::DataType dtype = paddle::experimental::CppTypeToDataType<float>::Type();
+  phi::DataType dtype = phi::CppTypeToDataType<float>::Type();
 
   phi::autotune::ConvCacheKey key(
       x_shape, w_shape, paddings, strides, dilations, dtype, 0, 0);

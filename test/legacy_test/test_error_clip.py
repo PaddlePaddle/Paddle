@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 BATCH_SIZE = 128
 CLIP_MAX = 2e-6

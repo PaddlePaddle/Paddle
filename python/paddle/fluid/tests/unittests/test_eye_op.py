@@ -20,9 +20,9 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+
+from paddle import fluid
+from paddle.fluid import framework
 from paddle.fluid.framework import Program, program_guard
 
 
