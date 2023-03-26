@@ -539,3 +539,8 @@ template class BeamSearchFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
+
+#define REGISTER_GPU_FUNCTOR(functor_name) \
+  int TouchGPUFunctorSymbolFor_##functor_name() { return 0; }
+
+REGISTER_GPU_FUNCTOR(beam_search)
