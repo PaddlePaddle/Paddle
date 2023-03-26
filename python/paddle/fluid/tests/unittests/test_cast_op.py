@@ -29,27 +29,19 @@ from paddle.fluid import Program, core, program_guard
 
 
 def convert_to_dtype_(dtype):
-    if dtype == 5:
-        return core.VarDesc.VarType.FP32
-    elif dtype == 6:
-        return core.VarDesc.VarType.FP64
-    elif dtype == 4:
-        return core.VarDesc.VarType.FP16
-    elif dtype == 2:
-        return core.VarDesc.VarType.INT32
-    elif dtype == 1:
-        return core.VarDesc.VarType.INT16
-    elif dtype == 3:
-        return core.VarDesc.VarType.INT64
-    elif dtype == 0:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == 22:
-        return core.VarDesc.VarType.BF16
-    elif dtype == 20:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == 21:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
+    _dtype_map = {
+        5: core.VarDesc.VarType.FP32,
+        6: core.VarDesc.VarType.FP64,
+        4: core.VarDesc.VarType.FP16,
+        2: core.VarDesc.VarType.INT32,
+        1: core.VarDesc.VarType.INT16,
+        3: core.VarDesc.VarType.INT64,
+        0: core.VarDesc.VarType.BOOL,
+        22: core.VarDesc.VarType.BF16,
+    }
+    if dtype in _dtype_map.keys():
+        return _dtype_map[dtype]
+    else:
         raise ValueError("Not supported dtype %s" % dtype)
 
 
