@@ -86,11 +86,6 @@ def composite_batchnorm(
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
     )
-    if use_global_stats is None:
-        use_global_stats = is_test
-        trainable_statistics = False
-    else:
-        trainable_statistics = not use_global_stats
 
     use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != feature_axis)
