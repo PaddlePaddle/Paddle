@@ -399,11 +399,7 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
-    if (
-        isinstance(size, tuple)
-        or isinstance(size, list)
-        and (len(size) != x.ndim - 2)
-    ):
+    if isinstance(size, (tuple, list)) and (len(size) != x.ndim - 2):
         raise ValueError(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
