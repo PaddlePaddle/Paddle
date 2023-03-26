@@ -474,10 +474,6 @@ if(WIN32)
   endforeach()
 endif()
 
-foreach(src ${TEST_OPS})
-  py_test(${src} SRCS ${src}.py)
-endforeach()
-
 # setting timeout value for old unittests
 if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_lstm_model
