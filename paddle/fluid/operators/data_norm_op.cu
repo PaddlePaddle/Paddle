@@ -102,7 +102,7 @@ __global__ void KernelUpdateParam(int C,
 }
 
 template <typename T>
-class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -154,7 +154,7 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");

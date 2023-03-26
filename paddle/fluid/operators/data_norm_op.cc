@@ -267,7 +267,7 @@ The required data format for this layer is one of the following:
 };
 
 template <typename T>
-class DataNormKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
+class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
@@ -509,7 +509,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
+class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");

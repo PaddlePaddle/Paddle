@@ -59,6 +59,3 @@ REGISTER_OPERATOR(
     ops::DiagOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(
-    diag, CPU, ALL_LAYOUT, ops::DiagKernel, float, double, int, int64_t) {}

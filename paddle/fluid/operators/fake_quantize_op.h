@@ -369,7 +369,7 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
 
 template <typename T, typename DeviceContext>
 class FakeQuantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
+    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
@@ -384,7 +384,7 @@ class FakeQuantizeMovingAverageAbsMaxKernel
 
 template <typename T, typename DeviceContext>
 class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
+    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
