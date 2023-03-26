@@ -37,11 +37,11 @@ class PRChecker:
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('No PR ID')
-            sys.sys.exit(0)
+            sys.exit(0)
         print(pr_id)
         if not os.path.isfile(filename):
             print('No author to check')
-            sys.sys.exit(0)
+            sys.exit(0)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         pr = self.repo.get_pull(int(pr_id))
         user = pr.user.login

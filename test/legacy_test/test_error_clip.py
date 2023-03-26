@@ -82,6 +82,6 @@ for data in train_reader():
         (out1.clip(min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all()
         and (out2 == out2_clip).all()
     ):
-        sys.sys.exit(1)
+        sys.exit(1)
 
-sys.sys.exit(0)
+sys.exit(0)
