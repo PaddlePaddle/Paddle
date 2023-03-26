@@ -609,6 +609,8 @@ def _lower_composite(
 
             op_name = op.type
             comp_flag = (lookup_fn(op_name) is not None) and filter_(op)
+            # Attr op_role will be set after grad op has been attached to origin op.
+            # Currently non primitive ops in prim vjp rule will not be processed here.
             if op.desc.attr("op_role") == 1:
                 comp_flag = False
             if comp_flag:
