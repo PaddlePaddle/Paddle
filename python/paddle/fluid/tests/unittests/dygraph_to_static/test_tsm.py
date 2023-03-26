@@ -22,7 +22,7 @@ import numpy as np
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear

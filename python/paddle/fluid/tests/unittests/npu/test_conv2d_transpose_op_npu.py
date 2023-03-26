@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 from test_conv2d_transpose_op import conv2dtranspose_forward_naive
 

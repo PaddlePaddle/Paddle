@@ -20,7 +20,7 @@ from paddle.fluid import Program, program_guard
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestClipOp(OpTest):

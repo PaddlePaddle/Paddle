@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from test_imperative_mnist import MNIST
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer

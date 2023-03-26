@@ -63,7 +63,7 @@ import tempfile
 import time
 from argparse import REMAINDER, ArgumentParser
 
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (

@@ -23,8 +23,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed.auto_parallel.utils as auto_utils
-import paddle.utils as utils
-from paddle import static
+from paddle import static, utils
 from paddle.distributed import fleet
 from paddle.fluid.executor import _to_name_str
 from paddle.framework import IrGraph

@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
 
