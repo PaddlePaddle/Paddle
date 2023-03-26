@@ -19,10 +19,8 @@ if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,

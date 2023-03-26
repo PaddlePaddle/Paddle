@@ -19,8 +19,8 @@ import unittest
 from io import StringIO
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list

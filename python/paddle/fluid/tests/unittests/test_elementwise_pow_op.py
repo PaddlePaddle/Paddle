@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def pow_grad(x, y, dout):

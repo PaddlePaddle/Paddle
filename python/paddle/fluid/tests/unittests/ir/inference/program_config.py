@@ -18,8 +18,8 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import (
     IrGraph,

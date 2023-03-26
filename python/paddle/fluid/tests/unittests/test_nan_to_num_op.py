@@ -18,7 +18,7 @@ from typing import Optional
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 # from eager_op_test import OpTest
 
