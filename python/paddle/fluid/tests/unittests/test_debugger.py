@@ -14,8 +14,8 @@
 
 import unittest
 
-from paddle.fluid import core
 from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
+from paddle.fluid import core
 from paddle.fluid.framework import Program
 
 
