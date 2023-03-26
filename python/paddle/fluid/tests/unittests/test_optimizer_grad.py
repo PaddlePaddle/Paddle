@@ -18,8 +18,8 @@ from collections import defaultdict
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.optimizer as optimizer
+from paddle import fluid
+from paddle.fluid import optimizer
 from paddle.fluid.backward import _append_grad_suffix_
 
 paddle.enable_static()
@@ -119,7 +119,7 @@ class SimpleNetWithCond:
         sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
         if use_bf16:
-            import paddle.static.amp as amp
+            from paddle.static import amp
 
             self.optimizer = amp.bf16.decorate_bf16(
                 self.optimizer,
@@ -212,7 +212,7 @@ class TestOptimizer(unittest.TestCase):
                         with fluid.program_guard(main_program, init_program):
                             # reset optimizer._accumulators to avoid duplicate name in loop.
                             self.optimizer._accumulators = defaultdict(
-                                lambda: dict()
+                                lambda: {}
                             )
                             test_net = self.NetClass(
                                 self.optimizer, param_lr, y_no_grad

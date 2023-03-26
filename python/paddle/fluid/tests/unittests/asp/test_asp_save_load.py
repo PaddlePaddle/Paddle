@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.incubate.asp import ASPHelper
 
 
@@ -128,10 +128,12 @@ class TestASPStaticOptimize(unittest.TestCase):
         self.startup_program = fluid.Program()
 
         def build_model():
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )

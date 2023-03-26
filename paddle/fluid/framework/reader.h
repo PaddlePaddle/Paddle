@@ -92,8 +92,6 @@ class ReaderBase {
   std::vector<proto::VarType::Type> var_types_;
 
   // Whether to check the shape and dtype of fed variables.
-  // For Backward compatibility, variables created by old API fluid.layers.data
-  // doesn't check shape but fluid.data checks.
   std::vector<bool> need_check_feed_;
 
  private:

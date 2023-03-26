@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -43,10 +43,10 @@ class TestLerp(OpTest):
         self.shape = [100]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestLerpWithDim2(TestLerp):
@@ -119,8 +119,8 @@ class TestLerpAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
-                y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
+                x = paddle.static.data('x', [1, 4], dtype=self.dtype)
+                y = paddle.static.data('y', [1, 4], dtype=self.dtype)
                 out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
                 res = exe.run(

@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import (
     EagerParamBase,
     _current_expected_place,

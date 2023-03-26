@@ -37,7 +37,7 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT8
 };
 
-inline CCLDataType ToCCLDataType(paddle::experimental::DataType type) {
+inline CCLDataType ToCCLDataType(phi::DataType type) {
   if (type == phi::DataType::FLOAT64) {
     return CCL_DATA_TYPE_FP64;
   } else if (type == phi::DataType::FLOAT32) {

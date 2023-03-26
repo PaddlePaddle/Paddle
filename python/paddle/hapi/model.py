@@ -24,9 +24,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
@@ -2324,9 +2324,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 

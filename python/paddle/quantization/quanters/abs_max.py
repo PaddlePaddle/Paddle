@@ -82,7 +82,7 @@ class FakeQuanterWithAbsMaxObserver(QuanterFactory):
         dtype='float32',
         name=None,
     ):
-        super(FakeQuanterWithAbsMaxObserver, self).__init__(
+        super().__init__(
             name=name,
             moving_rate=moving_rate,
             bit_length=bit_length,
@@ -102,7 +102,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         bit_length=8,
         dtype='float32',
     ):
-        super(FakeQuanterWithAbsMaxObserverLayer, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._bit_length = bit_length
         scale_prefix = (

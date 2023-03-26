@@ -26,7 +26,6 @@ from paddle.fluid.tests.unittests.op_test import (
 from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmaxOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
@@ -35,7 +34,11 @@ class TestLogSoftmaxOneDNNOp(OpTest):
         self.set_axis()
 
         x = np.random.uniform(0.1, 1.0, self.shape).astype(np.float32)
-        out = np.apply_along_axis(ref_log_softmax, self.axis, x)
+        out = (
+            np.apply_along_axis(ref_log_softmax, self.axis, x)
+            if len(self.shape) > 0
+            else np.array(0.0).astype(self.dtype)
+        )
 
         if self.dtype == np.uint16:
             x = convert_float_to_uint16(x)
@@ -55,6 +58,11 @@ class TestLogSoftmaxOneDNNOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
+
+
+class TestLogSoftmax0DOneDNNOp(TestLogSoftmaxOneDNNOp):
+    def set_shape(self):
+        self.shape = []
 
 
 class TestLogSoftmax1DOneDNNOp(TestLogSoftmaxOneDNNOp):
@@ -78,11 +86,13 @@ class TestLogSoftmaxPositiveAxisOneDNNOp(TestLogSoftmaxOneDNNOp):
 
 
 # BF16 TESTS
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmax1DBF16OneDNNOp(TestLogSoftmax1DOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmaxPositiveAxisBF16OneDNNOp(
     TestLogSoftmaxPositiveAxisOneDNNOp
 ):
@@ -90,9 +100,10 @@ class TestLogSoftmaxPositiveAxisBF16OneDNNOp(
         self.dtype = np.uint16
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmax5DBF16OneDNNOp(TestLogSoftmax5DOneDNNOp):
-    def set_shape(self):
-        self.shape = [2, 3, 4, 5, 6]
+    def set_dtype(self):
+        self.dtype = np.uint16
 
 
 if __name__ == "__main__":

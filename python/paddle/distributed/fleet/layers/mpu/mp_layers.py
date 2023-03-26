@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd import PyLayer
 from paddle.fluid import core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 
 from ...base import topology as tp
@@ -32,7 +32,7 @@ def is_fused_matmul_bias_supported():
     return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
-class VocabParallelEmbedding(Layer):
+class VocabParallelEmbedding(paddle.nn.Layer):
     """Embedding mp parallelized in the vocabulary dimension.
     this class is used for splitting embedding in mp group.
 
@@ -170,7 +170,7 @@ class VocabParallelEmbedding(Layer):
         return output
 
 
-class ColumnParallelLinear(Layer):
+class ColumnParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
 
@@ -329,7 +329,18 @@ class ColumnParallelLinear(Layer):
         return output
 
 
-class RowParallelLinear(Layer):
+class MPScale(PyLayer):
+    @staticmethod
+    def forward(ctx, x, mp_degree):
+        out = paddle.scale(x, 1.0 / mp_degree)
+        return out
+
+    @staticmethod
+    def backward(ctx, dout):
+        return dout
+
+
+class RowParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
 
@@ -468,6 +479,7 @@ class RowParallelLinear(Layer):
             from paddle.incubate.nn.functional import fused_linear
 
             self.linear = fused_linear
+        self.fuse_matmul_bias = fuse_matmul_bias
 
     def forward(self, x):
         if self.input_is_parallel or (not self.is_mp):
@@ -477,16 +489,30 @@ class RowParallelLinear(Layer):
             input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
 
         if self.is_mp:
-            output_parallel = self.linear(
-                input_parallel, self.weight, name=self._name
-            )
-            output_ = mp_ops._mp_allreduce(
-                output_parallel,
-                group=self.model_parallel_group,
-                use_calc_stream=True,
-                use_model_parallel=True,
-            )
-            output = output_ + self.bias if self.bias is not None else output_
+            if self.fuse_matmul_bias:
+                bias = MPScale.apply(self.bias, self.world_size)
+                output_parallel = self.linear(
+                    input_parallel, self.weight, bias, name=self._name
+                )
+                output = mp_ops._mp_allreduce(
+                    output_parallel,
+                    group=self.model_parallel_group,
+                    use_calc_stream=True,
+                    use_model_parallel=True,
+                )
+            else:
+                output_parallel = self.linear(
+                    input_parallel, self.weight, name=self._name
+                )
+                output_ = mp_ops._mp_allreduce(
+                    output_parallel,
+                    group=self.model_parallel_group,
+                    use_calc_stream=True,
+                    use_model_parallel=True,
+                )
+                output = (
+                    output_ + self.bias if self.bias is not None else output_
+                )
         else:
             output = self.linear(
                 input_parallel, self.weight, self.bias, name=self._name
@@ -495,7 +521,7 @@ class RowParallelLinear(Layer):
         return output
 
 
-class ParallelCrossEntropy(Layer):
+class ParallelCrossEntropy(paddle.nn.Layer):
     """CrossEntropy with mp parallelized.
     this class is used for splitting softmax cross entropy in mp group.
 

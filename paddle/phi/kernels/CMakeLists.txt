@@ -81,11 +81,12 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
+
 if(WITH_FLASHATTN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
 endif()
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
                          nccl_comm_context)
@@ -103,6 +104,7 @@ file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
+# fusion ops would be included here
 file(
   GLOB
   kernel_cu
@@ -123,8 +125,15 @@ if(WITH_CUTLASS)
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}")
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
-       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu"
+       "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
+  add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Program, default_main_program, program_guard
 
 paddle.enable_static()
@@ -106,7 +106,7 @@ class TestProgram(unittest.TestCase):
 
     def test_program_all_parameters(self):
         program = fluid.default_main_program()
-        data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+        data = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)

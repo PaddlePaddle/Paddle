@@ -15,9 +15,48 @@
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
+import paddle.distributed as dist
 import paddle.fluid as fluid
+import paddle.fluid.data_feeder as data_feeder
+import paddle.framework as framework
 
 paddle.enable_static()
+
+
+def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
+    op_type = "reduce"
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        op_type,
+    )
+
+    ring_id = 0 if group is None else group.id
+
+    helper = framework.LayerHelper(op_type, **locals())
+    if not reduce_type.isdigit():
+        raise ValueError("The type of 'reduce_type' for reduce should be int.")
+    helper.append_op(
+        type=op_type,
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'root_id': dst,
+            'reduce_type': int(reduce_type),
+        },
+    )
+    return None
 
 
 class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
@@ -31,6 +70,22 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             paddle.distributed.reduce(tindata, dst=0)
+            return [tindata]
+
+    def get_model_new(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+        reduce_type=str(dist.ReduceOp.SUM),
+    ):
+        with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            reduce_new(tindata, dst=0, reduce_type=reduce_type)
             return [tindata]
 
 
