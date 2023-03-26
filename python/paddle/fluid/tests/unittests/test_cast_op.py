@@ -39,7 +39,7 @@ def convert_to_dtype_(dtype):
         6: core.VarDesc.VarType.FP64,
         20: core.VarDesc.VarType.UINT8,
         21: core.VarDesc.VarType.INT8,
-        22: core.VarDesc.VarType.BF16
+        22: core.VarDesc.VarType.BF16,
     }
     if dtype in _dtype_map.keys():
         return _dtype_map[dtype]
