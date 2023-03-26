@@ -19,7 +19,7 @@ import numpy as np
 from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 

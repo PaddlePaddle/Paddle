@@ -21,9 +21,9 @@ import numpy as np
 from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.dataset.common import DATA_HOME, download
+from paddle.fluid import core
 
 SEED = 2023
 BATCH_SIZE = 2

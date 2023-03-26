@@ -23,8 +23,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit.api import to_static
@@ -594,9 +593,9 @@ class TestLACModel(unittest.TestCase):
                             input=crf_decode, label=targets, seq_length=length
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
-                        avg_cost, precision, recall, f1_score = [
+                        avg_cost, precision, recall, f1_score = (
                             np.mean(x.numpy()) for x in outputs
-                        ]
+                        )
 
                         print(
                             "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"
