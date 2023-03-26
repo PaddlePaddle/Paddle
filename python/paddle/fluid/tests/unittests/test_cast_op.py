@@ -30,16 +30,16 @@ from paddle.fluid import Program, core, program_guard
 
 def convert_to_dtype_(dtype):
     _dtype_map = {
+        0: core.VarDesc.VarType.BOOL,
+        1: core.VarDesc.VarType.INT16,
+        2: core.VarDesc.VarType.INT32,
+        3: core.VarDesc.VarType.INT64,
+        4: core.VarDesc.VarType.FP16,
         5: core.VarDesc.VarType.FP32,
         6: core.VarDesc.VarType.FP64,
-        4: core.VarDesc.VarType.FP16,
-        2: core.VarDesc.VarType.INT32,
-        1: core.VarDesc.VarType.INT16,
-        3: core.VarDesc.VarType.INT64,
-        0: core.VarDesc.VarType.BOOL,
-        22: core.VarDesc.VarType.BF16,
         20: core.VarDesc.VarType.UINT8,
-        21: core.VarDesc.VarType.INT8
+        21: core.VarDesc.VarType.INT8,
+        22: core.VarDesc.VarType.BF16
     }
     if dtype in _dtype_map.keys():
         return _dtype_map[dtype]
