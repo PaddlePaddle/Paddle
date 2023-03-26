@@ -42,8 +42,8 @@ from ifelse_simple_func import (
 )
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import core
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -289,7 +289,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
         self.dyfunc = call_external_func
 
 
-class NetWithExternalFunc(fluid.dygraph.Layer):
+class NetWithExternalFunc(paddle.nn.Layer):
     @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:

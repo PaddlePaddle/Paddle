@@ -18,15 +18,14 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -130,8 +129,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         learning_rate=1e-3,
                         parameter_list=simple_net.parameters(),
                     )
-                    dy_param_updated = dict()
-                    dy_param_init = dict()
+                    dy_param_updated = {}
+                    dy_param_init = {}
                     dy_loss = None
 
                     fluid.set_flags(
@@ -181,9 +180,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
-                    static_param_updated = dict()
-                    static_param_init = dict()
-                    static_param_name_list = list()
+                    static_param_updated = {}
+                    static_param_init = {}
+                    static_param_name_list = []
                     for param in simple_net.parameters():
                         static_param_name_list.append(param.name)
 

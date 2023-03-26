@@ -22,7 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
@@ -55,7 +55,7 @@ def optimizer_setting(parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -86,7 +86,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
         super().__init__()
 
@@ -140,7 +140,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 

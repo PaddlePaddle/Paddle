@@ -19,12 +19,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import framework
+from paddle import framework, nn
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 
 def set_random_seed(seed, dp_id, rank_id):

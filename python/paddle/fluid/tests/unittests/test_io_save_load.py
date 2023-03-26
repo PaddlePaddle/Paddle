@@ -17,8 +17,7 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 from paddle.fluid import core
 
 
@@ -71,8 +70,8 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         start_prog = fluid.Program()
         main_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
-            x = fluid.data(name='x', shape=[10, 16], dtype='float32')
-            y = fluid.data(name='y', shape=[10, 16], dtype='float32')
+            x = paddle.static.data(name='x', shape=[10, 16], dtype='float32')
+            y = paddle.static.data(name='y', shape=[10, 16], dtype='float32')
             z = paddle.static.nn.fc(x, 4)
 
         exe = fluid.Executor(fluid.CPUPlace())

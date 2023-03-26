@@ -32,7 +32,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -237,13 +236,13 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
     if (meta && meta->Grad().initialized()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
-        case paddle::experimental::DataType::FLOAT16:
+        case phi::DataType::FLOAT16:
           ret[0].emplace_back(grad);
           break;
-        case paddle::experimental::DataType::BFLOAT16:
+        case phi::DataType::BFLOAT16:
           ret[1].emplace_back(grad);
           break;
-        case paddle::experimental::DataType::FLOAT32:
+        case phi::DataType::FLOAT32:
           ret[2].emplace_back(grad);
           break;
         default:
@@ -276,9 +275,9 @@ PyObject* eager_api_get_grads_types(PyObject* self,
     auto& grad = meta->Grad();
     if (meta && grad.initialized()) {
       if (grad.is_dense_tensor() &&
-          (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
-           tensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
-           tensor.dtype() == paddle::experimental::DataType::BFLOAT16)) {
+          (tensor.dtype() == phi::DataType::FLOAT32 ||
+           tensor.dtype() == phi::DataType::FLOAT16 ||
+           tensor.dtype() == phi::DataType::BFLOAT16)) {
         ret.emplace_back(
             paddle::framework::TransToProtoVarType(tensor.dtype()));
       }
@@ -327,18 +326,12 @@ static void ConstructFwdAndBwdMap(
     return;
   } else {
     VLOG(7) << "Construct CustomEdgesSlotMap ";
-    auto inputs_names =
-        paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[0]);
-    auto outputs_names =
-        paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[0]);
-    auto attrs_names =
-        paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[0]);
-    auto grad_outputs_names =
-        paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[1]);
-    auto grad_inputs_names =
-        paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[1]);
-    auto grad_attrs_names =
-        paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[1]);
+    auto inputs_names = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+    auto outputs_names = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
+    auto attrs_names = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+    auto grad_outputs_names = paddle::OpMetaInfoHelper::GetOutputs(vec_map[1]);
+    auto grad_inputs_names = paddle::OpMetaInfoHelper::GetInputs(vec_map[1]);
+    auto grad_attrs_names = paddle::OpMetaInfoHelper::GetAttrs(vec_map[1]);
     std::vector<std::unordered_map<int, int>> res(5);
 
     in_out_map.insert({op_type, {res}});
@@ -525,23 +518,21 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             "sure you registered your op first and try again. ",
             op_type));
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-    std::vector<paddle::any> res_attrs =
-        CastAttrsToTargetType(ctx.Attrs(),
-                              paddle::framework::OpMetaInfoHelper::GetAttrs(
-                                  meta_info_map.at(op_type)[0]));
+    std::vector<paddle::any> res_attrs = CastAttrsToTargetType(
+        ctx.Attrs(),
+        paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[0]));
     ctx.EmplaceBackAttrs(res_attrs);
     const auto& vec_map = meta_info_map.at(op_type);
 
-    // handle inplace case
-    const auto& inputs = paddle::framework::OpMetaInfoHelper::GetInputs(
-        meta_info_map.at(op_type)[0]);
-    const auto& outputs = paddle::framework::OpMetaInfoHelper::GetOutputs(
-        meta_info_map.at(op_type)[0]);
+    const auto& inputs =
+        paddle::OpMetaInfoHelper::GetInputs(meta_info_map.at(op_type)[0]);
+    const auto& outputs =
+        paddle::OpMetaInfoHelper::GetOutputs(meta_info_map.at(op_type)[0]);
     const auto& inplace_map =
-        paddle::framework::OpMetaInfoHelper::GetInplaceMap(
-            meta_info_map.at(op_type)[0]);
+        paddle::OpMetaInfoHelper::GetInplaceMap(meta_info_map.at(op_type)[0]);
+    // handle inplace map
     ctx.MapPlainOutputs(inputs, outputs, inplace_map);
-    (*paddle::framework::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
+    (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
     ctx.AssignInplaceOutputs();
 
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
@@ -569,7 +560,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   trace_backward, &(ins_auto_grad_metas[i]));
     }
 
-    // handle inplace case
+    // handle inplace map
     for (size_t i = 0; i < ctx.InputRange().size(); i++) {
       if (inplace_map.find(inputs[i]) != inplace_map.end()) {
         size_t input_size =
@@ -653,8 +644,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   ctx.InputRangeAt(it->first).second));
       }
 
-      auto attrs_names = paddle::framework::OpMetaInfoHelper::GetAttrs(
-          meta_info_map.at(op_type)[1]);
+      auto attrs_names =
+          paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[1]);
       std::vector<paddle::any> attrs(attrs_names.size());
       // Prepare attrs for Grad node
       for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {

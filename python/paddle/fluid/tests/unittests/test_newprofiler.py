@@ -19,11 +19,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.profiler as profiler
-import paddle.profiler.utils as utils
+from paddle import nn, profiler
 from paddle.io import DataLoader, Dataset
+from paddle.profiler import utils
 
 
 class TestProfiler(unittest.TestCase):
@@ -231,7 +230,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
         x_value = np.random.randn(2, 3, 3)
@@ -272,7 +271,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         try:
             profiler = profiler.get_profiler(filehandle.name)
@@ -310,7 +309,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
 
@@ -346,11 +345,11 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
         # test path error
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler('nopath.json')
 

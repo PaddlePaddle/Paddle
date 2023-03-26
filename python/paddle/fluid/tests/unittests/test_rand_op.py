@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import rand
-from paddle.fluid import Program, program_guard
+from paddle import fluid, rand
+from paddle.fluid import Program, core, program_guard
 
 
 class TestRandOpError(unittest.TestCase):
@@ -68,10 +66,12 @@ class TestRandOp(unittest.TestCase):
             dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             result_2 = rand(shape=[dim_1, dim_2])
 
-            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            var_shape = paddle.static.data(
+                name='var_shape', shape=[2], dtype="int64"
+            )
             result_3 = rand(var_shape)
 
-            var_shape_int32 = fluid.data(
+            var_shape_int32 = paddle.static.data(
                 name='var_shape_int32', shape=[2], dtype="int32"
             )
             result_4 = rand(var_shape_int32)

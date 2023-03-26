@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def add_fn(x):
@@ -232,7 +232,7 @@ def nested_if_else_3(x):
     return res
 
 
-class NetWithControlFlowIf(fluid.dygraph.Layer):
+class NetWithControlFlowIf(paddle.nn.Layer):
     def __init__(self, hidden_dim=16):
         super().__init__()
         self.hidden_dim = hidden_dim
