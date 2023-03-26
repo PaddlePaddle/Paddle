@@ -98,7 +98,7 @@ def composite_batchnorm(
         1 if i in reduce_axes else s for i, s in enumerate(x.shape)
     )
 
-    half = -0.5
+    half = full([1], -0.5, x.dtype)
 
     if not use_run_stat:
         batch_mean = mean(x, reduce_axes)
