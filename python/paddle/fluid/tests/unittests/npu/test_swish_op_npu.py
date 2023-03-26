@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from test_activation_op import ref_swish, expit

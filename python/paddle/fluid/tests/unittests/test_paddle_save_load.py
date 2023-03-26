@@ -21,10 +21,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.nn as nn
 import paddle.optimizer as opt
+from paddle import fluid, nn
+from paddle.fluid import framework
 from paddle.fluid.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 

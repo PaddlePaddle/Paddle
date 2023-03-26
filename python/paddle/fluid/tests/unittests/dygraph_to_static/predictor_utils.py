@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 

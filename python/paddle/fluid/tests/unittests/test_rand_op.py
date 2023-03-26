@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import rand
-from paddle.fluid import Program, program_guard
+from paddle import fluid, rand
+from paddle.fluid import Program, core, program_guard
 
 
 class TestRandOpError(unittest.TestCase):

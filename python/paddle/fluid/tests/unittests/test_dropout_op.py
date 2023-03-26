@@ -19,11 +19,8 @@ import parameterized as param
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static as static
-from paddle import _C_ops
-from paddle.fluid import Program, program_guard
+from paddle import _C_ops, fluid, static
+from paddle.fluid import Program, core, program_guard
 from paddle.incubate.autograd import primapi
 
 

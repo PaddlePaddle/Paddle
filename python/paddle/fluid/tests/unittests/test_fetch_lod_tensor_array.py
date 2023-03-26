@@ -18,8 +18,8 @@ import numpy as np
 from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import layers
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):

@@ -16,15 +16,25 @@ import contextlib
 import unittest
 
 import numpy as np
-from unittests.test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
+
+
+@contextlib.contextmanager
+def new_program_scope(main=None, startup=None, scope=None):
+    prog = main if main else fluid.Program()
+    startup_prog = startup if startup else fluid.Program()
+    scope = scope if scope else fluid.core.Scope()
+    with fluid.scope_guard(scope):
+        with fluid.program_guard(prog, startup_prog):
+            with fluid.unique_name.guard():
+                yield
 
 
 class LayerTest(unittest.TestCase):

@@ -18,7 +18,7 @@ import numpy as np
 from utils import TOLERANCE
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
