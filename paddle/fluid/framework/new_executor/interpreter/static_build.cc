@@ -66,9 +66,10 @@ namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 6) & 1
-  // is_operator_base = (kernelCode >> 5) & 1
-  // is_custom_op = (kernelCode >> 4) & 1
+  // in_black_list = (kernelCode >> 7) & 1
+  // is_operator_base = (kernelCode >> 6) & 1
+  // is_custom_op = (kernelCode >> 5) & 1
+  // use_mkldnn = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
   // need_move_to_phi = (kernelCode >> 1) & 1
@@ -86,6 +87,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
     bool is_custom_op =
         egr::Controller::Instance().GetOpMetaInfoMap().count(op_type);
+    bool use_mkldnn = op->GetAttrIfExists<bool>("use_mkldnn");
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
@@ -94,15 +96,15 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool need_set_dtype =
         OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type);
 
-    KernelCode kernel_code = (in_black_list << 6) + (is_operator_base << 5) +
-                             (is_custom_op << 4) + (has_fluid_kernel << 3) +
-                             (has_structured_kernel << 2) +
-                             (need_move_to_phi << 1) + need_set_dtype;
+    KernelCode kernel_code =
+        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
+        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
+        (has_structured_kernel << 2) + (need_move_to_phi << 1) + need_set_dtype;
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || need_move_to_phi || need_set_dtype) {
+          is_custom_op || use_mkldnn || need_move_to_phi || need_set_dtype) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -112,9 +114,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
-         << ", is_operator_base = " << (item.second >> 5 & 1)
-         << ", is_custom_op = " << (item.second >> 4 & 1)
+      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
+         << ", is_operator_base = " << (item.second >> 6 & 1)
+         << ", is_custom_op = " << (item.second >> 5 & 1)
+         << ", use_mkldnn = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
