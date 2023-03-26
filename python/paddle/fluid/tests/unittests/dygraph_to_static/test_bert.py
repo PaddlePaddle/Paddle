@@ -23,7 +23,7 @@ from bert_utils import get_bert_config, get_feed_data_reader
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 

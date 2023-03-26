@@ -28,6 +28,7 @@
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -55,7 +56,7 @@ class CUDAGraphContextManager {
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
-      EmplaceDeviceContexts(
+      phi::memory_utils::EmplaceDeviceContexts(
           &ctxs,
           {place},
           /*disable_setting_default_stream_for_allocator=*/true,

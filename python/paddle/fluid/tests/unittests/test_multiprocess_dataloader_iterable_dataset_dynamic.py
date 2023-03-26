@@ -29,7 +29,7 @@ from test_multiprocess_dataloader_iterable_dataset_static import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.io import DataLoader
 from paddle.nn import Linear
 
