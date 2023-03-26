@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
+from paddle import fluid
+from paddle.fluid import compiler
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (
     IPUOpTest,
     np_dtype_to_fluid_str,
