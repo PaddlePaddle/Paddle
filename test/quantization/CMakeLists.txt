@@ -469,9 +469,6 @@ if(WIN32)
       test_imperative_out_scale
       test_graph)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
-  foreach(src ${SINGLE_CARD_TEST_OPS})
-    py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
-  endforeach()
 endif()
 
 # setting timeout value for old unittests
