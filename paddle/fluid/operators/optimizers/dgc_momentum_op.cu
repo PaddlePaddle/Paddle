@@ -17,4 +17,4 @@
 namespace ops = paddle::operators;
 
 PD_REGISTER_STRUCT_KERNEL(
-    dgc_momentum, CPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}
+    dgc_momentum, GPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}
