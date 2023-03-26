@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()

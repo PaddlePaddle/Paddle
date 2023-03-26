@@ -20,7 +20,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 sys.path.append("./rnn")
 from convert import get_params_for_net

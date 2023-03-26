@@ -17,11 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.nn as nn
-import paddle.nn.initializer as initializer
+from paddle import fluid, nn
+from paddle.fluid import framework
 from paddle.fluid.core import VarDesc
+from paddle.nn import initializer
 
 DELTA = 0.00001
 

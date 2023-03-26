@@ -27,7 +27,7 @@ from transformer_dygraph_model import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 trainer_count = 1
 place = (

@@ -28,8 +28,7 @@ from eager_op_test import (
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
-import paddle.nn as nn
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, nn
 from paddle.fluid import core
 
 

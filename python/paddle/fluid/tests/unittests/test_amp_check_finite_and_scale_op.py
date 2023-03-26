@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle.static.amp.amp_nn as amp_nn
+from paddle.static.amp import amp_nn
 
 
 def check_finite_and_unscale_wrapper(x, scale):

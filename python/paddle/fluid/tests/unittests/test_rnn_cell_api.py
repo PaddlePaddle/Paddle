@@ -20,9 +20,8 @@ from rnn.rnn_numpy import LSTMCell
 from rnn.rnn_numpy import rnn as numpy_rnn
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.nn.layer.rnn import rnn as dynamic_rnn

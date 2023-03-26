@@ -18,9 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle import to_tensor
+from paddle import fluid, to_tensor
+from paddle.fluid import dygraph
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
 from paddle.jit.dy2static.utils import is_dygraph_api
@@ -452,7 +451,7 @@ class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
 
 
 def _dygraph_fn():
-    import paddle.fluid as fluid
+    from paddle import fluid
 
     x = np.random.random((1, 3)).astype('float32')
     with fluid.dygraph.guard():

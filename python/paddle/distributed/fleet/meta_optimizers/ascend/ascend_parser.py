@@ -15,7 +15,7 @@ from functools import reduce
 
 import numpy as np
 
-import paddle.framework.core as core
+from paddle.framework import core
 
 __all__ = []
 

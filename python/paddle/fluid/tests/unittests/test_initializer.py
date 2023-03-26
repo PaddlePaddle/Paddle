@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 
