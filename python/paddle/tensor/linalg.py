@@ -1382,7 +1382,7 @@ def cross(x, y, axis=9, name=None):
         )
         helper = LayerHelper("cross", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['dim'] = axis
 
         helper.append_op(
@@ -1944,7 +1944,7 @@ def svd(x, full_matrices=False, name=None):
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
         vh = helper.create_variable_for_type_inference(dtype=x.dtype)
         s = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['full_matrices'] = full_matrices
         helper.append_op(
             type='svd',
@@ -2081,7 +2081,7 @@ def qr(x, mode="reduced", name=None):
         helper = LayerHelper('qr', **locals())
         q = helper.create_variable_for_type_inference(dtype=x.dtype)
         r = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['mode'] = mode
         helper.append_op(
             type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
@@ -2180,7 +2180,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
         lu = helper.create_variable_for_type_inference(dtype=x.dtype)
         p = helper.create_variable_for_type_inference(dtype='int')
         info = helper.create_variable_for_type_inference(dtype='int')
-        attrs = dict()
+        attrs = {}
         attrs['pivot'] = pivot
         helper.append_op(
             type='lu',
@@ -2279,7 +2279,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         l = helper.create_variable_for_type_inference(dtype=x.dtype)
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        attrs = dict()
+        attrs = {}
         attrs['unpack_ludata'] = unpack_ludata
         attrs['unpack_pivots'] = unpack_pivots
         helper.append_op(

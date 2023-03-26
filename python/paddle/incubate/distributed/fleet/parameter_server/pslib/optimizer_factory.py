@@ -125,7 +125,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             inputs
         """
         local_vars = program.current_block().vars
-        inputs_dict = dict()
+        inputs_dict = {}
         for table_name in table_names:
             inputs_dict[table_name] = []
 
@@ -148,7 +148,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             outputs
         """
         local_vars = program.current_block().vars
-        outputs_dict = dict()
+        outputs_dict = {}
         for table_name in table_names:
             outputs_dict[table_name] = []
 
@@ -162,7 +162,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
     def _find_distributed_lookup_table_grads(self, program, table_names):
         local_vars = program.current_block().vars
-        grads_dict = dict()
+        grads_dict = {}
         for table_name in table_names:
             grads_dict[table_name] = []
 
@@ -281,7 +281,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 % (len(params), len(grads))
             )
 
-        pname2grad = dict()
+        pname2grad = {}
         for i in range(len(params)):
             pname = params[i].name
             gname = grads[i].name
@@ -316,8 +316,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         lists_grads = [[] for i in range(len(cond_params.keys()))]
 
         key_id = 0
-        name2key = dict()
-        cond2denseid = dict()
+        name2key = {}
+        cond2denseid = {}
         for key, value in cond_params.items():
             cond2denseid[key] = dense_table_id
             dense_tables.append(dense_table_id)
@@ -341,7 +341,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         )
 
     def _gen_distributed_emb_to_size_dict(self, program):
-        d_size = dict()
+        d_size = {}
         local_vars = program.current_block().vars
 
         for op in program.global_block().ops:
@@ -363,7 +363,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         self, strategy, table_name, emb_to_size
     ):
         if strategy.get(table_name) is None:
-            strategy[table_name] = dict()
+            strategy[table_name] = {}
         st = strategy[table_name]
 
         accessor = "DownpourCtrAccessor"
@@ -521,7 +521,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             # has condition_block op means multi-task
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
-                self._cond_params = dict()
+                self._cond_params = {}
                 self._other_params = []
                 now_program = loss.block.program
                 root_block = now_program.block(0)
@@ -530,8 +530,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     all_params.append(par.name)
 
                 ops_ = root_block.ops
-                fill_value_dict = dict()
-                equal_fill_dict = dict()
+                fill_value_dict = {}
+                equal_fill_dict = {}
                 for op in ops_:
                     # conditional_block op must has fill_constant and equal op
                     if op.type == 'fill_constant':
@@ -635,7 +635,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     print("emb_to_table ", emb_to_table)
                     raise ValueError("key error: %s" % key)
                 if strategy.get(key) is None:
-                    strategy[key] = dict()
+                    strategy[key] = {}
                 st = strategy[key]
 
                 accessor = None

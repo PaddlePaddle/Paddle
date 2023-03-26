@@ -19,7 +19,7 @@ import warnings
 from functools import reduce
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.framework import core
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
@@ -179,7 +179,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])

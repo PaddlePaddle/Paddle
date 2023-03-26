@@ -19,9 +19,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.op import Operator
 
 
@@ -542,7 +541,7 @@ class TestDataNormOpErrorr(unittest.TestCase):
             # The size of input in data_norm should not be 0.
             def test_0_size():
                 paddle.enable_static()
-                x = fluid.data(name='x', shape=[0, 3], dtype='float32')
+                x = paddle.static.data(name='x', shape=[0, 3], dtype='float32')
                 out = paddle.static.nn.data_norm(x, slot_dim=1)
                 cpu = fluid.core.CPUPlace()
                 exe = fluid.Executor(cpu)

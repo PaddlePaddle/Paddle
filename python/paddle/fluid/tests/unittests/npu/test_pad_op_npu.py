@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -122,7 +122,7 @@ class TestPadOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            data = fluid.data(name='data', shape=[4], dtype='float16')
+            data = paddle.static.data(name='data', shape=[4], dtype='float16')
             paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 

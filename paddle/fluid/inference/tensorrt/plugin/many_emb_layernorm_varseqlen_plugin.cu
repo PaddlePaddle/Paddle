@@ -353,7 +353,7 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
     cudaStream_t stream) noexcept {
   int32_t batchSize = inputDesc[0].dims.d[0] - 1;
   // read out the maximum sequence length from the dummy input
-  int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[0];
+  int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[1];
   int32_t S = 384;
   if (maxSeqlen <= 128) {
     S = 128;
@@ -506,7 +506,7 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     cudaStream_t stream) noexcept {
   int32_t batchSize = inputDesc[0].dims.d[0] - 1;
   // read out the maximum sequence length from the dummy input
-  int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[0];
+  int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[1];
   int32_t S = 384;
   if (maxSeqlen <= 128) {
     S = 128;

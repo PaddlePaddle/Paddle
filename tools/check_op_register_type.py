@@ -23,7 +23,7 @@ import difflib
 import re
 import sys
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 INTS = set(['int', 'int64_t'])
 FLOATS = set(['float', 'double'])

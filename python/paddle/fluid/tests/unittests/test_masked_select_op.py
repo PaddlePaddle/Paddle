@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -40,10 +40,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y')
 
     def init(self):
         self.shape = (50, 3)
@@ -74,8 +74,8 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
     def test_static_mode(self):
         shape = [8, 9, 6]
-        x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-        mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+        x = paddle.static.data(shape=shape, dtype='float32', name='x')
+        mask = paddle.static.data(shape=shape, dtype='bool', name='mask')
         np_x = np.random.random(shape).astype('float32')
         np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 
@@ -99,9 +99,9 @@ class TestMaskedSelectError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-            mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
-            mask_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            mask = paddle.static.data(shape=shape, dtype='bool', name='mask')
+            mask_float = paddle.static.data(
                 shape=shape, dtype='float32', name='mask_float'
             )
             np_x = np.random.random(shape).astype('float32')

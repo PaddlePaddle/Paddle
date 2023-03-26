@@ -99,7 +99,7 @@ class TestPrimDistOp(unittest.TestCase):
         completer.complete_prim_annotation(self.main_program)
         dist_context.block_state.parse_forward_blocks(self.main_program)
         dist_context.block_state.parse_backward_blocks(self.main_program)
-        dist_context.grads_params = dict()
+        dist_context.grads_params = {}
         dist_context.grads_params[self.w_grad.name] = self.w.name
         dist_context.synced_gradient = set()
         dist_context.data_parallel_group = list(range(nranks))

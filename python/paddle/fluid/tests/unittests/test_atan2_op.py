@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -103,8 +103,8 @@ class TestAtan2API(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                X1 = paddle.fluid.data('X1', self.shape, dtype=self.dtype)
-                X2 = paddle.fluid.data('X2', self.shape, dtype=self.dtype)
+                X1 = paddle.static.data('X1', self.shape, dtype=self.dtype)
+                X2 = paddle.static.data('X2', self.shape, dtype=self.dtype)
                 out = paddle.atan2(X1, X2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
@@ -129,13 +129,42 @@ class TestAtan2API(unittest.TestCase):
             run(place)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestAtan2BF16OP(OpTest):
+    def setUp(self):
+        self.op_type = 'atan2'
+        self.python_api = paddle.atan2
+        self.dtype = np.uint16
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        out = np.arctan2(x1, x2)
+
+        self.inputs = {
+            'X1': convert_float_to_uint16(x1),
+            'X2': convert_float_to_uint16(x2),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
+
+
 class TestAtan2Error(unittest.TestCase):
     def test_mismatch(self):
         paddle.enable_static()
 
         def test_mismatch_numel():
-            X = paddle.fluid.data('X', (1,), dtype=np.float64)
-            Y = paddle.fluid.data('Y', (0,), dtype=np.float64)
+            X = paddle.static.data('X', (1,), dtype=np.float64)
+            Y = paddle.static.data('Y', (0,), dtype=np.float64)
             out = paddle.atan2(X, Y)
 
         self.assertRaises(ValueError, test_mismatch_numel)

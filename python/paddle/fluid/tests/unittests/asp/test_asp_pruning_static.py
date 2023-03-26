@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
@@ -31,10 +31,12 @@ class TestASPStaticPruningBase(unittest.TestCase):
         self.startup_program = fluid.Program()
 
         def build_model():
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 3, 24, 24], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=2, filter_size=3, padding=2, act="relu"
             )
