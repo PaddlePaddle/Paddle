@@ -21,7 +21,7 @@ sys.path.append("../")
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestSequencePadOp(OpTest):

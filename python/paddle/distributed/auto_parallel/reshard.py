@@ -1483,15 +1483,15 @@ class Resharder:
                         [source_partition_index, [source_process], [False]]
                     )
                 else:
-                    partition_list = list(
-                        [item[0] for item in partition_process_mapping_list]
-                    )
-                    process_list = list(
-                        [item[1] for item in partition_process_mapping_list]
-                    )
-                    has_used = list(
-                        [item[2] for item in partition_process_mapping_list]
-                    )
+                    partition_list = [
+                        item[0] for item in partition_process_mapping_list
+                    ]
+                    process_list = [
+                        item[1] for item in partition_process_mapping_list
+                    ]
+                    has_used = [
+                        item[2] for item in partition_process_mapping_list
+                    ]
 
                     if partition_list.count(source_partition_index) == 1:
                         index = partition_list.index(source_partition_index)
@@ -1536,15 +1536,15 @@ class Resharder:
                         )
                         and source_partition_index not in has_sent
                     ):
-                        idx = list(
-                            [item[0] for item in partition_process_mapping_list]
-                        ).index(source_partition_index)
-                        has_used = list(
-                            [item[2] for item in partition_process_mapping_list]
-                        )[idx]
-                        process_list = list(
-                            [item[1] for item in partition_process_mapping_list]
-                        )[idx]
+                        idx = [
+                            item[0] for item in partition_process_mapping_list
+                        ].index(source_partition_index)
+                        has_used = [
+                            item[2] for item in partition_process_mapping_list
+                        ][idx]
+                        process_list = [
+                            item[1] for item in partition_process_mapping_list
+                        ][idx]
                         i = 0
                         while i < len(has_used):
                             if not has_used[i]:

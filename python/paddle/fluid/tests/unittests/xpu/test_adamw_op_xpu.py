@@ -28,7 +28,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def adamw_step(inputs, attributes):

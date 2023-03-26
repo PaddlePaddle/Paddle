@@ -178,6 +178,7 @@ class TestDistOpCost(unittest.TestCase):
                     [None, None],
                 )
                 tmp_out = paddle.matmul(out1, tmp_param)
+                tmp_out = paddle.scale(tmp_out, 0.5)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
@@ -286,6 +287,7 @@ class TestDistOpCost(unittest.TestCase):
                 )
 
                 tmp_out = paddle.matmul(out1, tmp_param)
+                tmp_out = paddle.scale(tmp_out, 0.5)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
