@@ -650,6 +650,9 @@ class AllocatorFacadePrivate {
   // NOTE(Ruibiao): Old single-stream version, will be removed later
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p,
                                    bool allow_free_idle_chunk) {
+    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+            << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
