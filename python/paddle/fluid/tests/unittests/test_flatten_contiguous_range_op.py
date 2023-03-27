@@ -75,9 +75,12 @@ class TestFlattenOp(OpTest):
         self.dtype = "float64"
 
     def init_input_data(self):
-        x = np.random.random(self.in_shape).astype("float32")
-        if str(self.dtype) == "uint16":
+        if str(self.dtype) != "uint16":
+            x = np.random.random(self.in_shape).astype(self.dtype)
+        else:
+            x = np.random.random(self.in_shape).astype("float32")
             x = convert_float_to_uint16(x)
+
         self.inputs = {"X": x}
 
 
@@ -295,7 +298,7 @@ class TestFlattenBF16Op_5(TestFlattenOp_5):
         self.dtype = "uint16"
 
 
-class TestFlattenOp_6(TestFlattenOp):
+class TestFlattenOp_ZeroDim(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = tuple()
         self.start_axis = 0
@@ -312,7 +315,7 @@ class TestFlattenOp_6(TestFlattenOp):
         }
 
 
-class TestFlattenFP32Op_6(TestFlattenOp_6):
+class TestFlattenFP32Op_ZeroDim(TestFlattenOp_ZeroDim):
     def init_test_dtype(self):
         self.dtype = "float32"
 
@@ -321,7 +324,7 @@ class TestFlattenFP32Op_6(TestFlattenOp_6):
     not core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
-class TestFlattenFP16Op_6(TestFlattenOp_6):
+class TestFlattenFP16Op_ZeroDim(TestFlattenOp_ZeroDim):
     def init_test_dtype(self):
         self.dtype = "float16"
 
@@ -331,7 +334,7 @@ class TestFlattenFP16Op_6(TestFlattenOp_6):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestFlattenBF16Op_6(TestFlattenOp_6):
+class TestFlattenBF16Op_ZeroDim(TestFlattenOp_ZeroDim):
     def init_test_dtype(self):
         self.dtype = "uint16"
 
