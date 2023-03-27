@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import tensor
-from paddle.fluid import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-3, "atol": 1e-3},
