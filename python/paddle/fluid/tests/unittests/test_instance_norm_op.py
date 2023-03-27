@@ -179,6 +179,28 @@ class TestInstanceNormOp(OpTest):
         )
 
 
+class TestInstanceNormFP64(TestInstanceNormOp):
+    def init_test_case(self):
+        x_shape = [2, 100, 4, 5]
+        n, c, h, w = x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        self.epsilon = 1e-05
+        dtype = np.float64
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.ones(scale_shape).astype(dtype)
+        self.bias_np = np.zeros(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
+
+    def test_check_output_cpu(self):
+        self.check_output_with_place(
+            core.CPUPlace(), atol=1e-03, check_eager=True, check_prim=True
+        )
+
+
 class TestInstanceNormCase1(TestInstanceNormOp):
     def init_test_case(self):
         x_shape = [2, 100, 4, 5]
