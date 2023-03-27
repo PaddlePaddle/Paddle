@@ -20,9 +20,9 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.inference as paddle_infer
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -117,6 +117,7 @@ class TestSumOp1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
@@ -215,6 +216,7 @@ class TestSumOpExclusive1(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
@@ -306,6 +308,7 @@ class TestSumOpExclusiveFP16(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.init_dtype()
         self.enable_cinn = False
         self.attrs = {'axis': 2, "exclusive": True}
@@ -339,6 +342,7 @@ class TestSumOpReverseExclusive(OpTest):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
+        self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
         self.attrs = {

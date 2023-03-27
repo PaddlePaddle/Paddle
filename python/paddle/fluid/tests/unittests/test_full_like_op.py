@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 import paddle.framework.dtype as dtypes
+from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.static import Program, program_guard
 
@@ -40,7 +40,7 @@ class TestFullOp(unittest.TestCase):
         train_program = Program()
         with program_guard(train_program, startup_program):
             fill_value = 2.0
-            input = paddle.fluid.data(
+            input = paddle.static.data(
                 name='input', dtype='float32', shape=[2, 3]
             )
             output = paddle.full_like(input, fill_value)
@@ -88,7 +88,7 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # for ci coverage
 
-            input_data = paddle.fluid.data(
+            input_data = paddle.static.data(
                 name='input', dtype='float32', shape=[2, 3]
             )
             output = paddle.full_like(input_data, 2.0)
@@ -111,6 +111,7 @@ class TestFullLikeOp1(OpTest):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
+        self.public_python_api = fill_any_like_wrapper
         self.init_data()
         self.if_enable_cinn()
 

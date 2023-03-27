@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid.core as core
+from paddle.distributed import fleet
+from paddle.fluid import core
 from paddle.incubate.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')

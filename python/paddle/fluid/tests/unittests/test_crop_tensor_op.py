@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
@@ -227,10 +226,14 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 class TestCropTensorException(unittest.TestCase):
     def test_exception(self):
-        input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
-        input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")
-        dim = fluid.data(name='dim', shape=[1], dtype='int32')
-        offset = fluid.data(name='offset', shape=[1], dtype='int32')
+        input1 = paddle.static.data(
+            name="input1", shape=[2, 3, 6, 6], dtype="float32"
+        )
+        input2 = paddle.static.data(
+            name="input2", shape=[2, 3, 6, 6], dtype="float16"
+        )
+        dim = paddle.static.data(name='dim', shape=[1], dtype='int32')
+        offset = paddle.static.data(name='offset', shape=[1], dtype='int32')
 
         def attr_shape_type():
             out = paddle.crop(input1, shape=3)

@@ -49,9 +49,11 @@ static const std::vector<std::string> support_subgraph_passes = {
     "fuse_multi_transformer_layer_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
+    "one_beam_size_fuse_pass",
     "fused_multi_transformer_xpu_quant_pass",
     "fc_xpu_fuse_pass",
-    "delete_op_device_pass"};
+    "delete_op_device_pass",
+};
 
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";

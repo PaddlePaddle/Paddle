@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
@@ -561,15 +560,15 @@ class StaticGraphTrainModel:
         self.cfg = cfg
 
         def create_data_layer():
-            image_real = fluid.data(
+            image_real = paddle.static.data(
                 shape=[None, 3, cfg.image_size, cfg.image_size],
                 dtype='float32',
                 name='image_real',
             )
-            label_org = fluid.data(
+            label_org = paddle.static.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_org'
             )
-            label_trg = fluid.data(
+            label_trg = paddle.static.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg'
             )
             return image_real, label_org, label_trg

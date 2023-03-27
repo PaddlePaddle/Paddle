@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 from paddle.tensor import random
@@ -185,11 +185,11 @@ class TestGaussianRandomAPI(unittest.TestCase):
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2000)
 
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 500)
-        shape_tensor_int32 = fluid.data(
+        shape_tensor_int32 = paddle.static.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
 
-        shape_tensor_int64 = fluid.data(
+        shape_tensor_int64 = paddle.static.data(
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 

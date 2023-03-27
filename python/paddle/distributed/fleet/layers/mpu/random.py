@@ -87,7 +87,7 @@ def get_rng_state_tracker():
 
 
 def model_parallel_random_seed(seed=None):
-    import paddle.distributed.fleet as fleet
+    from paddle.distributed import fleet
 
     hcg = fleet.get_hybrid_communicate_group()
     rank = hcg.get_model_parallel_rank()

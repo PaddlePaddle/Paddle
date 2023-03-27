@@ -25,9 +25,9 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self._python_interp += " check_flags_use_mkldnn.py"
 
         self.env = os.environ.copy()
-        self.env[str("GLOG_v")] = str("1")
-        self.env[str("DNNL_VERBOSE")] = str("1")
-        self.env[str("FLAGS_use_mkldnn")] = str("1")
+        self.env["GLOG_v"] = "1"
+        self.env["DNNL_VERBOSE"] = "1"
+        self.env["FLAGS_use_mkldnn"] = "1"
 
         self.relu_regex = b"^onednn_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
 
