@@ -918,7 +918,7 @@ class Engine:
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=batch_size,
+            batch_size=batch_size // self._k_steps,
             epochs=epochs,
             steps=train_dataloader._steps,
             log_freq=log_freq,
@@ -1365,8 +1365,10 @@ class Engine:
         epochs=1,
         steps_per_epoch=None,
     ):
-
-        if self._strategy.gradient_merge and batch_size is not None:
+        if (
+            self._strategy.gradient_merge.enable
+            or self._strategy.pipeline.enable
+        ) and batch_size is not None:
             assert (
                 batch_size % self._k_steps == 0
             ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
@@ -1434,8 +1436,10 @@ class Engine:
         steps_per_epoch=None,
         collate_fn=None,
     ):
-
-        if self._strategy.gradient_merge and batch_size is not None:
+        if (
+            self._strategy.gradient_merge.enable
+            or self._strategy.pipeline.enable
+        ) and batch_size is not None:
             assert (
                 batch_size % self._k_steps == 0
             ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
@@ -1482,6 +1486,7 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
+                acc_steps=self._k_steps,
             )
         self._prepare_reader(feed_list)
         return dataloader
@@ -1495,7 +1500,11 @@ class Engine:
 
     def _validate_spec(self, specs):
         specs = to_list(specs)
-        self._k_steps = self._strategy.gradient_merge.k_steps
+        self._k_steps = 1
+        if self._strategy.gradient_merge.enable:
+            self._k_steps = self._strategy.gradient_merge.k_steps
+        elif self._strategy.pipeline.enable:
+            self._k_steps = self._strategy.pipeline.accumulate_steps
         if specs is not None:
             for i, spec in enumerate(specs):
                 if not isinstance(spec, InputSpec):

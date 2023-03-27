@@ -74,6 +74,16 @@ set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_pure_fp16", False)
 set_field_default_config(AMP, "use_fp16_guard", True)
 set_field_default_config(AMP, "use_optimizer_fp16", False)
+set_field_default_config(AMP, "fp16_allreduce", True)
+
+#########################################
+# data parallel configuration
+#########################################
+DPOPTIMIZATION = "dp_optimization"
+set_field_default_config(DPOPTIMIZATION, "enable", False)
+set_field_default_config(DPOPTIMIZATION, "fuse_all_reduce_ops", True)
+set_field_default_config(DPOPTIMIZATION, "fuse_grad_size_in_MB", 32)
+set_field_default_config(DPOPTIMIZATION, "overlap_comm_cacl", True)
 
 #########################################
 # sharding configuration

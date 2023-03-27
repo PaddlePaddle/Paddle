@@ -422,11 +422,11 @@ class Inserter:
             )
             inputs = {'X': [tensor]}
             outputs = {"Out": [out]}
-            attrs = {"in_place": False}
-            slice_op = block._insert_op(
+            attrs = {"in_place": False, "op_role": op_role}
+            assign_op = block._insert_op(
                 idx, type="assign", inputs=inputs, outputs=outputs, attrs=attrs
             )
-            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
+            assign_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use split once
@@ -1217,6 +1217,8 @@ class Resharder:
             shape_x[0] <= shape_y[0] < shape_x[1]
         ):
             overlapped = True
+        if shape_x == [0, 0] and shape_y == [0, 0]:
+            overlapped = True
         return overlapped
 
     def is_unshard(self, dims_mapping):
@@ -1304,6 +1306,14 @@ class Resharder:
                 # judge whether need reshard by process_mesh
                 if tensor_process_mesh != op_process_mesh:
                     is_reshard = True
+                # not reshard data in send/recv scene
+                if (
+                    tensor_process_mesh != op_process_mesh
+                    and len(tensor_process_mesh.process_ids)
+                    == len(op_process_mesh.process_ids)
+                    and dist_tensor.serial_tensor.is_data
+                ):
+                    is_reshard = False
         else:
             op_output_dims_mapping = dist_attr[1]
             if all(
