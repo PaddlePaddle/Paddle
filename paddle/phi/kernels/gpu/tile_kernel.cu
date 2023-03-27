@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/tile_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-// #include "paddle/phi/kernels/impl/tile_kernel_impl.h"
 
 namespace phi {
 
@@ -77,7 +75,7 @@ void TileKernel(const Context& dev_ctx,
     if (i != repeat_times_data.size() - 1) {
       DenseTensor tmp_out;
       tmp_out.Resize(make_ddim(vec_x_dims));
-      // dev_ctx.template Alloc<T>(&tmp_out);
+      dev_ctx.template Alloc<T>(&tmp_out);
       std::vector<DenseTensor*> outs = {&tmp_out};
       phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
           dev_ctx, ins, &outs, i, kps::IdentityFunctor<T>());
