@@ -238,7 +238,7 @@ class PartialProgramLayer:
             assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
             lr_sheduler = self._origin_main_program.lr_sheduler
             lr_value = lr_sheduler()
-            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
             lr_var.set_value(data)
 
     def set_hooker(self, hooker):
