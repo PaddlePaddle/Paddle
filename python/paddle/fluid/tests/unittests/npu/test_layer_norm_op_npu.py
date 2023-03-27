@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 from functools import reduce
 from operator import mul
 import paddle
@@ -33,7 +33,7 @@ paddle.enable_static()
 SEED = 2021
 EPOCH = 100
 
-from op_test import _set_use_system_allocator
+from eager_op_test import _set_use_system_allocator
 
 _set_use_system_allocator(False)
 

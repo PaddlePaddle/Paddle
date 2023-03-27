@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):

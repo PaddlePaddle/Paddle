@@ -1319,7 +1319,7 @@ def read_file(filename, name=None):
     if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
     else:
-        inputs = dict()
+        inputs = {}
         attrs = {'filename': filename}
 
         helper = LayerHelper("read_file", **locals())

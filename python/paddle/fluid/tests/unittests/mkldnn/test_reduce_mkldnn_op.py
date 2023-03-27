@@ -108,7 +108,7 @@ class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-        self.attrs = {'dim': tuple(), 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'dim': (), 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.copy(self.inputs['X'])}
 
 

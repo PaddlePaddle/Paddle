@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid import core
 from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,

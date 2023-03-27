@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import erf
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTestTool,
     convert_float_to_uint16,

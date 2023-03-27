@@ -417,7 +417,7 @@ class QuantizationTransformPass:
             ):
                 _quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
@@ -2724,7 +2724,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             ):
                 self._quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
