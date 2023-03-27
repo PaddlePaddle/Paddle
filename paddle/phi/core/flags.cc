@@ -648,6 +648,23 @@ PADDLE_DEFINE_EXPORTED_uint64(
     "memory exceeds the limit even though there is available "
     "memory on the gpu card. The unit is MB and default value is 0.");
 
+/**
+ * Memory related FLAG
+ * Name: FLAGS_auto_growth_chunk_size_in_mb
+ * Since Version: 2.5.0
+ * Value Range: uint64, default=0 (MB)
+ * Example:
+ * Note: The minimal chunk size of GPU memory block in auto_growth allocator.
+ *       The real chunk size is max(request_size,
+ *       FLAGS_auto_growth_chunk_size_in_mb).
+ */
+PADDLE_DEFINE_EXPORTED_uint64(
+    auto_growth_chunk_size_in_mb,
+    0ul,
+    "The minimal chunk size of GPU memory block in auto_growth allocator.  "
+    "The real chunk size is max(request_size, "
+    "FLAGS_auto_growth_chunk_size_in_mb).");
+
 #endif
 
 /**

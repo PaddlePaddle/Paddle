@@ -101,6 +101,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "strategy");
 
 DECLARE_string(allocator_strategy);
+DECLARE_uint64(auto_growth_chunk_size_in_mb);
 
 namespace paddle {
 namespace memory {
