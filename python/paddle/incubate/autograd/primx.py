@@ -551,7 +551,10 @@ def _lower(block, reverse, blacklist):
 
 
 def _lower_composite(
-    block, filter_: typing.Callable[[framework.Operator], bool] = lambda x: True
+    block,
+    filter_: typing.Callable[[framework.Operator], bool] = lambda x: True,
+    start_idx=-1,
+    backward_length=0,
 ):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
 
@@ -602,17 +605,25 @@ def _lower_composite(
         none_vars_to_remove = set()
 
         change = None
+
+        # Only process required sliced block
+        length = len(block.ops)
+        idx_list = range(length)
+        assert 0 <= backward_length <= length
+        assert 0 <= start_idx < length
+        if backward_length > 0:
+            idx_list = range(length - backward_length)
+        if start_idx > 0:
+            idx_list = range(start_idx, length)
+
         # Step2: Process all ops in the target block
-        for op_idx in range(len(block.ops)):
+        for op_idx in idx_list:
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
 
             op_name = op.type
             comp_flag = (lookup_fn(op_name) is not None) and filter_(op)
-            # Attr op_role will be set after grad op has been attached to origin op.
-            # Currently non primitive ops in prim vjp rule will not be processed here.
-            if op.desc.attr("op_role") == 1:
-                comp_flag = False
+
             if comp_flag:
                 change = True
                 prim_config["composite_ops_record"].add(op_name)
@@ -693,12 +704,22 @@ def _lower_composite(
 
         # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
-            _lower_composite(block, filter_)
+            _lower_composite(
+                block,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item, filter_)
+            _lower_composite(
+                item,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
     else:
         raise TypeError
