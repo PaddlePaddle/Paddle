@@ -148,6 +148,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
   const std::map<std::string, std::string> fused_ops = {
       {"conv2d", "fused_conv2d"},
       {"depthwise_conv2d", "fused_conv2d"},
+      {"elementwise_mul", "fused_elementwise_mul"},
+      {"elementwise_div", "fused_elementwise_div"},
       {"matmul", "fused_matmul"},
       {"matmul_v2", "fused_matmul"},
       {"softplus", "fused_softplus"},
