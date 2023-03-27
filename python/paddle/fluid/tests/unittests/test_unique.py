@@ -244,6 +244,7 @@ class TestUniqueOpAxis1(TestUniqueOp):
 
 class TestUniqueAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
+        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out = paddle.unique(x)
@@ -251,6 +252,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((out.numpy() == expected_out).all(), True)
 
     def test_dygraph_api_attr(self):
+        paddle.disable_static()
         x_data = np.random.random((3, 5, 5)).astype("float32")
         x = paddle.to_tensor(x_data)
         out, index, inverse, counts = paddle.unique(
@@ -273,6 +275,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_dygraph_attr_dtype(self):
+        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out, indices, inverse, counts = paddle.unique(
