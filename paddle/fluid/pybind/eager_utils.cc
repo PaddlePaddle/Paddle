@@ -810,6 +810,27 @@ PyObject* ToPyObject(const void* value) {
       platform::errors::Fatal("ToPyObject do not support void* with value."));
 }
 
+PyObject* ToPyObject(const std::unordered_map<int, int>& value) {
+  PyObject* dict = PyDict_New();
+  for (const auto& map_iter : value) {
+    // Convert Key
+    PyObject* key = ToPyObject(map_iter.first);
+    // Convert Value
+    PyObject* value = ToPyObject(map_iter.second);
+
+    if (!key || !value) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to convert int to PyObject"));
+    }
+
+    if (PyDict_SetItem(dict, key, value) != 0) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to set key:value for py_dict"));
+    }
+  }
+  return dict;
+}
+
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value) {
   PyObject* dict = PyDict_New();

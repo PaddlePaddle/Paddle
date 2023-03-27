@@ -40,54 +40,6 @@ custom_inplace = load(
     verbose=True,
 )
 
-# Temporarily assemble custom python API
-import paddle.fluid.core as core
-from paddle.fluid.core import CustomOpKernelContext
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-
-
-def custom_add_vec(x_vector, y):
-    # prepare inputs and outputs
-    attrs = {}
-    outs = {}
-    out_names = ["Out@VECTOR"]
-
-    # The output variable's dtype use default value 'float32',
-    # and the actual dtype of output variable will be inferred in runtime.
-    if in_dygraph_mode():
-        ctx = CustomOpKernelContext()
-        for i in [x_vector, y]:
-            ctx.add_inputs(i)
-        for out_name in out_names:
-            outs[out_name] = [core.eager.Tensor() for _ in range(len(x_vector))]
-            ctx.add_outputs(outs[out_name])
-        core.eager._run_custom_op(ctx, "custom_add_vec", True)
-    else:
-        ins = {}
-        for key, value in dict({"X@VECTOR": x_vector, "Y": y}).items():
-            # handle optional inputs
-            if value is not None:
-                ins[key] = value
-        helper = LayerHelper("custom_add_vec", **locals())
-        for out_name in out_names:
-            outs[out_name] = [
-                helper.create_variable(dtype='float32')
-                for _ in range(len(x_vector))
-            ]
-
-        helper.append_op(
-            type="custom_add_vec", inputs=ins, outputs=outs, attrs=attrs
-        )
-
-    res = [outs[out_name] for out_name in out_names]
-
-    return res[0] if len(res) == 1 else res
-
-
-# Set custom python API manually
-custom_inplace.custom_add_vec = custom_add_vec
-
 
 def inplace_dynamic_add(phi_func, device, dtype, np_x, np_y):
     paddle.set_device(device)
