@@ -101,18 +101,11 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   });
 
   if (batch_size > 1) {
-#if CUDA_VERSION >= 11080
-#if 0
-    dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
-      phi::dynload::cusparseCooSetStridedBatch(
-          *descriptor, batch_size, batch_nnz);
-    });
-#endif
-#else
+    // TODO(umiswing): Add batch sparse matmul support for ROCM starting from
+    // version 5.2.0
     PADDLE_THROW(phi::errors::Unimplemented(
-        "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
-        "supported from CUDA 11.8"));
-#endif
+        "Batch Sparse matmul use 'rocsparse_coo_set_strided_batch', which is "
+        "supported from ROCM 5.2.0"));
   }
 }
 
@@ -179,18 +172,12 @@ class RocSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
-#if CUDA_VERSION >= 11080
-#if 0
-      dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-        phi::dynload::cusparseDnMatSetStridedBatch(
-            descriptor_, batch_size, M * N);
-      });
-#endif
-#else
+      // TODO(umiswing): Add batch sparse matmul support for ROCM starting from
+      // version 5.2.0
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
-          "supported from CUDA 11.8"));
-#endif
+          "Batch Sparse matmul use 'rocsparse_dnmat_set_strided_batch', which "
+          "is "
+          "supported from ROCM 5.2.0"));
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
   }

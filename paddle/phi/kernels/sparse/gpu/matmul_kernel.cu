@@ -37,7 +37,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const TensorType& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-#if CUDA_VERSION >= 11000 || defined(PADDLE_WITH_HIP)
+#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -81,16 +81,24 @@ void MatmulKernelImpl(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
 
+#ifdef PADDLE_WITH_HIP
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0.0f));
+#endif
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_THROW(
+      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
+                                 "which is supported from CUDA 11.0"));
+#elif defined(PADDLE_WITH_HIP)
   PADDLE_THROW(phi::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpMM or rocsparse_spmm, "
-      "which is supported from CUDA 11.0 or on HIP"));
+      "forward of 'sparse.matmul' use rocsparse_spmm, "
+      "which is supported from ROCM 4.2.0"));
+#endif
 #endif
 }
 
