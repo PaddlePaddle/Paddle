@@ -1428,7 +1428,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8
+                dtype=core.VarDesc.VarType.UINT8,
+                name="dropout_state",
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
