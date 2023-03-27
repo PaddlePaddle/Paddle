@@ -17,7 +17,7 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.jit.dy2static.program_translator import unwrap_decorators
 
 from .static_flops import Table, static_flops

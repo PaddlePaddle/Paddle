@@ -18,8 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 numpy_apis = {
     "real": np.real,

@@ -15,7 +15,7 @@
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.nn import Layer, Linear
 

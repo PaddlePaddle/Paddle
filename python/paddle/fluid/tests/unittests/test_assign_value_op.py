@@ -18,8 +18,8 @@ import numpy as np
 import op_test
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 
 paddle.enable_static()
 
