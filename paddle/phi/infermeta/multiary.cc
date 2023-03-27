@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+
 namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(
@@ -190,12 +191,15 @@ void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& moment,
                      const MetaTensor& inf_norm,
                      const MetaTensor& beta1_pow,
+                     const MetaTensor& master_param,
                      float beta1,
                      float beta2,
                      float epsilon,
+                     bool multi_precision,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out) {
+                     MetaTensor* inf_norm_out,
+                     MetaTensor* master_param_outs) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_NE(
       product(lr_dims),
@@ -849,7 +853,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     return;
   }
   if (size_of_dtype == -1) {
-    size_of_dtype = paddle::experimental::SizeOf(dtype);
+    size_of_dtype = phi::SizeOf(dtype);
   }
 
   auto alignment = [](size_t size, size_t align_size) {
@@ -892,7 +896,7 @@ void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
   for (size_t i = 0; i < input.size(); ++i) {
     const auto& dim = input[i]->dims();
     auto size = phi::product(dim);
-    auto len = size * paddle::experimental::SizeOf(input[i]->dtype());
+    auto len = size * phi::SizeOf(input[i]->dtype());
     numel += len;
   }
   output->set_dims(phi::make_ddim({numel}));
@@ -1224,6 +1228,65 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   out->set_dtype(DataType::FLOAT32);
   sequencenum->set_dims(phi::make_ddim({1}));
   sequencenum->set_dtype(DataType::FLOAT32);
+}
+
+void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
+                                      const MetaTensor& dout,
+                                      const MetaTensor& dweight,
+                                      const MetaTensor& dbias,
+                                      bool multi_precision,
+                                      MetaTensor* dweight_out,
+                                      MetaTensor* dbias_out) {
+  const auto dtype = dout.dtype();
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      dtype,
+      phi::errors::InvalidArgument(
+          "The data type of Input(x) and Input(dout) must be the same."));
+
+  const auto& x_dims = x.dims();
+  const auto& dout_dims = dout.dims();
+  int rank = dout_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      rank,
+      phi::errors::InvalidArgument(
+          "The shape of Input(x) and Input(dout) do not match: %s vs %s.",
+          x_dims,
+          dout_dims));
+  for (int i = 0; i + 1 < x_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[i],
+        dout_dims[i],
+        phi::errors::InvalidArgument(
+            "The shape of Input(x) and Input(dout) do not match: %s vs %s.",
+            x_dims,
+            dout_dims));
+  }
+
+  const phi::DDim& weight_dims = {x_dims[rank - 1], dout_dims[rank - 1]};
+  if (dweight) {
+    PADDLE_ENFORCE_EQ(
+        weight_dims,
+        dweight.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of input(dweight) does not match the other inputs."));
+  }
+
+  const auto mp_dtype =
+      (dtype == DataType::FLOAT16 || dtype == DataType::BFLOAT16)
+          ? DataType::FLOAT32
+          : dtype;
+
+  if (dbias_out) {
+    dbias_out->set_dims({weight_dims[1]});
+    dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
+  }
+
+  if (dweight_out) {
+    dweight_out->set_dims(weight_dims);
+    dweight_out->set_dtype(multi_precision ? mp_dtype : dtype);
+  }
 }
 
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
@@ -2056,7 +2119,11 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
   auto out_shape = std::vector<int>(inputs_num);
 
   for (size_t i = 0; i < inputs.size(); i++) {
-    out_shape[i] = inputs[i]->dims()[0];
+    if (inputs[i]->dims().size() == 0) {
+      out_shape[i] = 1;
+    } else {
+      out_shape[i] = inputs[i]->dims()[0];
+    }
   }
   auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
   for (size_t i = 0; i < outputs.size(); ++i) {
@@ -2105,10 +2172,15 @@ void MomentumInferMeta(const MetaTensor& param,
 
   auto param_dim = param.dims();
   param_out->set_dims(param_dim);
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
   velocity_out->set_dims(param_dim);
-
+  velocity_out->set_dtype(MPType);
   if (master_param_out) {
     master_param_out->set_dims(param_dim);
+    master_param_out->set_dtype(MPType);
   }
 }
 
@@ -2159,7 +2231,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
                         : phi::make_ddim({first_dim[0], last_dim[1]});
   }
 
-  auto width = first_dim[1];
+  auto width = first_dim.at(1);
   for (size_t i = 1; i < n - 1; i++) {
     PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
                       static_cast<size_t>(2),
@@ -2481,6 +2553,15 @@ void SgdInferMeta(const MetaTensor& param,
 
   param_out->set_dims(param.dims());
   param_out->set_dtype(param.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
 }
 
 void SendUERecvInferMeta(const MetaTensor& x,
@@ -3062,6 +3143,94 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-}  // namespace phi
+void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
+                                       const MetaTensor& key,
+                                       const MetaTensor& value,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& cu_seqlens_q,
+                                       const MetaTensor& cu_seqlens_k,
+                                       const MetaTensor& causal_diagonal,
+                                       const MetaTensor& seqlen_k,
+                                       const Scalar& max_seqlen_q,
+                                       const Scalar& max_seqlen_k,
+                                       const bool causal,
+                                       const double dropout_p,
+                                       const float scale,
+                                       const bool is_test,
+                                       MetaTensor* output,
+                                       MetaTensor* logsumexp,
+                                       MetaTensor* seed_and_offset) {
+  PADDLE_ENFORCE_EQ(
+      query.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Query should be a 4-D tensor"
+                                   "But received Query dimension(%s)",
+                                   query.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      key.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   key.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      value.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Value should be a 4-D tensor"
+                                   "But received Value dimension(%s)",
+                                   value.dims().size()));
 
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_seq_length = query.dims()[1];
+  const int64_t query_num_head = query.dims()[2];
+  const int64_t query_head_size = query.dims()[3];
+
+  const int64_t key_batch_size = key.dims()[0];
+  const int64_t key_seq_length = key.dims()[1];
+  const int64_t key_num_head = key.dims()[2];
+  const int64_t key_head_size = key.dims()[3];
+
+  const int64_t value_batch_size = value.dims()[0];
+  const int64_t value_seq_length = value.dims()[1];
+  const int64_t value_num_head = value.dims()[2];
+  const int64_t value_head_size = value.dims()[3];
+
+  PADDLE_ENFORCE_EQ(((query_batch_size == key_batch_size) &&
+                     (key_batch_size == value_batch_size)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The batchsize of Query, Key, Value should be equal."));
+
+  PADDLE_ENFORCE_EQ(
+      ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
+      true,
+      phi::errors::InvalidArgument(
+          "The head number of Query, Key, Value should be equal."));
+
+  PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head size of Query, Key should be equal."));
+
+  PADDLE_ENFORCE_EQ(key_seq_length == value_seq_length,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The seq length of Key, Value should be equal."));
+  std::vector<int64_t> out_dims(
+      {query_batch_size, query_seq_length, query_num_head, value_head_size});
+  std::vector<int64_t> logsumexp_dims({query_num_head, query_batch_size});
+  std::vector<int64_t> seed_and_offset_dims({2});
+
+  output->set_dims(phi::make_ddim(out_dims));
+  output->share_lod(query);
+  output->set_dtype(query.dtype());
+  output->set_layout(query.layout());
+
+  logsumexp->set_dims(phi::make_ddim(logsumexp_dims));
+  logsumexp->set_dtype(phi::DataType::FLOAT32);
+
+  seed_and_offset->set_dims(phi::make_ddim(seed_and_offset_dims));
+  seed_and_offset->set_dtype(phi::DataType::INT64);
+}
+
+}  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

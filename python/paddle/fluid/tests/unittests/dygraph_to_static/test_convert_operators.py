@@ -31,7 +31,7 @@ class ForwardNotExist(paddle.nn.Layer):
 
 
 net = ForwardNotExist()
-setattr(net, "forward", "A string so that convert forward will fail")
+net.forward = "A string so that convert forward will fail"
 
 
 class TestConvertCall(unittest.TestCase):

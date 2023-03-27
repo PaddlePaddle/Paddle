@@ -77,8 +77,13 @@ def _apply_collective_grads_eager(
     grad_vars = []
 
     for param in parameters:
+        g_var = None
         if param.trainable and (param._grad_ivar() is not None):
             g_var = param._grad_ivar()
+        if param.trainable and hasattr(param, "main_grad"):
+            assert param._grad_ivar() is None, "param.grad is not None"
+            g_var = param.main_grad
+        if g_var is not None:
             assert (
                 not g_var.is_sparse()
             ), "Now, it doesn't support sparse parameters"
@@ -159,7 +164,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            logger.warning("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
@@ -171,7 +176,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            logger.warning("it doesn't support data type {}".format(type(v)))
     return inputs, kwargs
 
 

@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace details {
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 static std::vector<Tensor> DereferenceTensors(
     const std::vector<Tensor *> &tensor_ptr) {
@@ -278,11 +278,12 @@ static void GcScope(paddle::framework::Scope *scope) {
 }  // namespace details
 
 inline void RunProgramAPI(
-    const std::vector<paddle::experimental::Tensor> &x,
-    const std::vector<paddle::experimental::Tensor> &params,
-    std::vector<paddle::experimental::Tensor *> &out,     // NOLINT
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::experimental::Tensor *> &dout,    // NOLINT
+    std::vector<paddle::Tensor *> &dout,                  // NOLINT
+    bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
@@ -308,14 +309,22 @@ inline void RunProgramAPI(
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
+
   auto input_names = details::GetTensorsName(x);
   auto output_names = details::GetTensorsName(out);
+  auto param_names = details::GetTensorsName(params);
   auto dout_names = details::GetTensorsName(dout);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream s;
     s << "input_names: ";
     for (auto name : input_names) {
+      s << name << " ";
+    }
+    s << std::endl;
+    s << "param_names: ";
+    for (auto name : param_names) {
       s << name << " ";
     }
     s << std::endl;
@@ -430,8 +439,10 @@ inline void RunProgramAPI(
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    if (is_test || !egr::Controller::Instance().HasGrad()) {
-      VLOG(4) << "is test, set this scope can reused";
+    if (is_test || !require_any_grad) {
+      VLOG(4) << "don't require any grad, set this scope can reused";
+      VLOG(4) << "is_test: " << is_test
+              << ", require_any_grad: " << require_any_grad;
       global_inner_scope->SetCanReuesd(true);
       details::GcScope(global_inner_scope);
     } else {
@@ -446,13 +457,13 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::experimental::Tensor> &x,
-    const std::vector<paddle::experimental::Tensor> &params,
-    const std::vector<paddle::experimental::Tensor> &out_grad,
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
-    std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
+    std::vector<paddle::Tensor *> &x_grad,      // NOLINT
+    std::vector<paddle::Tensor *> &params_grad  // NOLINT
 ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
@@ -470,6 +481,7 @@ inline void RunProgramGradAPI(
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
       paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
@@ -580,17 +592,28 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   GradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
 
-  ~GradNodeRunProgram() override = default;
+  ~GradNodeRunProgram() {
+    if (!executed_) {
+      auto *out_scope_vec = &step_scope_;
+      VLOG(4) << "~GradNodeRunProgram";
+      // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
+      for (size_t i = 0; i < out_scope_vec->size(); ++i) {
+        paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
+        global_inner_scope->SetCanReuesd(true);
+        details::GcScope(global_inner_scope);
+        VLOG(4) << "global_inner_scope SetCanReuesd";
+      }
+    }
+  }
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph,
              bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(),
                       1,
@@ -598,10 +621,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
-    std::vector<paddle::experimental::Tensor> x_grad;
-    std::vector<paddle::experimental::Tensor> params_grad;
-    std::vector<paddle::experimental::Tensor *> x_grad_ptr;
-    std::vector<paddle::experimental::Tensor *> params_grad_ptr;
+    std::vector<paddle::Tensor> x_grad;
+    std::vector<paddle::Tensor> params_grad;
+    std::vector<paddle::Tensor *> x_grad_ptr;
+    std::vector<paddle::Tensor *> params_grad_ptr;
     {
       paddle::platform::RecordEvent record_event(
           "construct_grad_tensor",
@@ -641,6 +664,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       x_grad_ptr,
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+
+    executed_ = true;
     return {x_grad, params_grad};
   }
 
@@ -651,11 +676,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     attrs_ = attrs;
   }
 
-  void SetFwdX(const std::vector<paddle::experimental::Tensor> &tensors) {
-    x_ = tensors;
-  }
+  void SetFwdX(const std::vector<paddle::Tensor> &tensors) { x_ = tensors; }
 
-  void SetFwdParams(const std::vector<paddle::experimental::Tensor> &tensors) {
+  void SetFwdParams(const std::vector<paddle::Tensor> &tensors) {
     params_ = tensors;
   }
 
@@ -664,9 +687,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
  protected:
-  void ConstructXGradTensors(
-      const std::vector<paddle::experimental::Tensor> &x,
-      std::vector<paddle::experimental::Tensor> *x_grad) {
+  void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
+                             std::vector<paddle::Tensor> *x_grad) {
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (auto &t : x) {
@@ -679,9 +701,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     }
   }
 
-  void ConstructParamGradTensors(
-      const std::vector<paddle::experimental::Tensor> &params,
-      std::vector<paddle::experimental::Tensor> *param_grads) {
+  void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
+                                 std::vector<paddle::Tensor> *param_grads) {
     auto param_grad_names = PADDLE_GET_CONST(std::vector<std::string>,
                                              attrs_.at("param_grad_names"));
     PADDLE_ENFORCE_EQ(params.size(),
@@ -715,10 +736,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
  private:
   // TensorWrappers
-  std::vector<paddle::experimental::Tensor> x_;
-  std::vector<paddle::experimental::Tensor> params_;
+  std::vector<paddle::Tensor> x_;
+  std::vector<paddle::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;
+
+  bool executed_{false};
 };

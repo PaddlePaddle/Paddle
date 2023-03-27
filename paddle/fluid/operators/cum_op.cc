@@ -108,9 +108,9 @@ class CumsumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
     auto* dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
     int axis = static_cast<int>(this->Attr<int>("axis"));

@@ -20,10 +20,8 @@ import unittest
 from test_cluster import cluster_json
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.completion import Completer

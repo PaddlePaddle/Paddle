@@ -24,9 +24,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
@@ -34,9 +34,7 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.layers import collective
-from paddle.fluid.layers.utils import flatten
+from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.metric import Metric
@@ -92,10 +90,11 @@ def extract_args(func):
     return inspect.getfullargspec(func).args
 
 
-def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(
-        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
-    )
+def _all_gather(x):
+    output = []
+    dist.all_gather(output, x)
+    output = paddle.concat(output, axis=0)
+    return output
 
 
 def wait_server_ready(endpoints):
@@ -659,9 +658,9 @@ class StaticGraphAdapter:
                 losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
-                outputs = [_all_gather(o, self._nranks) for o in outputs]
+                outputs = [_all_gather(o) for o in outputs]
                 if mode != 'test':
-                    labels = [_all_gather(l, self._nranks) for l in labels]
+                    labels = [_all_gather(l) for l in labels]
 
             if mode != 'test':
                 for metric in self.model._metrics:
@@ -741,6 +740,15 @@ class StaticGraphAdapter:
                     continue
 
                 uninitialized.append(var_py)
+
+            # for RawProgramOptimizer, it will insert OP with no outputs like:
+            #       c_comm_init(inputs={X=['comm_id_0']}
+            # but we cannot prune this op.
+            block = self._startup_prog.global_block()
+            for op in block.ops:
+                if op.type == "c_comm_init":
+                    uninitialized.append(op)
+
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
@@ -877,8 +885,8 @@ class DynamicGraphAdapter:
             losses = to_list(losses)
 
         if self._nranks > 1:
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
-            labels = [_all_gather(l, self._nranks) for l in labels]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
+            labels = [_all_gather(l) for l in labels]
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
@@ -923,7 +931,7 @@ class DynamicGraphAdapter:
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
 
         return [to_numpy(o) for o in to_list(outputs)]
 
@@ -2293,7 +2301,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 
@@ -2316,9 +2324,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 

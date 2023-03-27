@@ -46,12 +46,9 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from .data import *
-
 from . import trainer_desc
 
 from . import io
-from . import evaluator
 from . import initializer
 from .initializer import set_global_initializer
 from . import layers
@@ -87,9 +84,7 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
-from .io import save, load, load_program_state, set_program_state
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from .core import _cuda_synchronize
 from .trainer_desc import (
@@ -120,7 +115,6 @@ __all__ = (
         'initializer',
         'layers',
         'contrib',
-        'data',
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
@@ -146,8 +140,6 @@ __all__ = (
         'profiler',
         'unique_name',
         'Scope',
-        'save',
-        'load',
         '_cuda_synchronize',
     ]
 )
@@ -219,10 +211,10 @@ def __bootstrap__():
         sys.argv = [""]
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
+    core.init_memory_method()
     core.init_devices()
     core.init_tensor_operants()
     core.init_default_kernel_signatures()
-    core.init_memory_method()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

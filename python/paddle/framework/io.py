@@ -37,20 +37,15 @@ from paddle.fluid.framework import (
     _non_static_mode,
     _varbase_creator,
 )
-from paddle.fluid.io import _is_file_path, _is_memory_buffer
-from paddle.fluid.io import _legacy_save as _legacy_static_save
-from paddle.fluid.io import (
+
+from .io_utils import (
+    _is_file_path,
+    _is_memory_buffer,
+    _legacy_static_save,
     _open_file_buffer,
     _pack_loaded_dict,
     _pickle_loads_mac,
     _unpack_saved_dict,
-)
-from paddle.jit.api import _SaveLoadConfig
-from paddle.jit.translated_layer import (
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    _construct_params_and_buffers,
-    _construct_program_holders,
 )
 
 __all__ = []
@@ -79,6 +74,13 @@ def _build_saved_state_dict(state_dict):
 
 def _load_state_dict_from_save_inference_model(model_path, config):
     # 1. load program desc & construct _ProgramHolder
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.translated_layer import (
+        _construct_params_and_buffers,
+        _construct_program_holders,
+    )
+
     programs = _construct_program_holders(model_path, config.model_filename)
 
     # 2. load layer parameters & buffers
@@ -88,7 +90,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         )
 
         # 3. construct state_dict
-        load_param_dict = dict()
+        load_param_dict = {}
         for var_name in persistable_var_dict:
             load_param_dict[var_name] = persistable_var_dict[var_name].numpy()
 
@@ -98,7 +100,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         if os.path.exists(var_info_path):
             with open(var_info_path, 'rb') as f:
                 extra_var_info = pickle.load(f)
-            structured_para_dict = dict()
+            structured_para_dict = {}
             for var_name in load_param_dict:
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
@@ -142,7 +144,7 @@ def _load_state_dict_from_save_params(model_path):
             load_var_list.append(new_var)
 
     # 3. construct state_dict
-    load_param_dict = dict()
+    load_param_dict = {}
     for var in load_var_list:
         load_param_dict[var.name] = var.numpy()
 
@@ -166,6 +168,13 @@ def _load_state_dict_from_save_params(model_path):
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
     # raise error, avoid confusing behavior
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.translated_layer import (
+        INFER_MODEL_SUFFIX,
+        INFER_PARAMS_SUFFIX,
+    )
+
     prefix_format_path = path + INFER_MODEL_SUFFIX
     prefix_format_exist = os.path.exists(prefix_format_path)
     directory_format_exist = os.path.isdir(path)
@@ -231,6 +240,10 @@ def _parse_load_config(configs):
             )
 
     # construct inner config
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.api import _SaveLoadConfig
+
     inner_config = _SaveLoadConfig()
     inner_config.model_filename = configs.get('model_filename', None)
     inner_config.params_filename = configs.get('params_filename', None)
@@ -252,6 +265,10 @@ def _parse_save_config(configs):
             )
 
     # construct inner config
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.api import _SaveLoadConfig
+
     inner_config = _SaveLoadConfig()
     inner_config.use_binary_format = configs.get('use_binary_format', False)
     inner_config.pickle_protocol = configs.get('pickle_protocol', None)
@@ -289,14 +306,16 @@ def _pickle_save(obj, f, protocol):
             "paddle do not support saving `paddle.nn.Layer` object."
         )
 
-    dispatch_table_layer = dict()
+    dispatch_table_layer = {}
 
     def create_layer_dispatch_table(layer):
         dispatch_table_layer[layer.__class__] = reduce_Layer
         return layer
 
     _parse_every_object(
-        obj, lambda v: isinstance(v, fluid.Layer), create_layer_dispatch_table
+        obj,
+        lambda v: isinstance(v, paddle.nn.Layer),
+        create_layer_dispatch_table,
     )
 
     def add_dispatch_table():
@@ -369,7 +388,7 @@ def _is_state_dict(obj):
             return isinstance(
                 obj,
                 (
-                    fluid.Layer,
+                    paddle.nn.Layer,
                     Program,
                     core.VarBase,
                     core.eager.Tensor,
@@ -491,7 +510,7 @@ def _parse_every_object(obj, condition_func, convert_func):
 
 def _parse_load_result(obj, return_numpy):
     def is_layer(obj):
-        return isinstance(obj, fluid.Layer)
+        return isinstance(obj, paddle.nn.Layer)
 
     def parse_layer(obj):
         temp_dict = _parse_load_result(obj.__dict__, False)

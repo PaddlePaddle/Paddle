@@ -18,13 +18,13 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
+from paddle import fluid
+from paddle.fluid import core
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp.supported_layer_list import (
     supported_layers_and_prune_func_map,
 )
+from paddle.nn.layer.layers import Layer, _convert_camel_to_snake
 
 
 class MyOwnLayer(Layer):
@@ -99,10 +99,8 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
         sparsity.add_supported_layer(CustomerLayer, my_own_pruning)
 
         self.layer = CustomerLayer()
-        self.customer_prefix = (
-            paddle.fluid.dygraph.layers._convert_camel_to_snake(
-                CustomerLayer.__name__
-            )
+        self.customer_prefix = paddle.nn.layer.layers._convert_camel_to_snake(
+            CustomerLayer.__name__
         )
         self.supported_layer_count_ref = 3
 
@@ -198,10 +196,12 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
         self.customer_prefix = "customer_layer"
 
         def build_model():
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )

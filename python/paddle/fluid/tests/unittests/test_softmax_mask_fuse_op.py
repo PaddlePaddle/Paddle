@@ -18,9 +18,8 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.incubate as incubate
+from paddle import fluid, incubate
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -89,8 +88,10 @@ class TestSoftmaxMaskFuseOp0(OpTest):
 class TestDropoutBiasFuseOp3(unittest.TestCase):
     def test_static_result(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="x", shape=[1, 1, 8, 32], dtype="float32")
-            input_mask = fluid.data(
+            input_x = paddle.static.data(
+                name="x", shape=[1, 1, 8, 32], dtype="float32"
+            )
+            input_mask = paddle.static.data(
                 name="mask", shape=[1, 1, 8, 32], dtype="float32"
             )
             rst = incubate.softmax_mask_fuse(input_x, input_mask)

@@ -19,9 +19,9 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -44,7 +44,7 @@ class TestPSPassWithBow(unittest.TestCase):
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
                 ),
                 name="simnet_acc",

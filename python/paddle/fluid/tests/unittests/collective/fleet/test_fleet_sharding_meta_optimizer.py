@@ -19,7 +19,7 @@ import unittest
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-import paddle.distributed.fleet.meta_optimizers.sharding as sharding
+from paddle.distributed.fleet.meta_optimizers import sharding
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
