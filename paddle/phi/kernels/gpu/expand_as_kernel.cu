@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/expand_as_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -90,6 +91,7 @@ PD_REGISTER_KERNEL(expand_as,
                    GPU,
                    ALL_LAYOUT,
                    phi::ExpandAsKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int,

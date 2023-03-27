@@ -3221,7 +3221,7 @@ def expand_as(x, y, name=None):
     Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 0.
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32 or int64.
         y (Tensor): The input tensor that gives the shape to expand to.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3247,7 +3247,7 @@ def expand_as(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'expand_as',
         )
         check_type(y, 'y', Variable, 'expand_as')
