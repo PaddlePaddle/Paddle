@@ -229,6 +229,7 @@ MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
   try {
     PADDLE_ENFORCE_NE(
+
         munmap(this->ptr(), this->size()),
         -1,
         platform::errors::Unavailable(
