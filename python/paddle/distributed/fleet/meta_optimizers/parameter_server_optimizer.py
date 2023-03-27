@@ -371,9 +371,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
-        from paddle.incubate.distributed.fleet.parameter_server.ir import (
-            public,
-        )
+        from paddle.incubate.distributed.fleet.parameter_server.ir import public
 
         compiled_config = public.CompileTimeStrategy(
             _origin_main_program,
