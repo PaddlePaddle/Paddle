@@ -152,6 +152,7 @@ class OneDNNHandlerT {
         engine_(engine),
         place_(cpu_place),
         key_common_(base_key),
+        // By design, phi kernels are purely functional, how to cache weight?
         key_(ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
@@ -445,7 +446,7 @@ class OneDNNHandlerT {
         dnnl::reorder::primitive_desc reorder_pdesc;
         if (is_int8<T>()) {
           dnnl::primitive_attr attr;
-          attr.set_scales_mask(DNNL_ARG_DST, mask);
+          attr.set_scales_mask(DNNL_ARG_SRC, mask);
           reorder_pdesc = dnnl::reorder::primitive_desc(
               *user_memory_p, *target_memory_p, attr);
         } else {
@@ -468,7 +469,7 @@ class OneDNNHandlerT {
           scale_data_mem.set_data_handle(
               phi::funcs::to_void_cast(scale_data.data()));
           reorder_args.insert(
-              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_data_mem});
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scale_data_mem});
         }
         reorder_p->execute(astream, reorder_args);
 

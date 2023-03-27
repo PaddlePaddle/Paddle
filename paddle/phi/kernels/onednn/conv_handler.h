@@ -397,57 +397,18 @@ class ConvOneDNNHandlerT
     }
   }
 
-  std::shared_ptr<std::tuple<float, std::vector<float>>> get_int8_bias_scales(
-      const DenseTensor* filter,
-      int groups,
-      const std::vector<float>& scale_weights_data) {
-    // Get scales int8 bias key
-    const std::string key_bs = this->key_ + "@bs";
-
-    // Scales for int8 bias are to be cached to avoid
-    // computing them each iteration
-    groups = std::max(groups, 1);
-    auto bias_scale_tuple =
-        std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
-            this->dev_ctx_.GetBlob(key_bs));
-    if (bias_scale_tuple) return bias_scale_tuple;
-
-    const auto& weights_tz = phi::vectorize(filter->dims());
-
-    const auto& scale_in_data =
-        this->dev_ctx_.HasDnnAttr("Scale_in")
-            ? PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr("Scale_in"))
-            : 1.0f;
-
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-
-    int count = 1;
-    if (is_multi_channel) {
-      count *= weights_tz[0];
-      if (groups > 1) {
-        count *= weights_tz[1];
-      }
-    }
-
-    bias_scale_tuple =
-        std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
-            static_cast<float>(mask_reorder), std::vector<float>(count)));
-    for (int i = 0; i < count; i++) {
-      std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
-    }
-
-    this->dev_ctx_.SetBlob(key_bs, bias_scale_tuple);
-
-    return bias_scale_tuple;
-  }
-
-  std::tuple<float, std::vector<float>, float> get_int8_scales(
-      const DenseTensor* filter,
-      int groups,
-      bool force_fp32_output,
-      bool fuse_residual_conn,
-      const std::string& fuse_activation) const {
+  // Currently, 4 kind of onednn scales are supported: src scales, weight
+  // scales, post-sum scales and dst scales. This function is used to convert
+  // paddle scales to onednn scales
+  std::tuple<std::vector<float>,  // src scales
+             std::vector<float>,  // wei scales
+             std::vector<float>,  // post-sum scales
+             std::vector<float>>  // dst scales
+  get_dnnl_scales(const DenseTensor* filter,
+                  int groups,
+                  bool force_fp32_output,
+                  bool fuse_residual_conn,
+                  const std::string& fuse_activation) const {
     const auto& weights_tz = phi::vectorize(filter->dims());
     groups = std::max(groups, 1);
 
@@ -465,40 +426,34 @@ class ConvOneDNNHandlerT
             ? PADDLE_GET_CONST(float,
                                this->dev_ctx_.GetDnnAttr("Scale_in_eltwise"))
             : 1.0f;
-
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    bool has_activation = !fuse_activation.empty();
     const auto& scale_out =
         this->dev_ctx_.HasDnnAttr("Scale_out")
             ? PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr("Scale_out"))
             : 1.0f;
-    float activation_scale =
-        (!force_fp32_output && has_activation) ? scale_out : 1.0f;
 
-    float scale_out_data =
-        (force_fp32_output || has_activation) ? 1.0f : scale_out;
-    float sum_scale =
-        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-    int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-    std::vector<float> output_shift_scale(count);
-
+    std::vector<float> dnnl_src_scales = {1.f / scale_in_data};
+    size_t count = scale_weights_data.size();
+    std::vector<float> dnnl_wei_scales(count);
 #pragma omp parallel for if (count > 50)
-    for (int i = 0; i < count; i++) {
-      if (scale_weights_data[i] == 0.0)
-        // weights data will contain 0 in some models, then weights
-        // scale couldn't be calculated
-        output_shift_scale[i] = scale_out_data;
-      else
-        output_shift_scale[i] =
-            static_cast<float>(static_cast<double>(scale_out_data) /
-                               (static_cast<double>(scale_in_data) *
-                                static_cast<double>(scale_weights_data[i])));
+    for (size_t i = 0; i < count; i++) {
+      dnnl_wei_scales[i] = 1.f / scale_weights_data[i];
     }
+    std::vector<float> dnnl_psum_scales = {1.f / scale_in_eltwise_data};
+    std::vector<float> dnnl_dst_scales = {1.f / scale_out};
 
-    return std::make_tuple(sum_scale, output_shift_scale, activation_scale);
+    return std::make_tuple(
+        dnnl_src_scales, dnnl_wei_scales, dnnl_psum_scales, dnnl_dst_scales);
+  }
+
+  dnnl::memory& GetScalesMem(int arg) {
+    if (arg == DNNL_ARG_SRC) {
+      return src_scales_mem_;
+    } else if (arg == DNNL_ARG_WEIGHTS) {
+      return wei_scales_mem_;
+    } else if (arg == DNNL_ARG_DST) {
+      return dst_scales_mem_;
+    } else {
+    }
   }
 
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,
@@ -527,29 +482,49 @@ class ConvOneDNNHandlerT
                       std::vector<float>,
                       this->dev_ctx_.GetDnnAttr("Output_shift_scale"))
                 : output_shift_scale;
-      } else {
-        std::tie(sum_scale, output_shift_scale, activation_scale) =
-            get_int8_scales(filter,
-                            groups,
-                            force_fp32_output,
-                            fuse_residual_conn,
-                            fuse_activation);
       }
 
-      if (output_shift_scale.size() > 0) {
-        int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
-        conv_attr.set_scales_mask(DNNL_ARG_DST, mask);
+      std::vector<float> src_scales, wei_scales, psum_scales, dst_scales;
+      std::tie(src_scales, wei_scales, psum_scales, dst_scales) =
+          get_dnnl_scales(filter,
+                          groups,
+                          force_fp32_output,
+                          fuse_residual_conn,
+                          fuse_activation);
 
-        auto scales_md = dnnl::memory::desc(
-            {static_cast<int64_t>(output_shift_scale.size())},
-            dnnl::memory::data_type::f32,
-            dnnl::memory::format_tag::x);
-        output_shift_scale_ = dnnl::memory(scales_md, this->engine_);
-        auto mem_buf = output_shift_scale_.get_data_handle();
-        memcpy(mem_buf,
-               output_shift_scale.data(),
-               output_shift_scale.size() * sizeof(float));
+      conv_attr.set_scales_mask(DNNL_ARG_SRC, 0);
+
+      dnnl::memory::desc src_scales_md(
+          {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+      src_scales_mem_ = dnnl::memory(src_scales_md, this->engine_);
+      memcpy(src_scales_mem_.get_data_handle(),
+             src_scales.data(),
+             src_scales.size() * sizeof(float));
+
+      int mask = wei_scales.size() > 1 ? 1 << 1 : 0;
+      conv_attr.set_scales_mask(DNNL_ARG_WEIGHTS, mask);
+
+      dnnl::memory::desc wei_scales_md(
+          {static_cast<int64_t>(wei_scales.size())},
+          dnnl::memory::data_type::f32,
+          dnnl::memory::format_tag::x);
+      wei_scales_mem_ = dnnl::memory(wei_scales_md, this->engine_);
+      memcpy(wei_scales_mem_.get_data_handle(),
+             wei_scales.data(),
+             wei_scales.size() * sizeof(float));
+
+      if (!force_fp32_output) {
+        conv_attr.set_scales_mask(DNNL_ARG_DST, 0);
+
+        dnnl::memory::desc dst_scales_md(
+            {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+        dst_scales_mem_ = dnnl::memory(dst_scales_md, this->engine_);
+        memcpy(dst_scales_mem_.get_data_handle(),
+               dst_scales.data(),
+               dst_scales.size() * sizeof(float));
       }
+
+      sum_scale = psum_scales[0];
     }
 
     // Fusion with Elementwise layer relies on adding a sum post-operation with
@@ -767,14 +742,21 @@ class ConvOneDNNHandlerT
     return dst_memory_p;
   }
 
-  void SetOutputScaleIfNeeded(std::unordered_map<int, dnnl::memory>* args) {
-    if (output_shift_scale_.get_desc().is_zero() != true) {
-      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, output_shift_scale_});
+  void SetScalesIfNeeded(std::unordered_map<int, dnnl::memory>* args) {
+    if (src_scales_mem_.get_desc().is_zero() != true) {
+      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, src_scales_mem_});
+      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, wei_scales_mem_});
+    }
+    // dst scales may be empty when force fp32 output
+    if (dst_scales_mem_.get(true)) {
+      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, dst_scales_mem_});
     }
   }
 
  private:
-  dnnl::memory output_shift_scale_;
+  dnnl::memory src_scales_mem_;
+  dnnl::memory wei_scales_mem_;
+  dnnl::memory dst_scales_mem_;
 };
 
 }  // namespace onednn

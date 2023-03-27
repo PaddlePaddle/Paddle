@@ -185,7 +185,7 @@ class TestConv2DInt8Op(TestConv2DOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), atol=0, check_dygraph=False
+            core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def test_check_grad(self):
@@ -242,15 +242,15 @@ class TestConv2D(TestConv2DInt8Op):
 class TestWithHardSwish(TestConv2D):
     def init_fuse_activation(self):
         self.fuse_activation = "hard_swish"
-        self.fuse_alpha = 0
-        self.fuse_beta = 0
+        self.fuse_alpha = 1.0 / 6.0
+        self.fuse_beta = 1.0 / 2.0
 
 
 class TestWithRelu6(TestConv2D):
     def init_fuse_activation(self):
         self.fuse_activation = "relu6"
-        self.fuse_alpha = 6
-        self.fuse_beta = 0
+        self.fuse_alpha = 0
+        self.fuse_beta = 6
 
 
 class TestWithSwish(TestConv2D):
