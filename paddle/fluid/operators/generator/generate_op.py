@@ -479,6 +479,10 @@ def parse_get_expected_kerneltype(
     for op_comp_map in op_fluid_list:
         if 'get_expected_kernel_type' in op_comp_map:
             fw_name = op_comp_map['op'].split('(')[0].strip()
+            for key in op_comp_map['get_expected_kernel_type']:
+                op_comp_map['get_expected_kernel_type'][
+                    delete_last_underline(key)
+                ] = op_comp_map['get_expected_kernel_type'].pop(key)
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
