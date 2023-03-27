@@ -120,17 +120,44 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+  size_t py_rank = tensor_dims.size();
   size_t numel = 1;
-  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-    py_strides[i] = sizeof_dtype * numel;
-    numel *= py_dims[i];
+  if (py_rank == 0) {
+    Py_ssize_t args_num = PyTuple_Size(args);
+    bool set_to_1d = true;
+    if (args_num == (Py_ssize_t)1) {
+      PyObject* obj = PyTuple_GET_ITEM(args, 0);
+      if (obj == Py_False) {
+        set_to_1d = false;
+      }
+    }
+    if (set_to_1d) {
+      // 0D Tensor hack process to 1D numpy, will remove in future
+      VLOG(0)
+          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
+             "order to avoid this problem, "
+             "0D Tensor will be changed to 1D numpy currently, but it's not "
+             "correct and will be "
+             "removed in future. Please modify "
+             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
+             "possible, "
+             "otherwise 'Tensor.numpy()[0]' will raise error";
+      py_rank = 1;
+      py_dims[0] = 1;
+      py_strides[0] = sizeof_dtype * numel;
+    }
+  } else {
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+      py_strides[i] = sizeof_dtype * numel;
+      numel *= py_dims[i];
+    }
   }
 
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      tensor_dims.size(),
+      py_rank,
       py_dims,
       py_strides,
       nullptr,
@@ -1332,26 +1359,23 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           egr::Controller::Instance().GenerateUniqueName());
       py::object value_obj_tmp(py::handle(value_obj), true);
       py::object value = value_obj_tmp;
-      if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+      if (self->tensor.dtype() == phi::DataType::FLOAT32) {
         if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::FLOAT64) {
+      } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
         if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT32) {
+      } else if (self->tensor.dtype() == phi::DataType::INT32) {
         if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT64) {
+      } else if (self->tensor.dtype() == phi::DataType::INT64) {
         if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == paddle::experimental::DataType::BOOL) {
+      } else if (self->tensor.dtype() == phi::DataType::BOOL) {
         if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
         }
@@ -1376,26 +1400,21 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       if (py::isinstance<py::float_>(value_obj_tmp) ||
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp)) {
-        if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
           attrs["fp32_values"] =
               std::vector<float>{value_obj_tmp.cast<float>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT64) {
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
           attrs["fp64_values"] =
               std::vector<double>{value_obj_tmp.cast<double>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT32) {
+        } else if (self->tensor.dtype() == phi::DataType::INT32) {
           attrs["int32_values"] =
               std::vector<int32_t>{value_obj_tmp.cast<int32_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT64) {
+        } else if (self->tensor.dtype() == phi::DataType::INT64) {
           attrs["int64_values"] =
               std::vector<int64_t>{value_obj_tmp.cast<int64_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::BOOL) {
+        } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT16) {
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["fp16_values"] =
               std::vector<float>{value_obj_tmp.cast<float>()};
         } else {

@@ -88,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -216,6 +217,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
+DECLARE_FILE_SYMBOLS(init_phi);
 namespace paddle {
 namespace pybind {
 
@@ -1058,6 +1060,10 @@ PYBIND11_MODULE(libpaddle, m) {
              if (PyList_Check(obj) || PyTuple_Check(obj)) {
                self.EmplaceBackInputs(
                    std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else if (obj == Py_None) {
+               // Check optional Tensor, use one un-initialized tensor to
+               // indicate both Tensor and vector<Tensor> inputs
+               self.EmplaceBackInput(std::move(paddle::Tensor()));
              } else {
                self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
              }
@@ -1472,6 +1478,9 @@ All parameter, weight, gradient are variables in Paddle.
               [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return std::make_pair(grad_op_desc_ptrs, grad_to_var);
         });
+  m.def("has_comp_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasCompGradOpMaker();
+  });
   m.def("has_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });

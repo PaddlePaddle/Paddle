@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestVarBase(unittest.TestCase):
@@ -952,9 +952,22 @@ class TestVarBase(unittest.TestCase):
         array = np.arange(120).reshape([6, 5, 4])
         x = paddle.to_tensor(array)
         py_idx = [[0, 2, 0, 1, 3], [0, 0, 1, 2, 0]]
+
+        # note(chenjianye):
+        # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.23.
+        # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.23,
+        # which is used to wrap index elements for multiple axes.
+        # And from 1.23, this will be treat as a whole and only works on one axis.
+        #
+        # e.g. x[[[0],[1]]] == x[([0],[1])] == x[[0],[1]] (in version < 1.23)
+        #      x[[[0],[1]]] == x[array([[0],[1]])] (in version >= 1.23)
+        #
+        # Here, we just modify the code to remove the impact of numpy version changes,
+        # changing x[[[0],[1]]] to x[tuple([[0],[1]])] == x[([0],[1])] == x[[0],[1]].
+        # Whether the paddle behavior in this case will change is still up for debate.
         idx = [paddle.to_tensor(py_idx[0]), paddle.to_tensor(py_idx[1])]
-        np.testing.assert_array_equal(x[idx].numpy(), array[py_idx])
-        np.testing.assert_array_equal(x[py_idx].numpy(), array[py_idx])
+        np.testing.assert_array_equal(x[idx].numpy(), array[tuple(py_idx)])
+        np.testing.assert_array_equal(x[py_idx].numpy(), array[tuple(py_idx)])
         # case2:
         tensor_x = paddle.to_tensor(
             np.zeros(12).reshape(2, 6).astype(np.float32)

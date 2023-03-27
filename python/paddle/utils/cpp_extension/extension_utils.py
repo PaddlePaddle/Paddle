@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import textwrap
 import threading
 import warnings
@@ -289,7 +290,7 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        from paddle.fluid.layers.utils import flatten
+        from paddle.utils import flatten
 
         md5 = hashlib.md5()
         for field in version_field._fields:
@@ -543,6 +544,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
+    include_dirs.extend(find_python_includes())
 
     kwargs['include_dirs'] = include_dirs
 
@@ -783,6 +785,22 @@ def find_paddle_includes(use_cuda=False):
             include_dirs.append(std_v1_includes)
 
     return include_dirs
+
+
+def find_python_includes():
+    """
+    Return necessary include dir path of Python.h.
+    """
+    # sysconfig.get_path('include') gives us the location of Python.h
+    # Explicitly specify 'posix_prefix' scheme on non-Windows platforms to workaround error on some MacOS
+    # installations where default `get_path` points to non-existing `/Library/Python/M.m/include` folder
+    python_include_path = sysconfig.get_path(
+        'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
+    )
+    if python_include_path is not None:
+        assert isinstance(python_include_path, str)
+        return [python_include_path]
+    return []
 
 
 def find_clang_cpp_include(compiler='clang'):
@@ -1039,7 +1057,6 @@ def _custom_api_content(op_name):
 
         def {op_name}({inputs}):
             # prepare inputs and outputs
-            ins = {ins}
             attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
@@ -1057,6 +1074,11 @@ def _custom_api_content(op_name):
                     ctx.add_outputs(outs[out_name])
                 core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
+                ins = {{}}
+                for key, value in dict({ins}).items():
+                    # handle optional inputs
+                    if value is not None:
+                        ins[key] = value
                 helper = LayerHelper("{op_name}", **locals())
                 for out_name in out_names:
                     outs[out_name] = helper.create_variable(dtype='float32')
@@ -1142,6 +1164,7 @@ def _write_setup_file(
     file_path,
     build_dir,
     include_dirs,
+    library_dirs,
     extra_cxx_cflags,
     extra_cuda_cflags,
     link_args,
@@ -1163,6 +1186,7 @@ def _write_setup_file(
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
+                library_dirs={library_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
@@ -1181,6 +1205,7 @@ def _write_setup_file(
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
+        library_dirs=list2str(library_dirs),
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),
@@ -1252,7 +1277,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 

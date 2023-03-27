@@ -19,7 +19,7 @@ import numpy as np
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 

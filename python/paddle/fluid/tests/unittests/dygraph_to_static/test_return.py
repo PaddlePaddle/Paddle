@@ -18,8 +18,8 @@ import numpy as np
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.jit import to_static
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
@@ -69,7 +69,7 @@ def test_return_if_else(x):
 @to_static
 def test_return_in_while(x):
     x = fluid.dygraph.to_variable(x)
-    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
         if i > 5:

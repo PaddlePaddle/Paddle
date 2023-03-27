@@ -19,12 +19,11 @@ import sys
 
 sys.path.append("..")
 
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
 from paddle.fluid import core, framework, executor
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import global_var
 
 paddle.enable_static()
@@ -103,7 +102,7 @@ class RunProgramNPUOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         )
 
     def get_param_grad_names(self):
@@ -290,7 +289,7 @@ class TestRunProgramOpWithFC(RunProgramNPUOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',

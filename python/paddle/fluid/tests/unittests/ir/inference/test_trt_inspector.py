@@ -20,8 +20,8 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -29,7 +29,9 @@ class TensorRTInspectorTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[1, 16, 16], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[1, 16, 16], dtype="float32"
+            )
             matmul_out = paddle.matmul(
                 x=data,
                 y=data,
