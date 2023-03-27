@@ -1023,12 +1023,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
           << " runs on " << platform::GetCurrentThreadName();
 
   std::vector<size_t> target_op_status(op_status.size(), 0);
-  for (size_t i = 0; i < op_status.size(); i++) {
+  for (size_t i = 0; i < instr_node.Id(); i++) {
     target_op_status[i] = 1;
   }
   VLOG(0) << "is_sequtional_run: " << (op_status == target_op_status);
   if (FLAGS_new_executor_sequential_run) {
-    assert(op_status == target_op_status);
+    PADDLE_ENFORCE(op_status == target_op_status, "should be same");
   }
 
   auto* op = instr_node.OpBase();
