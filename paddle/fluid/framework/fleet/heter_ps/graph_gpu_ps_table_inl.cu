@@ -320,8 +320,7 @@ __global__ void get_actual_size_and_neighbor_count(GpuPsNodeInfo* node_info_list
                                                    int* actual_size,
                                                    int* neighbor_count,
                                                    int sample_len,
-                                                   int n,
-                                                   int default_value) {
+                                                   int n) {
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i >= n) return;
   int neighbor_len = node_info_list[i].neighbor_size;
@@ -329,11 +328,7 @@ __global__ void get_actual_size_and_neighbor_count(GpuPsNodeInfo* node_info_list
   if (sample_len > 0) {
     k = min(neighbor_len, sample_len);
   }
-  if (k == 0) {
-    actual_size[i] = default_value;
-  } else {
-    actual_size[i] = k;
-  }
+  actual_size[i] = k;
   if (NeedNeighbor) {
     neighbor_count[i] = (neighbor_len <= sample_len) ? 0 : neighbor_len;
   }
@@ -538,13 +533,14 @@ __global__ void weighted_sample_kernel(GpuPsCommGraph graph,
 
 // almost the same as walking kernel
 __global__ void unweighted_sample_large_kernel(GpuPsCommGraph graph,
-                                             GpuPsNodeInfo* node_info_list,
-                                             uint64_t* res,
-                                             int n,
-                                             int sample_len,
-                                             unsigned long long random_seed,
-                                             float* weight_array,
-                                             bool return_weight) {
+                                               GpuPsNodeInfo* node_info_list,
+                                               uint64_t* res,
+                                               int* actual_size,
+                                               int n,
+                                               int sample_len,
+                                               unsigned long long random_seed,
+                                               float* weight_array,
+                                               bool return_weight) {
   int i = blockIdx.x;
   if (i >= n) return;
   int gidx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -556,6 +552,7 @@ __global__ void unweighted_sample_large_kernel(GpuPsCommGraph graph,
   uint64_t* data = graph.neighbor_list;
   float* weight = graph.weight_list;
   if (neighbor_len <= sample_len) {  // directly copy
+    actual_size[i] = neighbor_len;
     for (int j = threadIdx.x; j < neighbor_len; j += blockDim.x) {
       res[offset + j] = data[data_offset + j];
       if (return_weight) {
@@ -563,6 +560,7 @@ __global__ void unweighted_sample_large_kernel(GpuPsCommGraph graph,
       }
     }
   } else {
+    actual_size[i] = sample_len;
     for (int j = threadIdx.x; j < sample_len; j += blockDim.x) {
       res[offset + j] = j;
     }
@@ -591,6 +589,7 @@ template <int BLOCK_DIM, int ITEMS_PER_THREAD>
 __global__ void unweighted_sample_kernel(GpuPsCommGraph graph,
                                          GpuPsNodeInfo* node_info_list,
                                          uint64_t* res,
+                                         int* actual_size,
                                          int n,
                                          int sample_len,
                                          unsigned long long random_seed,
@@ -608,6 +607,7 @@ __global__ void unweighted_sample_kernel(GpuPsCommGraph graph,
   float* weight = graph.weight_list;
 
   if (neighbor_len <= sample_len) {
+    actual_size[i] = neighbor_len;
     for (int j = threadIdx.x; j < neighbor_len; j += blockDim.x) {
       res[offset + j] = data[data_offset + j];
       if (return_weight) {
@@ -615,6 +615,7 @@ __global__ void unweighted_sample_kernel(GpuPsCommGraph graph,
       }
     }
   } else {
+    actual_size[i] = sample_len;
     uint64_t sa_p[ITEMS_PER_THREAD];
     int M = sample_len;
     int N = neighbor_len;
@@ -729,7 +730,6 @@ void GpuPsGraphTable::weighted_sample(
     int shard_len,
     bool need_neighbor_count,
     unsigned long long random_seed,
-    int default_value,
     float* weight_array,
     bool return_weight) {
   platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
@@ -741,12 +741,11 @@ void GpuPsGraphTable::weighted_sample(
     get_actual_size_and_neighbor_count<true><<<
         grid_size, 128, 0, cur_stream>>>(node_info_list, actual_size_array,
                                          neighbor_count_ptr, sample_size,
-                                         shard_len, default_value);
+                                         shard_len);
   } else {
     get_actual_size_and_neighbor_count<false><<<
         grid_size, 128, 0, cur_stream>>>(node_info_list, actual_size_array,
-                                         nullptr, sample_size, shard_len,
-                                         default_value);
+                                         nullptr, sample_size, shard_len);
   }
   CUDA_CHECK(cudaStreamSynchronize(cur_stream));
 
@@ -820,28 +819,21 @@ void GpuPsGraphTable::unweighted_sample(
     int sample_size,
     int shard_len,
     unsigned long long random_seed,
-    int default_value,
     float* weight_array,
     bool return_weight) {
 
   platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
   auto cur_stream = resource_->remote_stream(remote_gpu_id, cur_gpu_id);
 
-  int grid_size = (shard_len + 31) / 32;
-  get_actual_size_and_neighbor_count<false><<<
-      grid_size, 32, 0, cur_stream>>>(node_info_list, actual_size_array,
-                                      nullptr, sample_size, shard_len,
-                                      default_value);
-  CUDA_CHECK(cudaStreamSynchronize(cur_stream));
-
   if (sample_size > SAMPLE_SIZE_THRESHOLD) {
     unweighted_sample_large_kernel<<<shard_len, 32, 0, cur_stream>>>(
-        graph, node_info_list, sample_array, shard_len, sample_size,
+        graph, node_info_list, sample_array, actual_size_array, shard_len, sample_size,
         random_seed, weight_array, return_weight);
   } else {
     using UnWeightedSampleFuncType = void (*) (GpuPsCommGraph, GpuPsNodeInfo *,
-                                               uint64_t *, int, int, unsigned long long,
-                                               float *, bool);
+                                               uint64_t *, int *, int, int,
+                                               unsigned long long, float *,
+                                               bool);
     static const UnWeightedSampleFuncType func_array[32] = {
         unweighted_sample_kernel<32, 1>,  unweighted_sample_kernel<32, 2>,
         unweighted_sample_kernel<32, 3>,  unweighted_sample_kernel<64, 2>,
@@ -864,7 +856,7 @@ void GpuPsGraphTable::unweighted_sample(
                                              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
     int func_idx = (sample_size - 1) / 32;
     func_array[func_idx]<<<shard_len, warp_count_array[func_idx] * 32, 0, cur_stream>>>(
-        graph, node_info_list, sample_array, shard_len, sample_size,
+        graph, node_info_list, sample_array, actual_size_array, shard_len, sample_size,
         random_seed, weight_array, return_weight);
   } 
   CUDA_CHECK(cudaStreamSynchronize(cur_stream));
@@ -1821,8 +1813,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                         platform::errors::InvalidArgument("sample_size should be greater than 0."));
       weighted_sample(graph, node_info_list, actual_size_array, sample_array,
                       neighbor_count_ptr, gpu_id, i, sample_size, shard_len,
-                      need_neighbor_count, random_seed, default_value,
-                      nullptr, false);
+                      need_neighbor_count, random_seed, nullptr, false);
     }
   }
 
@@ -2231,7 +2222,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
         int offset = get_graph_list_offset(i, edge_idx);
         auto graph = gpu_graph_list_[offset];
         unweighted_sample(graph, node_info_list, actual_size_array, sample_array,
-                          gpu_id, i, sample_size, shard_len, random_seed, default_value,
+                          gpu_id, i, sample_size, shard_len, random_seed,
                           weight_array, return_weight);
       }
     } else {
@@ -2259,8 +2250,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
 
         weighted_sample(graph, node_info_list, actual_size_array, sample_array,
                         neighbor_count_ptr, gpu_id, i, sample_size, shard_len,
-                        need_neighbor_count, random_seed, default_value,
-                        weight_array, return_weight);
+                        need_neighbor_count, random_seed, weight_array, return_weight);
       }
     }
   }
