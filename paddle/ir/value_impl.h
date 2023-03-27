@@ -123,7 +123,7 @@ class alignas(8) OpResultImpl : public ValueImpl {
   ///
   /// \brief Get the maximum number of results that can be stored inline.
   ///
-  uint32_t GetMaxInlineResultIndex() const {
+  static uint32_t GetMaxInlineResultIndex() {
     return OUTLINE_OP_RESULT_INDEX - 1;
   }
 };

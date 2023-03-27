@@ -14,4 +14,13 @@
 
 #include "paddle/ir/value.h"
 
-namespace ir {}  // namespace ir
+namespace ir {
+Operation *Value::GetDefiningOp() const {
+  if (auto result = dyn_cast<OpResult>()) return result.owner();
+  return nullptr;
+}
+
+uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
+  return std::min(index, ir::detail::OpResultImpl::GetMaxInlineResultIndex());
+}
+}  // namespace ir

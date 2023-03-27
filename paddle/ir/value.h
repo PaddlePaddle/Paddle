@@ -18,12 +18,19 @@
 #include "paddle/ir/value_impl.h"
 
 namespace ir {
+class Operation;
+
 ///
 /// \brief Value
 ///
 class Value {
  public:
-  explicit Value(detail::ValueImpl *impl) : impl_(impl) {}
+  Value() = default;
+
+  Value(const detail::ValueImpl *impl)  // NOLINT
+      : impl_(const_cast<detail::ValueImpl *>(impl)) {}
+
+  Value(const Value &other) = default;
 
   bool operator==(const Value &other) const { return impl_ == other.impl_; }
 
@@ -32,12 +39,6 @@ class Value {
   bool operator!() const { return impl_ == nullptr; }
 
   explicit operator bool() const { return impl_; }
-
-  ir::Type type() const { return impl_->type(); }
-
-  void SetType(ir::Type type) { impl_->SetType(type); }
-
-  detail::ValueImpl *impl() const { return impl_; }
 
   template <typename T>
   bool isa() const {
@@ -48,6 +49,16 @@ class Value {
   U dyn_cast() const {
     return ir::dyn_cast<U>(*this);
   }
+
+  detail::ValueImpl *impl() const { return impl_; }
+
+  ir::Type type() const { return impl_->type(); }
+
+  void SetType(ir::Type type) { impl_->SetType(type); }
+
+  Operation *GetDefiningOp() const;
+
+  friend struct std::hash<Value>;
 
  protected:
   detail::ValueImpl *impl_{nullptr};
@@ -72,6 +83,8 @@ class OpResult : public Value {
   detail::OpResultImpl *impl() const {
     return reinterpret_cast<detail::OpResultImpl *>(impl_);
   }
+
+  static uint32_t GetValidInlineIndex(uint32_t index);
 };
 
 ///
@@ -113,3 +126,12 @@ class OpOperand {
 };
 
 }  // namespace ir
+
+namespace std {
+template <>
+struct hash<ir::Value> {
+  std::size_t operator()(const ir::Value &obj) const {
+    return std::hash<const ir::detail::ValueImpl *>()(obj.impl_);
+  }
+};
+}  // namespace std
