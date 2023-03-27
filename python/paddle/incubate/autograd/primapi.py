@@ -217,7 +217,13 @@ def grad(outputs, inputs, grad_outputs=None):
 
 
 @framework.static_only
-def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
+def to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=0,
+    backward_length=0,
+):
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
     The operators in blacklist will be excluded from program when lowering into primitives, and only the
     operators in whitelist will be lowering. The priority of blacklist is higher than whitelist, it means
@@ -229,6 +235,8 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
     Args:
         blacklist(frozenset): The Operators that will be exclude when lowering into primitives.
         whitelist(frozenset): Only the operators in whitelist will be lowering into primitives.
+        start_idx(int): If start_idx exceeds -1, ops[start_idx:] will be processed. Default: 0.
+        backward_length(int): If backward_length exceeds 0, ops[:-backward_length] will be processed. Default: 0.
     """
     if not core._is_fwd_prim_enabled():
         return
@@ -268,6 +276,11 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
             filter_ = lambda x: x.type in whitelist
         else:
             filter_ = lambda x: True
-        primx._lower_composite(blocks, filter_)
+        primx._lower_composite(
+            blocks,
+            filter_,
+            start_idx=start_idx,
+            backward_length=backward_length,
+        )
         replace_ops = prim_config["composite_ops_record"]
         print(f"Lowering composite forward ops finish: {replace_ops}")
