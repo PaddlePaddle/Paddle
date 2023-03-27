@@ -63,10 +63,18 @@ black_ops_list = [
 # white ops list whose kernel can be deleted after performance analysis
 # original kernel and its derivative kernel can be deleted when composite_grad
 # kernel performs same to it.
-prim_white_list = ["matmul_double_grad"]
 
-# dict of special api that forward api's output will affect bacward api's output
-# bacward api's output usually affected by backward api's input
+prim_white_list = [
+    "matmul_double_grad",
+    "tanh_double_grad",
+    "cast_grad",
+    "assign_grad",
+    "split_grad",
+    "split_with_num_grad",
+]
+
+# dict of special api that forward api's output will affect backward api's output
+# backward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
     "multiply_grad": {"x": "grad_y", "y": "grad_x"},
