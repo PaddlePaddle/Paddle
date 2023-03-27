@@ -21,6 +21,8 @@ Operation *Value::GetDefiningOp() const {
 }
 
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
-  return std::min(index, ir::detail::OpResultImpl::GetMaxInlineResultIndex());
+  uint32_t max_inline_index =
+      ir::detail::OpResultImpl::GetMaxInlineResultIndex();
+  return index <= max_inline_index ? index : max_inline_index;
 }
 }  // namespace ir
