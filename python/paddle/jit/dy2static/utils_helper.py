@@ -20,8 +20,8 @@ import numpy as np  # noqa: F401
 
 import paddle  # noqa: F401
 from paddle import fluid  # noqa: F401
-import paddle.fluid.dygraph as dygraph  # noqa: F401
-import paddle.fluid.layers as layers  # noqa: F401
+from paddle.fluid import dygraph  # noqa: F401
+from paddle.fluid import layers  # noqa: F401
 from paddle.fluid.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
