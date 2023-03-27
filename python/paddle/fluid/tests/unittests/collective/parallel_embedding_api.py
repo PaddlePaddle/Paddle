@@ -16,8 +16,8 @@ import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -42,13 +42,13 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
             per_part_size = size[0] // 2
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.Assign(
                         np_array[0:per_part_size, :]
                     ),
                 )
             else:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.Assign(
                         np_array[per_part_size : size[0], :]
                     ),
                 )

@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -176,7 +176,7 @@ class TestSequenceMaskOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input must be Variable
-                fluid.layers.sequence_mask(input_data, maxlen=4)
+                paddle.static.nn.sequence_lod.sequence_mask(input_data, maxlen=4)
 
             self.assertRaises(TypeError, test_Variable)
 

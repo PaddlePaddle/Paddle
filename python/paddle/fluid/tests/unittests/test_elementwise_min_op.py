@@ -15,14 +15,20 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
+from paddle.fluid import core
 
 paddle.enable_static()
+
+
+def broadcast_wrapper(shape=[1, 10, 12, 1]):
+    def min_wrapper(x, y, axis=-1):
+        return paddle.minimum(x, y.reshape(shape))
+
+    return min_wrapper
 
 
 class TestElementwiseOp(OpTest):
@@ -39,16 +45,10 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
-        else:
-            self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
-        else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -118,7 +118,7 @@ class TestElementwiseMinOp_Vector(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        self.python_api = paddle.minimum
+        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
         x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -137,7 +137,7 @@ class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        self.python_api = paddle.minimum
+        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -156,7 +156,7 @@ class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        self.python_api = paddle.minimum
+        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
         x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -174,7 +174,7 @@ class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        self.python_api = paddle.minimum
+        self.python_api = broadcast_wrapper(shape=[1, 25, 4, 1])
         x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (25, 4)).astype(np.float64)
         y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (25, 4)).astype(

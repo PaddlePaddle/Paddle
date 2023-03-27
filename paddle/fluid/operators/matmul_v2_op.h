@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 
 // only can include the headers in paddle/phi/api dirs
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 
@@ -36,6 +36,29 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+class MatMulV2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
+};
+
+class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
+};
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.

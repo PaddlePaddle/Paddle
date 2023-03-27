@@ -18,9 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.initializer import ConstantInitializer
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.param_attr import WeightNormParamAttr
 
 
@@ -44,7 +43,7 @@ class TestWeightNormalization(unittest.TestCase):
             weight_attr=WeightNormParamAttr(
                 dim=None,
                 name='weight_norm_param',
-                initializer=ConstantInitializer(1.0),
+                initializer=paddle.nn.initializer.Constant(1.0),
             ),
             bias_attr=False,
             activation=None,

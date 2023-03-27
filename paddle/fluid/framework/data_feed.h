@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/cuda_stream.h"
 #endif
 
 DECLARE_int32(record_pool_max_size);
@@ -535,8 +536,11 @@ struct BatchGPUValue {
 class MiniBatchGpuPack {
  public:
   MiniBatchGpuPack(const paddle::platform::Place& place,
-                   const std::vector<UsedSlotInfo>& infos);
+                   const std::vector<UsedSlotInfo>& infos,
+                   phi::StreamId stream_id);
   ~MiniBatchGpuPack();
+  bool is_use() { return is_using_; }
+  void set_use_flag(bool is_use) { is_using_ = is_use; }
   void reset(const paddle::platform::Place& place);
   void pack_instance(const SlotRecord* ins_vec, int num);
   int ins_num() { return ins_num_; }
@@ -566,6 +570,12 @@ class MiniBatchGpuPack {
   }
   phi::DenseTensor& float_tensor(void) { return float_tensor_; }
   phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
+  std::vector<phi::DenseTensor>& float_tensor_vec(void) {
+    return float_tensor_vec_;
+  }
+  std::vector<phi::DenseTensor>& uint64_tensor_vec(void) {
+    return uint64_tensor_vec_;
+  }
 
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
@@ -590,6 +600,8 @@ class MiniBatchGpuPack {
     return batch_ins_[idx]->ins_id_;
   }
 
+  cudaStream_t get_stream() { return stream_; }
+
  private:
   void transfer_to_gpu(void);
   void pack_all_data(const SlotRecord* ins_vec, int num);
@@ -612,7 +624,9 @@ class MiniBatchGpuPack {
   }
 
  private:
+  bool is_using_ = false;
   paddle::platform::Place place_;
+  std::unique_ptr<phi::CUDAStream> stream_holder_;
   cudaStream_t stream_;
   BatchGPUValue value_;
   BatchCPUValue buf_;
@@ -631,8 +645,10 @@ class MiniBatchGpuPack {
 
   // uint64 tensor
   phi::DenseTensor uint64_tensor_;
+  std::vector<phi::DenseTensor> uint64_tensor_vec_;
   // float tensor
   phi::DenseTensor float_tensor_;
+  std::vector<phi::DenseTensor> float_tensor_vec_;
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -645,33 +661,52 @@ class MiniBatchGpuPackMgr {
 
  public:
   MiniBatchGpuPackMgr() {
+    pack_list_.resize(MAX_DEIVCE_NUM);
     for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
-      pack_list_[i] = nullptr;
+      pack_list_[i].clear();
     }
   }
   ~MiniBatchGpuPackMgr() {
     for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
-      if (pack_list_[i] == nullptr) {
-        continue;
+      for (size_t j = 0; j < pack_list_[i].size(); j++) {
+        if (pack_list_[i][j] == nullptr) {
+          continue;
+        }
+        delete pack_list_[i][j];
+        pack_list_[i][j] = nullptr;
       }
-      delete pack_list_[i];
-      pack_list_[i] = nullptr;
     }
   }
-  // one device one thread
+
+  // thread unsafe
   MiniBatchGpuPack* get(const paddle::platform::Place& place,
                         const std::vector<UsedSlotInfo>& infos) {
     int device_id = place.GetDeviceId();
-    if (pack_list_[device_id] == nullptr) {
-      pack_list_[device_id] = new MiniBatchGpuPack(place, infos);
-    } else {
-      pack_list_[device_id]->reset(place);
+    for (size_t i = 0; i < pack_list_[device_id].size(); i++) {
+      if (!pack_list_[device_id][i]->is_use()) {
+        pack_list_[device_id][i]->set_use_flag(true);
+        pack_list_[device_id][i]->reset(place);
+        return pack_list_[device_id][i];
+      }
     }
-    return pack_list_[device_id];
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (!alloc_stream_map_.count(device_id)) {
+        alloc_stream_map_.emplace(device_id, new phi::CUDAStream(place));
+      }
+    }
+    phi::StreamId alloc_stream_id = reinterpret_cast<phi::StreamId>(
+        alloc_stream_map_[device_id]->raw_stream());
+    auto* pack = new MiniBatchGpuPack(place, infos, alloc_stream_id);
+    pack->set_use_flag(true);
+    pack_list_[device_id].push_back(pack);
+    return pack;
   }
 
  private:
-  MiniBatchGpuPack* pack_list_[MAX_DEIVCE_NUM];
+  std::vector<std::vector<MiniBatchGpuPack*>> pack_list_;
+  std::unordered_map<int, std::unique_ptr<phi::CUDAStream>> alloc_stream_map_;
+  std::mutex mutex_;
 };
 // global mgr
 inline MiniBatchGpuPackMgr& BatchGpuPackMgr() {
@@ -940,6 +975,7 @@ class GraphDataGenerator {
   void ResetPathNum() { total_row_ = 0; }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
+  void DumpWalkPath(std::string dump_path, size_t dump_rate);
   void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
@@ -1210,6 +1246,18 @@ class DataFeed {
     place_ = place;
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(PackToScope) is not implemented."));
+  }
+#endif
+
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DumpWalkPath) is not implemented."));
+  }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -1760,13 +1808,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
   SlotRecordInMemoryDataFeed() {}
-  virtual ~SlotRecordInMemoryDataFeed() {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-    if (pack_ != nullptr) {
-      pack_ = nullptr;
-    }
-#endif
-  }
+  virtual ~SlotRecordInMemoryDataFeed();
   virtual void Init(const DataFeedDesc& data_feed_desc);
   virtual void LoadIntoMemory();
   void ExpandSlotRecord(SlotRecord* ins);
@@ -1791,7 +1833,11 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
   virtual void AssignFeedVar(const Scope& scope);
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  void BuildSlotBatchGPU(const int ins_num);
+  void BuildSlotBatchGPU(const int ins_num, MiniBatchGpuPack* pack);
+
+  virtual void PackToScope(MiniBatchGpuPack* pack,
+                           const Scope* scope = nullptr);
+
   void FillSlotValueOffset(const int ins_num,
                            const int used_slot_num,
                            size_t* slot_value_offsets,
@@ -1799,7 +1845,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                            const int uint64_slot_size,
                            const int* float_offsets,
                            const int float_slot_size,
-                           const UsedSlotGpuType* used_slots);
+                           const UsedSlotGpuType* used_slots,
+                           cudaStream_t stream);
   void CopyForTensor(const int ins_num,
                      const int used_slot_num,
                      void** dest,
@@ -1812,7 +1859,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int* float_offsets,
                      const int* float_ins_lens,
                      const int float_slot_size,
-                     const UsedSlotGpuType* used_slots);
+                     const UsedSlotGpuType* used_slots,
+                     cudaStream_t stream);
 #endif
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
@@ -1820,6 +1868,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
 #endif
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
@@ -1831,7 +1880,20 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   std::vector<int> float_total_dims_without_inductives_;
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  MiniBatchGpuPack* pack_ = nullptr;
+  int pack_thread_num_{5};
+  std::vector<std::thread> pack_threads_;
+  std::vector<MiniBatchGpuPack*> pack_vec_;
+  BlockingQueue<MiniBatchGpuPack*> free_pack_queue_;
+  BlockingQueue<MiniBatchGpuPack*> using_pack_queue_;
+  std::atomic<bool> pack_is_end_{false};
+  std::atomic<uint64_t> pack_offset_index_{0};
+  MiniBatchGpuPack* last_pack_{nullptr};
+  std::atomic<bool> stop_token_{false};
+  std::atomic<int> thread_count_{0};
+  std::mutex pack_mutex_;
+
+  // async infershape
+  std::map<const Scope*, std::vector<phi::DenseTensor*>> scpoe_feed_vec_;
 #endif
 };
 

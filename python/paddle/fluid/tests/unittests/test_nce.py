@@ -18,8 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.initializer as initializer
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -199,7 +198,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -209,7 +208,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -329,6 +328,13 @@ class TestNCE_OpError(unittest.TestCase):
             # the data type of input(label) must be int64.
             self.assertRaises(
                 TypeError, paddle.static.nn.nce, input4, label4, 5
+            )
+
+            input5 = paddle.static.data(name='x', shape=[1], dtype='float32')
+            label5 = paddle.static.data(name='label', shape=[1], dtype='int64')
+
+            self.assertRaises(
+                ValueError, paddle.static.nn.nce, input5, label5, 1
             )
 
 

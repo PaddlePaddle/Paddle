@@ -26,9 +26,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 typeid_dict = {
     'int32': int(core.VarDesc.VarType.INT32),
@@ -98,7 +97,7 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.XPUPlace(0)
             )
-            self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
+            self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ sys.path.append("..")
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
@@ -26,8 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
@@ -73,34 +72,34 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             conv1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             bn1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             bn1_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
             bn2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             bn2_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
             bn3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             bn3_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
 
             self.conv1 = nn.Conv2D(
@@ -173,34 +172,34 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             fused_conv1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             fused_conv2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             fused_conv3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             fused_bn1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             fused_bn1_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
             fused_bn2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             fused_bn2_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
             fused_bn3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             )
             fused_bn3_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0)
+                initializer=paddle.nn.initializer.Constant(value=0.0)
             )
 
             if self.has_shortcut:

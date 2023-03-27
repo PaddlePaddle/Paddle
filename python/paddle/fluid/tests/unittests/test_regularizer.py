@@ -20,10 +20,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.regularizer as regularizer
+from paddle import fluid
+from paddle.fluid import core, framework, regularizer
 from paddle.fluid.backward import append_backward
 
 
@@ -136,7 +134,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
@@ -237,7 +237,7 @@ class TestRegularizer(unittest.TestCase):
             for para in param_list:
                 para_mul = paddle.square(x=para)
                 para_sum.append(paddle.sum(para_mul))
-            avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
+            avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)

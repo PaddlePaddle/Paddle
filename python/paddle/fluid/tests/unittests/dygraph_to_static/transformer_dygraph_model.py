@@ -15,13 +15,11 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Layer, to_variable
-from paddle.fluid.layers.utils import map_structure
+from paddle import fluid
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -62,10 +60,10 @@ class PrePostProcessLayer(Layer):
                         paddle.nn.LayerNorm(
                             normalized_shape=d_model,
                             weight_attr=fluid.ParamAttr(
-                                initializer=fluid.initializer.Constant(1.0)
+                                initializer=paddle.nn.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(
-                                initializer=fluid.initializer.Constant(0.0)
+                                initializer=paddle.nn.initializer.Constant(0.0)
                             ),
                         ),
                     )
@@ -146,8 +144,8 @@ class MultiHeadAttention(Layer):
 
         if cache is not None:
             cache_k, cache_v = cache["k"], cache["v"]
-            k = layers.concat([cache_k, k], axis=2)
-            v = layers.concat([cache_v, v], axis=2)
+            k = paddle.concat([cache_k, k], axis=2)
+            v = paddle.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
         product = paddle.matmul(x=q, y=k, transpose_y=True)
@@ -257,7 +255,7 @@ class Encoder(Layer):
 
         super().__init__()
 
-        self.encoder_layers = list()
+        self.encoder_layers = []
         for i in range(n_layer):
             self.encoder_layers.append(
                 self.add_sublayer(
@@ -295,7 +293,7 @@ class Embedder(Layer):
             vocab_size,
             emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
+                initializer=paddle.nn.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
 
@@ -330,7 +328,7 @@ class WrapEncoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -451,7 +449,7 @@ class Decoder(Layer):
     ):
         super().__init__()
 
-        self.decoder_layers = list()
+        self.decoder_layers = []
         for i in range(n_layer):
             self.decoder_layers.append(
                 self.add_sublayer(
@@ -522,7 +520,7 @@ class WrapDecoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -774,7 +772,7 @@ class Transformer(Layer):
             return res
 
         def mask_probs(probs, finished, noend_mask_tensor):
-            finished = layers.cast(finished, dtype=probs.dtype)
+            finished = paddle.cast(finished, dtype=probs.dtype)
             probs = paddle.multiply(
                 paddle.expand(
                     paddle.unsqueeze(finished, [2]),
@@ -797,7 +795,7 @@ class Transformer(Layer):
         # constant number
         inf = float(1.0 * 1e7)
         max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-        vocab_size_tensor = layers.fill_constant(
+        vocab_size_tensor = paddle.tensor.fill_constant(
             shape=[1], dtype="int64", value=self.trg_vocab_size
         )
         end_token_tensor = to_variable(
@@ -825,7 +823,7 @@ class Transformer(Layer):
             np.full([batch_size, beam_size], 0, dtype="bool")
         )
 
-        trg_word = layers.fill_constant(
+        trg_word = paddle.tensor.fill_constant(
             shape=[batch_size * beam_size, 1], dtype="int64", value=bos_id
         )
 
@@ -839,12 +837,12 @@ class Transformer(Layer):
         # init states (caches) for transformer, need to be updated according to selected beam
         caches = [
             {
-                "k": layers.fill_constant(
+                "k": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_key],
                     dtype=enc_output.dtype,
                     value=0,
                 ),
-                "v": layers.fill_constant(
+                "v": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_value],
                     dtype=enc_output.dtype,
                     value=0,
@@ -854,16 +852,16 @@ class Transformer(Layer):
         ]
 
         for i in range(paddle.to_tensor(max_len)):
-            trg_pos = layers.fill_constant(
+            trg_pos = paddle.tensor.fill_constant(
                 shape=trg_word.shape, dtype="int64", value=i
             )
-            caches = map_structure(
+            caches = paddle.utils.map_structure(
                 merge_batch_beams, caches
             )  # TODO: modified for dygraph2static
             logits = self.decoder(
                 trg_word, trg_pos, None, trg_src_attn_bias, enc_output, caches
             )
-            caches = map_structure(split_batch_beams, caches)
+            caches = paddle.utils.map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
                 paddle.log(paddle.nn.functional.softmax(logits))
             )
@@ -883,7 +881,7 @@ class Transformer(Layer):
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
-            caches = map_structure(
+            caches = paddle.utils.map_structure(
                 lambda x: gather(x, beam_indices, batch_pos), caches
             )
             log_probs = gather(log_probs, topk_indices, batch_pos)

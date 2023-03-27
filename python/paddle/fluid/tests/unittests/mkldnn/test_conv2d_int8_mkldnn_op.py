@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import (
     TestConv2DOp,
@@ -157,6 +157,9 @@ class TestConv2DInt8Op(TestConv2DOp):
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 input_residual
             )
+
+        if self.fuse_activation != "" or self.fuse_residual:
+            self.op_type = "fused_conv2d"
 
         self.attrs = {
             'strides': self.stride,
@@ -341,6 +344,7 @@ class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
 
 
 def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
+    self.op_type = "fused_conv2d"
     self.srctype = input_dt
     self.dsttype = np.uint8 if fuse_activation == "relu" else np.int8
 

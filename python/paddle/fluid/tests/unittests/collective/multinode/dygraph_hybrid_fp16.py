@@ -19,8 +19,8 @@ from test_collective_multi_nodes import (
 )
 
 import paddle
-import paddle.distributed.fleet as fleet
 from paddle import nn
+from paddle.distributed import fleet
 
 
 def weight_init(mp, shape, col=True, seed=1024):
@@ -35,7 +35,7 @@ def weight_init(mp, shape, col=True, seed=1024):
         else:
             step = shape[0] // mp.nranks
             _w = w[mp.rank * step : mp.rank * step + step, :]
-    return paddle.fluid.initializer.NumpyArrayInitializer(_w)
+    return paddle.nn.initializer.Assign(_w)
 
 
 class Criterion(nn.Layer):

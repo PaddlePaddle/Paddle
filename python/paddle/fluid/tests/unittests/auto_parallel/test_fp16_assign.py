@@ -58,7 +58,7 @@ def make_program():
         )
         where_1 = paddle.where(y > 1, y, out1)
 
-        paddle.fluid.layers.assign(where_1, where_0)
+        paddle.assign(where_1, where_0)
 
     return main_program, start_program
 

@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_kernel_impl.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_kernel_impl.h"
 
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
@@ -32,13 +32,15 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/kernels/fusion/cutlass/default_moe_fc_traits.h"
-#include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
+
 namespace phi {
 
 namespace {
+
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
@@ -317,7 +319,7 @@ void InitMoeRoutingKernelLauncher(
           ec_route);
     }
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently only support `ec_route = True`. "));
   }
 }
@@ -399,7 +401,7 @@ void GenericMoeGemmKernelLauncher(const T* A,
   int occupancy = GemmGrouped::maximum_active_blocks();
   const int threadblock_count = multi_processor_count * occupancy;
   if (occupancy == 0) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "[MoE Runner] GPU lacks the shared memory resources to run GroupedGEMM "
         "kernel"));
   }
@@ -423,21 +425,21 @@ void GenericMoeGemmKernelLauncher(const T* A,
   if (can_implement != cutlass::Status::kSuccess) {
     std::string err_msg = "MoEFC kernel will fail for params. Error: " +
                           std::string(cutlassGetStatusString(can_implement));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto init_status = gemm.initialize(args);
   if (init_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to initialize cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(init_status));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto run_status = gemm.run(stream);
   if (run_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to run cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(run_status));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
 }
 

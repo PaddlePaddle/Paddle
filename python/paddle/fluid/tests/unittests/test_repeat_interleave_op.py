@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -58,10 +58,10 @@ class TestRepeatInterleaveOp(OpTest):
         self.index_size = self.x_shape[self.dim]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestRepeatInterleaveOp2(OpTest):
@@ -96,10 +96,10 @@ class TestRepeatInterleaveOp2(OpTest):
         self.index_size = self.x_shape[self.dim]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestIndexSelectAPI(unittest.TestCase):
@@ -186,6 +186,26 @@ class TestIndexSelectAPI(unittest.TestCase):
                 return_numpy=False,
             )
         expect_out = np.repeat(self.data_zero_dim_x, repeats)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        # case 4 negative axis:
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[4],
+                dtype='int32',
+            )
+            index.desc.set_need_check_feed(False)
+            z = paddle.repeat_interleave(x, index, axis=-1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'repeats_': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):

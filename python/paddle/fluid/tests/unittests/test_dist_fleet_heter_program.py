@@ -17,9 +17,9 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -89,13 +89,13 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
-                    initializer=fluid.initializer.Uniform(),
+                    initializer=paddle.nn.initializer.Uniform(),
                 ),
             )
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
 
-        concated = fluid.layers.concat(sparse_embed_seq + inputs[0:1], axis=1)
+        concated = paddle.concat(sparse_embed_seq + inputs[0:1], axis=1)
 
         with fluid.device_guard("gpu"):
             fc1 = paddle.static.nn.fc(
@@ -103,8 +103,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(concated.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(concated.shape[1])
                     )
                 ),
                 name="fc1",
@@ -116,8 +116,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc1.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc1.shape[1])
                     )
                 ),
                 name="fc2",
@@ -129,8 +129,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc2.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc2.shape[1])
                     )
                 ),
                 name="fc3",
@@ -142,14 +142,14 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=2,
                 activation="softmax",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc3.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc3.shape[1])
                     )
                 ),
             )
 
         with fluid.device_guard("gpu"):
-            labels = fluid.layers.cast(inputs[-1], dtype="int64")
+            labels = paddle.cast(inputs[-1], dtype="int64")
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=labels, reduction='none', use_softmax=False
             )

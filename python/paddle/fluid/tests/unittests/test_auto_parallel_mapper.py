@@ -20,11 +20,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import fluid, nn, static, utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.completion import Completer
@@ -39,7 +36,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.fleet import auto
 from paddle.fluid import core
-from paddle.fluid.initializer import NumpyArrayInitializer
 
 if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -373,10 +369,18 @@ class MLPLayer(nn.Layer):
         arr1 = np.random.normal(0, 0.02, size=(dim_feedforward, d_model))
         arr2 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
         arr3 = np.random.normal(0, 0.02, size=(dim_feedforward, d_model))
-        weight_attr0 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr0))
-        weight_attr1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr1))
-        weight_attr2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr2))
-        weight_attr3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr3))
+        weight_attr0 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr0)
+        )
+        weight_attr1 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr1)
+        )
+        weight_attr2 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr2)
+        )
+        weight_attr3 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr3)
+        )
         bias_attr = None
         self.linear0 = nn.Linear(
             d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr

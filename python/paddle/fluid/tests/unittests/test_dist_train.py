@@ -22,10 +22,10 @@ import numpy as np
 from dist_test_utils import remove_ps_flag
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers.ops as ops
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.layers.io import ListenAndServ, Recv, Send
+from paddle.fluid.layers import ops
+from paddle.incubate.nn.layer.io import ListenAndServ, Recv, Send
 
 RPC_OP_ROLE_ATTR_NAME = (
     op_role_attr_name
@@ -87,7 +87,9 @@ class TestSendOp(unittest.TestCase):
                     dtype='float32',
                     name="X",
                 )
-                fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                paddle.nn.initializer.Constant(value=1.0)(
+                    x, main.global_block()
+                )
                 ops._scale(x=x, scale=10.0, out=out_var)
 
         self.server_exe = fluid.Executor(place)
@@ -108,7 +110,7 @@ class TestSendOp(unittest.TestCase):
 
             x = paddle.static.data(shape=[32, 32], dtype='float32', name='X')
             x.persistable = True
-            fluid.initializer.Constant(value=2.3)(x, main.global_block())
+            paddle.nn.initializer.Constant(value=2.3)(x, main.global_block())
 
             get_var = main.global_block().create_var(
                 name="scale_0.tmp_0",  # server side var
@@ -116,7 +118,9 @@ class TestSendOp(unittest.TestCase):
                 persistable=False,
                 shape=[32, 32],
             )
-            fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
+            paddle.nn.initializer.Constant(value=2.3)(
+                get_var, main.global_block()
+            )
 
             # NOTE(zjl): `Send` is async send, which means that the sent
             # variable would be needed even though `Send` op runs.
@@ -135,7 +139,7 @@ class TestSendOp(unittest.TestCase):
         main = fluid.Program()
         with fluid.program_guard(main):
             x = paddle.static.data(shape=[32, 32], dtype='float32', name='X')
-            fluid.initializer.Constant(value=2.3)(x, main.global_block())
+            paddle.nn.initializer.Constant(value=2.3)(x, main.global_block())
             o = paddle.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)
         self.local_out = exe.run(main, fetch_list=[o])

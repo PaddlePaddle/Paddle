@@ -255,7 +255,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     out->SetMember(out_indices, out_values, x.dims());
   } else {
     DenseTensorMeta indices_meta(
-        paddle::experimental::CppTypeToDataType<IntT>::Type(),
+        phi::CppTypeToDataType<IntT>::Type(),
         phi::make_ddim(
             {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
         DataLayout::NCHW);

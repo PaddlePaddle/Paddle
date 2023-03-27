@@ -15,6 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communicator_py.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <map>
 #include <memory>
@@ -97,7 +101,7 @@ void BindCommunicator(py::module* m) {
               send_ctx, recv_ctx, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "unsuported communicator MODE"));
+              "unsupported communicator MODE"));
         }
 
         return Communicator::GetInstantcePtr();

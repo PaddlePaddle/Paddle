@@ -37,18 +37,18 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT8
 };
 
-inline CCLDataType ToCCLDataType(paddle::experimental::DataType type) {
-  if (type == paddle::experimental::DataType::FLOAT64) {
+inline CCLDataType ToCCLDataType(phi::DataType type) {
+  if (type == phi::DataType::FLOAT64) {
     return CCL_DATA_TYPE_FP64;
-  } else if (type == paddle::experimental::DataType::FLOAT32) {
+  } else if (type == phi::DataType::FLOAT32) {
     return CCL_DATA_TYPE_FP32;
-  } else if (type == paddle::experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return CCL_DATA_TYPE_FP16;
-  } else if (type == paddle::experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return CCL_DATA_TYPE_INT64;
-  } else if (type == paddle::experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return CCL_DATA_TYPE_INT32;
-  } else if (type == paddle::experimental::DataType::INT8) {
+  } else if (type == phi::DataType::INT8) {
     return CCL_DATA_TYPE_INT8;
   } else {
     PADDLE_THROW(

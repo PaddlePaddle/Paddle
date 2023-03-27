@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 
 _FLOPS_COMPUTE_FUNC_MAP = {}
 
@@ -244,8 +245,12 @@ def _matmul_flops(input_shapes, attrs):
         equation: flops = 2 * numel(output) * dim_n
     """
 
-    x_shape = input_shapes.get("X", input_shapes.get("x", [[0]]))[0]
-    y_shape = input_shapes.get("Y", input_shapes.get("y", [[0]]))[0]
+    x_shape = copy.deepcopy(
+        input_shapes.get("X", input_shapes.get("x", [[0]]))[0]
+    )
+    y_shape = copy.deepcopy(
+        input_shapes.get("Y", input_shapes.get("y", [[0]]))[0]
+    )
     if attrs.get('transpose_X') or attrs.get('transpose_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
 
@@ -276,11 +281,11 @@ def _matmul_v2_flops(input_shapes, attrs):
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
         equation: flops = 2 * numel(outputs) * dim_n
     """
-    x_shape = input_shapes.get('X')[0]
-    y_shape = input_shapes.get('Y')[0]
-    if attrs.get('trans_x') is not None:
+    x_shape = copy.deepcopy(input_shapes.get('X')[0])
+    y_shape = copy.deepcopy(input_shapes.get('Y')[0])
+    if attrs.get('trans_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-    if attrs.get('trans_y') is not None:
+    if attrs.get('trans_y'):
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
     dim_x = len(x_shape)
     dim_y = len(y_shape)

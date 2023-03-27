@@ -17,7 +17,7 @@ import math
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -121,7 +121,7 @@ class SE_ResNeXt:
             size=class_dim,
             activation='softmax',
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
         )
         return out
@@ -174,7 +174,7 @@ class SE_ResNeXt:
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             bias_attr=False,
         )
@@ -187,7 +187,7 @@ class SE_ResNeXt:
             x=pool,
             size=num_channels // reduction_ratio,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='relu',
         )
@@ -196,7 +196,7 @@ class SE_ResNeXt:
             x=squeeze,
             size=num_channels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='sigmoid',
         )

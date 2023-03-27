@@ -20,7 +20,7 @@ import tarfile
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'
@@ -59,7 +59,7 @@ def conv_net(
         size=[dict_dim, emb_dim],
         is_sparse=False,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -70,7 +70,7 @@ def conv_net(
         act="tanh",
         pool_type="max",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -78,7 +78,7 @@ def conv_net(
         x=[conv_3],
         size=fc0_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -87,7 +87,7 @@ def conv_net(
         size=class_dim,
         activation="softmax",
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -192,8 +192,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     load(neg_pattern, INS, 1)
 
     def reader():
-        for doc, label in INS:
-            yield doc, label
+        yield from INS
 
     return reader
 

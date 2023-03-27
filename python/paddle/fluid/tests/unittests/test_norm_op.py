@@ -15,10 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 def l2_norm(x, axis, epsilon):
@@ -29,10 +31,14 @@ def l2_norm(x, axis, epsilon):
     return y, r
 
 
+def norm_wrapper(x, axis=1, epsilon=1e-12, is_test=False):
+    return paddle.nn.functional.normalize(x, axis=axis, epsilon=epsilon)
+
+
 class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
-        self.python_api = paddle.nn.functional.normalize
+        self.python_api = norm_wrapper
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
@@ -40,6 +46,7 @@ class TestNormOp(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
         self.outputs = {'Out': y, 'Norm': norm}
+        self.python_out_sig = ['Out']
 
     def test_check_output(self):
         self.check_output()
@@ -126,22 +133,56 @@ class TestNormOp7(TestNormOp):
 class TestNormTestOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
+        self.python_api = norm_wrapper
         self.init_test_case()
         x = np.random.random(self.shape).astype("float64")
         y, norm = l2_norm(x, self.axis, self.epsilon)
         self.inputs = {'X': x}
         self.attrs = {
             'epsilon': self.epsilon,
-            'axis': self.axis,
+            'axis': int(self.axis),
             'is_test': True,
         }
         self.outputs = {'Out': y}
+        self.python_out_sig = ["out"]
 
     def test_check_output(self):
-        self.check_output()
+        # dynamic graph just supports float tensor
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         pass
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestNormBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "norm"
+        self.python_api = norm_wrapper
+        self.init_test_case()
+        self.dtype = "float32"
+        x = np.random.random(self.shape).astype(self.dtype)
+        y, norm = l2_norm(x, self.axis, self.epsilon)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
+        self.outputs = {'Out': convert_float_to_uint16(y), 'Norm': norm}
+        self.python_out_sig = ['Out']
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', max_relative_error=1e-2
+        )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -154,7 +195,7 @@ class API_NormTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_norm_x_type():
-                data = fluid.data(name="x", shape=[3, 3], dtype="int64")
+                data = paddle.static.data(name="x", shape=[3, 3], dtype="int64")
                 out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)

@@ -16,8 +16,8 @@ import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -38,15 +38,11 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
             paddle.distributed.broadcast(data, src=0)
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[:, 0:8]
-                    ),
+                    initializer=paddle.nn.initializer.Assign(np_array[:, 0:8]),
                 )
             else:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[:, 8:16]
-                    ),
+                    initializer=paddle.nn.initializer.Assign(np_array[:, 8:16]),
                 )
 
             linear_out = paddle.distributed.split(

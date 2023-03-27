@@ -41,6 +41,7 @@ from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
+from .framework.dtype import finfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -118,6 +119,7 @@ from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
 from .tensor.creation import tril_indices  # noqa: F401
 from .tensor.creation import triu_indices  # noqa: F401
+from .tensor.creation import polar  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -340,11 +342,12 @@ from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
+from .autograd import enable_grad  # noqa:F401
 from .autograd import set_grad_enabled  # noqa: F401
 from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
-from .framework import DataParallel  # noqa: F401
+from .distributed import DataParallel  # noqa: F401
 
 from .framework import set_default_dtype  # noqa: F401
 from .framework import get_default_dtype  # noqa: F401
@@ -399,6 +402,7 @@ if is_compiled_with_cinn():
 disable_static()
 __all__ = [  # noqa
     'iinfo',
+    'finfo',
     'dtype',
     'uint8',
     'int8',
@@ -534,6 +538,7 @@ __all__ = [  # noqa
     'quantile',
     'nanquantile',
     'no_grad',
+    'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
     'mod',
@@ -681,4 +686,5 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
+    'polar',
 ]

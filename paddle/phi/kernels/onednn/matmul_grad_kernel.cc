@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -196,10 +196,8 @@ void MatmulWithFlattenGradKernel(const Context &dev_ctx,
                                  int y_num_col_dims,
                                  DenseTensor *x_grad,
                                  DenseTensor *y_grad) {
-  const DenseTensor reshaped_y =
-      paddle::framework::ReshapeToMatrix(y, y_num_col_dims);
-  const DenseTensor reshaped_x =
-      paddle::framework::ReshapeToMatrix(x, x_num_col_dims);
+  const DenseTensor reshaped_y = phi::ReshapeToMatrix(y, y_num_col_dims);
+  const DenseTensor reshaped_x = phi::ReshapeToMatrix(x, x_num_col_dims);
   const DenseTensor x_matrix = x.dims().size() > 2 ? reshaped_x : x;
   const DenseTensor y_matrix = y.dims().size() > 2 ? reshaped_y : y;
 

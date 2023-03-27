@@ -20,7 +20,7 @@ import numpy as np
 from yolov3 import YOLOv3, cfg
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 
 paddle.enable_static()

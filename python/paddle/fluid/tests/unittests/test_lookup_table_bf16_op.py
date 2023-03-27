@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import enable_static
+from paddle import enable_static, fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -217,7 +216,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.ids_shape = [4, 1]

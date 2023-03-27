@@ -27,8 +27,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid import Executor, Program, default_main_program, program_guard
 
 paddle.enable_static()
@@ -94,10 +94,10 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', check_eager=True)
+            self.check_grad(['X'], 'Out', check_dygraph=True)
 
         def initTestCase(self):
             self.shape = (2, 3, 4, 5, 6)
@@ -188,7 +188,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 mode = "constant"
                 value = 100
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(name="x", shape=input_shape)
+                x = paddle.static.data(
+                    name="x", shape=input_shape, dtype=self.dtype
+                )
                 result = F.pad(
                     x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
                 )
@@ -209,7 +211,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 pad = [1, 2, 1, 1, 1, 2]
                 mode = "reflect"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(name="x", shape=input_shape)
+                x = paddle.static.data(
+                    name="x", shape=input_shape, dtype=self.dtype
+                )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
                 result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
                 exe = Executor(place)
@@ -235,7 +239,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 pad = [1, 2, 1, 1, 3, 4]
                 mode = "replicate"
                 input_data = np.random.rand(*input_shape).astype(self.dtype)
-                x = paddle.fluid.data(name="x", shape=input_shape)
+                x = paddle.static.data(
+                    name="x", shape=input_shape, dtype=self.dtype
+                )
                 result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
                 result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
                 exe = Executor(place)
@@ -320,6 +326,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
                 self.check_static_result_3(place=place)
 
         def test_dygraph_1(self):
+            # TODO: remove fp16 limit after support of pad op
+            if self.dtype == np.float16:
+                return
             paddle.disable_static()
             input_shape = (1, 2, 3, 4, 5)
             pad = [1, 2, 1, 1, 3, 4]
@@ -365,6 +374,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
             np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
 
         def test_dygraph_2(self):
+            # TODO: remove fp16 limit after support of pad op
+            if self.dtype == np.float16:
+                return
             paddle.disable_static()
             input_shape = (2, 3, 4, 5)
             pad = [1, 1, 3, 4]
@@ -412,6 +424,9 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
             np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
 
         def test_dygraph_3(self):
+            # TODO: remove fp16 limit after support of pad op
+            if self.dtype == np.float16:
+                return
             paddle.disable_static()
             input_shape = (3, 4, 5)
             pad = [3, 4]

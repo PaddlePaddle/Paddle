@@ -74,6 +74,7 @@ class DGCMomentumOptimizer(Optimizer):
         self._global_step_var = None
 
         self._dgc_clip_norm = None
+        self._num_trainers = num_trainers
         if grad_clip is not None:
             if not isinstance(grad_clip, ClipGradByNorm):
                 raise TypeError(
@@ -87,7 +88,6 @@ class DGCMomentumOptimizer(Optimizer):
                 num_trainers > 0
             ), "The value of num_trainers should be greater than 0!"
 
-            self._num_trainers = num_trainers
             self._dgc_clip_norm = grad_clip.clip_norm * (num_trainers**-0.5)
 
         self.regular_type, self.regular_coeff = self._get_regularization_param(
@@ -107,7 +107,9 @@ class DGCMomentumOptimizer(Optimizer):
             elif isinstance(regularization, L2Decay):
                 regular_type = 2
             else:
-                assert False, 'regularization must be None|L1Decay|L2Deacy'
+                raise AssertionError(
+                    "regularization must be None|L1Decay|L2Deacy"
+                )
         return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):
@@ -171,7 +173,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(begin - 1), force_cpu=True
                 ),
             )
@@ -194,7 +196,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(value), force_cpu=True
                 ),
             )
@@ -212,7 +214,7 @@ class DGCMomentumOptimizer(Optimizer):
         )
 
         self._nranks_var = self._add_nranks_var(
-            name=core.dgc.kDGCNRanksName(), value=-1
+            name=core.dgc.kDGCNRanksName(), value=self._num_trainers
         )
 
         # rampup begin step var for all_reduce_op_handle

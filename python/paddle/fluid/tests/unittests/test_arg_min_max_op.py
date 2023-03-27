@@ -16,17 +16,17 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class BaseTestCase(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -48,6 +48,7 @@ class BaseTestCase(OpTest):
 class TestCase0(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -56,6 +57,7 @@ class TestCase0(BaseTestCase):
 class TestCase1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (3, 4)
         self.dtype = 'float64'
         self.axis = 1
@@ -64,6 +66,7 @@ class TestCase1(BaseTestCase):
 class TestCase2(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = 0
@@ -75,6 +78,7 @@ class TestCase2(BaseTestCase):
 class TestCase0FP16(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3, 4, 5)
         self.dtype = np.float16
         self.axis = 0
@@ -86,6 +90,7 @@ class TestCase0FP16(BaseTestCase):
 class TestCase1FP16(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (3, 4)
         self.dtype = np.float16
         self.axis = 1
@@ -94,6 +99,7 @@ class TestCase1FP16(BaseTestCase):
 class TestCase2_1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = -1
@@ -102,6 +108,7 @@ class TestCase2_1(BaseTestCase):
 class TestCase3(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3,)
         self.dtype = 'int64'
         self.axis = 0
@@ -110,6 +117,7 @@ class TestCase3(BaseTestCase):
 class TestCase4(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (1,)
         self.dtype = 'int32'
         self.axis = 0
@@ -118,6 +126,7 @@ class TestCase4(BaseTestCase):
 class TestCase3_(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (3,)
         self.axis = 0
 
@@ -125,6 +134,7 @@ class TestCase3_(BaseTestCase):
 class BaseTestComplex1_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -148,6 +158,7 @@ class BaseTestComplex1_1(OpTest):
 class BaseTestComplex1_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -171,6 +182,7 @@ class BaseTestComplex1_2(OpTest):
 class BaseTestComplex2_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -199,6 +211,7 @@ class BaseTestComplex2_1(OpTest):
 class BaseTestComplex2_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2

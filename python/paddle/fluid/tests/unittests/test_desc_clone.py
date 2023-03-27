@@ -17,12 +17,13 @@ import functools
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 SEED = 1
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
+paddle.enable_static()
 
 
 # random seed must set before configuring the network.
@@ -58,9 +59,7 @@ def cnn_model(data):
         size=SIZE,
         activation="softmax",
         weight_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.NormalInitializer(
-                loc=0.0, scale=scale
-            )
+            initializer=paddle.nn.initializer.Normal(loc=0.0, scale=scale)
         ),
     )
     return predict
@@ -209,7 +208,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
             test_program.block(0).var(hidden1.name).stop_gradient, True
         )
         self.assertEqual(
-            test_program.block(0).var(hidden2.name).stop_gradient, False
+            test_program.block(0).var(hidden2.name).stop_gradient, True
         )
 
 

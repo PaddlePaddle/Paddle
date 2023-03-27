@@ -18,7 +18,7 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -304,7 +304,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                     ring_id
                 )
             else:
-                assert False, "no cuda device found"
+                raise AssertionError("no cuda device found")
         else:
             return gp
 

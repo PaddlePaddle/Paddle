@@ -115,17 +115,15 @@ endif()
 
 if(WITH_TESTING)
   if(NOT APPLE AND NOT WIN32)
-    if(WITH_GPU)
-      inference_base_test(
-        test_api_impl
-        SRCS
-        api_impl_tester.cc
-        DEPS
-        paddle_inference_shared
-        ARGS
-        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-    endif()
+    inference_base_test(
+      test_api_impl
+      SRCS
+      api_impl_tester.cc
+      DEPS
+      paddle_inference_shared
+      ARGS
+      --word2vec_dirname=${WORD2VEC_MODEL_DIR}
+      --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
   elseif(WIN32)
     inference_base_test(
       test_api_impl
@@ -137,7 +135,6 @@ if(WITH_TESTING)
       --word2vec_dirname=${WORD2VEC_MODEL_DIR}
       --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
   endif()
-
 endif()
 
 if(NOT APPLE AND NOT WIN32)

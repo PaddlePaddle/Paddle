@@ -20,7 +20,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace phi {
 
@@ -29,45 +28,54 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
+  size_t x_rank = x.dims().size();
+  std::vector<int> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
-  int rank = axis.size();
+  int rank = formated_axis.size();
   switch (rank) {
     case 0:
       phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
       break;
     case 1:
       funcs::Transpose<Context, T, 1> trans1;
-      trans1(ctx, x, out, axis);
+      trans1(ctx, x, out, formated_axis);
       break;
     case 2:
       funcs::Transpose<Context, T, 2> trans2;
-      trans2(ctx, x, out, axis);
+      trans2(ctx, x, out, formated_axis);
       break;
     case 3:
       funcs::Transpose<Context, T, 3> trans3;
-      trans3(ctx, x, out, axis);
+      trans3(ctx, x, out, formated_axis);
       break;
     case 4:
       funcs::Transpose<Context, T, 4> trans4;
-      trans4(ctx, x, out, axis);
+      trans4(ctx, x, out, formated_axis);
       break;
     case 5:
       funcs::Transpose<Context, T, 5> trans5;
-      trans5(ctx, x, out, axis);
+      trans5(ctx, x, out, formated_axis);
       break;
     case 6:
       funcs::Transpose<Context, T, 6> trans6;
-      trans6(ctx, x, out, axis);
+      trans6(ctx, x, out, formated_axis);
       break;
     default:
       // for rank >= 7 situation
       funcs::TransposeNormal<Context, T> trans_normal;
-      trans_normal(ctx, x, out, axis);
+      trans_normal(ctx, x, out, formated_axis);
   }
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(transpose,

@@ -18,7 +18,7 @@ paddle.enable_static()
 
 import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -38,7 +38,10 @@ class EntryAttrChecks(unittest.TestCase):
                     is_distributed=True,
                     param_attr=fluid.ParamAttr(name="deep_embedding"),
                 )
-                pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+
+                pool = paddle.static.nn.sequence_lod.sequence_pool(
+                    input=emb, pool_type="sum"
+                )
                 predict = paddle.static.nn.fc(
                     x=pool, size=2, activation='softmax'
                 )

@@ -16,12 +16,12 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Conv2D, SyncBatchNorm
 
 
-class TestLayer(fluid.dygraph.Layer):
+class TestLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

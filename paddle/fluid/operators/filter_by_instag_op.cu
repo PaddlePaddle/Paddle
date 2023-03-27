@@ -30,11 +30,11 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 #if defined(PADDLE_WITH_CUDA)
 namespace cg = cooperative_groups;
@@ -46,7 +46,7 @@ namespace operators {
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
@@ -376,7 +376,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     }
 
     const size_t x2_lods_size = x2_lods.size() - 1;
-    paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
+    phi::MixVector<size_t> mixv_x2_lods(&x2_lods);
 
     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
 
@@ -401,7 +401,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    paddle::framework::MixVector<size_t> mixv_x1_lods(&x1_lods);
+    phi::MixVector<size_t> mixv_x1_lods(&x1_lods);
 
     size_t* x1_lods_data = mixv_x1_lods.CUDAMutableData(gpu_place);
     auto* x1_data = x1->data<T>();
@@ -433,12 +433,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     Vector<size_t> out_lods(x2_lods_size + 1, 0);
     Vector<size_t> map_lods(x2_lods_size + 1, 0);
 
-    paddle::framework::MixVector<size_t> mixv_out_lods(&out_lods);
-    paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+    phi::MixVector<size_t> mixv_out_lods(&out_lods);
+    phi::MixVector<size_t> mixv_map_lods(&map_lods);
 
     // thrust::device_vector<size_t> out_idx(1);
     Vector<size_t> out_idx(1, 0);
-    paddle::framework::MixVector<size_t> mixv_out_idx(&out_idx);
+    phi::MixVector<size_t> mixv_out_idx(&out_idx);
 
     size_t* out_idx_data = mixv_out_idx.CUDAMutableData(gpu_place);
     size_t* out_lods_data = mixv_out_lods.CUDAMutableData(gpu_place);
@@ -500,7 +500,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     } else {
       Vector<size_t> map_lods(2, 0);
-      paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+      phi::MixVector<size_t> mixv_map_lods(&map_lods);
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
 
       map_data_ptr[0] = 0;

@@ -19,7 +19,7 @@
 namespace paddle {
 namespace jit {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using DenseTensor = phi::DenseTensor;
 
 class BaseEngine {
@@ -28,6 +28,8 @@ class BaseEngine {
       const std::vector<DenseTensor> &inputs) = 0;
 
   virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
+
+  virtual std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) = 0;
 
   virtual ~BaseEngine() {}
 };

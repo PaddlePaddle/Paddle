@@ -56,7 +56,7 @@ from paddle.fluid import core, framework
             'test_reduce_axe_empty',
             (np.random.rand(2, 3, 3, 4), np.random.rand(2, 1, 3, 4)),
             (False, False),
-            (np.random.rand(2, 1, 3, 1),),
+            (np.random.rand(2, 3, 3, 4),),
             np.float32,
         ),
     ),
@@ -91,7 +91,7 @@ class TestMultiplyGradComp(unittest.TestCase):
                 for i, co in enumerate(cotangents)
             )
             out = self.as_tuple(paddle.multiply(*primals))
-            grads = paddle.static.gradients(out, primals)
+            grads = paddle.static.gradients(out, primals, cotangents)
         exe = paddle.static.Executor()
         exe.run(sp)
         return exe.run(

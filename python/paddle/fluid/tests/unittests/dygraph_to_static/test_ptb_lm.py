@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit.api import to_static
@@ -28,7 +28,7 @@ PRINT_STEP = 20
 SEED = 2020
 
 
-class SimpleLSTMRNN(fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
@@ -49,26 +49,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -89,7 +89,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([step_input, pre_hidden], 1)
+                nn = paddle.concat([step_input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -111,16 +111,16 @@ class SimpleLSTMRNN(fluid.Layer):
                         mode='upscale_in_train',
                     )
             res.append(step_input)
-        real_res = fluid.layers.concat(res, 1)
+        real_res = paddle.concat(res, 1)
         real_res = paddle.reshape(
             real_res, [-1, self._num_steps, self._hidden_size]
         )
-        last_hidden = fluid.layers.concat(hidden_array, 1)
+        last_hidden = paddle.concat(hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(cell_array, 1)
+        last_cell = paddle.concat(cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
@@ -128,7 +128,7 @@ class SimpleLSTMRNN(fluid.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,
@@ -158,7 +158,7 @@ class PtbModel(fluid.Layer):
             sparse=False,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -167,7 +167,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -175,7 +175,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )

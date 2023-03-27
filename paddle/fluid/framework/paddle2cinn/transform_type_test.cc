@@ -62,4 +62,40 @@ TEST(TransToPaddleDataType, runtime_type) {
                paddle::platform::EnforceNotMet);
 }
 
+TEST(HelperFunction, PaddleAttributeToStringPODValue) {
+  paddle::framework::Attribute attr1 = 1;
+  ASSERT_EQ(PaddleAttributeToString(attr1), std::string("1"));
+
+  paddle::framework::Attribute attr2 = 0.2f;
+  ASSERT_EQ(PaddleAttributeToString(attr2), std::string("0.2"));
+
+  paddle::framework::Attribute attr3 = true;
+  ASSERT_EQ(PaddleAttributeToString(attr3), std::string("true"));
+
+  paddle::framework::Attribute attr4 = std::string("string_attribute");
+  ASSERT_EQ(PaddleAttributeToString(attr4), std::string("string_attribute"));
+}
+
+TEST(HelperFunction, PaddleAttributeToStringVectorValue) {
+  paddle::framework::Attribute attr1 = std::vector<int>();
+  ASSERT_EQ(PaddleAttributeToString(attr1), std::string(""));
+
+  paddle::framework::Attribute attr2 = std::vector<int>{1, 2, 3, 4, 5};
+  ASSERT_EQ(PaddleAttributeToString(attr2), std::string("[1, 2, 3, 4, 5]"));
+
+  paddle::framework::Attribute attr3 =
+      std::vector<float>{0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+  ASSERT_EQ(PaddleAttributeToString(attr3),
+            std::string("[0.1, 0.2, 0.3, 0.4, 0.5]"));
+
+  paddle::framework::Attribute attr4 =
+      std::vector<bool>{true, false, true, false, false};
+  ASSERT_EQ(PaddleAttributeToString(attr4),
+            std::string("[true, false, true, false, false]"));
+
+  paddle::framework::Attribute attr5 =
+      std::vector<std::string>{"a", "b", "c", "d", "e"};
+  ASSERT_EQ(PaddleAttributeToString(attr5), std::string("[a, b, c, d, e]"));
+}
+
 }  // namespace paddle::framework::paddle2cinn

@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
@@ -42,8 +42,8 @@ void IndexSampleInner(const Context &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector<IndexT>(index, context, &index_vec);
+  phi::TensorToVector(input, context, &input_vec);
+  phi::TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
@@ -76,7 +76,7 @@ void IndexSampleInner(const Context &context,
 
   auto ddim = phi::make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
-  paddle::framework::TensorFromVector(res, context, output);
+  phi::TensorFromVector(res, context, output);
   output->Resize(ddim);
 }
 
@@ -94,9 +94,9 @@ void IndexSampleKernel(const Context &ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);
   } else if (index_type == DataType::INT64) {

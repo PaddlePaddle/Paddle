@@ -60,11 +60,17 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
     auto *out_data = out->data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
+    phi::stream::Stream stream_wrapper(context.GetPlace(), context.stream());
+
     for (const auto &tensor : in) {
       const auto *in_data = tensor.data<T>();
-      auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
-      offset += sz;
+      if (out_data + offset != in_data) {
+        device->MemoryCopyD2D(out_data + offset,
+                              in_data,
+                              tensor.numel() * sizeof(T),
+                              &stream_wrapper);
+      }
+      offset += tensor.numel();
     }
   }
 };
@@ -78,11 +84,17 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
     auto *in_data = in.data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
+    phi::stream::Stream stream_wrapper(context.GetPlace(), context.stream());
+
     for (auto *p_tensor : *out) {
       auto *out_data = p_tensor->data<T>();
-      auto sz = p_tensor->numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
-      offset += sz;
+      if (out_data != in_data + offset) {
+        device->MemoryCopyD2D(out_data,
+                              in_data + offset,
+                              p_tensor->numel() * sizeof(T),
+                              &stream_wrapper);
+      }
+      offset += p_tensor->numel();
     }
   }
 };
@@ -142,6 +154,15 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
       break;
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
+      break;
+    case phi::DataType::INT32:
+      ConcatDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_list, p_out);
+      break;
+    case phi::DataType::INT64:
+      ConcatDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_list, p_out);
+      break;
+    case phi::DataType::UINT8:
+      ConcatDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_list, p_out);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -205,6 +226,15 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
     case phi::DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);
       break;
+    case phi::DataType::INT32:
+      SplitDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::INT64:
+      SplitDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::UINT8:
+      SplitDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_in, p_list);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors.", type));
@@ -214,7 +244,7 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
 
 void ConcatTensor(const phi::DeviceContext &dev_ctx,
                   const std::vector<phi::DenseTensor> &tensor_list,
-                  const experimental::Tensor *tensor) {
+                  const Tensor *tensor) {
   auto *dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
@@ -267,7 +297,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
 
 void SplitTensor(const phi::DeviceContext &dev_ctx,
                  const phi::DenseTensor &tensor,
-                 const std::vector<experimental::Tensor> *tensor_list) {
+                 const std::vector<Tensor> *tensor_list) {
   std::vector<phi::DenseTensor *> dense_list;
   for (auto &tensor : *tensor_list) {
     auto *p_tensor =

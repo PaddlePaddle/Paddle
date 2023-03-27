@@ -17,7 +17,7 @@ import unittest
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -35,7 +35,7 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
 
     def test_trainer_desc_config(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 

@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -193,8 +193,8 @@ class ExpandV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ExpandV2GradCompositeOpMaker : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ExpandV2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -206,7 +206,7 @@ class ExpandV2GradCompositeOpMaker : public prim::GradCompositeOpMakerBase {
     auto shape = this->Attr<std::vector<int>>("shape");
     prim::expand_grad<prim::DescTensor>(
         x, out_grad, paddle::experimental::IntArray(shape), x_grad_p);
-    VLOG(3) << "Runing expand_v2 composite func";
+    VLOG(6) << "Runing expand_v2 composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
   }
 };
@@ -244,7 +244,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_v2,
                   ops::ExpandV2Op,
                   ops::ExpandV2OpMaker,
-                  ops::ExpandV2GradCompositeOpMaker,
+                  ops::ExpandV2CompositeGradOpMaker,
                   ops::ExpandV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2GradOpMaker<paddle::imperative::OpBase>,
                   ExpandInferShapeFunctor);

@@ -69,7 +69,9 @@ class OpTransInfo {
       const GraphNodeSet& cluster) const;
 
   static std::unordered_set<std::string> GetInplaceVarNames(
-      const GraphNodeSet& cluster_inputs, const GraphNodeSet& cluster_outputs);
+      const GraphNodeSet& cluster_internals,
+      const GraphNodeSet& cluster_inputs,
+      const GraphNodeSet& cluster_outputs);
 
  private:
   DyOpCondT dynamic_op_cond_;
@@ -77,7 +79,8 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
+  std::unordered_set<std::string> default_deny_ops_{
+      "feed", "fetch", "conv2d", "conv2d_grad"};
 };
 
 // A pass named BuildCinnPass, the function of this pass is:

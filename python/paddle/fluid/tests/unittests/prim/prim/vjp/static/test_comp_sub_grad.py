@@ -29,7 +29,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x, y):
@@ -69,7 +69,7 @@ class PrimeNet(paddle.nn.Layer):
         ),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestSubGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
@@ -92,7 +92,7 @@ class TestDivGradComp(unittest.TestCase):
     def test_cinn(self):
         paddle.disable_static()
         dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(

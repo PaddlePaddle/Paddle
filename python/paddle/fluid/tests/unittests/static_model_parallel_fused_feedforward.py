@@ -16,8 +16,8 @@ import numpy as np
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.incubate.nn import FusedFeedForward
 
 paddle.enable_static()
@@ -30,11 +30,9 @@ OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+        initializer=paddle.nn.initializer.Assign(weight)
     )
-    bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias)
-    )
+    bias_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(bias))
     return weight_attr, bias_attr
 
 
@@ -104,7 +102,7 @@ class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, seq_len, IN_SIZE], dtype=DTYPE
         )
 

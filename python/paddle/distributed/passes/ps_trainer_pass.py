@@ -17,9 +17,8 @@ import os
 from _collections import defaultdict
 
 import paddle
-import paddle.fluid.framework as framework
 from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+from paddle.fluid import framework
 from paddle.framework import core
 from paddle.static import Parameter, Program
 
@@ -278,7 +277,7 @@ class DistributedOpsPass(PassBase):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -335,11 +334,11 @@ class DistributedOpsPass(PassBase):
                     assert global_block.desc.op(i) == global_block.ops[i].desc
 
         if attrs['use_ps_gpu']:
-            gpups_inputs_idxs = list()
-            gpups_outputs_idxs = list()
-            gpups_inputs = list()
-            gpups_outputs = list()
-            gpups_w_size = list()
+            gpups_inputs_idxs = []
+            gpups_outputs_idxs = []
+            gpups_inputs = []
+            gpups_outputs = []
+            gpups_w_size = []
             gpups_min_distributed_idx = len(_program.global_block().ops) + 1
 
         for param, ops in pull_sparse_ops.items():
@@ -464,7 +463,7 @@ class DistributedOpsPass(PassBase):
                     "is_sparse": True,
                 },
             )
-            PSGPU = paddle.fluid.core.PSGPU()
+            PSGPU = core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
             except (ValueError):
@@ -843,6 +842,8 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        from ..transpiler.collective import SingleProcessMultiThread
+
         attrs = pass_ctx._attrs
         t = SingleProcessMultiThread()
         env = get_dist_env()
@@ -1052,7 +1053,7 @@ class SplitHeterWorkerOpsPass(PassBase):
         block_vars_detail = find_block_joints(
             program, program_block_ops, heter_ops
         )
-        heter_program = framework.Program()
+        heter_program = paddle.framework.Program()
         self._create_heter_program(
             program,
             attrs,
@@ -1628,13 +1629,13 @@ class SplitFlOpsPass(PassBase):
         debug_program(_main_file, prog_b)
 
         if not self.is_part_b:
-            self.partA_program = framework.Program()
+            self.partA_program = paddle.framework.Program()
             self._get_partA_program(prog_a.global_block())
             pass_ctx._attrs['part_a_main_program'] = self.partA_program
             self._clear_op_device_flag(self.partA_program)
             check_program(self.partA_program)
         else:
-            self.partB_program = framework.Program()
+            self.partB_program = paddle.framework.Program()
             self._get_partB_program(prog_b.global_block())
             pass_ctx._attrs['part_b_main_program'] = self.partB_program
             self._clear_op_device_flag(self.partB_program)

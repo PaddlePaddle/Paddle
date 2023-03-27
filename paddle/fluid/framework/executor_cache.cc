@@ -303,12 +303,11 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
                "all cache!";
     interpretercore_info_cache.Finalize();
   }
+  interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_jit = true;
   auto core = std::make_shared<InterpreterCore>(
-      place,
-      program_desc.Block(0),
-      /*skip_gc_vars=*/std::set<std::string>(),
-      scope,
-      /*used_for_jit=*/true);
+      place, program_desc.Block(0), scope, execution_config);
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
   cached_value.core_ = core;

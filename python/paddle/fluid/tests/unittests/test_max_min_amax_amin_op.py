@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -69,8 +69,8 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
             self.np_grad[func] = grad
 
-        self.np_out = dict()
-        self.np_grad = dict()
+        self.np_out = {}
+        self.np_grad = {}
         _cal_np_out_and_gradient('amax')
         _cal_np_out_and_gradient('amin')
         _cal_np_out_and_gradient('max')
@@ -95,7 +95,9 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
             startup_program = fluid.Program()
             train_program = fluid.Program()
             with fluid.program_guard(startup_program, train_program):
-                x = fluid.data(name='input', dtype=self.dtype, shape=self.shape)
+                x = paddle.static.data(
+                    name='input', dtype=self.dtype, shape=self.shape
+                )
                 x.stop_gradient = False
                 out = self._choose_paddle_func(func, x)
 
@@ -196,6 +198,44 @@ class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
         self.dtype = 'float64'
         self.axis = None
         self.keepdim = False
+
+
+# test input grad when out is operated like mutiply
+class TestMaxMinAmaxAminAPI7(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype(
+            np.int32
+        )
+        self.shape = [2, 2, 2]
+        self.dtype = 'int32'
+        self.axis = (0, 1)
+        self.keepdim = False
+
+    # As dygraph is easy to compute gradient, we check the gradient between
+    # paddle API and numpy in dygraph.
+    def test_dygraph(self):
+        def _test_dygraph(func):
+            paddle.disable_static()
+            x = paddle.to_tensor(
+                self.x_np, dtype=self.dtype, stop_gradient=False
+            )
+            out = self._choose_paddle_func(func, x)
+            loss = out * 2
+            grad_tensor = paddle.ones_like(x)
+            paddle.autograd.backward([loss], [grad_tensor], True)
+
+            np.testing.assert_allclose(
+                self.np_out[func], out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                self.np_grad[func] * 2, x.grad, rtol=1e-05
+            )
+            paddle.enable_static()
+
+        _test_dygraph('amax')
+        _test_dygraph('amin')
+        _test_dygraph('max')
+        _test_dygraph('min')
 
 
 if __name__ == '__main__':

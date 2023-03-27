@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.functional import interpolate
 
 
@@ -219,10 +219,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -409,9 +409,7 @@ class TestBilinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_eager=True
-        )
+        self.check_output_with_place(place=core.CPUPlace(), atol=1)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -585,10 +583,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -814,6 +812,81 @@ class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
         np.testing.assert_allclose(y_np_1, y_np_2, atol=1e-3, rtol=1e-3)
         # Since atomicAdd half will bring some diff, here we relax tolerance to 1e-2.
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
+
+
+class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = paddle.full([], 2)
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = [paddle.full([], 2), paddle.full([], 2)]
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            output_size = [
+                paddle.full([], 12, dtype="int32"),
+                paddle.full([], 12, dtype="int32"),
+            ]
+            out = interpolate(
+                x=input_x,
+                size=output_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 if __name__ == "__main__":

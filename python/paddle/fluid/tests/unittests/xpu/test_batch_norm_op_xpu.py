@@ -25,9 +25,9 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -202,17 +202,17 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
         def test_infer(self):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
-                scale = paddle.fluid.data(
+                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+                scale = paddle.static.data(
                     'Scale', self.scale_np.shape, self.scale_np.dtype
                 )
-                bias = paddle.fluid.data(
+                bias = paddle.static.data(
                     'Bias', self.bias_np.shape, self.bias_np.dtype
                 )
-                mean = paddle.fluid.data(
+                mean = paddle.static.data(
                     'Mean', self.mean_np.shape, self.mean_np.dtype
                 )
-                variance = paddle.fluid.data(
+                variance = paddle.static.data(
                     'Variance', self.variance_np.shape, self.variance_np.dtype
                 )
                 y = F.batch_norm(
@@ -369,7 +369,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     net1 = paddle.nn.BatchNorm(
                         6,
                         param_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(1.0)
+                            initializer=paddle.nn.initializer.Constant(1.0)
                         ),
                         use_global_stats=self.use_global_stats,
                         trainable_statistics=self.trainable_statistics,
