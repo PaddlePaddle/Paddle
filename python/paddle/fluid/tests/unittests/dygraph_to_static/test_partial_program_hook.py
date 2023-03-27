@@ -15,7 +15,6 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
 from paddle.jit.dy2static import partial_program, program_translator
 
 
@@ -35,28 +34,24 @@ class TestPartiaProgramLayerHook(unittest.TestCase):
 
 class TestPrimHook(unittest.TestCase):
     def setUp(self):
-        core._set_prim_all_enabled(False)
-
         def f():
             return paddle.nn.functional.dropout(paddle.rand((1,)))
 
         concrete_program, partial_program = paddle.jit.to_static(
             f
         ).get_concrete_program()
+        prim_state = program_translator.PrimState()
+        prim_state.enable_all()
         self._hook = program_translator.PrimHooker(
-            concrete_program.main_program
+            concrete_program.main_program, prim_state
         )
         self._forward = partial_program.forward_program
         self._whole = partial_program._train_program
 
-        core._set_prim_all_enabled(True)
-
-    def tearDown(self):
-        core._set_prim_all_enabled(False)
-
     def test_before_append_backward(self):
         self._hook.before_append_backward(self._forward)
-        self.assertNotIn(
+        # Now dropout is in ops because dropout has HasCompGradOpMaker
+        self.assertIn(
             'dropout', tuple(op.type for op in self._forward.blocks[0].ops)
         )
 

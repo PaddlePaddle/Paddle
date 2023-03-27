@@ -219,6 +219,17 @@ def ignore_module(modules: List[Any]):
     add_ignore_module(modules)
 
 
+def _check_and_set_backend(backend, build_strategy):
+    if backend not in ["CINN", None]:
+        raise ValueError(
+            "The backend of to_static should be 'CINN' or None, but received {}.".format(
+                backend
+            )
+        )
+    if backend == 'CINN':
+        build_strategy.build_cinn_pass = True
+
+
 def to_static(
     function=None,
     input_spec=None,
@@ -244,7 +255,7 @@ def to_static(
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
         property(bool, Optional): Whether the fucntion is python property. The default is False.
-        backend(str, Optional): Specifies compilation backend. The default is None.
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -297,8 +308,7 @@ def to_static(
                 type(build_strategy).__name__
             )
         )
-    if backend == 'CINN':
-        build_strategy.build_cinn_pass = True
+    _check_and_set_backend(backend, build_strategy)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:

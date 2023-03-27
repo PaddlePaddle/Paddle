@@ -171,7 +171,8 @@ def cal_composite(inputs, running_mean, running_variance, weight, bias):
             attrs.use_global_stats,
         )
         blocks = main_program.blocks
-        paddle.incubate.autograd.primapi.to_prim(blocks)
+        if core._is_fwd_prim_enabled():
+            paddle.incubate.autograd.primapi.to_prim(blocks)
         z = paddle.static.gradients([y], [x1, x4, x5])
 
     exe = paddle.static.Executor()

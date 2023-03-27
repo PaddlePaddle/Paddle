@@ -205,7 +205,7 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
-        self._prim_info = kwargs.get('prim_info', None)
+        self._prim_state = kwargs.get('prim_state', None)
 
     def __call__(self, inputs):
         """
@@ -628,7 +628,7 @@ class PartialProgramLayer:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            with dy2st_prim_guard(self._prim_info):
+            with dy2st_prim_guard(self._prim_state):
                 backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
