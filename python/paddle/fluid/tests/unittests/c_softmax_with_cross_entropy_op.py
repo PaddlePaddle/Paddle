@@ -17,7 +17,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.collective import _c_softmax_with_cross_entropy
 
 
