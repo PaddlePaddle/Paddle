@@ -514,7 +514,7 @@ def random_split(dataset, lengths, generator=None):
         )
     # TODO(@Joejiong): support Variable or Tensor type with .tolist class member function.
     # For example var.item() and var.tolist()
-    indices = paddle.randperm(sum(lengths)).numpy().tolist()
+    indices = paddle.randperm(sum(lengths)).tolist()
     return [
         Subset(dataset, indices[offset - length : offset])
         for offset, length in zip(_accumulate(lengths), lengths)

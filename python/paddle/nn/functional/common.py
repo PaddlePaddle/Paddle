@@ -496,7 +496,7 @@ def interpolate(
         else:
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
-                    out_shape = list(out_shape.numpy())
+                    out_shape = list(out_shape.numpy(False))
                 else:
                     out_shape = list(out_shape)
 
