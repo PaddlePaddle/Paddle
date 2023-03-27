@@ -538,7 +538,17 @@ class ConvOneDNNHandlerT
 
       if (output_shift_scale.size() > 0) {
         int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
-        conv_attr.set_output_scales(mask, output_shift_scale);
+        conv_attr.set_scales_mask(DNNL_ARG_DST, mask);
+
+        auto scales_md = dnnl::memory::desc(
+            {static_cast<int64_t>(output_shift_scale.size())},
+            dnnl::memory::data_type::f32,
+            dnnl::memory::format_tag::x);
+        output_shift_scale_ = dnnl::memory(scales_md, this->engine_);
+        auto mem_buf = output_shift_scale_.get_data_handle();
+        memcpy(mem_buf,
+               output_shift_scale.data(),
+               output_shift_scale.size() * sizeof(float));
       }
     }
 
@@ -756,6 +766,15 @@ class ConvOneDNNHandlerT
     }
     return dst_memory_p;
   }
+
+  void SetOutputScaleIfNeeded(std::unordered_map<int, dnnl::memory>* args) {
+    if (output_shift_scale_.get_desc().is_zero() != true) {
+      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, output_shift_scale_});
+    }
+  }
+
+ private:
+  dnnl::memory output_shift_scale_;
 };
 
 }  // namespace onednn

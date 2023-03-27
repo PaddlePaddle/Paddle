@@ -34,6 +34,52 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
 };
+
+// Correct output scale, to take into account scaling of input and weights
+// Since the data that comes out of input and weight multiplication is
+// scaled with its own scales, this data needs to be divided by
+// those scales to normalise them back to what their floating-point range
+// was. Then we multiply them by desired output scale we want on the output.
+std::tuple<std::vector<float>, float, float> GetOutputScales(
+    const ExecutionContext& ctx) {
+  if (ctx.HasAttr("Sum_scale")) {
+    return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
+                           ctx.Attr<float>("Sum_scale"),
+                           ctx.Attr<float>("Activation_scale"));
+  } else {
+    auto scale_in_data = ctx.Attr<float>("Scale_in");
+    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
+                              ctx.Attr<bool>("fuse_residual_connection");
+    auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                     ? ctx.Attr<float>("Scale_in_eltwise")
+                                     : 1.0f;
+
+    // If the output will be in floats, we don't multiply by scale_out.
+
+    float activation_scale = (!force_fp32_output && has_activation)
+                                 ? ctx.Attr<float>("Scale_out")
+                                 : 1.0f;
+    float scale_out_data = (force_fp32_output || has_activation)
+                               ? 1.0f
+                               : ctx.Attr<float>("Scale_out");
+    float sum_scale =
+        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+    const size_t weight_scales_num = scale_weights_data.size();
+
+    for (size_t i = 0; i < weight_scales_num; ++i) {
+      if (scale_weights_data[i] == 0.0)
+        scale_weights_data[i] = scale_out_data;
+      else
+        scale_weights_data[i] =
+            scale_out_data / (scale_in_data * scale_weights_data[i]);
+    }
+    return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
+  }
+}
+
 template <typename T_in, typename T_w, typename T_out>
 class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
@@ -104,7 +150,8 @@ class FCMKLDNNHandler
       std::tie(output_shift_scale, sum_scale, activation_scale) =
           GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attributes.set_output_scales(mask, output_shift_scale);
+      attributes.set_scales_mask(DNNL_ARG_DST, mask);
+      // output_shift_scale
     }
 
     if (ctx.HasAttr("fuse_residual_connection") &&
@@ -114,15 +161,16 @@ class FCMKLDNNHandler
 
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
+      post_operations.append_eltwise(dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
       post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     }
     AppendActivation(ctx, post_operations, activation_scale);
 
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
       post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+          dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
 
     attributes.set_post_ops(post_operations);
@@ -148,7 +196,7 @@ class FCMKLDNNHandler
       return bias_scales;
     }
   }
-
+  // TODO(jczaja): The same function is in onednn_reuse.h . Why?
   void AppendActivation(const ExecutionContext& ctx,
                         dnnl::post_ops& post_ops,  // NOLINT
                         float activation_scale = 1.0f) {
@@ -174,53 +222,9 @@ class FCMKLDNNHandler
             "Activation '%s' not found in oneDNN algorithms mapper",
             fuse_activation));
 
+    post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
     post_ops.append_eltwise(
-        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
-  }
-
-  // Correct output scale, to take into account scaling of input and weights
-  // Since the data that comes out of input and weight multiplication is
-  // scaled with its own scales, this data needs to be divided by
-  // those scales to normalise them back to what their floating-point range
-  // was. Then we multiply them by desired output scale we want on the output.
-  std::tuple<std::vector<float>, float, float> GetOutputScales(
-      const ExecutionContext& ctx) {
-    if (ctx.HasAttr("Sum_scale")) {
-      return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
-                             ctx.Attr<float>("Sum_scale"),
-                             ctx.Attr<float>("Activation_scale"));
-    } else {
-      auto scale_in_data = ctx.Attr<float>("Scale_in");
-      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
-                                ctx.Attr<bool>("fuse_residual_connection");
-      auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
-                                       ? ctx.Attr<float>("Scale_in_eltwise")
-                                       : 1.0f;
-
-      // If the output will be in floats, we don't multiply by scale_out.
-
-      float activation_scale = (!force_fp32_output && has_activation)
-                                   ? ctx.Attr<float>("Scale_out")
-                                   : 1.0f;
-      float scale_out_data = (force_fp32_output || has_activation)
-                                 ? 1.0f
-                                 : ctx.Attr<float>("Scale_out");
-      float sum_scale =
-          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-      const size_t weight_scales_num = scale_weights_data.size();
-
-      for (size_t i = 0; i < weight_scales_num; ++i) {
-        if (scale_weights_data[i] == 0.0)
-          scale_weights_data[i] = scale_out_data;
-        else
-          scale_weights_data[i] =
-              scale_out_data / (scale_in_data * scale_weights_data[i]);
-      }
-      return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
-    }
+        dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
   }
 
   // Computing oneDNN's scaling mask which determines along which dimension
@@ -233,7 +237,8 @@ class FCMKLDNNHandler
       const dnnl::memory::desc& user_md,
       const dnnl::memory::desc& target_md,
       void* ptr,
-      const dnnl::primitive_attr& attrs) {
+      const dnnl::primitive_attr& attrs,
+      const std::vector<float>& scale_data) {
     std::shared_ptr<dnnl::memory> target_memory_p;
 
     auto user_memory_p =
@@ -242,6 +247,15 @@ class FCMKLDNNHandler
     auto reorder_p = std::make_shared<dnnl::reorder>(
         *user_memory_p, *target_memory_p, attrs);
 
+    auto scales_md =
+        dnnl::memory::desc({static_cast<int64_t>(scale_data.size())},
+                           dnnl::memory::data_type::f32,
+                           dnnl::memory::format_tag::x);
+    auto scale_mem =
+        dnnl::memory(scales_md,
+                     this->engine_,
+                     phi::funcs::to_void_cast<float>(scale_data.data()));
+
     auto& astream = OneDNNContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder(
@@ -249,9 +263,10 @@ class FCMKLDNNHandler
           platform::TracerEventType::UserDefined,
           1,
           platform::EventRole::kUniqueOp);
-      reorder_p->execute(
-          astream,
-          {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
+      reorder_p->execute(astream,
+                         {{DNNL_ARG_FROM, *user_memory_p},
+                          {DNNL_ARG_TO, *target_memory_p},
+                          {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_mem}});
       astream.wait();
     }
 
@@ -270,7 +285,7 @@ class FCMKLDNNHandler
     if (x->dims().size() != 2) {
       // reshape restrictions are always satisfied because in case of 3 or 4 dim
       // input, plain layout is enforced
-      user_md = user_md.reshape(this->fwd_pd_->src_desc().dims());
+      user_md = user_md.reshape(this->fwd_pd_->src_desc().get_dims());
     }
 
     return this->AcquireMemoryWithReorder(
@@ -295,7 +310,7 @@ class FCMKLDNNHandler
         dnnl::primitive_attr attrs;
 
         int mask = CreateMask(0, scale_data.size() > 1);
-        attrs.set_output_scales(mask, scale_data);
+        attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
         auto user_md = dnnl::memory::desc({bias->dims()[0]},
                                           OneDNNGetDataType<float>(),
@@ -305,7 +320,8 @@ class FCMKLDNNHandler
             user_md,
             this->fwd_pd_->bias_desc(),
             to_void_cast<float>(bias_data),
-            attrs);
+            attrs,
+            scale_data);
         this->dev_ctx_.SetBlob(bias_key, memory_p);
       }
       return memory_p;
@@ -320,7 +336,7 @@ class FCMKLDNNHandler
 
     if (!memory_p) {
       const float* weights_data = weights->data<float>();
-      auto weights_dims = this->fwd_pd_->weights_desc().dims();
+      auto weights_dims = this->fwd_pd_->weights_desc().get_dims();
 
       auto user_md = dnnl::memory::desc(weights_dims,
                                         OneDNNGetDataType<float>(),
@@ -329,13 +345,14 @@ class FCMKLDNNHandler
       if (phi::funcs::is_int8<T_w>()) {
         dnnl::primitive_attr attrs;
         int mask = CreateMask(0, scale_data.size() > 1);
-        attrs.set_output_scales(mask, scale_data);
+        attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
         memory_p = this->AcquireMemoryWithReorderAndAttrs(
             user_md,
             this->fwd_pd_->weights_desc(),
             to_void_cast<float>(weights_data),
-            attrs);
+            attrs,
+            scale_data);
       } else {
         memory_p =
             this->AcquireMemoryWithReorder(user_md,
@@ -405,7 +422,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                      const std::shared_ptr<dnnl::memory>& src_mem,
                      const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {
-    auto x_md = x->mem_desc().reshape(src_mem->get_desc().dims());
+    auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
     if (x_md != src_mem->get_desc()) {
       dnnl::memory x_mem(x_md, engine, to_void_cast<T_in>(x->data<T_in>()));
       auto reorder_p = dnnl::reorder(x_mem, *src_mem);
@@ -506,7 +523,19 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
-
+    {
+      std::vector<float> output_shift_scale;
+      std::tie(output_shift_scale, std::ignore, std::ignore) =
+          GetOutputScales(ctx);
+      const int64_t scales_size =
+          static_cast<int64_t>(output_shift_scale.size());
+      auto output_scale_md = dnnl::memory::desc({scales_size},
+                                                dnnl::memory::data_type::f32,
+                                                dnnl::memory::format_tag::x);
+      auto output_scale_mem = dnnl::memory(output_scale_md, onednn_engine);
+      output_scale_mem.set_data_handle(output_shift_scale.data());
+      fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, output_scale_mem});
+    }
     if (bias) {
       fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }

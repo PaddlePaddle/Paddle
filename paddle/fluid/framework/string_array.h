@@ -167,7 +167,11 @@ class PhiVector : public phi::ExtendedTensor,
 
  private:
   std::vector<T> data_;
+  static std::string name_;
 };
+
+template <typename T>
+std::string PhiVector<T>::name_ = "";  // NOLINT
 
 using String = std::string;
 using Strings = PhiVector<std::string>;

@@ -126,7 +126,7 @@ void ConvGradKernel(const Context& dev_ctx,
             // goidhw) for 2d conv with groups (five dimensional data reorder
             // to goihw) auto weights_tz = phi::vectorize(filter->dims());
 
-            auto weights_tz = diff_weights_memory_p->get_desc().dims();
+            auto weights_tz = diff_weights_memory_p->get_desc().get_dims();
             dnnl::memory::format_tag out_format =
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                        : dnnl::memory::format_tag::goihw;

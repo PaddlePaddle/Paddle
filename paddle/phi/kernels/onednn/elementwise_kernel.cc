@@ -47,7 +47,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     float scale_alpha =
         PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
     post_operations.append_eltwise(
-        1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+        dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
   }
 
   auto* non_const_x = &x;
@@ -108,7 +108,10 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *src_x_memory},
       {DNNL_ARG_SRC_1, *src_y_memory},
-      {DNNL_ARG_DST, *dst_memory}};
+      {DNNL_ARG_DST, *dst_memory},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, handler.Get_SRC_0_Scale_Memory()},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+       handler.Get_SRC_1_Scale_Memory()}};
 
   binary_prim->execute(astream, args);
   astream.wait();
@@ -116,7 +119,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   auto out_md = dst_memory->get_desc();
 
   if (handler.use_broadcasting_hack) {
-    auto dims = out_md.dims();
+    auto dims = out_md.get_dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
     out_md = out_md.reshape(dims);

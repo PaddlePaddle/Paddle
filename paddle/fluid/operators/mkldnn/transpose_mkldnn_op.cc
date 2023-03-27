@@ -55,13 +55,13 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
-                           x->mem_desc().data_type(),
+                           x->mem_desc().get_data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
     auto dst_strides =
         phi::funcs::FakeTransposeStrides(dst_md.dims(), transpose_axis);
 
-    dst_md =
-        dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
+    dst_md = dnnl::memory::desc(
+        x_vec_dims, x->mem_desc().get_data_type(), dst_strides);
     auto dst_data =
         out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
 
