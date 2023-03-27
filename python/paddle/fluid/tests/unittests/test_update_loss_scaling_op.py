@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static.amp.amp_nn as amp_nn
+from paddle import fluid
+from paddle.static.amp import amp_nn
 
 
 def update_loss_scaling_wrapper(

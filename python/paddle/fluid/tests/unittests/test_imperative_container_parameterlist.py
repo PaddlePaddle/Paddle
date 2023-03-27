@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 
 
 class MyLayer(paddle.nn.Layer):

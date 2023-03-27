@@ -18,8 +18,8 @@ import numpy as np
 from utils import SUB_TOLERANCE
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
@@ -411,6 +411,36 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 rtol=1e-3,
                 atol=1e-3,
             )
+
+
+class TestPrimEvalBranch(unittest.TestCase):
+    """
+    Test eval branch or composite rule of batch_norm.
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_prim):
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = BatchNorm(2, is_test=True)
+        net = apply_to_static(net, False)
+        out = net(self.x)
+        loss = paddle.mean(out)
+        return loss
+
+    def test_eval_branch(self):
+        expected = self.train(False)
+        actual = self.train(True)
+        np.testing.assert_allclose(
+            expected,
+            actual,
+            rtol=1e-6,
+            atol=1e-6,
+        )
 
 
 if __name__ == '__main__':

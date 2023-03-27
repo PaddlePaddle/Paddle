@@ -76,6 +76,54 @@ class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
         pass
 
 
+class TestMKLDNNElementwiseMulOpZeroDim(TestMKLDNNElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+
+class TestMKLDNNElementwiseMulOpZeroDim2(TestMKLDNNElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+
+class TestMKLDNNElementwiseMulOpZeroDim3(TestMKLDNNElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+
 ''' INT8 Tests '''
 
 

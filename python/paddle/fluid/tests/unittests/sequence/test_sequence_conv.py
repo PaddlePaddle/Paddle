@@ -295,7 +295,7 @@ class TestSeqProjectCase3(TestSeqProject):
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
         y = paddle.static.nn.sequence_lod.sequence_conv(

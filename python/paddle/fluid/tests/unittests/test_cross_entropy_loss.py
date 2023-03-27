@@ -19,7 +19,7 @@ from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 

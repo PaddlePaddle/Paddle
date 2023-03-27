@@ -23,7 +23,7 @@ from eager_op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
