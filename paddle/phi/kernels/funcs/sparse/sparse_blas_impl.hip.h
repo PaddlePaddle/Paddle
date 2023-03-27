@@ -219,7 +219,6 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        const phi::DenseTensor& mat_b,
                                        T beta,
                                        phi::DenseTensor* mat_out) const {
-  LOG(INFO) << "\n we are here!\n";
   auto a_descriptor = RocSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = RocSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
   auto out_descriptor = RocSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);

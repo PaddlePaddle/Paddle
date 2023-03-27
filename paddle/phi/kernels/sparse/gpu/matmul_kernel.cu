@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -79,6 +80,9 @@ void MatmulKernelImpl(const Context& dev_ctx,
   meta_out.set_dtype(y.dtype());
 
   dev_ctx.template Alloc<T>(out);
+
+  phi::funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, out, static_cast<T>(0.0f));
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
