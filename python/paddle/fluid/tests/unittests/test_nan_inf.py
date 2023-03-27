@@ -75,6 +75,7 @@ class TestCheckSkipEnv(TestNanInf):
         super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
+
         self.env[str("Paddle_check_nan_inf_op_list")] = str("mean")
         self.env[str("Paddle_skip_nan_inf_op_list")] = str("elementwise_add")
 
