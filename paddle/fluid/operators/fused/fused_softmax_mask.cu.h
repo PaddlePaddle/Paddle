@@ -66,11 +66,10 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
   // ((bid*head_num + hid)*seq_len + seq_id) * seq_len
   int offset =
       ((blockIdx.y * gridDim.z + blockIdx.z) * seq_len + seq_id) * seq_len;
-  // (bid * seq_len + seq_id) * seq_len
-  int mask_offset = (blockIdx.y * seq_len + seq_id) * seq_len;
+
   src += offset;
   dst += offset;
-  mask += mask_offset;
+  mask += offset;
 
   static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
   constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
