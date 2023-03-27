@@ -30,31 +30,29 @@ extern void* k2_dso_handle;
  * (for each function) to dynamic load k2 routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_K2_WRAP(__name)                            \
+#define DYNAMIC_LOAD_K2_WRAP(__name)                                 \
   struct DynLoad__##__name {                                         \
     template <typename... Args>                                      \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
-      using k2Func = decltype(&::__name);                       \
-      std::call_once(k2_dso_flag, []() {                        \
-        k2_dso_handle = phi::dynload::GetK2LogDsoHandle();    \
+      using k2Func = decltype(&::__name);                            \
+      std::call_once(k2_dso_flag, []() {                             \
+        k2_dso_handle = phi::dynload::GetK2LogDsoHandle();           \
       });                                                            \
-      static void* p_##__name = dlsym(k2_dso_handle, #__name);  \
-      return reinterpret_cast<k2Func>(p_##__name)(args...);     \
+      static void* p_##__name = dlsym(k2_dso_handle, #__name);       \
+      return reinterpret_cast<k2Func>(p_##__name)(args...);          \
     }                                                                \
   };                                                                 \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_K2_WRAP(__name) \
-  // DYNAMIC_LOAD_K2_WRAP(__name)
+#define DECLARE_DYNAMIC_LOAD_K2_WRAP(__name)  // DYNAMIC_LOAD_K2_WRAP(__name)
 
 #define K2_ROUTINE_EACH(__macro) \
-  __macro(Logger);   \
+  __macro(Logger);               \
   __macro(EnableAbort)
 
 K2_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_K2_WRAP);
 
 #undef DYNAMIC_LOAD_K2_WRAP
-
 
 // void* GetK2ContextDsoHandle();
 // void* GetK2FsaDsoHandle();

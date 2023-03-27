@@ -897,7 +897,9 @@ def get_package_data_and_package_dir():
         os.path.basename(env_dict.get("GFORTRAN_LIB")),
         os.path.basename(env_dict.get("GNU_RT_LIB_1")),
     ]
-    package_data['paddle.libs']+=[os.path.basename(l) for l in env_dict.get("K2_LIBRARIES").split(";")]
+    package_data['paddle.libs'] += [
+        os.path.basename(l) for l in env_dict.get("K2_LIBRARIES").split(";")
+    ]
     shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
