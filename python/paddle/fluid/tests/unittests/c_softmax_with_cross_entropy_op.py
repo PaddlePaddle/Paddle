@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import numpy as np
 
@@ -65,7 +66,7 @@ def softmax_with_cross_entropy_grad(softmax, label, loss_grad, axis):
     return logit_grad
 
 
-class TestCSoftmaxWithCrossEntropy:
+class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
     def test_model(self, data_type="float32"):
         self.num_class = 1000
         self.batch_size = 1024
@@ -134,7 +135,4 @@ class TestCSoftmaxWithCrossEntropy:
 
 
 if __name__ == '__main__':
-    # unittest.main()
-    a = TestCSoftmaxWithCrossEntropy()
-    a.test_model()
-    print("*****" * 20)
+    unittest.main()
