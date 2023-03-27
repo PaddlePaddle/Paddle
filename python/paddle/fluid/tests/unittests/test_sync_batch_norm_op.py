@@ -274,6 +274,22 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
 
+class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
+    """sync_batch_norm op test for BF16 input."""
+
+    def setUp(self):
+        """Setup."""
+        self.dtype = np.uint16
+        self.N = 8
+        self.C = 16
+        self.H = 32
+        self.W = 32
+        self.dshape = [self.N, self.C, self.H, self.W]
+        self.atol = 1e-3
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
+
+
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
     def test_errors(self):
         if not core.is_compiled_with_cuda():

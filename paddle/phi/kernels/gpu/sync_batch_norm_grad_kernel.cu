@@ -60,6 +60,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    ALL_LAYOUT,
                    phi::SyncBatchNormGradKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
@@ -68,5 +69,6 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #endif
