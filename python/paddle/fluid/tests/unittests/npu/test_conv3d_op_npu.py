@@ -20,7 +20,7 @@ import sys
 sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle.fluid as fluid
 
 from test_conv3d_op import conv3d_forward_naive

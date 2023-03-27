@@ -22,7 +22,7 @@ from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.nn import ClipGradByGlobalNorm
 
 place = (
