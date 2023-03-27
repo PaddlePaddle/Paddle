@@ -122,18 +122,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     out_md = out_md.reshape(dims);
   }
 
-  const auto fused_unsqueeze2_axes =
-      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
-          : std::vector<int>();
-
-  if (!fused_unsqueeze2_axes.empty()) {
-    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
-        fused_unsqueeze2_axes, out, out_md);
-  } else {
-    out->set_mem_desc(out_md);
-  }
+  out->set_mem_desc(out_md);
 }
 
 #define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)      \
