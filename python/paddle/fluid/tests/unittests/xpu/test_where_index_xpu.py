@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
@@ -101,7 +101,7 @@ for stype in support_types:
 class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
-            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
+            cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
 
             exe = fluid.Executor(paddle.XPUPlace(0))

@@ -21,7 +21,6 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -34,6 +33,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -44,8 +44,8 @@ momentum_rate = 0.9
 l2_decay = 1e-4
 
 
-class MLP(fluid.Layer):
-    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+class MLP(paddle.nn.Layer):
+    def __init__(self, linear_size=1024, param_attr=None, bias_attr=None):
         super().__init__()
 
         self._linear1 = Linear(linear_size, linear_size)
@@ -59,14 +59,62 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator(linear_size=1000):
-    def __reader__():
-        for _ in range(100):
-            img = np.random.rand(linear_size).astype('float32')
-            label = np.ones(1).astype('int64')
-            yield img, label
+class Encoder(paddle.nn.Layer):
+    def __init__(self, encoder):
+        super().__init__()
+        self.first_stage = paddle.nn.Linear(1024, 1024)
+        self.encoder = encoder
 
-    return __reader__
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.first_stage(x)
+        return x
+
+
+class Decoder(paddle.nn.Layer):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        self.final_stage = paddle.nn.Linear(1024, 1024)
+        self.group_norm = paddle.nn.GroupNorm(64, 1024)
+
+    def forward(self, x):
+        x = self.final_stage(x)
+        x = self.decoder(x)
+        x = self.group_norm(x)
+        return x
+
+
+class SpecialModel(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.shared = paddle.nn.Linear(1024, 1024, bias_attr=False)
+        self.encoder = Encoder(self.shared)
+        self.decoder = Decoder(self.shared)
+        self.final_stage = paddle.nn.Linear(1024, 2, bias_attr=False)
+
+        self.extra_parameters = [self.shared.weight]
+
+    def forward(self, x):
+        x = self.shared(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
+        x = self.final_stage(x)
+        return x
+
+
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, num_samples=2000, linear_size=1024):
+        self.num_samples = num_samples
+        self.linear_size = linear_size
+
+    def __getitem__(self, idx):
+        img = np.random.rand(self.linear_size).astype('float32')
+        label = np.ones(1).astype('int64')
+        return img, label
+
+    def __len__(self):
+        return self.num_samples
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
@@ -88,12 +136,15 @@ def train_mlp(
     model,
     sharding_stage,
     use_pure_fp16=False,
+    use_bfp16=False,
     accumulate_grad=False,
     batch_size=100,
     opt_group=False,
+    linear_size=1000,
     sync_comm=False,
     test_minimize=False,
     save_model=False,
+    exclude_test=[],
 ):
     group = paddle.distributed.new_group([0, 1])
     if opt_group:
@@ -105,7 +156,10 @@ def train_mlp(
 
     if use_pure_fp16:
         model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32'
+            models=model,
+            level='O2',
+            save_dtype='float32',
+            dtype='bfloat16' if use_bfp16 else 'float16',
         )
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
@@ -123,6 +177,7 @@ def train_mlp(
             group=group,
             sync_comm=sync_comm,
             segment_size=2**15,
+            exclude_layer=exclude_test,
         )
 
     # check optimizer.minimize() error
@@ -135,18 +190,15 @@ def train_mlp(
             )
         return
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
         model.train()
@@ -154,7 +206,11 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-            with paddle.amp.auto_cast(True, level='O2'):
+            with paddle.amp.auto_cast(
+                use_pure_fp16,
+                level='O2',
+                dtype='bfloat16' if use_bfp16 else 'float16',
+            ):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
@@ -193,7 +249,23 @@ def train_mlp(
 
 def test_stage2_stage3():
     paddle.distributed.init_parallel_env()
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = (
+    (
+        mlp,
+        mlp1,
+        mlp2,
+        mlp3,
+        mlp4,
+        mlp5,
+        mlp6,
+        mlp7,
+        mlp8,
+        mlp9,
+        mlp10,
+        mlp11,
+        mlp12,
+    ) = (
+        MLP(),
+        MLP(),
         MLP(),
         MLP(),
         MLP(),
@@ -217,6 +289,8 @@ def test_stage2_stage3():
     mlp8.set_state_dict(state_dict)
     mlp9.set_state_dict(state_dict)
     mlp10.set_state_dict(state_dict)
+    mlp11.set_state_dict(state_dict)
+    mlp12.set_state_dict(state_dict)
 
     # fp32
     stage2_params = train_mlp(
@@ -287,6 +361,97 @@ def test_stage2_stage3():
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6
+        )
+
+    # bfp16
+    # NOTE: this is a hack to get int format nccl version, like 2134
+    # if current platform is not linux, version number will be 0
+    nccl_version_str = get_nccl_version_str()
+    nccl_version = (
+        int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
+    )
+
+    if nccl_version >= 2100:
+        stage2_params = train_mlp(
+            mlp11,
+            sharding_stage=2,
+            use_pure_fp16=True,
+            opt_group=False,
+            use_bfp16=True,
+        )
+        stage3_params = train_mlp(
+            mlp12,
+            sharding_stage=3,
+            use_pure_fp16=True,
+            opt_group=False,
+            use_bfp16=True,
+        )
+        for i in range(len(stage2_params)):
+            np.testing.assert_allclose(
+                stage2_params[i].numpy(),
+                stage3_params[i].numpy(),
+                rtol=1e-4,
+                atol=1e-3,
+            )
+
+    # test for share layer parameters and exclude_layer function.
+    sm1, sm2, sm3, sm4 = (
+        SpecialModel(),
+        SpecialModel(),
+        SpecialModel(),
+        SpecialModel(),
+    )
+    st_dict = sm1.state_dict()
+    sm2.set_state_dict(st_dict)
+    sm3.set_state_dict(st_dict)
+    sm4.set_state_dict(st_dict)
+
+    # fp16 for special model
+    stage2_params = train_mlp(
+        sm1,
+        sharding_stage=2,
+        use_pure_fp16=True,
+        opt_group=False,
+        linear_size=1024,
+    )
+    stage3_params = train_mlp(
+        sm2,
+        sharding_stage=3,
+        use_pure_fp16=True,
+        opt_group=False,
+        linear_size=1024,
+        exclude_test=["GroupNorm"],
+    )
+    for i in range(len(stage2_params)):
+        np.testing.assert_allclose(
+            stage2_params[i].numpy(),
+            stage3_params[i].numpy(),
+            rtol=1e-4,
+            atol=1e-3,
+        )
+
+    # fp32 for special model
+    stage2_params = train_mlp(
+        sm3,
+        sharding_stage=2,
+        use_pure_fp16=False,
+        opt_group=False,
+        linear_size=1024,
+    )
+    stage3_params = train_mlp(
+        sm4,
+        sharding_stage=3,
+        use_pure_fp16=False,
+        opt_group=False,
+        linear_size=1024,
+        exclude_test=[id(sm4.decoder.group_norm)],
+    )
+    for i in range(len(stage2_params)):
+        np.testing.assert_allclose(
+            stage2_params[i].numpy(),
+            stage3_params[i].numpy(),
+            rtol=1e-6,
+            atol=1e-4,
         )
 
     # save/load model

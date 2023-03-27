@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestPyReaderCombination(unittest.TestCase):
@@ -56,10 +56,12 @@ class TestPyReaderCombination(unittest.TestCase):
 
     def main_impl(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            image = fluid.layers.data(
-                name='image', dtype='float32', shape=[784]
+            image = paddle.static.data(
+                name='image', dtype='float32', shape=[-1, 784]
             )
-            label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+            label = paddle.static.data(
+                name='label', dtype='int64', shape=[-1, 1]
+            )
 
             py_reader1 = fluid.io.PyReader(
                 feed_list=[image, label], capacity=16, iterable=True

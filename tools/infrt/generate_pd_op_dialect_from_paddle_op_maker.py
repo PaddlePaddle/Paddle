@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
-from paddle.fluid import core
+from paddle.fluid import core, framework
 
 
-# collect original ops: op which has both inference and grid defination
+# collect original ops: op which has both inference and grad definition
 def get_original_ops():
     all_ops, _, _ = core.op_supported_infos('CPU', core.VarDesc.VarType.FP16)
     grad_ops = []
@@ -118,8 +117,8 @@ def generate_all_ops_inputs_outputs_map(op_descs):
     for op_type, op_proto in op_descs.items():
         if op_type not in original_ops_:
             continue
-        inputs = list()
-        outpus = list()
+        inputs = []
+        outpus = []
         for input_ in op_proto[INPUTS]:
             if (
                 not op_proto[INPUTS][input_][EXTRA]
@@ -224,7 +223,7 @@ def get_constraint(op_type, op_proto):
     return constraint
 
 
-# funtion to generate paddle op dialect file
+# function to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
 

@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+from paddle.fluid import data_feeder
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
@@ -60,7 +59,7 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
 
     # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},

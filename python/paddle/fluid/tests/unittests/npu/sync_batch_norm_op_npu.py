@@ -35,7 +35,7 @@ from test_sync_batch_norm_base_npu import (
     TestSyncBatchNormRunnerBase,
     runtime_main,
 )
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     _set_use_system_allocator,
 )
@@ -74,11 +74,10 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
-                    shape=self.dshape,
+                    shape=[-1] + self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
                 conv = paddle.static.nn.conv2d(
                     input=data,

@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
@@ -52,7 +52,7 @@ class TestAtan(OpTest):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
-            data = fluid.layers.data(name="X", shape=[1])
+            data = paddle.static.data(name="X", shape=[1])
             out = paddle.atan(data, name='Y')
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)

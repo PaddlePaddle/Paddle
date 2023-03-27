@@ -20,14 +20,13 @@ import gym
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Layer, to_variable
-from paddle.jit import ProgramTranslator
+from paddle import fluid
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
+from paddle.nn import Layer
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
 class Policy(Layer):
@@ -61,7 +60,7 @@ class Args:
 
 
 def train(args, place, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
     env.seed(SEED)
@@ -154,7 +153,7 @@ def train(args, place, to_static):
                 cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
 
-            policy_loss = fluid.layers.concat(policy_loss)
+            policy_loss = paddle.concat(policy_loss)
             policy_loss = paddle.sum(policy_loss)
 
             policy_loss.backward()

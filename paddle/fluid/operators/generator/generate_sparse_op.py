@@ -18,7 +18,9 @@ from pathlib import Path
 
 import yaml
 from filters import (
+    assert_dense_or_sr,
     cartesian_prod_mapping,
+    find_optinal_inputs_name,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -28,12 +30,14 @@ from filters import (
     to_opmaker_name_cstr,
     to_pascal_case,
     to_scalar_tensor_name,
+    to_variable_names,
 )
-from generate_op import process_invoke_op
+from generate_op import add_fluid_name, process_invoke_op
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
-from tests import (
+from tests_utils import (
     is_base_op,
+    is_composite_op,
     is_initializer_list,
     is_scalar,
     is_vec,
@@ -57,10 +61,14 @@ env.filters["to_scalar_tensor_name"] = to_scalar_tensor_name
 env.filters["to_int_array_tensor_name"] = to_int_array_tensor_name
 env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
+env.filters["assert_dense_or_sr"] = assert_dense_or_sr
+env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
+env.filters["to_variable_names"] = to_variable_names
 env.tests["base_op"] = is_base_op
+env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -96,9 +104,18 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
         op['name'] = op['op_name']
         if op["backward"] is not None:
             op["backward"] = SPARSE_OP_PREFIX + op["backward"]
+        add_fluid_name(op["inputs"])
+        add_fluid_name(op["attrs"])
+        add_fluid_name(op["outputs"])
     for bw_op in backward_ops:
         bw_op['op_name'] = SPARSE_OP_PREFIX + bw_op['name']
         bw_op['name'] = bw_op['op_name']
+        add_fluid_name(bw_op["inputs"])
+        add_fluid_name(bw_op["attrs"])
+        add_fluid_name(bw_op["outputs"])
+        add_fluid_name(bw_op["forward"]["inputs"])
+        add_fluid_name(bw_op["forward"]["attrs"])
+        add_fluid_name(bw_op["forward"]["outputs"])
         if 'invoke' in bw_op:
             bw_op['invoke']['args'] = [
                 param.strip() for param in bw_op['invoke']['args'].split(',')
@@ -139,7 +156,6 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
             ops=ops,
             backward_ops=backward_ops,
             op_dict=op_dict,
-            composite_gen_flag=False,
         )
         f.write(msg)
 

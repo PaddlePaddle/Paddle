@@ -19,7 +19,7 @@ import numpy as np
 
 sys.path.append("..")
 
-from op_test import OpTest
+from eager_op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -300,7 +300,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.bool
+            self.dtype = np.bool_
             self.x_shape = [2, 3, 4, 5]
 
 

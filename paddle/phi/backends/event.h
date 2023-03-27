@@ -46,7 +46,7 @@ class Event {
   void Destroy();
   void Record(const stream::Stream* stream);
   bool Query() const;
-  void Synchonrize() const;
+  void Synchronize() const;
   const Place& GetPlace() const;
 
  private:

@@ -19,9 +19,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import AdamOptimizer
 
@@ -30,7 +30,7 @@ def gen_data():
     pass
 
 
-class GraphConv(fluid.Layer):
+class GraphConv(paddle.nn.Layer):
     def __init__(self, name_scope, in_features, out_features):
         super().__init__(name_scope)
 
@@ -51,7 +51,7 @@ class GraphConv(fluid.Layer):
         return paddle.matmul(adj, support) + self.bias
 
 
-class GCN(fluid.Layer):
+class GCN(paddle.nn.Layer):
     def __init__(self, name_scope, num_hidden):
         super().__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)
@@ -71,24 +71,15 @@ class TestDygraphGNN(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
-            features = fluid.layers.data(
-                name='features',
-                shape=[1, 100, 50],
-                dtype='float32',
-                append_batch_size=False,
+            features = paddle.static.data(
+                name='features', shape=[1, 100, 50], dtype='float32'
             )
             # Use selected rows when it's supported.
-            adj = fluid.layers.data(
-                name='adj',
-                shape=[1, 100, 100],
-                dtype='float32',
-                append_batch_size=False,
+            adj = paddle.static.data(
+                name='adj', shape=[1, 100, 100], dtype='float32'
             )
-            labels = fluid.layers.data(
-                name='labels',
-                shape=[100, 1],
-                dtype='int64',
-                append_batch_size=False,
+            labels = paddle.static.data(
+                name='labels', shape=[100, 1], dtype='int64'
             )
 
             model = GCN('test_gcn', 50)

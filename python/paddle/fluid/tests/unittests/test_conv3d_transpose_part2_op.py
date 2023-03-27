@@ -18,8 +18,8 @@ import numpy as np
 from test_conv3d_transpose_op import TestConv3DTransposeOp
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
@@ -86,11 +86,11 @@ class TestWithDilation_NHWC(TestConv3DTransposeOp):
 
 class TestConv3DTransposeAPI(unittest.TestCase):
     def test_case1(self):
-        data1 = fluid.layers.data(
-            name='data1', shape=[3, 5, 5, 5], dtype='float32'
+        data1 = paddle.static.data(
+            name='data1', shape=[-1, 3, 5, 5, 5], dtype='float32'
         )
-        data2 = fluid.layers.data(
-            name='data2', shape=[5, 5, 5, 3], dtype='float32'
+        data2 = paddle.static.data(
+            name='data2', shape=[-1, 5, 5, 5, 3], dtype='float32'
         )
 
         out1 = paddle.static.nn.conv3d_transpose(
@@ -174,8 +174,8 @@ class TestConv3DTransposeAPI(unittest.TestCase):
 
 class TestConv3DTransposeOpException(unittest.TestCase):
     def test_exception(self):
-        data = fluid.layers.data(
-            name='data', shape=[3, 5, 5, 5], dtype="float32"
+        data = paddle.static.data(
+            name='data', shape=[-1, 3, 5, 5, 5], dtype="float32"
         )
 
         def attr_data_format():

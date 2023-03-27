@@ -15,6 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communication.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -41,6 +45,12 @@ void BindCommContextManager(py::module *m) {
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+#if defined(PADDLE_WITH_GLOO)
+          .def_static(
+              "create_gloo_comm_context",
+              &phi::distributed::CommContextManager::CreateGlooCommContext,
               py::call_guard<py::gil_scoped_release>())
 #endif
           .def("set_store", &phi::distributed::CommContextManager::SetStore);

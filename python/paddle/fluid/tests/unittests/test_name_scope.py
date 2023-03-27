@@ -15,13 +15,13 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestNameScope(unittest.TestCase):
     def test_name_scope(self):
         with fluid.name_scope("s1"):
-            a = fluid.layers.data(name='data', shape=[1], dtype='int32')
+            a = paddle.static.data(name='data', shape=[-1, 1], dtype='int32')
             b = a + 1
             with fluid.name_scope("s2"):
                 c = b * 1

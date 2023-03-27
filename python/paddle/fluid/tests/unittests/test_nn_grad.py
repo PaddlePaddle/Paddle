@@ -19,9 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -73,7 +72,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         eps = 0.05
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.mean(x, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -97,7 +96,7 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
         eps = 0.05
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.sum(x, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -122,7 +121,7 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.reshape(x, new_shape)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -150,7 +149,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.tile(x, repeat_times)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -181,7 +180,7 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.expand(x, new_shape)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -213,7 +212,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.squeeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -245,7 +244,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.unsqueeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -274,7 +273,7 @@ class TestClipDoubleGradCheck(unittest.TestCase):
         x_shape = [2, 4, 10]
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.clip(x, min=-1.0, max=1.0)
         x_arr = np.random.uniform(-5.0, 5.0, x_shape).astype(dtype)
@@ -299,7 +298,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         perm = [1, 0]
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.transpose(x, perm)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -321,7 +320,7 @@ class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
         perm = [0, 2, 3, 1]
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.transpose(x, perm)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -348,8 +347,9 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
+        x.stop_gradient = False
         out = paddle.nn.functional.pad(x, pad)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
@@ -375,7 +375,7 @@ class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
         pad = [1, 0, 1, 0, 1, 0, 1, 0]
         dtype = np.float64
 
-        x = layers.data('x', x_shape, False, dtype)
+        x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
         out = paddle.nn.functional.pad(x, pad)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -393,8 +393,8 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         pad = [1, 1, 1, 1]
         dtype = np.float64
 
-        x1 = layers.data('x', x_shape, False, dtype)
-        x2 = layers.data('x', x_shape, False, dtype)
+        x1 = paddle.static.data('x', x_shape, dtype)
+        x2 = paddle.static.data('x', x_shape, dtype)
         x1.persistable = True
         x2.persistable = True
         out = paddle.concat([x1, x2], axis=0)
@@ -423,10 +423,9 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        input_NCHW = fluid.layers.data(
+        input_NCHW = paddle.static.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -454,10 +453,9 @@ class TestAvgPool2DDoubleGradCheckCase2(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        input_NHWC = fluid.layers.data(
+        input_NHWC = paddle.static.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -491,10 +489,9 @@ class TestAvgPool2DDoubleGradCheckCase3(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        input_NCHW = fluid.layers.data(
+        input_NCHW = paddle.static.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -525,10 +522,9 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        input_NCHW = fluid.layers.data(
+        input_NCHW = paddle.static.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 

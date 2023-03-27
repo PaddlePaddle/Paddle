@@ -64,6 +64,7 @@ register_unity_group(
   cudnn_lstm_op.cc
   cumsum_op.cc
   cvm_op.cc
+  unzip_op.cc
   data_norm_op.cc
   deformable_conv_op.cc
   deformable_conv_v1_op.cc
@@ -402,6 +403,7 @@ register_unity_group(
   ctc_align_op.cu
   cumsum_op.cu
   cvm_op.cu
+  unzip_op.cu
   data_norm_op.cu
   deformable_conv_op.cu
   deformable_conv_v1_op.cu
@@ -579,3 +581,5 @@ register_unity_group(cu expand_op.cu)
 register_unity_group(cu matmul_v2_op.cu)
 register_unity_group(cu top_k_v2_op.cu)
 register_unity_group(cu set_value_op.cu)
+register_unity_group(cu unzip.cu)
+register_unity_group(cc unzip.cc)

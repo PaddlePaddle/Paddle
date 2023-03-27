@@ -55,11 +55,11 @@ class Deserializer {
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
                       const phi::Place& place,
-                      VariableMap* params_dict) const;
+                      std::shared_ptr<VariableMap> params_dict) const;
 
   // property pb
   void ReadAttributeData(const std::string& file_path,
-                         VariableMap* attrs_dict) const;
+                         std::shared_ptr<VariableMap> attrs_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
 

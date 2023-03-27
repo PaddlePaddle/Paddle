@@ -22,9 +22,8 @@ import numpy as np
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 
@@ -50,7 +49,7 @@ def parse_args():
     return args
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -87,7 +86,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, seg_num=8
     ):
@@ -139,7 +138,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return y
 
 
-class TSM_ResNet(fluid.dygraph.Layer):
+class TSM_ResNet(paddle.nn.Layer):
     def __init__(self, name_scope, config, mode):
         super().__init__(name_scope)
 
@@ -290,8 +289,7 @@ def create_optimizer(cfg, params):
 
 
 def train(args, fake_data_reader, to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     config = parse_config(args.config)
     train_config = merge_configs(config, 'train', vars(args))
@@ -348,25 +346,25 @@ def train(args, fake_data_reader, to_static):
                 optimizer.minimize(avg_loss)
                 video_model.clear_gradients()
 
-                total_loss += avg_loss.numpy()[0]
-                total_acc1 += acc_top1.numpy()[0]
-                total_acc5 += acc_top5.numpy()[0]
+                total_loss += float(avg_loss)
+                total_acc1 += float(acc_top1)
+                total_acc5 += float(acc_top5)
                 total_sample += 1
 
                 print(
                     'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
                         epoch,
                         batch_id,
-                        avg_loss.numpy()[0],
-                        acc_top1.numpy()[0],
-                        acc_top5.numpy()[0],
+                        float(avg_loss),
+                        float(acc_top1),
+                        float(acc_top5),
                     )
                 )
                 ret.extend(
                     [
-                        avg_loss.numpy()[0],
-                        acc_top1.numpy()[0],
-                        acc_top5.numpy()[0],
+                        float(avg_loss),
+                        float(acc_top1),
+                        float(acc_top5),
                     ]
                 )
 

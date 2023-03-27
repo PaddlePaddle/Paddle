@@ -170,7 +170,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
 
-    if (new_desc.HasAttr("begin_norm_axis")) {
+    if (layer_norm->Op()->HasAttr("begin_norm_axis")) {
       int32_t begin_norm_axis = PADDLE_GET_CONST(
           int32_t, layer_norm->Op()->GetAttr("begin_norm_axis"));
       int32_t input_rank =

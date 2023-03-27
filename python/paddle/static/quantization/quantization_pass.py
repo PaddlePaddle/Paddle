@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import logging
 
 import numpy as np
 
@@ -27,11 +28,16 @@ from ...fluid.framework import IrGraph, IrNode
 from ...framework import _get_paddle_place, core
 from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
+from ..log_helper import get_logger
 from . import utils
 from .quant_config import (
     SUPPORT_ACT_QUANTIZATION_OP_DICT,
     SUPPORT_QUANTIZATION_OP_DICT,
     SUPPORT_WEIGHT_QUANTIZATION_OP_DICT,
+)
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 _fake_quant_op_list = [
@@ -411,7 +417,7 @@ class QuantizationTransformPass:
             ):
                 _quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
@@ -2718,7 +2724,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             ):
                 self._quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
@@ -2884,6 +2890,19 @@ class AddQuantDequantPassV2:
                         )
                         if in_node.persistable():
                             continue
+
+                        if in_node.dtype() not in [
+                            paddle.float64,
+                            paddle.float32,
+                            paddle.float16,
+                        ]:
+                            _logger.warning(
+                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
+                                    op_node.name()
+                                )
+                            )
+                            break
+
                         if arg_name in dequantized_vars_map:
                             dequant_var_node = dequantized_vars_map[arg_name]
                         else:
@@ -3197,7 +3216,7 @@ class QuantWeightPass:
 
                 for next_op_node in out_node.outputs:
                     graph.update_input_link(out_node, x_node, next_op_node)
-                graph.safe_remove_nodes(out_node)
+                graph.safe_remove_nodes(_op)
         self._remove_unused_var_nodes(graph)
 
     def _remove_unused_var_nodes(self, graph):
@@ -3277,9 +3296,9 @@ class AddQuantDequantForInferencePass:
                         op_node.outputs, var_name
                     )
                     if out_node.dtype() not in [
-                        core.VarDesc.VarType.FP64,
-                        core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16,
+                        paddle.float64,
+                        paddle.float32,
+                        paddle.float16,
                     ]:
                         continue
                     if var_name in dequantized_vars_map:
@@ -3298,7 +3317,10 @@ class AddQuantDequantForInferencePass:
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if var_name in dequant_node_map:
+                    if (
+                        var_name in dequant_node_map
+                        and dequant_node_map[var_name]
+                    ):
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name
                         )
@@ -3324,31 +3346,41 @@ class AddQuantDequantForInferencePass:
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        if not self._calibration_range_dict:
+
+        try:
             scale_var_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(), self._scale_name(var_name)
             )
-        elif var_name in self._calibration_range_dict:
-            scale_value = self._calibration_range_dict[var_name]
-            scale_var_node = graph.create_persistable_node(
-                name=self._scale_name(var_name),
-                var_type=var_node.type(),
-                shape=[1],
-                var_dtype=var_node.dtype(),
-            )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
-            _init_var_node(
-                scale_var_node,
-                np.array(scale_value, dtype=data_type),
-                self._scope,
-                self._place,
-            )
-        else:
-            return None
+        except:
+            if (
+                self._calibration_range_dict
+                and var_name in self._calibration_range_dict
+            ):
+                scale_value = self._calibration_range_dict[var_name]
+                scale_var_node = graph.create_persistable_node(
+                    name=self._scale_name(var_name),
+                    var_type=var_node.type(),
+                    shape=[1],
+                    var_dtype=var_node.dtype(),
+                )
+                data_type = (
+                    'float64'
+                    if var_node.dtype() == core.VarDesc.VarType.FP64
+                    else 'float32'
+                )
+                _init_var_node(
+                    scale_var_node,
+                    np.array(scale_value, dtype=data_type),
+                    self._scope,
+                    self._place,
+                )
+            else:
+                _logger.warning(
+                    "Cannot find the target node {} in scope, so skip adding quant node.".format(
+                        var_name
+                    )
+                )
+                return None
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),

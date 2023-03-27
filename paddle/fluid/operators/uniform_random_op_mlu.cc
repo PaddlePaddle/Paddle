@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -68,7 +68,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);

@@ -34,7 +34,6 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
@@ -42,7 +41,6 @@ from paddle.fluid.dygraph.base import (
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
-    CONVERSION_OPTIONS,
     add_ignore_module,
 )
 from .dy2static.program_translator import (
@@ -57,7 +55,7 @@ from paddle.jit.translated_layer import (
     INFER_PARAMS_INFO_SUFFIX,
     INFER_PROPERTY_SUFFIX,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
@@ -74,8 +72,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
-__all__ = []
+from paddle.fluid.io import save_inference_model
 
 
 def create_program_from_desc(program_desc):
@@ -129,6 +126,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           from paddle.jit.api import dygraph_to_static_func
@@ -142,7 +140,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -160,7 +158,7 @@ def _dygraph_to_static_func_(dygraph_func):
         if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set ProgramTranslator.enable to False. "
+                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
                 "We will just return dygraph output."
             )
             return dygraph_func(*args, **kwargs)
@@ -350,7 +348,7 @@ def not_to_static(func=None):
         return not_to_static
 
     options = ConversionOptions(not_convert=True)
-    setattr(func, CONVERSION_OPTIONS, options)
+    options.attach(func)
     return func
 
 
@@ -511,7 +509,9 @@ def _get_input_var_names(inputs, input_spec):
     )
     result_list = []
     input_var_names = [
-        var.name for var in flatten(inputs) if isinstance(var, Variable)
+        var.name
+        for var in paddle.utils.flatten(inputs)
+        if isinstance(var, Variable)
     ]
     if input_spec is None:
         # no prune
@@ -564,7 +564,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         )
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in flatten(outputs):
+    for var in paddle.utils.flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
@@ -911,7 +911,7 @@ def save(layer, path, input_spec=None, **configs):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
+            "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
         )
 
     if not (
@@ -972,7 +972,7 @@ def save(layer, path, input_spec=None, **configs):
                 % type(input_spec)
             )
         inner_input_spec = []
-        for var in flatten(input_spec):
+        for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
@@ -993,7 +993,7 @@ def save(layer, path, input_spec=None, **configs):
         configs._program_only = True
 
     scope = core.Scope()
-    extra_var_info = dict()
+    extra_var_info = {}
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
@@ -1036,7 +1036,7 @@ def save(layer, path, input_spec=None, **configs):
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
@@ -1069,7 +1069,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
             else:
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
@@ -1099,8 +1099,8 @@ def save(layer, path, input_spec=None, **configs):
             # structured name, the buffer variable (non-persistable)
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
-            state_names_dict = dict()
-            state_var_dict = dict()
+            state_names_dict = {}
+            state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
@@ -1126,7 +1126,7 @@ def save(layer, path, input_spec=None, **configs):
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
+                    extra_info_dict = {}
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name
@@ -1162,8 +1162,6 @@ def save(layer, path, input_spec=None, **configs):
         )
 
         # 5. save inference model
-        from paddle.fluid.io import save_inference_model
-
         # construct new save_inference_model arguments
         model_path = dirname
         # NOTE(chenweihang): because prefix contains model and params filename,
@@ -1212,7 +1210,11 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(
                 Executor(_current_expected_place()),
                 dirname=model_path,
-                vars=list(filter(paddle.fluid.io.is_persistable, ordered_vars)),
+                vars=list(
+                    filter(
+                        paddle.framework.io_utils.is_persistable, ordered_vars
+                    )
+                ),
                 filename=params_filename,
             )
         # save property
@@ -1616,7 +1618,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
@@ -1681,11 +1683,8 @@ class TracedLayer:
     @switch_to_static_graph
     def _compile(self):
         self._compiled_program = CompiledProgram(
-            self._program
-        ).with_data_parallel(
+            self._program,
             build_strategy=self._build_strategy,
-            exec_strategy=self._exec_strategy,
-            places=self._place,
         )
 
     def _build_feed(self, inputs):
@@ -1818,8 +1817,6 @@ class TracedLayer:
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
-
-        from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:

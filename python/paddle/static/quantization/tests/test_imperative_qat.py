@@ -21,7 +21,7 @@ import numpy as np
 from imperative_test_utils import ImperativeLenet, fix_model_dict
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.framework import core, set_flags
 from paddle.nn import Conv2D, Conv2DTranspose
 from paddle.nn.quant.quant_layers import (

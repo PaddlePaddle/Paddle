@@ -18,9 +18,9 @@ import numpy as np
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle import _legacy_C_ops, tensor
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
@@ -175,7 +175,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
-        # self.attn_mask_type = np.bool
+        # self.attn_mask_type = np.bool_
         self.pre_layer_norm = True
         self.has_attn_mask = True
 

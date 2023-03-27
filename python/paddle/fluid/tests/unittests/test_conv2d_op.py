@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -713,8 +712,8 @@ class TestConv2DOpError(unittest.TestCase):
             def test_dtype():
                 # the input dtype of conv2d must be float16 or float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
                 paddle.static.nn.conv2d(x2, 1, 1)
 

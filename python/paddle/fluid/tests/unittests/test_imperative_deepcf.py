@@ -21,13 +21,13 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
-class DMF(fluid.Layer):
+class DMF(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -78,7 +78,7 @@ class DMF(fluid.Layer):
         return paddle.multiply(users, items)
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -105,15 +105,13 @@ class MLP(fluid.Layer):
     def forward(self, users, items):
         users = self._user_latent(users)
         items = self._item_latent(items)
-        match_vec = fluid.layers.concat(
-            [users, items], axis=len(users.shape) - 1
-        )
+        match_vec = paddle.concat([users, items], axis=len(users.shape) - 1)
         for l in self._match_layers:
             match_vec = l(match_vec)
         return match_vec
 
 
-class DeepCF(fluid.Layer):
+class DeepCF(paddle.nn.Layer):
     def __init__(self, num_users, num_items, matrix):
         super().__init__()
         self._num_users = num_users
@@ -123,7 +121,7 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+            default_initializer=paddle.nn.initializer.Assign(matrix),
         )
         self._rating_matrix.stop_gradient = True
 
@@ -144,7 +142,7 @@ class DeepCF(fluid.Layer):
 
         mlp_predictive = self._mlp(users_emb, items_emb)
         dmf_predictive = self._dmf(users_emb, items_emb)
-        predictive = fluid.layers.concat(
+        predictive = paddle.concat(
             [mlp_predictive, dmf_predictive], axis=len(mlp_predictive.shape) - 1
         )
         prediction = self._match_fc(predictive)
@@ -192,12 +190,12 @@ class TestDygraphDeepCF(unittest.TestCase):
 
     def load_data(self):
         sys.stderr.write('loading from %s\n' % self.data_path)
-        likes = dict()
+        likes = {}
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:
             for l in f.readlines():
-                uid, iid, rating = [int(v) for v in l.split('\t')]
+                uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
                 if float(rating) > 0.0:
@@ -264,9 +262,9 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
-            users = fluid.layers.data('users', [1], dtype='int32')
-            items = fluid.layers.data('items', [1], dtype='int32')
-            labels = fluid.layers.data('labels', [1], dtype='float32')
+            users = paddle.static.data('users', [-1, 1], dtype='int32')
+            items = paddle.static.data('items', [-1, 1], dtype='int32')
+            labels = paddle.static.data('labels', [-1, 1], dtype='float32')
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)

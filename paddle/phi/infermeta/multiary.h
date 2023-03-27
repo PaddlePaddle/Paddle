@@ -44,19 +44,25 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
                        const MetaTensor& learning_rate,
+                       const MetaTensor& master_param,
                        float rho,
                        float epsilon,
+                       bool multi_precision,
                        MetaTensor* param_out,
                        MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out);
+                       MetaTensor* avg_squared_update_out,
+                       MetaTensor* master_param_outs);
 
 void AdagradInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
+                      const MetaTensor& master_param,
                       float epsilon,
+                      bool multi_precision,
                       MetaTensor* param_out,
-                      MetaTensor* moment_out);
+                      MetaTensor* moment_out,
+                      MetaTensor* master_param_out);
 
 void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& grad,
@@ -64,12 +70,15 @@ void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& moment,
                      const MetaTensor& inf_norm,
                      const MetaTensor& beta1_pow,
+                     const MetaTensor& master_param,
                      float beta1,
                      float beta2,
                      float epsilon,
+                     bool multi_precision,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out);
+                     MetaTensor* inf_norm_out,
+                     MetaTensor* master_param_outs);
 
 void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
@@ -251,6 +260,14 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
+                                      const MetaTensor& dout,
+                                      const MetaTensor& dweight,
+                                      const MetaTensor& dbias,
+                                      bool multi_precision,
+                                      MetaTensor* dweight_out,
+                                      MetaTensor* dbias_out);
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
@@ -342,6 +359,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
+                       DataType dtype,
                        MetaTensor* out);
 
 void MergedAdamInferMeta(
@@ -421,14 +439,17 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
                       const MetaTensor& mean_grad,
+                      const MetaTensor& master_param,
                       float epsilon,
                       float decay,
                       float momentum,
                       bool centered,
+                      bool multi_precision,
                       MetaTensor* param_out,
                       MetaTensor* moment_out,
                       MetaTensor* mean_square_out,
-                      MetaTensor* mean_grad_out);
+                      MetaTensor* mean_grad_out,
+                      MetaTensor* master_param_outs);
 
 void RnnInferMeta(const MetaTensor& x,
                   const std::vector<const MetaTensor*>& pre_state,
@@ -533,6 +554,31 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
+void FusedAdamInferMeta(
+    const std::vector<const MetaTensor*>& params,
+    const std::vector<const MetaTensor*>& grads,
+    const MetaTensor& learning_rate,
+    const std::vector<const MetaTensor*>& moments1,
+    const std::vector<const MetaTensor*>& moments2,
+    const std::vector<const MetaTensor*>& beta1_pows,
+    const std::vector<const MetaTensor*>& beta2_pows,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_params,
+    const MetaTensor& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    int chunk_size,
+    float weight_decay,
+    bool use_adamw,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> params_out,
+    std::vector<MetaTensor*> moments1_out,
+    std::vector<MetaTensor*> moments2_out,
+    std::vector<MetaTensor*> beta1_pows_out,
+    std::vector<MetaTensor*> beta2_pows_out,
+    std::vector<MetaTensor*> master_params_out);
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -541,5 +587,23 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias1,
                   const std::string& act_type,
                   MetaTensor* out);
+
+void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
+                                       const MetaTensor& key,
+                                       const MetaTensor& value,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& cu_seqlens_q,
+                                       const MetaTensor& cu_seqlens_k,
+                                       const MetaTensor& causal_diagonal,
+                                       const MetaTensor& seqlen_k,
+                                       const Scalar& max_seqlen_q,
+                                       const Scalar& max_seqlen_k,
+                                       const bool causal,
+                                       const double dropout_p,
+                                       const float scale,
+                                       const bool is_test,
+                                       MetaTensor* output,
+                                       MetaTensor* logsumexp,
+                                       MetaTensor* seed_and_offset);
 
 }  // namespace phi

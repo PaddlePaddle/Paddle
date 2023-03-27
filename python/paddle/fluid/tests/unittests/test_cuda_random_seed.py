@@ -21,8 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 @unittest.skipIf(
@@ -120,15 +120,15 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = paddle.static.nn.fc(
                 x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0
+                weight_attr=paddle.nn.initializer.TruncatedNormal(
+                    mean=0.0, std=2.0
                 ),
             )
             result_2 = paddle.static.nn.fc(
                 x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0
+                weight_attr=paddle.nn.initializer.TruncatedNormal(
+                    mean=0.0, std=2.0
                 ),
             )
 

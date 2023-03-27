@@ -19,7 +19,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
@@ -43,7 +43,7 @@ from paddle.fluid.optimizer import (
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 
@@ -182,10 +182,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = paddle.mean(cost)

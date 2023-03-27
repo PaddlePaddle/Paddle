@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -94,7 +94,7 @@ class TestCase5(TestCase1):
 class API_TestSplit(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            data = paddle.static.data('data', shape=[-1, 10], dtype='float32')
             x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
@@ -108,7 +108,7 @@ class API_TestSplit(unittest.TestCase):
 class API_TestSplit2(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            data = paddle.static.data('data', shape=[-1, 10], dtype='float32')
             x0, x1 = paddle.split(data, num_or_sections=2, axis=1)
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)

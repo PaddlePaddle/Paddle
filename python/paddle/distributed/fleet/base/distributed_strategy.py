@@ -22,6 +22,12 @@ from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
+protobuf_version = google.protobuf.__version__
+if protobuf_version >= "4.21.0":
+    from google._upb import _message
+else:
+    from google.protobuf.pyext import _message
+
 __all__ = []
 
 non_auto_func_called = True
@@ -56,7 +62,8 @@ def assign_configs_value(msg, config):
                 # LABEL_REPEATED = 3
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
-                    getattr(msg, f.name).extend(config[f.name])
+                    if config[f.name] is not None:
+                        getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 
@@ -104,7 +111,6 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
@@ -261,7 +267,7 @@ class DistributedStrategy:
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
             if f.name == 'reduce_strategy':
-                value = ReduceStrategyFluid(value)
+                value = paddle.static.BuildStrategy.ReduceStrategy(value)
             setattr(build_strategy, f.name, value)
         return build_strategy
 
@@ -1667,6 +1673,8 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+
         Examples:
             .. code-block:: python
 
@@ -1675,7 +1683,8 @@ class DistributedStrategy:
                 strategy.hybrid_configs = {
                     "dp_degree": 1,
                     "mp_degree": 2,
-                    "pp_degree": 1}
+                    "pp_degree": 1,
+                    "order":['dp','pp','sharding','mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)
@@ -2498,7 +2507,7 @@ class DistributedStrategy:
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                    _message.RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

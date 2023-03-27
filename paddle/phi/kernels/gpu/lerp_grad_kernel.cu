@@ -77,9 +77,15 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
 bool XYNeedReduce(const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  auto x_dims =
+      x.dims().size() ? x.dims() : make_ddim(std::vector<int64_t>(1, 1));
+  auto y_dims =
+      y.dims().size() ? y.dims() : make_ddim(std::vector<int64_t>(1, 1));
+
   auto out_dims = out.dims();
+  if (out_dims.size() == 0) {
+    return false;
+  }
   int x_rank = x_dims.size();
   int y_rank = y_dims.size();
   int out_rank = out_dims.size();
@@ -166,10 +172,10 @@ void LerpGradKernel(const Context& ctx,
   const int rank = out.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
-          "greater than or equal to 1, but the value received is %d.",
+          "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -231,9 +237,12 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
+    auto zero_dim = make_ddim(std::vector<int64_t>(1, 1));
     if (x_grad) {
       std::vector<int> reduce_axis_x =
-          funcs::GetReduceDim(x_grad->dims(), b_xgrad.dims(), -1);
+          funcs::GetReduceDim(x_grad->dims().size() ? x_grad->dims() : zero_dim,
+                              b_xgrad.dims(),
+                              -1);
       if (!reduce_axis_x.empty()) {
         phi::funcs::
             ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
@@ -245,7 +254,9 @@ void LerpGradKernel(const Context& ctx,
 
     if (y_grad) {
       std::vector<int> reduce_axis_y =
-          funcs::GetReduceDim(y_grad->dims(), b_ygrad.dims(), -1);
+          funcs::GetReduceDim(y_grad->dims().size() ? y_grad->dims() : zero_dim,
+                              b_ygrad.dims(),
+                              -1);
       if (!reduce_axis_y.empty()) {
         phi::funcs::
             ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(

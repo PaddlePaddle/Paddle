@@ -18,7 +18,7 @@ from operator import __add__, __mul__, __sub__, __truediv__
 import numpy as np
 
 import paddle
-import paddle.sparse as sparse
+from paddle import sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
@@ -43,7 +43,6 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     """
 
     def setUp(self):
-        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         np.random.seed(2022)
         self.op_list = op_list
         self.csr_shape = [128, 256]
@@ -109,7 +108,9 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                     y, dtype=dtype, stop_gradient=False
                 )
                 coo_x = s_dense_x.to_sparse_coo(sparse_dim)
+                coo_x.retain_grads()
                 coo_y = s_dense_y.to_sparse_coo(sparse_dim)
+                coo_y.retain_grads()
 
                 actual_res = get_actual_res(coo_x, coo_y, op)
                 actual_res.backward(actual_res)
@@ -157,9 +158,12 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         sp_a = sparse.sparse_coo_tensor(
             indices_data, values1_data, shape, stop_gradient=False
         )
+        sp_a.retain_grads()
+
         sp_b = sparse.sparse_coo_tensor(
             indices_data, values2_data, shape, stop_gradient=False
         )
+        sp_b.retain_grads()
 
         values1 = paddle.to_tensor(values1_data, stop_gradient=False)
         values2 = paddle.to_tensor(values2_data, stop_gradient=False)
@@ -185,6 +189,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         sp_a = sparse.sparse_coo_tensor(
             indices_data, values_data, shape, stop_gradient=False
         )
+        sp_a.retain_grads()
 
         bias_values = [1.0, 2.0]
 

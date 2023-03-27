@@ -18,10 +18,10 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self._linear1 = paddle.nn.Linear(
@@ -56,9 +56,7 @@ class TestDygraphFramework(unittest.TestCase):
     def test_dygraph_backward(self):
         with new_program_scope():
             mlp = MLP(input_size=2)
-            var_inp = fluid.layers.data(
-                "input", shape=[2, 2], dtype="float32", append_batch_size=False
-            )
+            var_inp = paddle.static.data("input", shape=[2, 2], dtype="float32")
             out = mlp(var_inp)
             try:
                 out.backward()

@@ -19,12 +19,11 @@ import numpy as np
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
-import multiprocessing
 import unittest
 from functools import reduce
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -32,8 +31,8 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 def simple_fc_net():
-    image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    image = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = image
     for _ in range(4):
         hidden = paddle.static.nn.fc(
@@ -41,7 +40,7 @@ def simple_fc_net():
             size=200,
             activation='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
@@ -81,13 +80,6 @@ class TestExecutor(unittest.TestCase):
                 with fluid.scope_guard(fluid.Scope()):
                     with fluid.unique_name.guard():
                         self.executor_main()
-
-        for p in places:
-            self.place = p
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                with fluid.scope_guard(fluid.Scope()):
-                    with fluid.unique_name.guard():
-                        self.pe_main()
 
     def prepare_feed(self, image, label, dev_cnt=1):
         batch_size = 32 * dev_cnt
@@ -178,48 +170,6 @@ class TestExecutor(unittest.TestCase):
             self.assertScopeVar(
                 fluid.global_scope(), persistables, non_persistables
             )
-
-    def pe_main(self):
-        image, label, loss = simple_fc_net()
-        loss.persistable = False
-        persistables, non_persistables = get_persistables_and_non_persistables(
-            fluid.default_main_program(), [loss.name]
-        )
-        self.assert_gc_vars(
-            fluid.default_main_program(), [loss.name], non_persistables
-        )
-
-        exe = fluid.Executor(self.place)
-        exe.run(fluid.default_startup_program())
-
-        exec_strategy = fluid.ExecutionStrategy()
-        exec_strategy.num_iteration_per_drop_scope = 100
-
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.memory_optimize = False
-        build_strategy.enable_inplace = False
-
-        prog = fluid.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(loss_name=loss.name, exec_strategy=exec_strategy)
-
-        dev_cnt = (
-            fluid.core.get_cuda_device_count()
-            if isinstance(self.place, fluid.CUDAPlace)
-            else int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-        )
-
-        for idx in range(10):
-            image_np, label_np = self.prepare_feed(image, label, dev_cnt)
-            feed = {image.name: image_np, label.name: label_np}
-
-            exe.run(program=prog, feed=feed, fetch_list=[loss])
-
-            local_scopes = prog._local_scopes
-            for scope in local_scopes:
-                kids = scope._kids()
-                self.assertTrue(len(kids) == 1)
-                self.assertScopeVar(kids[0], persistables, non_persistables)
 
 
 if __name__ == '__main__':

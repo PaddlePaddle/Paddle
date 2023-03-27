@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
@@ -84,8 +84,8 @@ class TestCase1(TestGatherOp):
 class API_TestGather(unittest.TestCase):
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float32')
-            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float32')
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             out = paddle.gather(data1, index)
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -101,8 +101,8 @@ class API_TestGather(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float32')
-            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
+            x = paddle.static.data('x', shape=[-1, 2], dtype='float32')
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             out = paddle.gather(x, index)
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)

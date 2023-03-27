@@ -26,6 +26,11 @@ using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 XPUOpMap& get_kl1_ops();
 XPUOpMap& get_kl2_ops();
 
+#ifdef PADDLE_WITH_XPU_KP
+bool is_xpu_kp_support_op(const std::string& fluid_op_name,
+                          const phi::DataType type);
+#endif
+
 bool is_in_xpu_black_list(const std::string& fluid_op_name);
 bool is_xpu_support_op(const std::string& fluid_op_name,
                        const phi::DataType type);

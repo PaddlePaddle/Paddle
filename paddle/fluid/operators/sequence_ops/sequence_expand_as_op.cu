@@ -65,11 +65,10 @@ static __global__ void sequence_expand_as_grad_kernel(
 
 template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
-  void operator()(
-      const phi::GPUContext &context,
-      const phi::DenseTensor &x,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out) {
+  void operator()(const phi::GPUContext &context,
+                  const phi::DenseTensor &x,
+                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor *out) {
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 
@@ -84,7 +83,7 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_kernel<<<grid_size, block_size, 0, context.stream()>>>(
         x.data<T>(),
         mixv_ref_lod.CUDAData(context.GetPlace()),
@@ -98,7 +97,7 @@ template <typename T>
 struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
                   const phi::DenseTensor &dout,
-                  const framework::Vector<size_t> &ref_lod, /*expand based lod*/
+                  const phi::Vector<size_t> &ref_lod, /*expand based lod*/
                   phi::DenseTensor *dx) {
     int height = dx->dims()[0];
     int width = phi::product(dx->dims()) / height;
@@ -114,7 +113,7 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_grad_kernel<<<grid_size,
                                      block_size,
                                      0,

@@ -23,15 +23,14 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.optimizer import Adam
 
 paddle.enable_static()
 
 
-class SimpleLSTMRNN(fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self,
         name_scope,
@@ -59,26 +58,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -114,7 +113,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([self._input, pre_hidden], 1)
+                nn = paddle.concat([self._input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -138,14 +137,14 @@ class SimpleLSTMRNN(fluid.Layer):
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
             )
-        real_res = fluid.layers.concat(res, 0)
+        real_res = paddle.concat(res, 0)
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
-        last_hidden = fluid.layers.concat(self.hidden_array, 1)
+        last_hidden = paddle.concat(self.hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(self.cell_array, 1)
+        last_cell = paddle.concat(self.cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
@@ -153,7 +152,7 @@ class SimpleLSTMRNN(fluid.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(
         self,
         name_scope,
@@ -184,7 +183,7 @@ class PtbModel(fluid.Layer):
             embedding_dim=hidden_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -193,7 +192,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -201,7 +200,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -216,7 +215,7 @@ class PtbModel(fluid.Layer):
         )
 
         # NPU 'tok_k' kernel only support `int32` dtype, so cast `input` from `int64` to `int32`.
-        input = fluid.layers.cast(input, "int32")
+        input = paddle.cast(input, "int32")
         x_emb = self.embedding(input)
         x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
@@ -281,23 +280,27 @@ class TestSaveLoadBase(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -342,7 +345,9 @@ class TestSaveLoadBase(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -356,7 +361,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(temp_dir.name, "test_1.pdparams"),
                 exe,
@@ -406,16 +411,20 @@ class TestSaveLoadPartial(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -431,8 +440,8 @@ class TestSaveLoadPartial(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -477,7 +486,9 @@ class TestSaveLoadPartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -491,7 +502,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 test_program, os.path.join(temp_dir.name, "test_1.pdopt"), None
             )
 
@@ -502,7 +513,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     )
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, base_t)
-            fluid.load(
+            paddle.static.load(
                 test_program,
                 os.path.join(temp_dir.name, "test_1.pdmodel"),
                 None,
@@ -544,23 +555,27 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -605,7 +620,9 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -619,7 +636,9 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, os.path.join(temp_dir.name, "test_1"), exe)
+            paddle.static.load(
+                main_program, os.path.join(temp_dir.name, "test_1"), exe
+            )
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -665,16 +684,20 @@ class TestProgramStatePartial(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -690,8 +713,8 @@ class TestProgramStatePartial(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -736,7 +759,9 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, 'test_1'))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, 'test_1')
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -751,23 +776,23 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # fluid.load(test_program, "./test_1", None )
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1')
             )
 
-            program_state_1 = fluid.load_program_state(
+            program_state_1 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdparams')
             )
 
-            program_state_2 = fluid.load_program_state(
+            program_state_2 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdopt')
             )
 
-            program_state_3 = fluid.load_program_state(
+            program_state_3 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdmodel')
             )
 
-            fluid.set_program_state(test_program, program_state)
+            paddle.static.set_program_state(test_program, program_state)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -789,7 +814,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_1)
+            paddle.static.set_program_state(test_program, program_state_1)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -811,7 +836,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_2)
+            paddle.static.set_program_state(test_program, program_state_2)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -833,7 +858,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_3)
+            paddle.static.set_program_state(test_program, program_state_3)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -855,7 +880,7 @@ class TestVariableInit(unittest.TestCase):
 
     def test_variable_init(self):
 
-        x = fluid.data(name="x", shape=[10, 10], dtype='float32')
+        x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
         y = paddle.static.nn.fc(x, 10)
         z = paddle.static.nn.fc(y, 10)
 
@@ -864,7 +889,7 @@ class TestVariableInit(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         temp_dir = tempfile.TemporaryDirectory()
-        fluid.save(
+        paddle.static.save(
             fluid.default_main_program(),
             os.path.join(temp_dir.name, "test_path"),
         )
@@ -889,7 +914,7 @@ class TestVariableInit(unittest.TestCase):
         place = self.set_place()
         exe = fluid.Executor(place)
         parameter_list = list(
-            filter(fluid.io.is_parameter, program.list_vars())
+            filter(paddle.framework.is_parameter, program.list_vars())
         )
 
         fluid.core._create_loaded_parameter(
@@ -909,7 +934,10 @@ class TestVariableInit(unittest.TestCase):
             set_var(new_v, load_dict[v.name])
 
         opt_list = list(
-            filter(fluid.io.is_belong_to_optimizer, program.list_vars())
+            filter(
+                paddle.framework.io_utils.is_belong_to_optimizer,
+                program.list_vars(),
+            )
         )
 
         fluid.core._create_loaded_parameter(
@@ -992,16 +1020,20 @@ class TestLoadFromOldInterface(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1009,8 +1041,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             test_clone_program = fluid.default_main_program().clone()
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1072,7 +1104,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program, os.path.join(self.temp_dir.name, "test_path"), exe
             )
 
@@ -1092,7 +1124,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     var.desc.set_shape(new_shape)
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     os.path.join(self.temp_dir.name, "test_path"),
                     exe,
@@ -1100,7 +1132,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             # check unused parameter
 
-            fluid.load(
+            paddle.static.load(
                 test_clone_program,
                 os.path.join(self.temp_dir.name, "test_path"),
                 exe,
@@ -1131,25 +1163,28 @@ class TestLoadFromOldInterface(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
-
+            init_cell.desc.set_need_check_feed(False)
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
 
             test_clone_program = fluid.default_main_program().clone()
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1216,7 +1251,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(self.temp_dir.name, "test_static_load_var_list"),
                 exe,
@@ -1271,23 +1306,27 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1350,11 +1389,11 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             file_model_path = os.path.join(save_dir, "model_single")
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 file_model_path,
                 exe,
-                fluid.io.get_program_persistable_vars(main_program),
+                paddle.static.io.get_program_persistable_vars(main_program),
             )
 
             for var in main_program.list_vars():
@@ -1376,36 +1415,33 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     var.desc.set_shape(new_shape)
 
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
-            fluid.io.save_params(
-                exe, "test_path", main_program, filename="model_single"
-            )
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
             # check when executor is None
             with self.assertRaises(ValueError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     None,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
             # check when var list is None
             with self.assertRaises(ValueError):
-                fluid.load(main_program, file_model_path, exe, None)
+                paddle.static.load(main_program, file_model_path, exe, None)
 
             # check save params, load var_list = get_program_persistable_vars
             with self.assertRaises(RuntimeError):
@@ -1413,7 +1449,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program.global_block(), shape=[1], name="test_temp_var"
                 )
                 all_var_list = list(main_program.list_vars())
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
@@ -1462,16 +1498,20 @@ class TestProgramStateOldSave(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1487,8 +1527,8 @@ class TestProgramStateOldSave(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1548,8 +1588,8 @@ class TestProgramStateOldSave(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # case 1: load basic
-            program_state = fluid.load_program_state(save_dir)
-            fluid.set_program_state(main_program, program_state)
+            program_state = paddle.static.load_program_state(save_dir)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
             # case 2: load with no need file
@@ -1563,21 +1603,21 @@ class TestProgramStateOldSave(unittest.TestCase):
                     else:
                         raise e
 
-            program_state = fluid.load_program_state(save_dir)
-            fluid.set_program_state(main_program, program_state)
+            program_state = paddle.static.load_program_state(save_dir)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
             # case 3: load with var_list
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 save_dir, main_program.all_parameters()
             )
-            fluid.set_program_state(main_program, program_state)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
         if self.test_dygraph:
             # make sure `load_program_state` can be used in dynamic graph mode
             with fluid.dygraph.guard(place):
-                load_state = fluid.load_program_state(save_dir)
+                load_state = paddle.static.load_program_state(save_dir)
                 for k, v in load_state.items():
                     np.testing.assert_array_equal(base_map[k], v)
 
@@ -1634,16 +1674,20 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1659,8 +1703,8 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1723,11 +1767,13 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # fluid.load(test_program, "./test_1", None )
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 os.path.join(save_dir, "model_1"),
-                var_list=fluid.io.get_program_persistable_vars(main_program),
+                var_list=paddle.static.io.get_program_persistable_vars(
+                    main_program
+                ),
             )
-            fluid.set_program_state(main_program, program_state)
+            paddle.static.set_program_state(main_program, program_state)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -1738,15 +1784,17 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     np.testing.assert_array_equal(new_t, base_t)
 
             with self.assertRaises(ValueError):
-                fluid.load_program_state(os.path.join(save_dir, "model_1"))
+                paddle.static.load_program_state(
+                    os.path.join(save_dir, "model_1")
+                )
 
             with self.assertRaises(TypeError):
-                fluid.load_program_state(
+                paddle.static.load_program_state(
                     os.path.join(save_dir, "model_1"), var_list=["str"]
                 )
 
             with self.assertRaises(RuntimeError):
-                fluid.load_program_state(
+                paddle.static.load_program_state(
                     os.path.join(save_dir, "model_1"),
                     var_list=[
                         main_program.global_block().create_var(
@@ -1769,6 +1817,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 shape=[None, 10],
                 dtype='float32',
             )
+            x.desc.set_need_check_feed(False)
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -1791,17 +1840,17 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
             )
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 2.0)
+                paddle.static.save(prog, path, 2.0)
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 1)
+                paddle.static.save(prog, path, 1)
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 5)
+                paddle.static.save(prog, path, 5)
 
             protocols = [2, 3, 4]
             for protocol in protocols:
-                paddle.fluid.save(prog, path, protocol)
+                paddle.static.save(prog, path, protocol)
                 # set var to zero
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
@@ -1815,7 +1864,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                         )
                         self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-                paddle.fluid.load(prog, path)
+                paddle.static.load(prog, path)
 
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
@@ -1838,6 +1887,7 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
         main_program = framework.Program()
         with framework.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = x + x
 
             place = paddle.CPUPlace()

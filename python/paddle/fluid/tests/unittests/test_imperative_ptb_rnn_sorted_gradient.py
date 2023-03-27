@@ -19,9 +19,8 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -59,8 +58,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             sgd = SGDOptimizer(
                 learning_rate=1e-3, parameter_list=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -116,24 +115,28 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 else fluid.CUDAPlace(0)
             )
             sgd = SGDOptimizer(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps, 1], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
-            static_param_name_list = list()
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
             for param in ptb_model.parameters():
                 static_param_name_list.append(param.name)
 

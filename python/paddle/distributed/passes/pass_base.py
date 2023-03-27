@@ -53,6 +53,7 @@ class PassBase(ABC):
 
     _BEFORE_WHITE_LISTS_DICT = {}
     _AFTER_WHITE_LISTS_DICT = {}
+    _PASS_PROCESS_ORDER_LIST = []
 
     name = None
 
@@ -176,6 +177,16 @@ def _fusion_opt_last_rule(pass_before, pass_after):
         return True
 
 
+def _fusion_opt_list_rule(pass_before, pass_after):
+    if (
+        pass_before._type() == PassType.FUSION_OPT
+        and pass_after._type() == PassType.FUSION_OPT
+    ):
+        return _get_list_index(pass_before) < _get_list_index(pass_after)
+    else:
+        return True
+
+
 def _make_rule_from_white_lists_dict(
     before_white_lists_dict, after_white_lists_dict
 ):
@@ -216,6 +227,13 @@ def _make_rule_from_white_lists_dict(
     return rule
 
 
+def _get_list_index(in_pass):
+    assert (
+        in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
+    ), "Pass {} is not in _PASS_PROCESS_ORDER_LIST".format(in_pass.name)
+    return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
+
+
 # The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
 # applied before any of pass [v1, v2, ..., vn] is applied
 PassBase._BEFORE_WHITE_LISTS_DICT = {
@@ -229,8 +247,20 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
     # Add more white lists here
 }
 
+# The index of pass in this list represent the order in which the pass is processed.
+PassBase._PASS_PROCESS_ORDER_LIST = [
+    "fuse_relu_depthwise_conv",
+    "fuse_bn_add_act",
+    "fuse_bn_act",
+    "fused_attention",
+    "fused_feedforward",
+    "fuse_gemm_epilogue",
+    "fuse_optimizer",
+]
+
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
+    _fusion_opt_list_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
     _make_rule_from_white_lists_dict(
         PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
@@ -267,7 +297,17 @@ def _find_longest_path(edges):
             for j in range(n):
                 if dists[i][j] > dists[i][k] + dists[k][j]:
                     dists[i][j] = dists[i][k] + dists[k][j]
-                    paths[i][j] = paths[i][k] + paths[k][j]
+                    if paths[i][k]:
+                        assert paths[i][k][-1] == k
+                    else:
+                        continue
+                    if paths[k][j]:
+                        assert paths[k][j][0] == k
+                    else:
+                        continue
+                    paths[i][j] = (
+                        paths[i][k] + paths[k][j][1:] if paths[k][j] else []
+                    )
                     if dists[i][j] < min_dist:
                         min_dist = dists[i][j]
                         min_path = paths[i][j]

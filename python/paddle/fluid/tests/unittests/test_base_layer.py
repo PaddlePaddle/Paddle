@@ -17,17 +17,16 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import EagerParamBase, ParamBase, in_dygraph_mode
-from paddle.jit import ProgramTranslator
 
 
-class L1(fluid.Layer):
+class L1(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._param_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.1)
+            initializer=paddle.nn.initializer.Constant(value=0.1)
         )
         self.w1 = self.create_parameter(
             attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False
@@ -40,7 +39,7 @@ class L1(fluid.Layer):
         return self.w1 + self.w2
 
 
-class L2(fluid.Layer):
+class L2(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.layer1 = L1()
@@ -50,7 +49,7 @@ class L2(fluid.Layer):
         return self.layer1() + self.layer2()
 
 
-class L3(fluid.Layer):
+class L3(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.layer1 = L2()
@@ -98,7 +97,7 @@ class TestBaseLayer(unittest.TestCase):
 
     def test_add_parameter_with_error(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             param = net.create_parameter(shape=[1])
 
             with self.assertRaises(TypeError):
@@ -122,7 +121,7 @@ class TestBaseLayer(unittest.TestCase):
             net.add_parameter("load_param", load_param)
 
 
-class BufferLayer(fluid.Layer):
+class BufferLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         buffer_var = to_variable(np.zeros([2, 4]).astype('int32'))
@@ -132,7 +131,7 @@ class BufferLayer(fluid.Layer):
         pass
 
 
-class BufferNet(fluid.Layer):
+class BufferNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.buffer_layer = BufferLayer()
@@ -174,7 +173,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_register_buffer_with_error(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var = to_variable(np.zeros([1]))
 
             with self.assertRaisesRegex(
@@ -218,7 +217,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_register_buffer_same_name(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
             var2 = to_variable(np.zeros([2]))
             var3 = to_variable(np.zeros([3]))
@@ -232,7 +231,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_buffer_not_persistable(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
 
             net.register_buffer("buffer_name", var1, persistable=False)
@@ -241,7 +240,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_buffer_not_persistable_del(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
             net.register_buffer("buffer_name", var1, persistable=False)
             del net.buffer_name
@@ -249,7 +248,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_buffer_not_persistable_overwrite(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
             var2 = to_variable(np.zeros([2]))
             net.register_buffer("buffer_name", var1, persistable=False)
@@ -265,7 +264,7 @@ class TestBuffer(unittest.TestCase):
 
     def test_buffer_not_persistable_assign(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
             net.register_buffer("buffer_name", var1, persistable=False)
 
@@ -289,14 +288,14 @@ class TestBuffer(unittest.TestCase):
 
     def test_buffer_not_persistable_load(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([1]))
             net.register_buffer("buffer_name", var1, persistable=False)
             net.load_dict({})
 
     def test_buffer_state_dict(self):
         with fluid.dygraph.guard():
-            net = fluid.Layer()
+            net = paddle.nn.Layer()
             var1 = to_variable(np.zeros([2, 3]))
             var2 = to_variable(np.zeros([3, 2]))
             net.register_buffer("buffer_var1", var1)
@@ -308,7 +307,7 @@ class TestBuffer(unittest.TestCase):
             )
 
             # load state_dict
-            net_load = fluid.Layer()
+            net_load = paddle.nn.Layer()
             var = to_variable(np.ones([2, 3]))
             net_load.register_buffer("buffer_var1", var)
             net_load.load_dict(net.state_dict())
@@ -339,11 +338,10 @@ class BufferNetWithModification(paddle.nn.Layer):
 class TestModifiedBuffer(unittest.TestCase):
     def funcsetUp(self):
         paddle.disable_static()
-        self.prog_trans = ProgramTranslator()
         self.shape = [10, 16]
 
     def _run(self, to_static=False):
-        self.prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         x = paddle.ones([1], 'int32')
         net = BufferNetWithModification(self.shape)

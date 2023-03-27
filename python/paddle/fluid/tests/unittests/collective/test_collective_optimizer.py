@@ -26,8 +26,9 @@
 
 import unittest
 
-import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.collective import (
+import paddle
+from paddle import fluid
+from paddle.incubate.distributed.fleet.collective import (
     CollectiveOptimizer,
     DistributedStrategy,
 )
@@ -61,7 +62,7 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
     def test_amp_strategy(self):
         optimizer = fluid.optimizer.AdamOptimizer()
-        optimizer = fluid.contrib.mixed_precision.decorate(
+        optimizer = paddle.static.amp.decorate(
             optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True
         )
         dist_strategy = DistributedStrategy()
@@ -71,4 +72,5 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

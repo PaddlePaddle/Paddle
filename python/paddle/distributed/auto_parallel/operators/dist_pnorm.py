@@ -14,9 +14,9 @@
 
 import copy
 
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.fluid.framework import Operator
+from paddle.common_ops_import import check_dtype, check_variable_and_dtype
+from paddle.framework import core
+from paddle.static import Operator
 
 from ..dist_attribute import OperatorDistAttr, TensorDistAttr
 from ..process_group import new_process_group
@@ -51,14 +51,14 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
     1. axis == None, isinstance(p, (int, float)), asvector = True
         1.1 x_dims_mapping == [0, -1, -1]
-            allgather input if it is splited by dp group
+            allgather input if it is splitted by dp group
         1.2 x_dims_mapping == [-1, 0, -1]
-            allgather, split and concat input if it is splited by mp group
+            allgather, split and concat input if it is splitted by mp group
     2. isinstance(axis, int), asvector = False
         1.1 axis == 0 and x_dims_mapping == [0, -1, -1]
             allgather input if it's input[0] is splited by dp group.
         1.2 axis == 1 and x_dims_mapping == [-1, 0, -1]
-            allgather, split and concat input if it's input[1] is splited by mp group
+            allgather, split and concat input if it's input[1] is splitted by mp group
     """
 
     def __init__(self, name):
@@ -364,7 +364,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             slice_ends.append(item[1])
             slices_axes.append(idx)
 
-        infer_flags = list(1 for i in range(len(slices_axes)))
+        infer_flags = [1 for i in range(len(slices_axes))]
         attrs = {
             "axes": slices_axes,
             "starts": slice_starts,

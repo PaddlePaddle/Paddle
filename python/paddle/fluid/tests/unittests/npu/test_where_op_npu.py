@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program
@@ -89,11 +89,11 @@ class TestNPUWhereAPI(unittest.TestCase):
                 train_prog = fluid.Program()
                 startup = fluid.Program()
                 with fluid.program_guard(train_prog, startup):
-                    cond = fluid.data(
+                    cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
                     )
-                    x = fluid.data(name='x', shape=self.shape, dtype='float32')
-                    y = fluid.data(name='y', shape=self.shape, dtype='float32')
+                    x = paddle.static.data(name='x', shape=self.shape, dtype='float32')
+                    y = paddle.static.data(name='y', shape=self.shape, dtype='float32')
 
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
@@ -133,8 +133,8 @@ class TestNPUWhereAPI(unittest.TestCase):
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
-            x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 "float32"

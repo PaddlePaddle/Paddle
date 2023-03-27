@@ -21,10 +21,8 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
+from paddle import fluid
 from paddle.fluid.param_attr import ParamAttr
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -36,10 +34,9 @@ if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -63,7 +60,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
             padding=padding,
             groups=num_groups,
             weight_attr=ParamAttr(
-                initializer=MSRA(), name=self.full_name() + "_weights"
+                initializer=paddle.nn.initializer.KaimingUniform(),
+                name=self.full_name() + "_weights",
             ),
             bias_attr=False,
         )
@@ -85,7 +83,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class DepthwiseSeparable(fluid.dygraph.Layer):
+class DepthwiseSeparable(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -122,7 +120,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV1(fluid.dygraph.Layer):
+class MobileNetV1(paddle.nn.Layer):
     def __init__(self, scale=1.0, class_dim=1000):
         super().__init__()
         self.scale = scale
@@ -261,7 +259,8 @@ class MobileNetV1(fluid.dygraph.Layer):
             int(1024 * scale),
             class_dim,
             weight_attr=ParamAttr(
-                initializer=MSRA(), name=self.full_name() + "fc7_weights"
+                initializer=paddle.nn.initializer.KaimingUniform(),
+                name=self.full_name() + "fc7_weights",
             ),
             bias_attr=ParamAttr(name="fc7_offset"),
         )
@@ -277,7 +276,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         return y
 
 
-class InvertedResidualUnit(fluid.dygraph.Layer):
+class InvertedResidualUnit(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -330,7 +329,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         return y
 
 
-class InvresiBlocks(fluid.dygraph.Layer):
+class InvresiBlocks(paddle.nn.Layer):
     def __init__(self, in_c, t, c, n, s):
         super().__init__()
 
@@ -367,7 +366,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV2(fluid.dygraph.Layer):
+class MobileNetV2(paddle.nn.Layer):
     def __init__(self, class_dim=1000, scale=1.0):
         super().__init__()
         self.scale = scale
@@ -494,7 +493,7 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
@@ -605,7 +604,7 @@ def predict_static(args, data):
 
 
 def predict_dygraph(args, data):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     with fluid.dygraph.guard(args.place):
         if args.model == "MobileNetV1":
             model = MobileNetV1(class_dim=args.class_dim, scale=1.0)

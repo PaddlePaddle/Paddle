@@ -17,8 +17,7 @@ import logging
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.framework import IrGraph, core
 from paddle.static.quantization import (
     AddQuantDequantForInferencePass,
     AddQuantDequantPassV2,
@@ -72,16 +71,18 @@ class QuantizationPass(PassBase):
         # TODO: scope and place will be removed,
         # cause params should be initialized by engine module.
         scope = paddle.static.global_scope()
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.framework.CUDAPlace(
+            paddle.distributed.ParallelEnv().dev_id
+        )
 
         # 0. record the relation among blocks
-        parent_idx_dict = dict()
+        parent_idx_dict = {}
         for block in main_program.blocks:
             parent_idx_dict[block.idx] = block.parent_idx
 
         is_test = True if mode != "train" else False
         # 1. Program convert to Graph, and this pass is only for train mode
-        main_graph = framework.IrGraph(
+        main_graph = IrGraph(
             core.Graph(main_program.desc), for_test=mode != "train"
         )
 

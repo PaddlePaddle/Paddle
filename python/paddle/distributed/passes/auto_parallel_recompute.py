@@ -14,8 +14,8 @@
 
 import logging
 
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core, framework, unique_name
 from paddle.fluid.backward import (
     ProgramStats,
     _append_grad_suffix_,
@@ -23,6 +23,8 @@ from paddle.fluid.backward import (
     _get_no_grad_set_name,
     _rename_arg_,
 )
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..auto_parallel.dist_attribute import OperatorDistAttr
 from ..auto_parallel.utils import (
@@ -221,7 +223,8 @@ def _add_needed_descs_to_block(
 
     result_descs = []
     for desc in descs:
-        if isinstance(desc, framework.Operator):
+        # if isinstance(desc, framework.Operator):
+        if isinstance(desc, paddle.static.Operator):
             desc = desc.desc
         if isinstance(desc, tuple):
             desc = desc[0]

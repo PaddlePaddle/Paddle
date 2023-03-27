@@ -496,6 +496,10 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
 template class AccessorWrapper<CommonFeatureValueAccessor>;
 #endif
 
+#ifdef PADDLE_WITH_PSLIB
+template class AccessorWrapper<CommonFeatureValueAccessor>;
+#endif
+
 }  // namespace framework
 }  // namespace paddle
 #endif

@@ -15,21 +15,21 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
 
 
 class TestUnbind(unittest.TestCase):
     def test_unbind(self):
+        paddle.enable_static()
 
-        x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
+        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = fluid.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -40,6 +40,29 @@ class TestUnbind(unittest.TestCase):
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
+
+    def test_unbind_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([2, 3]).astype("float16")
+
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float16")
+                y = paddle.unbind(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0], input[0, :])
+                assert np.array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
         with fluid.dygraph.guard():
@@ -59,11 +82,12 @@ class TestUnbind(unittest.TestCase):
 
 class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
+        paddle.enable_static()
 
-        x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
+        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = fluid.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -101,6 +125,8 @@ class TestUnbindOp(OpTest):
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+        self.python_api = paddle.unbind
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return "float64"
@@ -190,6 +216,7 @@ class TestUnbindBF16Op(OpTest):
                 for i in range(len(self.out))
             ]
         }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return np.uint16
@@ -207,12 +234,17 @@ class TestUnbindBF16Op(OpTest):
 class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = fluid.data(shape=[2, 3], dtype='float32', name='x')
+            x = paddle.static.data(shape=[2, 3], dtype='float32', name='x')
 
             def test_table_Variable():
                 tensor.unbind(input=x, axis=2.0)
 
             self.assertRaises(TypeError, test_table_Variable)
+
+            def test_invalid_axis():
+                tensor.unbind(input=x, axis=2)
+
+            self.assertRaises(ValueError, test_invalid_axis)
 
 
 if __name__ == '__main__':

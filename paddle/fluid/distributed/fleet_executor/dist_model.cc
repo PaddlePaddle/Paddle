@@ -433,10 +433,15 @@ bool DistModel::PrepareFleetExe() {
   executor_desc_ = FleetExecutorDesc();
   executor_desc_.set_cur_rank(config_.local_rank);
   std::unordered_map<int64_t, int64_t> id_to_rank;
+
   for (int i = 0; i < config_.nranks; ++i) {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
-    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    if (config_.nranks == 1) {
+      rank_info->set_ip_port("");
+    } else {
+      rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    }
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));

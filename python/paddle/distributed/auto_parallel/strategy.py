@@ -35,7 +35,7 @@ class BaseConfig:
         for field, default_value in config.items():
             setattr(self, field, default_value)
 
-        # Overide attributes by the config_dict
+        # Override attributes by the config_dict
         if self._config_dict:
             self.from_dict(self._config_dict)
 
@@ -120,9 +120,15 @@ class DatasetConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class FusedPassesConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSED_PASSES
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors.
+    The `Strategy` object is used to configure the parallelization and optimization behaviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -188,3 +194,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.DATASET, None)
         self.dataset = DatasetConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
+        self.fused_passes = FusedPassesConfig(config_dict)

@@ -15,8 +15,7 @@
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import framework
 
 from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number
@@ -138,7 +137,7 @@ class SendRecvMeta:
     def send_meta(self, tensor, group):
         dst_rank = _hcg._get_p2p_next_rank()
 
-        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
+        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
@@ -153,11 +152,13 @@ class SendRecvMeta:
             paddle.distributed.send(nums, dst=dst_rank, group=group)
 
             for d in tensor:
-                assert isinstance(d, (paddle.Tensor, core.eager.Tensor))
+                assert isinstance(
+                    d, (paddle.Tensor, framework.core.eager.Tensor)
+                )
                 self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
-        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
+        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
         elif isinstance(tensor, tuple):
@@ -188,7 +189,7 @@ def _partial_send_op(
     tensor, group, use_calc_stream, ring_id, dst, nranks, rank_id
 ):
     dst_rank_in_group = dst if group is None else group.get_group_rank(dst)
-    if in_dygraph_mode():
+    if framework.in_dygraph_mode():
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None
@@ -259,7 +260,7 @@ def recv_partial(
     else:
         if use_calc_stream:
             recv_op = paddle.distributed.recv
-        elif in_dygraph_mode():
+        elif framework.in_dygraph_mode():
             recv_op = paddle.distributed.irecv
         return recv_op(tensor.detach(), src=src_rank, group=group)
 
@@ -349,6 +350,8 @@ def _p2p_helper(
 
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
     tasks = []
+    if paddle.is_compiled_with_xpu():
+        framework.core.ProcessGroupBKCL.group_start()
     # start to p2p communicate
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
@@ -478,9 +481,11 @@ def _p2p_helper(
                 )
             else:
                 tasks.append(task)
+    if paddle.is_compiled_with_xpu():
+        framework.core.ProcessGroupBKCL.group_end()
 
     if not sync_recv:
-        if in_dygraph_mode():
+        if framework.in_dygraph_mode():
             # wait irecv tasks in eager dygraph mode with new comm library
             for task in tasks:
                 assert task is not None

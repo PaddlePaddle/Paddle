@@ -15,7 +15,7 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -34,7 +34,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_trainer(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -43,10 +43,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32'
-        )
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -67,7 +65,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -76,10 +74,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32'
-        )
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')

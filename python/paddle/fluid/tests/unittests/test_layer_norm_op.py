@@ -17,16 +17,13 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import _set_use_system_allocator
+from eager_op_test import _set_use_system_allocator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    _keep_layer_norm_scale_bias_to_fp32,
-)
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
+from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 paddle.enable_static()
 
@@ -267,8 +264,8 @@ class TestLayerNormOp(unittest.TestCase):
             test_with_place(place, shape, begin_norm_axis)
 
     def test_check_forward_backward_with_scale_and_bias(self):
-        self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
+        self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(
             shape=[2, 3, 4, 5],
             begin_norm_axis=1,
@@ -292,6 +289,7 @@ class TestLayerNormOp(unittest.TestCase):
             shape=[92, 513, 129], begin_norm_axis=2, y_grad_scale=0.1
         )
         self.check_forward_backward(shape=[3, 34, 1134], begin_norm_axis=2)
+        self.check_forward_backward(shape=[3, 2, 1133], begin_norm_axis=2)
         self.check_forward_backward(
             shape=[92, 513, 1134], begin_norm_axis=2, y_grad_scale=0.1
         )
@@ -335,12 +333,7 @@ class TestLayerNormOp(unittest.TestCase):
 
 class TestLayerNormAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.layers.data(
-            name='x',
-            shape=[64, 32, 256],
-            dtype='float32',
-            append_batch_size=False,
-        )
+        x = paddle.static.data(name='x', shape=[64, 32, 256], dtype='float32')
         x = paddle.static.nn.layer_norm(
             x,
             scale=True,
@@ -382,7 +375,9 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
 
             # the input dtype of LayerNorm must be float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 32, 32], dtype="int32"
+            )
             self.assertRaises(TypeError, layer_norm, x2)
 
 
@@ -492,6 +487,83 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
         self.assertFalse(_keep_layer_norm_scale_bias_to_fp32())
         _keep_layer_norm_scale_bias_to_fp32(True)
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
+
+
+class TestFastMathLayerNormOp(unittest.TestCase):
+    def check_layer_norm(
+        self, dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
+    ):
+        paddle.disable_static()
+        epsilon = 0.00001
+
+        x = paddle.to_tensor(x_np)
+        if dtype == "bfloat16":
+            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
+
+        x.stop_gradient = True
+        bias = paddle.to_tensor(bias_np) if has_scale else None
+        scale = paddle.to_tensor(scale_np) if has_bias else None
+        if bias is not None:
+            bias.stop_gradient = True
+        if scale is not None:
+            scale.stop_gradient = True
+
+        y = F.layer_norm(x, x.shape[norm_axis:], scale, bias)
+        y_np = y.cast('float32').numpy()
+        paddle.enable_static()
+        return y_np
+
+    def check_with_fast_math(
+        self, dtype, shape, norm_axis, has_scale, has_bias
+    ):
+        def use_fast_math(enabled):
+            paddle.set_flags({'FLAGS_use_fast_math': enabled})
+
+        def __assert_close(x, y):
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=1e-04)
+
+        x_np = np.random.random(shape).astype('float32')
+        bias_np = np.random.random(shape[norm_axis:]).astype('float32')
+        scale_np = np.random.random(shape[norm_axis:]).astype('float32')
+
+        use_fast_math(False)
+        y_fast = self.check_layer_norm(
+            dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
+        )
+        use_fast_math(True)
+        y_dev = self.check_layer_norm(
+            dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
+        )
+        __assert_close(y_fast, y_dev)
+
+    def check_with_dtype(self, dtype):
+        self.check_with_fast_math(
+            dtype,
+            shape=[17, 129],
+            norm_axis=1,
+            has_scale=False,
+            has_bias=True,
+        )
+        self.check_with_fast_math(
+            dtype,
+            shape=[8, 512],
+            norm_axis=1,
+            has_scale=False,
+            has_bias=False,
+        )
+        self.check_with_fast_math(
+            dtype,
+            shape=[2, 768],
+            norm_axis=1,
+            has_scale=False,
+            has_bias=False,
+        )
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        self.check_with_dtype(dtype="float32")
+        self.check_with_dtype(dtype="bfloat16")
 
 
 if __name__ == '__main__':

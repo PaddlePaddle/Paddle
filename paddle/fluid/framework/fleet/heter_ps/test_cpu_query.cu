@@ -28,44 +28,42 @@
 using namespace paddle::framework;  // NOLINT
 namespace platform = paddle::platform;
 
-std::string edges[] = {
-    // NOLINT
-    std::string("0\t1"),
-    std::string("0\t9"),
-    std::string("1\t2"),
-    std::string("1\t0"),
-    std::string("2\t1"),
-    std::string("2\t3"),
-    std::string("3\t2"),
-    std::string("3\t4"),
-    std::string("4\t3"),
-    std::string("4\t5"),
-    std::string("5\t4"),
-    std::string("5\t6"),
-    std::string("6\t5"),
-    std::string("6\t7"),
-    std::string("7\t6"),
-    std::string("7\t8"),
+const char *edges[] = {
+    "0\t1",
+    "0\t9",
+    "1\t2",
+    "1\t0",
+    "2\t1",
+    "2\t3",
+    "3\t2",
+    "3\t4",
+    "4\t3",
+    "4\t5",
+    "5\t4",
+    "5\t6",
+    "6\t5",
+    "6\t7",
+    "7\t6",
+    "7\t8",
 };
 char edge_file_name[] = "edges1.txt";
 
-std::string nodes[] = {  // NOLINT
-    std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
-    std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
-    std::string("user\t59\ta 0.11\tb 11 14"),
-    std::string("user\t97\ta 0.11\tb 12 11"),
-    std::string("item\t45\ta 0.21"),
-    std::string("item\t145\ta 0.21"),
-    std::string("item\t112\ta 0.21"),
-    std::string("item\t48\ta 0.21"),
-    std::string("item\t247\ta 0.21"),
-    std::string("item\t111\ta 0.21"),
-    std::string("item\t46\ta 0.21"),
-    std::string("item\t146\ta 0.21"),
-    std::string("item\t122\ta 0.21"),
-    std::string("item\t49\ta 0.21"),
-    std::string("item\t248\ta 0.21"),
-    std::string("item\t113\ta 0.21")};
+const char *nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
+                       "user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd",
+                       "user\t59\ta 0.11\tb 11 14",
+                       "user\t97\ta 0.11\tb 12 11",
+                       "item\t45\ta 0.21",
+                       "item\t145\ta 0.21",
+                       "item\t112\ta 0.21",
+                       "item\t48\ta 0.21",
+                       "item\t247\ta 0.21",
+                       "item\t111\ta 0.21",
+                       "item\t46\ta 0.21",
+                       "item\t146\ta 0.21",
+                       "item\t122\ta 0.21",
+                       "item\t49\ta 0.21",
+                       "item\t248\ta 0.21",
+                       "item\t113\ta 0.21"};
 char node_file_name[] = "nodes.txt";
 std::vector<std::string> user_feature_name = {"a", "b", "c", "d"};
 std::vector<std::string> item_feature_name = {"a"};

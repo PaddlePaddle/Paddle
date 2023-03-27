@@ -14,10 +14,9 @@
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 from paddle.distributed.communication.group import _get_global_group
+from paddle.fluid import data_feeder
 
 
 def _all_gather_into_tensor_in_dygraph(
@@ -62,7 +61,7 @@ def _all_gather_in_dygraph(
 
 def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
     op_type = 'c_allgather'
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     for elem in tensor_list:
         data_feeder.check_variable_and_dtype(

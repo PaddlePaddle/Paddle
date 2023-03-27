@@ -24,8 +24,8 @@ from ifelse_simple_func import (
 )
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 
@@ -68,7 +68,7 @@ class TestAST2Func(unittest.TestCase):
         x_data = np.random.random([10, 16]).astype('float32')
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x_data)
+            x_v = paddle.assign(x_data)
             true_ret = func(x_v)
             test_ret = self._ast2func(func)(x_v)
             exe = fluid.Executor(fluid.CPUPlace())

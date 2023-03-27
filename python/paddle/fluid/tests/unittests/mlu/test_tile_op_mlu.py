@@ -17,7 +17,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -221,9 +221,9 @@ class TestTileError(unittest.TestCase):
             )
             repeat_times = [2, 2]
             self.assertRaises(TypeError, paddle.tile, x1, repeat_times)
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tile, x2, repeat_times)
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tile, x3, repeat_times)
 
@@ -232,9 +232,9 @@ class TestTileAPIStatic(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
             repeat_times = [2, 2]
-            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
             out = paddle.tile(x1, repeat_times)
-            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            positive_2 = paddle.tensor.fill_constant([1], dtype="int32", value=2)
             out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
 
 

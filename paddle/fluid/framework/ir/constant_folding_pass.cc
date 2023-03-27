@@ -143,6 +143,10 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         }
         out_desc->SetShape(out_shape);
         out_desc->SetPersistable(true);
+        auto *var_desc_out = op_node->Op()->Block()->Var(out_name);
+        var_desc_out->SetShape(out_shape);
+        var_desc_out->SetPersistable(true);
+        var_desc_out->Flush();
         auto *global_out_tensor =
             scope->Var(out_name)->GetMutable<phi::DenseTensor>();
         *global_out_tensor = *local_out_tensor;

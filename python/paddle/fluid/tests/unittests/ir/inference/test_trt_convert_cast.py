@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.framework import convert_np_dtype_to_dtype_
 
 
 class TrtConvertCastTest(TrtLayerAutoScanTest):
@@ -28,40 +29,52 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        if attrs[0]['in_dtype'] == 0:
+        if attrs[0]['in_dtype'] not in [0, 1, 2, 3, 4, 5] or attrs[0][
+            'out_dtype'
+        ] not in [0, 1, 2, 3, 4, 5]:
             return False
-        if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
-            return False
-
-        out_dtype = [2, 4, 5]
-        ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 > 8400:
-            out_dtype.insert(3, 0)
-
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
         if (
-            attrs[0]['in_dtype'] not in [2, 4, 5]
-            or attrs[0]['out_dtype'] not in out_dtype
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8400
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8400
         ):
             return False
         return True
 
     def sample_program_configs(self):
         def generate_input(type):
-            if type == 0:
-                return np.ones([1, 3, 64, 64]).astype(np.bool)
-            elif type == 2:
-                return np.ones([1, 3, 64, 64]).astype(np.int32)
-            elif type == 4:
-                return np.ones([1, 3, 64, 64]).astype(np.float16)
-            else:
-                return np.ones([1, 3, 64, 64]).astype(np.float32)
+            return np.ones([1, 3, 64, 64]).astype(type)
 
-        for in_dtype in [0, 2, 5, 6]:
-            for out_dtype in [0, 2, 5, 6]:
-                self.out_dtype = out_dtype
+        for in_dtype in [np.bool_, np.int32, np.float32, np.float64, np.int64]:
+            for out_dtype in [
+                np.bool_,
+                np.int32,
+                np.float32,
+                np.float64,
+                np.int64,
+            ]:
+                self.has_bool_dtype = (in_dtype == np.bool_) or (
+                    out_dtype == np.bool_
+                )
                 dics = [
-                    {"in_dtype": in_dtype, "out_dtype": out_dtype},
-                    {"in_dtype": out_dtype, "out_dtype": in_dtype},
+                    {
+                        "in_dtype": convert_np_dtype_to_dtype_(in_dtype),
+                        "out_dtype": convert_np_dtype_to_dtype_(out_dtype),
+                    },
+                    {
+                        "in_dtype": convert_np_dtype_to_dtype_(out_dtype),
+                        "out_dtype": convert_np_dtype_to_dtype_(in_dtype),
+                    },
                 ]
 
                 ops_config = [
@@ -70,12 +83,14 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                         "op_inputs": {"X": ["input_data"]},
                         "op_outputs": {"Out": ["cast_output_data0"]},
                         "op_attrs": dics[0],
+                        "outputs_dtype": {"cast_output_data0": out_dtype},
                     },
                     {
                         "op_type": "cast",
                         "op_inputs": {"X": ["cast_output_data0"]},
                         "op_outputs": {"Out": ["cast_output_data1"]},
                         "op_attrs": dics[1],
+                        "outputs_dtype": {"cast_output_data1": in_dtype},
                     },
                 ]
 
@@ -108,7 +123,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape and self.out_dtype == 0:
+            if not dynamic_shape and self.has_bool_dtype:
                 return 0, 4
             return 1, 2
 

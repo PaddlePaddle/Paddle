@@ -14,13 +14,14 @@
 
 import copy
 
+from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..cost import (
     MatmulGradOpCost,
@@ -376,7 +377,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     # assert len(
     #     Y_var_dim_mapping
-    # ) == 2, "dist matmual only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
+    # ) == 2, "dist matmul only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
     #     Y_var.name, Y_var_dim_mapping)
     Y_var_partitioned = False
     for dim in Y_var_dim_mapping:
@@ -1506,7 +1507,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         processes = process_mesh.process_ids
         # col parallel: matmul + allreduce
         if backward_op.attr("trans_y"):
-            Y_var_dim_mapping.reverse()
+            Y_var_dim_mapping = list(reversed(Y_var_dim_mapping))
         assert Y_var_dim_mapping[0] < 0
         parallel_axis = Y_var_dim_mapping[1]
 

@@ -39,11 +39,17 @@ class DescTensor : public phi::ExtendedTensor,
     return dims_;
   }
 
+  int64_t numel() const override { return product(dims()); }
+
   DataType dtype() const override {
     return paddle::framework::TransToPhiDataType(desc_ptr_->GetDataType());
   }
 
   framework::VarDesc* get_ptr() { return desc_ptr_; }
+
+  const phi::Place& place() const override { return place_; }
+
+  bool initialized() const override { return desc_ptr_ != nullptr; }
 
   // TODO(jiabin): override more operators here.
 
@@ -55,6 +61,7 @@ class DescTensor : public phi::ExtendedTensor,
   // we can inherient from ExtendedTensor Rmove this when we make VarDesc's as
   // same as Tensor, or make Tensor's dims more lightly.
   mutable phi::DDim dims_;
+  phi::Place place_;
 };
 
 }  // namespace prim

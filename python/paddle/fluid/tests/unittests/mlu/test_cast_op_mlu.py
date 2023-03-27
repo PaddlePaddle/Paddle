@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -139,7 +139,7 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.MLUPlace(0)
             )
-            self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
+            self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
 if __name__ == '__main__':

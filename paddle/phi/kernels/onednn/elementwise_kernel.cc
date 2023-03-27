@@ -113,15 +113,26 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   binary_prim->execute(astream, args);
   astream.wait();
 
-  if (handler.use_broadcasting_hack == false) {
-    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
-        dev_ctx, out, dst_memory->get_desc());
-  } else {
-    auto dims = dst_memory->get_desc().dims();
+  auto out_md = dst_memory->get_desc();
+
+  if (handler.use_broadcasting_hack) {
+    auto dims = out_md.dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
-    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
-        dev_ctx, out, dst_memory->get_desc().reshape(dims));
+    out_md = out_md.reshape(dims);
+  }
+
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
+        fused_unsqueeze2_axes, out, out_md);
+  } else {
+    out->set_mem_desc(out_md);
   }
 }
 

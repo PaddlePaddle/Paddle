@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import fluid, static
 
 
 class BackwardNet:
@@ -103,9 +102,9 @@ class TestBackward(unittest.TestCase):
         params_grads = fluid.backward.append_backward(
             loss, parameter_list, no_grad_set
         )
-        params_names = set(
-            [param_var.name for (param_var, grad_var) in params_grads]
-        )
+        params_names = {
+            param_var.name for (param_var, grad_var) in params_grads
+        }
         self.assertSetEqual(params_names, self.net.params_names)
 
         return params_grads
@@ -226,21 +225,27 @@ class SimpleNet(BackwardNet):
 
     def build_model(self):
         # stop_gradient = True in input
-        x = fluid.data(name='x_no_grad', shape=self.shape, dtype='int64')
-        x2 = fluid.data(name='x2_no_grad', shape=self.shape, dtype='int64')
-        x3 = fluid.data(name='x3_no_grad', shape=self.shape, dtype='int64')
-        label = fluid.data(
+        x = paddle.static.data(
+            name='x_no_grad', shape=self.shape, dtype='int64'
+        )
+        x2 = paddle.static.data(
+            name='x2_no_grad', shape=self.shape, dtype='int64'
+        )
+        x3 = paddle.static.data(
+            name='x3_no_grad', shape=self.shape, dtype='int64'
+        )
+        label = paddle.static.data(
             name='label_no_grad', shape=[self.shape[0], 1], dtype='float32'
         )
         # shared layer, the grad of 'w2v' will be summed and renamed.
         # To test  _addup_repetitive_outputs_
-        x_emb = fluid.embedding(
+        x_emb = paddle.static.nn.embedding(
             x, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
-        x2_emb = fluid.embedding(
+        x2_emb = paddle.static.nn.embedding(
             x2, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
-        x3_emb = fluid.embedding(
+        x3_emb = paddle.static.nn.embedding(
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
@@ -283,7 +288,7 @@ class TestSimpleNet(TestBackward):
 
 class TestGradientsError(unittest.TestCase):
     def test_error(self):
-        x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
+        x = paddle.static.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
         conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
         y = F.relu(conv)
@@ -309,7 +314,9 @@ class TestSimpleNetWithErrorParamList(TestBackward):
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, "test")
         # The type of parameter_list's member must be Variable or str
-        test = fluid.data(name='test', shape=[None, 90], dtype='float32')
+        test = paddle.static.data(
+            name='test', shape=[None, 90], dtype='float32'
+        )
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, [test, "test", 3])
 
@@ -322,16 +329,18 @@ class TestSimpleNetWithErrorNoGradSet(TestBackward):
         with self.assertRaises(TypeError):
             self._check_error_no_grad_set(self.net, "test")
         # The type of no_grad_set's member must be Variable or str
-        test = fluid.data(name='test', shape=[None, 90], dtype='float32')
+        test = paddle.static.data(
+            name='test', shape=[None, 90], dtype='float32'
+        )
         with self.assertRaises(TypeError):
             self._check_error_no_grad_set(self.net, [test, "test", 3])
 
 
 class TestAppendBackwardWithError(unittest.TestCase):
     def build_net(self):
-        x = fluid.data(name='x', shape=[None, 13], dtype='int64')
-        y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-        x_emb = fluid.embedding(x, size=[100, 256])
+        x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+        y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
+        x_emb = paddle.static.nn.embedding(x, size=[100, 256])
         y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
         loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
@@ -407,6 +416,39 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 class ConditionalNet(BackwardNet):
     def __init__(self):
         super().__init__()
+
+
+class TestBackwardUninitializedVariable(unittest.TestCase):
+    """this case is found in yolov5 while to_static.
+    gradient aggregation may cause sum a invalid variable.
+    """
+
+    def test(self):
+        paddle.enable_static()
+        main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main_prg, startup_prg):
+            gt = paddle.static.data(name='gt', shape=[4], dtype='float32')
+            x = paddle.static.data(name='x', shape=[2], dtype='float32')
+            gt.stop_gradient = True
+            x.stop_gradient = False
+            gt = gt.reshape([4, 1]).reshape([4])
+            loss = (
+                paddle.nn.functional.binary_cross_entropy(x, gt[:2])
+                + (gt[2:4] * x).sum()
+            )
+            exe = paddle.static.Executor()
+            paddle.fluid.backward.gradients(loss, [])
+            exe.run(startup_prg)
+            # Optimizer
+            out = exe.run(
+                main_prg,
+                feed={
+                    'gt': np.array([1.0, 1.0, 0.0, 0.0], dtype='float32'),
+                    'x': np.array([0.5, 0.5], dtype='float32'),
+                },
+                fetch_list=[loss],
+            )
+            print(out)
 
 
 if __name__ == '__main__':

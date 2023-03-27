@@ -15,8 +15,7 @@
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -27,8 +26,8 @@ class TestCollectiveAllreduceNewGroupAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+            tindata = paddle.static.data(
+                name="tindata", shape=[1, 10, 1000], dtype='float32'
             )
             gp = paddle.distributed.new_group([0, 1])
             paddle.distributed.all_reduce(tindata, group=gp, sync_op=True)

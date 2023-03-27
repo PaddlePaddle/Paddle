@@ -14,11 +14,16 @@
 
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 namespace distributed {
+
+// set this flag to `true` and recompile to enable dynamic checks
+constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
 NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
@@ -30,13 +35,64 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,
                                 gpuStream_t stream) {
-  phi::dynload::ncclBroadcast(in_tensor.data(),
-                              out_tensor->data(),
-                              in_tensor.numel(),
-                              ToNCCLDataType(in_tensor.type()),
-                              root,
-                              nccl_comm_,
-                              stream);
+  CommStaticCheck::SameShape(*out_tensor,
+                             in_tensor,
+                             /*dst_rank*/ rank_,
+                             /*cur_rank*/ rank_,
+                             size_);
+  if (FLAGS_enable_nccl_dynamic_check) {
+    NCCLDynamicCheck::CheckShape(*out_tensor, root, rank_, nccl_comm_);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclBroadcast(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  root,
+                                  nccl_comm_,
+                                  stream));
+}
+
+void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllGather(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  nccl_comm_,
+                                  stream));
+}
+
+void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                ncclRedOp_t reduce_type,
+                                gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllReduce(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  reduce_type,
+                                  nccl_comm_,
+                                  stream));
+}
+
+void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor,
+                             ncclRedOp_t reduce_type,
+                             int root,
+                             gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclReduce(in_tensor.data(),
+                               out_tensor->data(),
+                               in_tensor.numel(),
+                               ToNCCLDataType(in_tensor.type()),
+                               reduce_type,
+                               root,
+                               nccl_comm_,
+                               stream));
 }
 
 }  // namespace distributed

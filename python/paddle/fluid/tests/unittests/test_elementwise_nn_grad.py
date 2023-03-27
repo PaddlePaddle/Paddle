@@ -19,9 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
@@ -32,8 +31,8 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.multiply(x, y)
@@ -61,8 +60,8 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._multiply_with_axis(x, y, axis=0)
@@ -90,8 +89,8 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.add(x, y)
@@ -119,8 +118,8 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._add_with_axis(x, y, axis=0)
@@ -151,8 +150,8 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.subtract(x, y)
@@ -187,8 +186,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._subtract_with_axis(x, y, axis=0)
@@ -219,11 +218,11 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = paddle.tensor.math._divide_with_axis(x, y, axis=0)
+        out = paddle.tensor.math.divide(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
@@ -257,8 +256,8 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[1:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[1:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._divide_with_axis(x, y, axis=1)
@@ -287,8 +286,8 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.add(x, y)
@@ -316,8 +315,8 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._add_with_axis(x, y, axis=0)
@@ -348,8 +347,8 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.multiply(x, y)
@@ -359,7 +358,6 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.multiply_wrapper,
             [x, y],
@@ -367,7 +365,6 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -386,8 +383,8 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
         out = paddle.tensor.math._add_with_axis(x, y, axis=0)

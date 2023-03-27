@@ -18,8 +18,8 @@ import numpy as np
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -36,7 +36,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
@@ -78,8 +80,10 @@ class TestGradientClip(unittest.TestCase):
         with fluid.program_guard(
             main_program=prog, startup_program=startup_program
         ):
-            image = fluid.data(name="a", shape=[-1, 784], dtype='float32')
-            label = fluid.data(name="b", shape=[-1, 1], dtype='int64')
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
             if dtype != 'float32':
                 image_cast = paddle.cast(image, dtype)
                 hidden = paddle.static.nn.fc(
@@ -132,10 +136,12 @@ class TestGradientClip(unittest.TestCase):
         with fluid.program_guard(
             main_program=prog, startup_program=startup_program
         ):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.data(name="label", shape=[-1, 1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
             cost = bow_net(data, label, self.word_dict_len)
 
             self.backward_and_optimize(cost)
@@ -254,10 +260,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.assertListEqual(
             ops,
             [
-                'square',
-                'reduce_sum',
-                'square',
-                'reduce_sum',
+                'squared_l2_norm',
+                'squared_l2_norm',
                 'sum',
                 'cast',
                 'sqrt',

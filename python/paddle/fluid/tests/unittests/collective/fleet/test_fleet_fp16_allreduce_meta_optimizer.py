@@ -16,9 +16,9 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -30,12 +30,8 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
 
     def net(self, main_prog, startup_prog, dtype='float32'):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype=dtype
-            )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_x = paddle.static.data(name="x", shape=[-1, 32], dtype=dtype)
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')

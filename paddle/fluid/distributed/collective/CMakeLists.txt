@@ -1,7 +1,7 @@
 cc_library(
   process_group
   SRCS process_group.cc
-  DEPS dense_tensor)
+  DEPS dense_tensor xxhash)
 
 cc_library(
   eager_reducer
@@ -18,7 +18,7 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
-    SRCS process_group_nccl.cc nccl_tools.cc common.cc check.cc
+    SRCS process_group_nccl.cc nccl_tools.cc common.cc
     DEPS process_group
          tcp_store
          place
@@ -26,7 +26,9 @@ if(WITH_NCCL OR WITH_RCCL)
          collective_helper
          device_context
          ${DEVICE_EVENT_LIBS}
-         dense_tensor)
+         dense_tensor
+         comm_static_check
+         nccl_dynamic_check)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -59,5 +61,7 @@ if(WITH_CUSTOM_DEVICE)
          place
          enforce
          collective_helper
-         device_context)
+         device_context
+         comm_static_check
+         dense_tensor)
 endif()

@@ -29,6 +29,7 @@ WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
+    'max_pool2d_with_index',
     'mul',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
@@ -58,6 +59,7 @@ BLACK_LIST = {
     'bicubic_interp_v2',
     'trilinear_interp_v2',
 }
+
 
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
@@ -97,21 +99,29 @@ _g_amp_state_ = None
 def low_precision_op_list():
     if os.getenv("FLAGS_low_precision_op_list") is not None:
         level = int(os.getenv("FLAGS_low_precision_op_list"))
-        if level == 0:
-            return
-        if level == 1:
-            print('<{:-^60}>'.format(" low precision op list "))
-        else:
-            print('<{:-^60}>'.format(" op list "))
+        print('<{:-^120}>'.format(" op list "))
         op_list = paddle.fluid.core.get_low_precision_op_list()
         op_count = 0
         print(
-            '<{:-^40}'.format(" op_name "), '|', '{:-^17}>'.format(" op count ")
+            '<{:-^40}'.format(" Op Name "),
+            '|',
+            '{:-^17}'.format("FP16 Calls"),
+            '|',
+            '{:-^17}'.format("BF16 Calls"),
+            '|',
+            '{:-^17}'.format('FP32 Calls'),
+            '|',
+            '{:-^17}>'.format('Other Calls'),
         )
         for x in op_list:
-            print('  %-40s|  %-15d' % (x, op_list[x]))
+            # fp16, bf16, fp32, other
+            called = op_list[x].split(",")
+            print(
+                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
+                % (x, called[0], called[1], called[2], called[3])
+            )
             op_count += 1
-        print('<{:-^60}>'.format(" op count: " + str(op_count) + " "))
+        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
 
 
 def amp_state():
@@ -119,7 +129,7 @@ def amp_state():
     return _g_amp_state_
 
 
-# NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
+# NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(
     custom_white_list, custom_black_list, level='O1', dtype='float16'
@@ -343,8 +353,11 @@ def amp_guard(
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
-    if not (dtype in ['float16', 'bfloat16']):
-        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+    if enable:
+        if not (dtype in ['float16', 'bfloat16']):
+            raise ValueError(
+                "If enable amp, dtype should be 'float16' or 'bfloat16'."
+            )
 
     # check tracer
     tracer = _dygraph_tracer()
@@ -690,7 +703,7 @@ def auto_cast(
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # paddle.float32
+            print(conv.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
@@ -704,11 +717,11 @@ def auto_cast(
         b = paddle.rand([2,3])
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
-            print(c.dtype) # paddle.float32
+            print(c.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
-            print(d.dtype) # paddle.float32
+            print(d.dtype) # paddle.float16
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)

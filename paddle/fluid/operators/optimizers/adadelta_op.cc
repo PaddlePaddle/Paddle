@@ -40,12 +40,17 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("AvgSquaredUpdate",
              "(Tensor) Input average of squared parameter updates");
     AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("AvgSquaredGradOut",
               "(Tensor) Output average of squared gradient");
     AddOutput("AvgSquaredUpdateOut",
               "(Tensor) Output average of squared parameter updates");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("rho",
                    "(float, default 0.95) Exponential decay rate "
@@ -55,6 +60,10 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-6) Constant for "
                    "numerical stability")
         .SetDefault(1.0e-6f);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Adadelta Optimizer.
 

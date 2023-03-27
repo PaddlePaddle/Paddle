@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit import to_static
 
 
@@ -76,15 +76,6 @@ class TestFullNameDecorator(unittest.TestCase):
                 DoubleDecorated().double_decorated_func1(x)
             with self.assertRaises(NotImplementedError):
                 DoubleDecorated().double_decorated_func2(x)
-
-
-class TestImportProgramTranslator(unittest.TestCase):
-    def test_diff_pkg_same_cls(self):
-        dygraph_prog_trans = paddle.jit.ProgramTranslator()
-        dy_to_stat_prog_trans = paddle.jit.ProgramTranslator()
-        full_pkg_prog_trans = paddle.jit.ProgramTranslator()
-        self.assertEqual(dygraph_prog_trans, dy_to_stat_prog_trans)
-        self.assertEqual(dygraph_prog_trans, full_pkg_prog_trans)
 
 
 if __name__ == '__main__':

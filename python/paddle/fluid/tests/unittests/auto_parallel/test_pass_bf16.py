@@ -18,13 +18,12 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
+from paddle import nn
 from paddle.distributed.fleet import auto
-from paddle.fluid.contrib.mixed_precision.bf16.amp_utils import _valid_types
-from paddle.fluid.contrib.mixed_precision.fp16_utils import find_true_prev_op
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid import core
 from paddle.static import InputSpec
+from paddle.static.amp.bf16.amp_utils import _valid_types
+from paddle.static.amp.fp16_utils import find_true_prev_op
 from paddle.vision.datasets import MNIST
 
 paddle.enable_static()
@@ -37,7 +36,8 @@ def apply_pass(use_bf16=False):
     if use_bf16:
         amp = strategy.amp
         amp.enable = True
-        amp.enable_bf16 = True
+        amp.dtype = "bfloat16"
+        amp.level = "o1"
     return strategy
 
 
@@ -90,7 +90,7 @@ class TestBF16Pass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_bf16=False):

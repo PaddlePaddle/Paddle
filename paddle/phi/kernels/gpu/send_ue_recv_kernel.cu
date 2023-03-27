@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/send_ue_recv_kernel.h"
 
 #include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <algorithm>
 #include <vector>
@@ -331,4 +332,6 @@ PD_REGISTER_KERNEL(send_ue_recv,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

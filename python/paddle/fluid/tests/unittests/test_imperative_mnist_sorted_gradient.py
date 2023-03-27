@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from test_imperative_mnist import MNIST
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
@@ -98,10 +98,12 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             cost = mnist(img)
             loss = paddle.nn.functional.cross_entropy(
                 cost, label, reduction='none', use_softmax=False

@@ -57,4 +57,18 @@ elif [ "$1" == "gcc54" ]; then
   ln -s /usr/local/gcc-5.4/lib64/libgfortran.so.5 ${lib_so_5} && \
   ln -s /usr/local/gcc-5.4/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-5.4/lib64/libstdc++.so.6.0.21 ${lib_path}
+elif [ "$1" == "gcc122" ]; then
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.2.0.tar.gz
+  tar -xzf gcc-12.2.0.tar.gz && \
+  cd gcc-12.2.0 && \
+  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  ./contrib/download_prerequisites && \
+  cd .. && mkdir temp_gcc122 && cd temp_gcc122 && \
+  ../gcc-12.2.0/configure --prefix=/usr/local/gcc-12.2 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
+  make -j8 && make install
+  cd .. && rm -rf temp_gcc122 gcc-12.2.0 gcc-12.2.0.tar.gz
+  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
+  ln -s /usr/local/gcc-12.2/lib64/libgfortran.so.5 ${lib_so_5} && \
+  ln -s /usr/local/gcc-12.2/lib64/libstdc++.so.6 ${lib_so_6} && \
+  cp /usr/local/gcc-12.2/lib64/libstdc++.so.6.0.30 ${lib_path}
 fi

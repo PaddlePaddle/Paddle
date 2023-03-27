@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -40,7 +40,6 @@ class SimpleNet(paddle.nn.Layer):
 
 class TestSimpleNet(unittest.TestCase):
     def test_selectedrows_gradient1(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -63,6 +62,7 @@ class TestSimpleNet(unittest.TestCase):
                         parameter_list=simplenet.parameters(),
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
+                    input_emb.retain_grads()
 
                     self.assertIsNone(emb.weight.gradient())
                     self.assertIsNone(input_emb.gradient())
@@ -77,10 +77,8 @@ class TestSimpleNet(unittest.TestCase):
                     input_emb.clear_gradient()
                     self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_selectedrows_gradient2(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -103,6 +101,7 @@ class TestSimpleNet(unittest.TestCase):
                         grad_clip=grad_clip,
                     )
                     input_emb, emb = simplenet(input)
+                    input_emb.retain_grads()
 
                     self.assertIsNone(emb.weight.gradient())
                     self.assertIsNone(input_emb.gradient())
@@ -116,7 +115,6 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.clear_gradient()
                     self.assertIsNotNone(input_emb.gradient())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

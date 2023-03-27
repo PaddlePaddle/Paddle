@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.layers import Layer
+from paddle import nn
 
 __all__ = []
 
 
-class MetaParallelBase(Layer):
+class MetaParallelBase(nn.Layer):
     def __init__(self, layers, hcg, strategy):
         super().__init__(layers.full_name() + "_meta_parallel_base")
         self._layers = layers

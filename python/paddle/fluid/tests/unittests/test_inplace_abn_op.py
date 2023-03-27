@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -48,13 +48,13 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         startup.random_seed = seed
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
-                    stop_gradient=False,
                 )
+                data.stop_gradient = False
+                data.desc.set_need_check_feed(False)
 
                 bn = paddle.static.nn.batch_norm(
                     data,

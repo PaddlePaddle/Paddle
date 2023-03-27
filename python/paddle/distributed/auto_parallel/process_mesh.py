@@ -17,7 +17,7 @@ import copy
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.framework import core
 
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
@@ -157,7 +157,7 @@ class ProcessMesh(core.ProcessMesh):
 
     def __enter__(self):
         set_current_process_mesh(self)
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         self._old_var_names = list(cur_block.vars.keys())
         self._old_op_size = len(cur_block.ops)
@@ -166,7 +166,7 @@ class ProcessMesh(core.ProcessMesh):
         from .dist_op import DistributedOperator
         from .dist_tensor import DistributedTensor
 
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)

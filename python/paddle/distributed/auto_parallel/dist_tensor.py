@@ -16,7 +16,8 @@ import copy
 import inspect
 
 import paddle
-from paddle.fluid.framework import Block, Parameter, Variable
+from paddle.framework import Block
+from paddle.static import Parameter, Variable
 
 from .dist_attribute import TensorDistAttr
 from .utils import __no_shape_var_type__, _linear_idx2coordinate

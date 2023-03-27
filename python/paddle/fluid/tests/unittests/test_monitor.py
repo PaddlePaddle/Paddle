@@ -23,8 +23,8 @@ import os
 import tempfile
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestDatasetWithStat(unittest.TestCase):
@@ -54,8 +54,8 @@ class TestDatasetWithStat(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 

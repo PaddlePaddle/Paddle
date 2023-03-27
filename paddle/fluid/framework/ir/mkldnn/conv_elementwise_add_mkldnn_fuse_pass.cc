@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -166,7 +167,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     }
 
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     conv_op->Op()->SetInput("ResidualData", {residual_data->Name()});
@@ -259,7 +260,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     if (HasFusedActivation(residual_conv_op)) return;
 
     if (residual_conv_op->Op()->Type() == "conv2d") {
-      residual_conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(residual_conv_op->Op());
     }
     residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
     residual_conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});

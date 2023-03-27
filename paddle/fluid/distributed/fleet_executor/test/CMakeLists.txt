@@ -52,7 +52,7 @@ cc_test_old(
   device_context)
 
 if(WITH_DISTRIBUTE
-   AND WITH_PSCORE
+   AND NOT WITH_PSLIB
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   set_source_files_properties(
     interceptor_ping_pong_with_brpc_test.cc

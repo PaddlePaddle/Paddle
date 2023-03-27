@@ -189,8 +189,10 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
     if (dOut != nullptr) dout_data = dOut->data<T>();
 
     T* dx_data = dev_ctx.template Alloc<T>(dX);
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    float* tmp = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
     int r = xpu::constant<T>(
-        dev_ctx.x_context(), dx_data, x->numel(), static_cast<T>(1.0));
+        dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
     auto x_dims = vectorize<int>(x->dims());
@@ -199,18 +201,16 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
     if (x_dims.size() == 0) {
       x_dims = std::vector<int>({1});
     }
-
     // dx.device(d) = dout * (static_cast<T>(1) / x);
     r = xpu::broadcast_div(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(dx_data),
+                           reinterpret_cast<const float*>(tmp),
                            reinterpret_cast<const float*>(x_data),
-                           reinterpret_cast<float*>(dx_data),
+                           reinterpret_cast<float*>(tmp),
                            x_dims,
                            x_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_div");
-
     r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(dx_data),
+                           reinterpret_cast<const float*>(tmp),
                            reinterpret_cast<const float*>(dout_data),
                            reinterpret_cast<float*>(dx_data),
                            x_dims,
@@ -603,11 +603,11 @@ template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
                          DenseTensor* dx) {
   XPUHardSwishGradFunctor<T> functor;
+  float threshold = 6;
+  float scale = 6;
+  float offset = 3;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;

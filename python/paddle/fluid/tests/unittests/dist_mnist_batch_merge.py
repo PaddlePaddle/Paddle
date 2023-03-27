@@ -16,7 +16,7 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 DTYPE = "float32"
 
@@ -38,8 +38,10 @@ def test_merge_reader(repeat_batch_size=8):
 class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)

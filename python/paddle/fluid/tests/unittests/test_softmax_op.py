@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 np.random.seed(10)
 
@@ -52,6 +52,9 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
+        self.prim_op_type = "comp"
+        self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -71,6 +74,7 @@ class TestSoftmaxOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
         }
+        self.enable_cinn = True
 
     def init_kernel_type(self):
         pass
@@ -79,11 +83,9 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
-            )
+            self.check_output_with_place(place, atol=1e-5)
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_prim=True)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -103,16 +105,26 @@ class TestSoftmaxOp(OpTest):
                 "Out",
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
+                check_prim=True,
             )
+
+
+class TestSoftmaxOpfp32(TestSoftmaxOp):
+    def init_kernel_type(self):
+        self.dtype = np.float32
 
 
 class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
+        self.prim_op_type = "comp"
+        self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.init_kernel_type()
 
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
@@ -125,6 +137,15 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
         }
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output(check_prim=True)
 
 
 @unittest.skipIf(
@@ -133,6 +154,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
 class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = F.softmax
         self.use_cudnn = True
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -149,6 +171,15 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
         }
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output(check_prim=True)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -366,6 +397,7 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = F.softmax
         self.use_cudnn = self.init_cudnn()
         self.use_mkldnn = False
         self.dtype = np.uint16
@@ -431,7 +463,7 @@ class TestSoftmaxAPI(unittest.TestCase):
 
     def test_static_check(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, 'float32')
+            x = paddle.static.data('X', self.x_np.shape, 'float32')
             out1 = self.softmax(x)
             m = paddle.nn.Softmax()
             out2 = m(x)
@@ -477,12 +509,12 @@ class TestSoftmaxAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, self.softmax, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(TypeError, self.softmax, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[2, 3], dtype='float16'
             )
             self.softmax(x_fp16)
@@ -491,11 +523,12 @@ class TestSoftmaxAPI(unittest.TestCase):
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         x = paddle.rand([])
         x.stop_gradient = False
+        x.retain_grads()
 
         out = paddle.nn.functional.softmax(x)
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.shape, [])
         self.assertEqual(x.grad.shape, [])

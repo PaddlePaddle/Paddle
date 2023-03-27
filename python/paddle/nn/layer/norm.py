@@ -39,10 +39,10 @@ from paddle.fluid.framework import in_dygraph_mode
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
-from .. import Layer
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
+from .layers import Layer
 
 __all__ = []
 
@@ -999,6 +999,8 @@ class BatchNorm(Layer):
                 self._use_global_stats,
                 self._trainable_statistics,
             )
+            if self._act is None:
+                return batch_norm_out
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
             )
@@ -1816,7 +1818,7 @@ class SpectralNorm(Layer):
     ):
         super().__init__()
         self._power_iters = power_iters
-        self._epsilon = eps
+        self._eps = eps
         self._dim = dim
         self._dtype = dtype
 
@@ -1857,7 +1859,7 @@ class SpectralNorm(Layer):
                 self.weight_v,
                 self._dim,
                 self._power_iters,
-                self._epsilon,
+                self._eps,
             )
 
         check_variable_and_dtype(
@@ -1874,7 +1876,7 @@ class SpectralNorm(Layer):
             attrs={
                 "dim": self._dim,
                 "power_iters": self._power_iters,
-                "eps": self._epsilon,
+                "eps": self._eps,
             },
         )
 

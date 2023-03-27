@@ -24,7 +24,7 @@ paddle.enable_static()
 from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
@@ -189,32 +189,29 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             """
             dnn_input_dim, lr_input_dim = 10, 10
 
-            dnn_data = fluid.layers.data(
+            dnn_data = paddle.static.data(
                 name="dnn_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
-            lr_data = fluid.layers.data(
+            lr_data = paddle.static.data(
                 name="lr_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
-            label = fluid.layers.data(
+            label = paddle.static.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=0,
-                append_batch_size=False,
             )
 
             datas = [dnn_data, lr_data, label]
 
             inference = True
-            init = fluid.initializer.Uniform()
+            init = paddle.nn.initializer.Uniform()
 
             dnn_layer_dims = [128, 64, 32]
             dnn_embedding = fluid.contrib.layers.sparse_embedding(
@@ -225,7 +222,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     name="deep_embedding", initializer=init
                 ),
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -235,7 +232,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     size=dim,
                     activation="relu",
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=0.01)
+                        initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )
@@ -248,14 +245,14 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 is_test=inference,
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
             )
 
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
-            merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+            merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )
@@ -267,7 +264,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
         feeder = fluid.DataFeeder(place=fluid.CPUPlace(), feed_list=datas)
         exe.run(fluid.default_startup_program())
 
-        fluid.io.load_persistables(exe, model_file)
+        paddle.distributed.io.load_persistables(exe, model_file)
 
         for batch_id, data in enumerate(reader()):
             score = exe.run(

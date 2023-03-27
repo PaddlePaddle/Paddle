@@ -20,17 +20,14 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.utils import (
     load_checkpoint_into_program,
     save_distributed_checkpoint,
 )
 from paddle.distributed.fleet import auto
-from paddle.fluid.initializer import NumpyArrayInitializer
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -48,7 +45,9 @@ class MLPLayer(nn.Layer):
         dim_feedforward = intermediate_size
         np.random.seed(2021)
         arr = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
-        weight_attr = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr))
+        weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr)
+        )
         bias_attr = None
 
         self.linear0 = nn.Linear(

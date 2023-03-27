@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import (
     MetaOptimizerBase,
 )
@@ -29,11 +29,11 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
             with fluid.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
-                input_x = paddle.fluid.layers.data(
-                    name="x", shape=[32], dtype='float32'
+                input_x = paddle.static.data(
+                    name="x", shape=[-1, 32], dtype='float32'
                 )
-                input_y = paddle.fluid.layers.data(
-                    name="y", shape=[1], dtype='int64'
+                input_y = paddle.static.data(
+                    name="y", shape=[-1, 1], dtype='int64'
                 )
 
                 fc_1 = paddle.static.nn.fc(

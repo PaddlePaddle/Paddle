@@ -26,7 +26,7 @@ from paddle.distributed.models.moe.utils import (
     _number_count,
     _prune_gate_by_capacity,
 )
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dygraph_mode
 
 
 def _alltoall(in_tensor_list, group=None, use_calc_stream=True):

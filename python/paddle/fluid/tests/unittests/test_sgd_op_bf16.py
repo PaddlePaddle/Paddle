@@ -18,9 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static.amp as amp
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -28,6 +27,7 @@ from paddle.fluid.tests.unittests.op_test import (
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from paddle.static import amp
 
 
 @unittest.skipIf(
@@ -322,7 +322,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 print(e)
 
     def _set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def _data_reader(self):
         for sample in range(self.sample_count):
@@ -334,9 +334,13 @@ class TestSGDOpBF16API(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='X', shape=self.ids_shape, dtype='int64')
-            label = fluid.layers.data(
-                name='Y', shape=self.y_shape, dtype='uint16'
+            ids_shape = list(self.ids_shape)
+            x = paddle.static.data(
+                name='X', shape=[-1] + ids_shape, dtype='int64'
+            )
+            y_shape = list(self.y_shape)
+            label = paddle.static.data(
+                name='Y', shape=[-1] + y_shape, dtype='uint16'
             )
             emb = fluid.layers.embedding(
                 input=x,

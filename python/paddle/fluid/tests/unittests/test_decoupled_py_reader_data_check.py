@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestClass(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestClass(unittest.TestCase):
                 yield img, label
 
         reader = paddle.reader.cache(fake_reader)
-        batch_reader = fluid.io.batch(reader, batch_size=batch_size)
+        batch_reader = paddle.batch(reader, batch_size=batch_size)
 
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -50,11 +50,11 @@ class TestClass(unittest.TestCase):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                img = fluid.layers.data(
-                    shape=img_shape, dtype='float32', name='image'
+                img = paddle.static.data(
+                    shape=[-1] + img_shape, dtype='float32', name='image'
                 )
-                label = fluid.layers.data(
-                    shape=label_shape, dtype='int64', name='label'
+                label = paddle.static.data(
+                    shape=[-1] + label_shape, dtype='int64', name='label'
                 )
 
                 feeder = fluid.DataFeeder(feed_list=[img, label], place=p)

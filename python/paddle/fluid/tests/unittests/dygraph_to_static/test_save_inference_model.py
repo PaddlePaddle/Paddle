@@ -19,8 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -32,10 +31,9 @@ np.random.seed(SEED)
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
-program_translator = ProgramTranslator()
 
 
-class SimpleFcLayer(fluid.dygraph.Layer):
+class SimpleFcLayer(paddle.nn.Layer):
     def __init__(self, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
@@ -100,7 +98,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         self, model, inputs, gt_out, feed=None, fetch=None
     ):
 
-        expected_persistable_vars = set([p.name for p in model.parameters()])
+        expected_persistable_vars = {p.name for p in model.parameters()}
 
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference/model"
@@ -148,8 +146,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
 class TestPartialProgramRaiseError(unittest.TestCase):
     def test_param_type(self):
-        program_translator = ProgramTranslator()
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
