@@ -21,7 +21,8 @@ namespace ir {
 class Operation;
 
 ///
-/// \brief Value
+/// \brief Value class represents the SSA value in the IR system. This class
+/// only provides interfaces, for specific implementation, see Impl class.
 ///
 class Value {
  public:
@@ -65,7 +66,9 @@ class Value {
 };
 
 ///
-/// \brief OpResult
+/// \brief OpResult class represents the value defined by a result of operation.
+/// This class only provides interfaces, for specific implementation, see Impl
+/// class.
 ///
 class OpResult : public Value {
  public:
@@ -88,7 +91,8 @@ class OpResult : public Value {
 };
 
 ///
-/// \brief OpOperand
+/// \brief OpOperand class represents the operand of operation. This class only
+/// provides interfaces, for specific implementation, see Impl class.
 ///
 class OpOperand {
  public:
