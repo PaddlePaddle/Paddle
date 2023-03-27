@@ -147,7 +147,7 @@ def _convert_into_variable(tensor):
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
             # non-persistable. See case of `dropout_state` in lstm api.
             is_persistable = True
-            if hasattr(new_var, "name") and "dropout_state" in new_var.name:
+            if "dropout_state" in tensor.name:
                 is_persistable = False
 
             new_var = tensor._to_static_var(
