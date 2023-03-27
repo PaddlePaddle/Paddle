@@ -1485,8 +1485,13 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
     return names
 
 
-def prim_or_cinn_is_enabled(build_strategy):
+def prim_or_cinn_is_enabled(build_strategy, prim_state):
     if build_strategy is not None and build_strategy.build_cinn_pass:
+        return True
+
+    if prim_state is not None and (
+        prim_state.is_fwd_enabled() or prim_state.is_bwd_enabled()
+    ):
         return True
 
     if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():

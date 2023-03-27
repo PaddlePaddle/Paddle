@@ -378,8 +378,12 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
+        self._prim_state = PrimState()
+        if kwargs.get("backend", None):
+            self._prim_state.enable_all()
+
         if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None)
+            kwargs.get("build_strategy", None), self._prim_state
         ):
             from paddle.static import InputSpec
 
@@ -402,10 +406,6 @@ class StaticFunction:
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
-
-        self._prim_state = PrimState()
-        if kwargs.get("backend", None):
-            self._prim_state.enable_all()
 
     def enable_prim_fwd(self):
         self._prim_state.enable_fwd()
@@ -1236,7 +1236,9 @@ class ProgramCache:
             else:
                 raise
 
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+        if prim_or_cinn_is_enabled(
+            cache_key.kwargs['build_strategy'], prim_state
+        ):
             for var in concrete_program.main_program.list_vars():
                 if -1 in var.shape:
                     warnings.warn(
