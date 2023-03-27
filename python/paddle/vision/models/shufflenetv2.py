@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 

@@ -22,7 +22,7 @@ from eager_op_test import (
 )
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestTransferDtypeOpFp32ToFp64(OpTest):

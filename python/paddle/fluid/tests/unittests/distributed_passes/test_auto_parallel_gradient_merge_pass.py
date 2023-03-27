@@ -20,11 +20,9 @@ import numpy as np
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
+from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
 logging.getLogger().setLevel(logging.INFO)

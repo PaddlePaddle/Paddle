@@ -21,7 +21,7 @@ from parallel_dygraph_sparse_embedding_over_height import (
 from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 

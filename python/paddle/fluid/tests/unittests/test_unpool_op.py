@@ -280,9 +280,9 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
         import numpy as np
 
         import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.core as core
         import paddle.nn.functional as F
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -321,9 +321,9 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
         import numpy as np
 
         import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.core as core
         import paddle.nn.functional as F
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -362,8 +362,8 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         import numpy as np
 
         import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.core as core
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -401,9 +401,9 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
 class TestUnpoolOpAPI_st(unittest.TestCase):
     def test_case(self):
         import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.core as core
         import paddle.nn.functional as F
+        from paddle import fluid
+        from paddle.fluid import core
 
         paddle.enable_static()
 
