@@ -19,9 +19,8 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.distributed import fleet
 
 
 class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):

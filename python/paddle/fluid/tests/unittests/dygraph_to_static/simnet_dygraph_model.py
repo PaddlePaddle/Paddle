@@ -15,11 +15,10 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 from paddle.common_ops_import import Variable
-from paddle.fluid.dygraph import Layer
 from paddle.jit.api import to_static
+from paddle.nn import Layer
 
 
 class EmbeddingLayer:
@@ -214,7 +213,7 @@ class ConstantLayer:
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = fluid.layers.fill_constant(shape, dtype, value)
+        constant = paddle.tensor.fill_constant(shape, dtype, value)
         return constant
 
 
@@ -332,7 +331,7 @@ class FC(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self.__w = list()
+        self.__w = []
 
     def _build_once(self, input):
         i = 0
@@ -359,7 +358,7 @@ class FC(Layer):
             )
             i += 1
 
-        size = list([self._size])
+        size = [self._size]
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True
         )
@@ -395,7 +394,7 @@ class FC(Layer):
         self._b = value
 
     def forward(self, input):
-        mul_results = list()
+        mul_results = []
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
             input, self._param_attr

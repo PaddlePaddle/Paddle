@@ -103,11 +103,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     } else {
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
-          (data_type == paddle::experimental::DataType::FLOAT32) &&
-          (*attr == "NHWC");
+          (data_type == phi::DataType::FLOAT32) && (*attr == "NHWC");
       bool is_tune_fp16 =
-          (data_type == paddle::experimental::DataType::FLOAT16) &&
-          (*attr == "NCHW");
+          (data_type == phi::DataType::FLOAT16) && (*attr == "NCHW");
       VLOG(4) << "LayoutAutoTune assert with dtype and layout, Current op : "
               << op_name;
       if (is_tune_fp32) {

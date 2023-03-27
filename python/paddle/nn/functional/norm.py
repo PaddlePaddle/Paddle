@@ -16,8 +16,7 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
@@ -238,8 +237,11 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         saved_mean = helper.create_variable_for_type_inference(
             dtype=param_dtype, stop_gradient=True
         )
@@ -338,7 +340,7 @@ def layer_norm(
             x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
         )
 
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         if weight:
             inputs['Scale'] = [weight]
@@ -348,15 +350,18 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        dtype = x.dtype
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         mean_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
         variance_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
-        layer_norm_out = helper.create_variable_for_type_inference(dtype)
+        layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
         helper.append_op(
             type="layer_norm",

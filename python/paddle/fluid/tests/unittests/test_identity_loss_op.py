@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -48,12 +48,12 @@ class TestIdentityLossOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
         paddle.disable_static()
 
     def initTestCase(self):
@@ -127,7 +127,7 @@ class TestIdentityLossAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_shape)
+            x = paddle.static.data('X', self.x_shape)
             out1 = paddle.incubate.identity_loss(x)
             out2 = paddle.incubate.identity_loss(x, reduction=0)
             out3 = paddle.incubate.identity_loss(x, reduction=1)
@@ -174,7 +174,7 @@ class TestIdentityLossAPI(unittest.TestCase):
         )
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.incubate.identity_loss, x)
 
 

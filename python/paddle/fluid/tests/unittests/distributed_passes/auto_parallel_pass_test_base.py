@@ -21,7 +21,7 @@ import numpy as np
 from dist_pass_test_base import DistPassTestBase
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
 sys.path.append("..")

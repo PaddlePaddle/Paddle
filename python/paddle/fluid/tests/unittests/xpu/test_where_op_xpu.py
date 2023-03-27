@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
@@ -106,11 +106,15 @@ class TestXPUWhereAPI(unittest.TestCase):
                 train_prog = fluid.Program()
                 startup = fluid.Program()
                 with fluid.program_guard(train_prog, startup):
-                    cond = fluid.data(
+                    cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
                     )
-                    x = fluid.data(name='x', shape=self.shape, dtype='float32')
-                    y = fluid.data(name='y', shape=self.shape, dtype='float32')
+                    x = paddle.static.data(
+                        name='x', shape=self.shape, dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=self.shape, dtype='float32'
+                    )
 
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
