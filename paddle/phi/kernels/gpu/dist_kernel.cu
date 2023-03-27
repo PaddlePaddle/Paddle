@@ -27,25 +27,24 @@ namespace phi {
 
 #define FULL_MASK 0xffffffff
 
-template <typename T>
+template <typename Tx, typename Ty>
 struct ZeroOrderFunctor {
  public:
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  __device__ MT operator()(const T& x, const T& y) const {
-    return static_cast<MT>((static_cast<MT>(x) - static_cast<MT>(y)) != MT(0));
+  __device__ Ty operator()(const Tx& x, const Tx& y) const {
+    return static_cast<Ty>((static_cast<Ty>(x) - static_cast<Ty>(y)) != Ty(0));
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty>
 struct OtherOrderFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
-  __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>(pow(abs(x - y), p_order_));
+  explicit OtherOrderFunctor(const Ty& p_order) : p_order_(p_order) {}
+  __device__ Ty operator()(const Tx& x, const Tx& y) const {
+    return static_cast<Ty>(
+        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order_));
   }
 
  private:
-  T p_order_;
+  Ty p_order_;
 };
 
 template <typename Tx, typename Ty>
@@ -57,17 +56,17 @@ struct PowFunctor {
   Ty p_order_;
 };
 
-template <typename T, typename Functor>
+template <typename Tx, typename Ty, typename Functor>
 __global__ void ReduceSumWithSubtract(
-    const T* x, const T* y, T* out, int64_t N, Functor func) {
-  T sum_val = T(0);
+    const Tx* x, const Tx* y, Ty* out, int64_t N, Functor func) {
+  Ty sum_val = Ty(0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     sum_val += func(x[i], y[i]);
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<T>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<Ty>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = sum_val;
   }
@@ -136,7 +135,7 @@ void DistKernel(const Context& dev_ctx,
       MT* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
       ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
+              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
       phi::funcs::ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           dev_ctx,
           intermediate,
@@ -166,7 +165,7 @@ void DistKernel(const Context& dev_ctx,
       MT p_order = static_cast<MT>(p);
       ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
       phi::funcs::
           ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<T>>(
               dev_ctx,
