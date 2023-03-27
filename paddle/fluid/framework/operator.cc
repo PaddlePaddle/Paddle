@@ -1588,7 +1588,6 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
     // different type with variable. The PhiKernelContext need be reconstructed.
     // We use kernel_signature_'s output to retrieve tensor. Because the tensor
     // in phi_kernel_context stored in the order of kernel_signature_'s output.
-    // if (phi_kernel_context->OutputsSize() >= phi_tensor_index ||
     if (kernel_signature_ == nullptr) {
       need_prepare_phi_data_ = true;
       return;
