@@ -194,6 +194,7 @@ int main(int argc, char** argv) {
 
   infra::PassManager pm(&context, opt_level);
   pm.EnableTiming();
+  pm.EnableIRPrinting(std::make_unique<infra::PassManager::IRPrinterConfig>());
   auto pass = std::make_unique<TestPass>();
   pm.addPass(std::move(pass));
 

@@ -32,7 +32,7 @@ namespace detail {
 class AdaptorPass;
 
 struct PassExecutionState {
-  explicit PassExecutionState(mlir::Operation* ir, AnalysisManager am)
+  explicit PassExecutionState(mlir::Operation* ir, const AnalysisManager& am)
       : ir(ir), pass_failed(false), am(am) {}
 
   mlir::Operation* ir;
@@ -71,7 +71,7 @@ class Pass {
                 const std::vector<std::string>& dependents = {})
       : info_(name, opt_level, dependents) {}
 
-  PassInfo GetPassInfo() const { return info_; }
+  const PassInfo& GetPassInfo() const { return info_; }
 
   std::unique_ptr<Pass> Clone() const { return ClonePass(); }
 
