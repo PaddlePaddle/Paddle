@@ -1524,17 +1524,17 @@ def is_builtin(func, name=None):
 
 
 @signature_safe_contextmanager
-def dy2st_prim_guard(prim_info):
+def dy2st_prim_guard(prim_state):
     orign_fwd = core._is_fwd_prim_enabled()
     orign_bwd = core._is_bwd_prim_enabled()
     orign_all = core._is_all_prim_enabled()
 
-    if prim_info is not None:
-        if prim_info.is_fwd_enabled():
+    if prim_state is not None:
+        if prim_state.is_fwd_enabled():
             core._set_prim_forward_enabled(True)
-        if prim_info.is_bwd_enabled():
+        if prim_state.is_bwd_enabled():
             core._set_prim_backward_enabled(True)
-        if prim_info.is_all_enabled():
+        if prim_state.is_all_enabled():
             core._set_prim_all_enabled(True)
     try:
         yield
