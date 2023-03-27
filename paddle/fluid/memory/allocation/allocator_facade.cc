@@ -564,10 +564,16 @@ class AllocatorFacadePrivate {
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+            << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), 0, allow_free_idle_chunk_);
+        cuda_allocator,
+        platform::GpuMinChunkSize(),
+        chunk_size,
+        allow_free_idle_chunk_);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -598,7 +604,7 @@ class AllocatorFacadePrivate {
           std::make_shared<AutoGrowthBestFitAllocator>(
               cuda_allocator,
               platform::GpuMinChunkSize(),
-              /*chunk_size=*/0,
+              /*chunk_size=*/chunk_size,
               allow_free_idle_chunk_);
     }
 #else
@@ -636,7 +642,7 @@ class AllocatorFacadePrivate {
     }
 
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
-        underlying_allocator, alignment, 0, allow_free_idle_chunk_);
+        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk_);
 #endif
 #endif
   }
@@ -649,7 +655,7 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         cuda_allocator,
         platform::GpuMinChunkSize(),
-        /*chunk_size=*/0,
+        /*chunk_size=*/chunk_size,
         allow_free_idle_chunk);
 #endif
 
@@ -680,7 +686,7 @@ class AllocatorFacadePrivate {
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
           cuda_allocator,
           platform::GpuMinChunkSize(),
-          /*chunk_size=*/0,
+          /*chunk_size=*/chunk_size,
           allow_free_idle_chunk);
     }
 
@@ -718,7 +724,7 @@ class AllocatorFacadePrivate {
       underlying_allocator = cuda_allocator;
     }
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        underlying_allocator, alignment, 0, allow_free_idle_chunk);
+        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
 #endif
 #endif
   }
@@ -832,12 +838,13 @@ class AllocatorFacadePrivate {
 
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            bool allow_free_idle_chunk) {
+    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
     auto custom_allocator =
         std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         custom_allocator,
         phi::DeviceManager::GetMinChunkSize(p),
-        /*chunk_size=*/0,
+        /*chunk_size=*/chunk_size,
         allow_free_idle_chunk);
   }
 #endif
