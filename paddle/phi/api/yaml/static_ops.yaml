@@ -26,6 +26,17 @@
     func : all_reduce
     param: [x, reduce_type]
 
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  optional : x
+  inplace : (x -> out)
+  backward : assign_grad
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
