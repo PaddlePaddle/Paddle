@@ -32,4 +32,4 @@ PD_REGISTER_STRUCT_KERNEL(beam_search,
   UNUSED static int __declare_gpu_functor_symbol_for_##functor_name = \
       TouchGPUFunctorSymbolFor_##functor_name()
 
-DECLARE_GPU_FUNCTOR(beam_search)
+DECLARE_GPU_FUNCTOR(beam_search);
