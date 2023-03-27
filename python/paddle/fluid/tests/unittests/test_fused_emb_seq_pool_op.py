@@ -107,7 +107,7 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
     def test_api(self):
         with paddle_static_guard():
             if ver.mkl() == "ON" and 'Linux' in platform.platform():
-                import paddle.fluid as fluid
+                from paddle import fluid
 
                 dict_size = 20
                 data_t = paddle.static.data(

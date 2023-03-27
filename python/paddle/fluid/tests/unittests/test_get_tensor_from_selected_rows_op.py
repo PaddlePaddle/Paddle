@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.op import Operator
 from paddle.nn import clip
 

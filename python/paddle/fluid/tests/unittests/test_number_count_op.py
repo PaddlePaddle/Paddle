@@ -18,8 +18,8 @@ import eager_op_test
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
+from paddle.fluid import core
 
 
 def count(x, upper_num):

@@ -18,8 +18,8 @@ import eager_op_test
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 
 
 def assign_value_wrapper(

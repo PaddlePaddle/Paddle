@@ -24,8 +24,8 @@ from eager_op_test import (
 from testsuite import create_op
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
