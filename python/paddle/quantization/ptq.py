@@ -14,7 +14,7 @@
 
 import copy
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.nn import Layer
 
 from .config import QuantConfig
@@ -27,7 +27,7 @@ class PTQ(Quantization):
     """
 
     def __init__(self, config: QuantConfig):
-        super(PTQ, self).__init__(config)
+        super().__init__(config)
 
     def _is_parallel_training(self):
         try:

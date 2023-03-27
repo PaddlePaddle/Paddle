@@ -431,13 +431,14 @@ if(WITH_XPU)
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
          xpu_op_list
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 else()
   cc_library(
     phi_utils
@@ -445,12 +446,13 @@ else()
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 endif()
 
 if(WITH_XPU)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -23,6 +23,7 @@ import paddle
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.python_api = paddle.flatten
+        self.public_python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.prim_op_type = "comp"
@@ -41,12 +42,10 @@ class TestFlattenOp(OpTest):
         self.enable_cinn = True
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=["XShape"], check_eager=True, check_prim=True
-        )
+        self.check_output(no_check_set=["XShape"], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -133,7 +132,7 @@ class TestFlattenOp_5(TestFlattenOp):
 
 class TestFlattenOp_6(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = tuple()
+        self.in_shape = ()
         self.start_axis = 0
         self.stop_axis = -1
         self.new_shape = (1,)
@@ -318,7 +317,7 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
 class TestFlatten0DTensorOpError(unittest.TestCase):
     def test_errors(self):
-        image_shape = tuple()
+        image_shape = ()
         x = np.random.uniform(-1.0, 1.0, []).astype('float32')
 
         def test_ValueError1():

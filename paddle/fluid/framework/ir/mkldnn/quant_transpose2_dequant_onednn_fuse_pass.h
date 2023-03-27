@@ -28,8 +28,10 @@ class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
 
  protected:
   void ApplyImpl(Graph *graph) const override;
-  void FuseQuantizeTranspose2(Graph *graph) const;
-  void FuseTranspose2Dequantize(Graph *graph) const;
+  void FuseQuantizeTranspose2(Graph *graph,
+                              const std::string &transpose_type) const;
+  void FuseTranspose2Dequantize(Graph *graph,
+                                const std::string &transpose_type) const;
 
  private:
   std::string name_scope = "quant_transpose2_dequant_onednn_fuse_pass";

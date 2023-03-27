@@ -20,7 +20,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -80,10 +80,12 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
 
-            img = fluid.data(
+            img = paddle.static.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
 
             prediction, avg_loss = static_train_net(img, label)
 

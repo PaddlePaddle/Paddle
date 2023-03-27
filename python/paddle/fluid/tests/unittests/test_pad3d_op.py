@@ -15,13 +15,18 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import Executor, Program, default_main_program, program_guard
+from paddle import nn
+from paddle.fluid import (
+    Executor,
+    Program,
+    core,
+    default_main_program,
+    program_guard,
+)
 
 
 class TestPad3dOp(OpTest):
@@ -77,10 +82,10 @@ class TestPad3dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
@@ -199,7 +204,7 @@ class TestPadAPI(unittest.TestCase):
             mode = "constant"
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             result = F.pad(
                 x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
             )
@@ -220,7 +225,7 @@ class TestPadAPI(unittest.TestCase):
             pad = [1, 2, 1, 1, 1, 2]
             mode = "reflect"
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
@@ -246,7 +251,7 @@ class TestPadAPI(unittest.TestCase):
             pad = [1, 2, 1, 1, 3, 4]
             mode = "replicate"
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
@@ -272,7 +277,7 @@ class TestPadAPI(unittest.TestCase):
             pad = [1, 2, 1, 1, 3, 4]
             mode = "circular"
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
+            x = paddle.static.data(name="x", shape=input_shape)
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
