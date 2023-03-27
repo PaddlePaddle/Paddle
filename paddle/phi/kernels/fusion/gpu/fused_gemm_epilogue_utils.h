@@ -23,8 +23,8 @@
 
 #include <cublasLt.h>
 
-#include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/commom/memory_utils.h"
+#include "paddle/phi/core/scope_guard.h"
 
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/forwards.h"
