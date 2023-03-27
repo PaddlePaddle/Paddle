@@ -155,9 +155,9 @@
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor out_grad, DataType dtype)
   output : Tensor(x_grad)
-  composite: cast_grad(x, out_grad, x_grad)
+  composite: cast_grad(out_grad, x.dtype(), x_grad)
   no_need_buffer : x
 
 - backward_op : channel_shuffle_grad
