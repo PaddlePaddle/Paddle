@@ -30,21 +30,22 @@ namespace phi {
 template <typename T>
 struct ZeroOrderFunctor {
  public:
-  __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>((x - y) != T(0));
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  __device__ MT operator()(const T& x, const T& y) const {
+    return static_cast<MT>((static_cast<MT>(x) - static_cast<MT>(y)) != MT(0));
   }
 };
 
-template <typename Tx, typename Ty>
+template <typename T>
 struct OtherOrderFunctor {
-  explicit OtherOrderFunctor(const Ty& p_order) : p_order_(p_order) {}
-  __device__ Tx operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Tx>(
-        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order_));
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
+  __device__ T operator()(const T& x, const T& y) const {
+    return static_cast<T>(pow(abs(x - y), p_order_));
   }
 
  private:
-  Ty p_order_;
+  T p_order_;
 };
 
 template <typename Tx, typename Ty>
@@ -114,6 +115,7 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();
   const T* y_ptr = y.data<T>();
@@ -125,20 +127,25 @@ void DistKernel(const Context& dev_ctx,
     auto n = x.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
     intermediate.Resize(phi::make_ddim({config.block_per_grid.x}));
-    T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
 
     std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};
     std::vector<int> reduce_axis =
         funcs::details::GetReduceDim(axis_dims, xdim.size(), true);
 
     if (p == 0) {
-      ReduceSumWithSubtract<T>
+      MT* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
+      ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+      phi::funcs::ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx,
+          intermediate,
+          out,
+          kps::IdentityFunctor<MT, T>(),
+          reduce_axis);
 
     } else if (p == INFINITY) {
+      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
@@ -146,6 +153,7 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else if (p == -INFINITY) {
+      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMinWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
@@ -154,13 +162,18 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      MT* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
       MT p_order = static_cast<MT>(p);
-      ReduceSumWithSubtract<T>
+      ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
+      phi::funcs::
+          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<T>>(
+              dev_ctx,
+              intermediate,
+              out,
+              kps::IdentityFunctor<MT>(),
+              reduce_axis);
 
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
