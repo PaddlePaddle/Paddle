@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-paddle.enable_static()
 np.random.seed(100)
 paddle.seed(100)
 
@@ -37,20 +36,21 @@ class TestI0API(unittest.TestCase):
 
     def test_api_static(self):
         def run(place):
+            paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype='float64'
                 )
-                y = paddle.i0(x)
+                out = paddle.i0(x)
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"x": self.x},
-                    fetch_list=[y],
+                    feed={"x": paddle.to_tensor(self.x)},
+                    fetch_list=[out],
                 )
-                out_ref = output_numpy_i0(x)
-                np.testing.assert_allclose(out_ref, res[0], rtol=1e-5)
-
+                out_ref = output_numpy_i0(self.x)
+                np.testing.assert_allclose(res[0], out_ref, rtol=1e-5)
+            paddle.disable_static()
         for place in self.place:
             run(place)
 
@@ -60,8 +60,8 @@ class TestI0API(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.i0(x)
 
-            out_ref = output_numpy_i0(x)
-            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5)
+            out_ref = output_numpy_i0(self.x)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-5)
             paddle.enable_static()
 
         for place in self.place:
@@ -70,8 +70,8 @@ class TestI0API(unittest.TestCase):
     def test_empty_input_error(self):
         for place in self.place:
             paddle.disable_static(place)
-            x = paddle.to_tensor(self.x, dtype=paddle.int64)
-            self.assertRaises(AttributeError, paddle.i0, x)
+            x = None
+            self.assertRaises(ValueError, paddle.i0, x)
             paddle.enable_static()
 
 
