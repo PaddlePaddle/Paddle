@@ -504,6 +504,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS tensor_api)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
+    list(APPEND PYBIND_DEPS flags)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
