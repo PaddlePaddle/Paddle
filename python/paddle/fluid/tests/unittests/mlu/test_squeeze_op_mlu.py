@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
 
 paddle.enable_static()

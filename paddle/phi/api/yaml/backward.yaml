@@ -963,6 +963,17 @@
   kernel :
     func : maxout_grad
 
+- backward_op : memory_efficient_attention_grad
+  forward : memory_efficient_attention (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test) -> Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
+  args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor output, Tensor logsumexp, Tensor seed_and_offset, Tensor output_grad, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale)
+  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad), Tensor(bias_grad)
+  infer_meta :
+    func : MemoryEfficientAttentionGradInferMeta
+  kernel :
+    func : memory_efficient_attention_grad
+    data_type : output_grad
+  optional : bias, cu_seqlens_q, cu_seqlens_k
+
 - backward_op : meshgrid_grad
   forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
   args : (Tensor[] inputs, Tensor[] outputs_grad)
