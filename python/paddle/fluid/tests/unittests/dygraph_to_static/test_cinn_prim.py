@@ -21,8 +21,9 @@ import paddle.nn.functional as F
 
 
 def apply_to_static(net, use_cinn):
-    backend = 'CINN' if use_cinn else None
-    return paddle.jit.to_static(net, backend=backend)
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -56,6 +57,7 @@ class TestPrimForward(unittest.TestCase):
         )
         if use_prim:
             net = apply_to_static(net, use_prim)
+            net.forward.enable_prim_fwd()
 
         res = []
         for _ in range(10):
@@ -113,6 +115,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         )
         if use_prim:
             net = apply_to_static(net, use_prim)
+            net.forward.enable_prim_all()
 
         res = []
         for _ in range(10):

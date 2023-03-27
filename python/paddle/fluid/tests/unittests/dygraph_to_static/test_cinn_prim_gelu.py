@@ -29,8 +29,9 @@ approximate_conds = [True, False]
 
 
 def apply_to_static(net, use_cinn):
-    backend = 'CINN' if use_cinn else None
-    return paddle.jit.to_static(net, backend=backend)
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
 def generate_data(shape, dtype="float32"):
@@ -72,6 +73,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         )
         if use_prim:
             net = apply_to_static(net, use_prim)
+            net.forward.enable_prim_all()
 
         res = []
         self.x = data
