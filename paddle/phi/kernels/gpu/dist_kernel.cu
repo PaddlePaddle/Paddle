@@ -77,7 +77,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = (T)-1e10f;
+  T max_val = std::numeric_limits<T>::min();
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     max_val = std::max(max_val, abs(x[i] - y[i]));
@@ -95,7 +95,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = (T)1e10f;
+  T min_val = std::numeric_limits<T>::max();
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     min_val = std::min(min_val, abs(x[i] - y[i]));
@@ -136,14 +136,20 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
+      DenseTensor intermediate2(intermediate);
+      dev_ctx.template Alloc<MT>(&intermediate2);
       phi::funcs::
-          ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<MT, T>>(
+          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
               dev_ctx,
               intermediate,
-              out,
-              kps::IdentityFunctor<MT, T>(),
+              &intermediate2,
+              kps::IdentityFunctor<MT>(),
               reduce_axis);
 
+      std::vector<const DenseTensor*> ins = {&intermediate2};
+      std::vector<DenseTensor*> outs = {out};
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, ins, &outs, kps::IdentityFunctor<MT, T>());
     } else if (p == INFINITY) {
       T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMaxWithSubtract<T>
@@ -167,16 +173,17 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
+      DenseTensor intermediate2(intermediate);
+      dev_ctx.template Alloc<MT>(&intermediate2);
       phi::funcs::
           ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
               dev_ctx,
               intermediate,
-              out,
+              &intermediate2,
               kps::IdentityFunctor<MT>(),
               reduce_axis);
 
-      const DenseTensor* tmp_norm = out;
-      std::vector<const DenseTensor*> ins = {tmp_norm};
+      std::vector<const DenseTensor*> ins = {&intermediate2};
       std::vector<DenseTensor*> outs = {out};
       MT p_order_ = static_cast<MT>(static_cast<MT>(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
