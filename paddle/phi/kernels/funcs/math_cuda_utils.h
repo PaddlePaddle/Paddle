@@ -24,6 +24,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace phi {
 namespace funcs {
@@ -302,7 +303,7 @@ __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : (T)-1e10f;
+  val = (lane < block_span) ? shared[lane] : std::numeric_limits<T>::min();
   val = WarpReduceMax(val, mask);
 
   return val;
@@ -350,7 +351,7 @@ __inline__ __device__ T BlockReduceMin(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : (T)1e10f;
+  val = (lane < block_span) ? shared[lane] : std::numeric_limits<T>::max();
   val = WarpReduceMin(val, mask);
 
   return val;
