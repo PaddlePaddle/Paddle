@@ -1075,6 +1075,53 @@ PDNode *patterns::OperatorReshape2::operator()(const std::string &operator_type,
   return reshape2_out;
 }
 
+PDNode *patterns::ConvDepthwiseConv::operator()(bool with_bias) {
+  // Create Operators
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *depthwise_conv_op =
+      pattern->NewNode(depthwise_conv_repr())->assert_is_op("conv2d");
+  
+  if (!with_bias) {
+    depthwise_conv_op->assert_more([&](Node *x) {
+      if (!HasInput(x, "Bias") || x->Op()->Input("Bias").size() == 0)
+        return true;
+      return false;
+    });
+  }
+  // Create variables
+  // Conv filter
+  auto *conv_weights = pattern->NewNode(conv_weights_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("conv2d", "Filter");
+  // Depthwise conv filter
+  auto *depthwise_conv_weights = pattern->NewNode(depthwise_conv_weights_repr())
+                                     ->AsInput()
+                                     ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out = pattern->NewNode(conv_out_repr())
+                       ->AsIntermediate()
+                       ->assert_is_only_output_of_op("conv2d")
+                       ->assert_is_op_input("conv2d");
+  // output
+  auto *depthwise_conv_out = pattern->NewNode(depthwise_conv_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output("conv2d");
+  std::vector<PDNode *> depthwise_conv_inputs{conv_out, depthwise_conv_weights};
+  if (with_bias) {
+    // Depthwise conv bias
+    auto *depthwise_conv_bias = pattern->NewNode(depthwise_conv_bias_repr())
+                                    ->AsInput()
+                                    ->assert_is_op_input("conv2d", "Bias");
+    depthwise_conv_inputs.push_back(depthwise_conv_bias);
+  }
+
+  conv_op->LinksFrom({conv_weights}).LinksTo({conv_out});
+  depthwise_conv_op->LinksFrom(depthwise_conv_inputs)
+      .LinksTo({depthwise_conv_out});
+
+  return depthwise_conv_out;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators

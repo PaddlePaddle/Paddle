@@ -89,6 +89,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
   const bool is_conv3d = strides.size() == 3U;
   const std::string& unique_name =
       dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
+
   PD_VISIT_FLOAT_AND_INT8_TYPES(
       filter->dtype(), "ConvOneDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
@@ -113,6 +114,21 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, is_conv3d, is_test);
+
+        const std::string& depthwise_type =
+            dev_ctx.HasDnnAttr("depthwise_type")
+                ? PADDLE_GET_CONST(std::string,
+                                   dev_ctx.GetDnnAttr("depthwise_type"))
+                : "";
+        if (unlikely(depthwise_type == "k3s2p1")) {
+          double h = static_cast<double>(output->dims()[2]);
+          double w = static_cast<double>(output->dims()[3]);
+          int64_t new_h = std::ceil(h / 2.0);
+          int64_t new_w = std::ceil(w / 2.0);
+
+          output->Resize({output->dims()[0], output->dims()[1], new_h, new_w});
+        }
+
         std::shared_ptr<dnnl::memory> dst_memory_p;
         if (fuse_residual_conn) {
           dst_memory_p =
@@ -131,6 +147,25 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
           auto bias_memory_p =
               handler.AcquireBiasMemoryWithReorder(bias, is_test);
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+        }
+
+        if (unlikely(depthwise_type != "")) {
+          const auto* dw_filter = dev_ctx.GetDnnInput("FilterDW");
+          auto dw_weights_memory_p =
+              handler.AcquireDepthwiseWeightsMemoryWithReorder(dw_filter);
+          args.insert({DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_WEIGHTS,
+                       *dw_weights_memory_p});
+
+          const auto* dw_bias = dev_ctx.HasDnnInput("BiasDW")
+                                    ? dev_ctx.GetDnnInput("BiasDW")
+                                    : nullptr;
+
+          if (likely(dw_bias)) {
+            auto dw_bias_memory_p =
+                handler.AcquireDepthwiseBiasMemoryWithReorder(dw_bias);
+            args.insert(
+                {DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_BIAS, *dw_bias_memory_p});
+          }
         }
 
         auto& astream = OneDNNContext::tls().get_stream();

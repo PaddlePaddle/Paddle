@@ -462,6 +462,12 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       return;
     }
 
+    if (conv_op->Op()->GetAttrIfExists<std::string>("depthwise_type") != "") {
+      MarkAndLogCannotQuantizeOp(
+          conv_op, "Cannot quantize conv with depthwise conv fuse");
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);

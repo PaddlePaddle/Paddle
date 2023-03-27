@@ -368,6 +368,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_activation_mkldnn_fuse_pass",           //
+             "conv1x1_depthwise_conv_mkldnn_fuse_pass",    //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_mkldnn_fuse_pass",  //
