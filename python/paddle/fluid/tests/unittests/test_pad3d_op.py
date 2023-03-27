@@ -209,7 +209,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_output(self):
-            self.check_output(check_eager=True, atol=1e-3)
+            self.check_output(atol=1e-3)
 
         def test_check_grad(self):
             self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
@@ -246,7 +246,7 @@ def create_test_bf16(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True, atol=1e-2)
+            self.check_output_with_place(place, atol=1e-2)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
