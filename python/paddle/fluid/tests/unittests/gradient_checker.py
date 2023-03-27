@@ -19,8 +19,8 @@ from itertools import product
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
 

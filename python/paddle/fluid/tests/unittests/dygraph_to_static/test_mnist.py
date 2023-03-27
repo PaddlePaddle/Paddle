@@ -21,7 +21,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.optimizer import AdamOptimizer

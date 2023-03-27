@@ -18,10 +18,9 @@ import numpy as np
 from op_test import OpTest, check_out_dtype, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.op import Operator
 
 

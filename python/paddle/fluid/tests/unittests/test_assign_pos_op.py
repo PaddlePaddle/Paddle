@@ -18,8 +18,8 @@ import numpy as np
 import op_test
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
+from paddle.fluid import core
 
 
 def assign_pos(x, _cum_count):

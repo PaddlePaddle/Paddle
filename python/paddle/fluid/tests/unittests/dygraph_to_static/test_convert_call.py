@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
+from paddle import fluid
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
 from paddle.jit.dy2static.utils import func_to_source_code
 

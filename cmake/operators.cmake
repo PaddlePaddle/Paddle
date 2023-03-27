@@ -518,6 +518,8 @@ function(op_library TARGET)
     foreach(xpu_kp_src ${xpu_kp_cc_srcs})
       set(op_name "")
       find_register(${xpu_kp_src} "REGISTER_OP_KERNEL" op_name)
+      find_phi_register(${xpu_kp_src} ${pybind_file}
+                        "PD_REGISTER_STRUCT_KERNEL")
       if(NOT ${op_name} EQUAL "")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
         message(STATUS "Building KP Target: ${op_name}")

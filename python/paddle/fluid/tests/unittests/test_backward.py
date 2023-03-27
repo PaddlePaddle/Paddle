@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import fluid, static
 
 
 class BackwardNet:
@@ -103,9 +102,9 @@ class TestBackward(unittest.TestCase):
         params_grads = fluid.backward.append_backward(
             loss, parameter_list, no_grad_set
         )
-        params_names = set(
-            [param_var.name for (param_var, grad_var) in params_grads]
-        )
+        params_names = {
+            param_var.name for (param_var, grad_var) in params_grads
+        }
         self.assertSetEqual(params_names, self.net.params_names)
 
         return params_grads

@@ -27,7 +27,7 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.incubate.distributed.fleet.collective import (
     CollectiveOptimizer,
     DistributedStrategy,
