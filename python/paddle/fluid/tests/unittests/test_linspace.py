@@ -26,54 +26,78 @@ class TestLinspaceOpCommonCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
-        dtype = 'float32'
+        self._set_dtype()
         self.inputs = {
-            'Start': np.array([0]).astype(dtype),
-            'Stop': np.array([10]).astype(dtype),
+            'Start': np.array([0]).astype(self.dtype),
+            'Stop': np.array([10]).astype(self.dtype),
             'Num': np.array([11]).astype('int32'),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': self.attr_dtype}
+        self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
 
-        self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
+    def _set_dtype(self):
+        self.dtype = "float32"
+        self.attr_dtype = int(core.VarDesc.VarType.FP32)
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestLinspaceOpReverseCase(OpTest):
+class TestLinspaceOpReverseCase(TestLinspaceOpCommonCase):
     def setUp(self):
-        self.op_type = "linspace"
-        self.python_api = paddle.linspace
-        dtype = 'float32'
+        super().setUp()
         self.inputs = {
-            'Start': np.array([10]).astype(dtype),
-            'Stop': np.array([0]).astype(dtype),
+            'Start': np.array([10]).astype(self.dtype),
+            'Stop': np.array([0]).astype(self.dtype),
             'Num': np.array([11]).astype('int32'),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
-
-        self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
+        self.outputs = {'Out': np.arange(10, -1, -1).astype(self.dtype)}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestLinspaceOpNumOneCase(OpTest):
+class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
     def setUp(self):
-        self.op_type = "linspace"
-        self.python_api = paddle.linspace
-        dtype = 'float32'
+        super().setUp()
         self.inputs = {
-            'Start': np.array([10]).astype(dtype),
-            'Stop': np.array([0]).astype(dtype),
+            'Start': np.array([10]).astype(self.dtype),
+            'Stop': np.array([0]).astype(self.dtype),
             'Num': np.array([1]).astype('int32'),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
-
-        self.outputs = {'Out': np.array(10, dtype=dtype)}
+        self.outputs = {'Out': np.array(10, dtype=self.dtype)}
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
+    def _set_dtype(self):
+        self.dtype = "float16"
+        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+
+
+class TestLinspaceOpReverseCaseFP16(TestLinspaceOpReverseCase):
+    def _set_dtype(self):
+        self.dtype = "float16"
+        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+
+
+class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
+    def _set_dtype(self):
+        self.dtype = "float16"
+        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+
+
+# class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCase):
+#     def _set_dtype(self):
+#         self.dtype="bfloat16"
+#         self.attr_dtype = int(core.VarDesc.VarType.BF16)
+
+# class TestLinspaceOpReverseCaseBF16(TestLinspaceOpReverseCase):
+#     def _set_dtype(self):
+#         self.dtype="bfloat16"
+#         self.attr_dtype = int(core.VarDesc.VarType.BF16)
 
 
 class TestLinspaceAPI(unittest.TestCase):

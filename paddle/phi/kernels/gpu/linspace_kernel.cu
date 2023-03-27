@@ -111,7 +111,9 @@ PD_REGISTER_KERNEL(linspace,
                    float,
                    int32_t,
                    int64_t,
-                   double) {
+                   double,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
