@@ -18,7 +18,7 @@ import sys
 import os
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp.amp_nn as amp_nn

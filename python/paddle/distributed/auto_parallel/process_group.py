@@ -115,8 +115,8 @@ class ProcessGroup:
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
-            assert False, "Rank {} doesn't belong to this group".format(
-                global_rank
+            raise AssertionError(
+                "Rank {} doesn't belong to this group".format(global_rank)
             )
 
     def is_instantiate(self):
@@ -149,7 +149,7 @@ class ProcessGroup:
                     ring_id
                 )
             else:
-                assert False, "No CUDA device found"
+                raise AssertionError('No CUDA device found')
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group

@@ -22,7 +22,7 @@ from hybrid_parallel_pp_transformer import ModelPipe, set_random_seed
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 batch_size = 8
 length = 8
