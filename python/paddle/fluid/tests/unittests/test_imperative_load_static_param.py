@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 from paddle.nn import BatchNorm, Linear
 
 paddle.enable_static()

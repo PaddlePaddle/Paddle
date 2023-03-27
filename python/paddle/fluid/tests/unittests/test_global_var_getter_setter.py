@@ -14,7 +14,7 @@
 
 import unittest as unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class VarInfo:

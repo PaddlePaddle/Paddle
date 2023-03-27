@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):

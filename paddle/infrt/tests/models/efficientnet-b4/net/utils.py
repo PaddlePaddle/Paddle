@@ -18,8 +18,8 @@ import re
 from functools import partial
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 
 # Parameters for the entire model (stem, all blocks, and head)
 GlobalParams = collections.namedtuple(
