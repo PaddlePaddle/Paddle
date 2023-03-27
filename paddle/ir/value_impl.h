@@ -20,6 +20,8 @@
 #include "paddle/ir/type.h"
 
 namespace ir {
+static const uint32_t OUTLINE_OP_RESULT_INDEX = 6;
+
 class Operation;
 
 namespace detail {
@@ -70,7 +72,8 @@ class alignas(8) ValueImpl {
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
   ///
   explicit ValueImpl(ir::Type type, uint32_t index) {
-    assert((void("The value of index must not exceed 6"), index < 7));
+    assert((void("The value of index must not exceed 6"),
+            index <= OUTLINE_OP_RESULT_INDEX));
     type_ = type;
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(nullptr) + index);
@@ -88,9 +91,9 @@ class alignas(8) ValueImpl {
   /// NOTE: The members of the OpOperandImpl include four pointers, so this
   /// class is 8-byte aligned, and the lower 3 bits of its address are 0, so the
   /// index can be stored in these 3 bits, stipulate:
-  /// (1) index = 0~5: inline output(OpInlineResultImpl);
-  /// (2) index = 6: outline output(OpOutlineResultImpl);
-  /// (3) index = 7 is reserved.
+  /// (1) index = 0~5: represent positions 0 to 5 inline
+  /// output(OpInlineResultImpl); (2) index = 6: represent the position >=6
+  /// outline output(OpOutlineResultImpl); (3) index = 7 is reserved.
   ///
   OpOperandImpl *offset_first_user_ = nullptr;
 };
@@ -102,7 +105,9 @@ class alignas(8) OpResultImpl : public ValueImpl {
  public:
   using ValueImpl::ValueImpl;
 
-  static bool classof(const ValueImpl &value) { return value.index() < 7; }
+  static bool classof(const ValueImpl &value) {
+    return value.index() <= OUTLINE_OP_RESULT_INDEX;
+  }
 
   ///
   /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
@@ -118,7 +123,9 @@ class alignas(8) OpResultImpl : public ValueImpl {
   ///
   /// \brief Get the maximum number of results that can be stored inline.
   ///
-  uint32_t GetMaxInlineResultIndex() const { return 6; }
+  uint32_t GetMaxInlineResultIndex() const {
+    return OUTLINE_OP_RESULT_INDEX - 1;
+  }
 };
 
 ///
@@ -129,10 +136,12 @@ class OpInlineResultImpl : public OpResultImpl {
  public:
   OpInlineResultImpl(ir::Type type, uint32_t result_index)
       : OpResultImpl(type, result_index) {
-    assert(result_index < GetMaxInlineResultIndex());
+    assert(result_index <= GetMaxInlineResultIndex());
   }
 
-  static bool classof(const OpResultImpl &value) { return value.index() < 6; }
+  static bool classof(const OpResultImpl &value) {
+    return value.index() < OUTLINE_OP_RESULT_INDEX;
+  }
 
   uint32_t GetResultIndex() const { return index(); }
 };
@@ -144,12 +153,15 @@ class OpInlineResultImpl : public OpResultImpl {
 class OpOutlineResultImpl : public OpResultImpl {
  public:
   OpOutlineResultImpl(ir::Type type, uint32_t outline_index)
-      : OpResultImpl(type, 6), outline_index_(outline_index) {}
+      : OpResultImpl(type, OUTLINE_OP_RESULT_INDEX),
+        outline_index_(outline_index) {}
 
-  static bool classof(const OpResultImpl &value) { return value.index() == 6; }
+  static bool classof(const OpResultImpl &value) {
+    return value.index() == OUTLINE_OP_RESULT_INDEX;
+  }
 
   uint32_t GetResultIndex() const {
-    return outline_index_ + GetMaxInlineResultIndex();
+    return outline_index_ + GetMaxInlineResultIndex() + 1;
   }
 
   uint32_t outline_index_;

@@ -25,21 +25,24 @@ uint32_t OpResultImpl::GetResultIndex() const {
 }
 
 ir::Operation *OpResultImpl::owner() const {
+  // For inline result, pointer offset index to obtain the address of op.
   if (const auto *result = ir::dyn_cast<OpInlineResultImpl>(this)) {
     result += result->GetResultIndex() + 1;
     return reinterpret_cast<Operation *>(
         const_cast<OpInlineResultImpl *>(result));
   }
-  // Out-of-line results are stored in an array just before the inline results.
-  const OpOutlineResultImpl *outOfLineIt = (const OpOutlineResultImpl *)(this);
-  outOfLineIt += (outOfLineIt->outline_index_ + 1);
-
-  // Move the owner past the inline results to get to the operation.
-  const auto *inlineIt =
-      reinterpret_cast<const OpInlineResultImpl *>(outOfLineIt);
-  inlineIt += GetMaxInlineResultIndex();
+  // For outline result, pointer offset outline_index to obtain the address of
+  // maximum inline result.
+  const OpOutlineResultImpl *outline_result =
+      (const OpOutlineResultImpl *)(this);
+  outline_result += (outline_result->outline_index_ + 1);
+  // The offset of the maximum inline result distance op is
+  // GetMaxInlineResultIndex.
+  const auto *inline_result =
+      reinterpret_cast<const OpInlineResultImpl *>(outline_result);
+  inline_result += (GetMaxInlineResultIndex() + 1);
   return reinterpret_cast<Operation *>(
-      const_cast<OpInlineResultImpl *>(inlineIt));
+      const_cast<OpInlineResultImpl *>(inline_result));
 }
 
 }  // namespace detail
