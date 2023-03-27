@@ -631,7 +631,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                   alpha_md, engine, phi::funcs::to_void_cast<float>(&alpha))
             : dnnl::memory();
 
-    MatMulMKLDNNHandler<T, T, T> handler(engine,
+    MatMulOneDNNHandler<T, T, T> handler(engine,
                                          ctx.GetPlace(),
                                          &x_combined,
                                          trans_x,

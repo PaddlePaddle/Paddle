@@ -27,7 +27,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
     const dnnl::memory::desc& in_md) {
   const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
                                             fused_squeeze2_axes.end());
-  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  const std::vector<int64_t>& x_vec_dims = in_md.get_dims();
   std::vector<int64_t> squeezed_op_tz(
       x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
 
@@ -113,13 +113,13 @@ void FusedTransposeKernel(const Context& dev_ctx,
   const int32_t mask = 0;
 
   if (scale != 1.0f) {
-    attrs.set_output_scales(mask, {scale});
+    attrs.set_scales_mask(DNNL_ARG_SRC, mask);
   }
 
-  if (shift != 0.0f) {
-    auto dst = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
-    attrs.set_zero_points(dst, mask, {static_cast<int32_t>(shift)});
-  }
+  // if (shift != 0.0f) {
+  //   auto dst = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
+  //   attrs.set_zero_points(dst, mask, {static_cast<int32_t>(shift)});
+  // }
 
   DataType out_dtype;
   if (output_data_type == "bf16") {
@@ -164,7 +164,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.dims()));
+    out->Resize(make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }

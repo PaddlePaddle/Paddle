@@ -89,7 +89,7 @@ static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
           {"leaky_relu", dnnl::algorithm::eltwise_relu},
           {"mish", dnnl::algorithm::eltwise_mish},
           {"relu", dnnl::algorithm::eltwise_relu},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"relu6", dnnl::algorithm::eltwise_clip},
           {"sigmoid", dnnl::algorithm::eltwise_logistic},
           {"sqrt", dnnl::algorithm::eltwise_sqrt},
           {"swish", dnnl::algorithm::eltwise_swish},
@@ -134,8 +134,8 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
                         "Activation '%s' not found in oneDNN algorithms mapper",
                         fuse_activation));
 
-  post_ops.append_eltwise(
-      activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
+  (void)activation_scale;
 }
 
 template <typename T,
@@ -1719,7 +1719,8 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       post_ops.append_eltwise(
           dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
-    AppendActivation(dev_ctx, post_ops, fuse_activation, fuse_alpha, fuse_beta);
+    AppendActivation(
+        dev_ctx, post_ops, 1.f, fuse_activation, fuse_alpha, fuse_beta);
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 

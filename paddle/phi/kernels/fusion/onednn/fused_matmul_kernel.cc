@@ -172,7 +172,7 @@ class FusedMatmulOneDNNHandler
                                                   scale_out,
                                                   force_fp32_output);
     if (computed_scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {computed_scale_out});
+      matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
     }
 
     if (residual_data) {
@@ -193,7 +193,7 @@ class FusedMatmulOneDNNHandler
 
     if (fused_output_scale != 1.0f) {
       post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
+          dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
     }
 
     matmul_attrs.set_post_ops(post_operations);
