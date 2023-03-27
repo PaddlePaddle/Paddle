@@ -162,7 +162,7 @@ from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
 # TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 
 @deprecated(

@@ -18,7 +18,7 @@ import numpy as np
 from test_fetch_feed import Linear
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 
 SEED = 2020

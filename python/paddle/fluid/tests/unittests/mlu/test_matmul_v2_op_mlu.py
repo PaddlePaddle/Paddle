@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from test_matmul_v2_op import reference_matmul
@@ -350,8 +350,8 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+            input_x = paddle.static.data(name="input_x", shape=[4, 3], dtype="float32")
+            input_y = paddle.static.data(name="input_y", shape=[3, 4], dtype="float32")
 
             result = paddle.matmul(input_x, input_y)
 

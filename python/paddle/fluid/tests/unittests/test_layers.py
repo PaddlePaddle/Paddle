@@ -21,11 +21,9 @@ from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.nets as nets
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle import fluid
+from paddle.fluid import core, layers, nets
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.tensor import random
@@ -1414,8 +1412,10 @@ class TestLayer(LayerTest):
         x = np.random.rand(3, 32, 32).astype("float32")
         y = np.array([[1], [0], [1]])
         with self.static_graph():
-            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
-            label = fluid.data(name="label", shape=[-1, 1], dtype="int")
+            data = paddle.static.data(
+                name="input", shape=[-1, 32, 32], dtype="float32"
+            )
+            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int")
             data_new = paddle.reshape(data, [3, 32 * 32])
             fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
             predict = paddle.nn.functional.softmax(fc_out)
@@ -2155,8 +2155,8 @@ class TestBook(LayerTest):
 
     def test_partial_sum(self):
         with self.static_graph():
-            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
-            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
+            y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2
             )
@@ -2164,7 +2164,9 @@ class TestBook(LayerTest):
 
     def test_batch_fc(self):
         with self.static_graph():
-            input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[16, 2, 3], dtype="float32"
+            )
             out = fluid.contrib.layers.batch_fc(
                 input=input,
                 param_size=[16, 3, 10],
@@ -2185,8 +2187,10 @@ class TestBook(LayerTest):
 
     def test_rank_attention(self):
         with self.static_graph():
-            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
-            rank_offset = fluid.data(
+            input = paddle.static.data(
+                name="input", shape=[None, 2], dtype="float32"
+            )
+            rank_offset = paddle.static.data(
                 name="rank_offset", shape=[None, 7], dtype="int32"
             )
             out = fluid.contrib.layers.rank_attention(
@@ -2258,8 +2262,8 @@ class TestBook(LayerTest):
 
     def test_partial_concat(self):
         with self.static_graph():
-            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
-            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
+            y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
             concat1 = fluid.contrib.layers.partial_concat(
                 [x, y], start_index=0, length=2
             )
