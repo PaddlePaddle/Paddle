@@ -172,7 +172,7 @@ struct KeyValuePair<half> {
 template <typename T>
 __inline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val += CudaShuffleXorSync(lane_mask, val, mask);
+    val += phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask);
   return val;
 }
 
@@ -241,7 +241,8 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val = std::max(val, CudaShuffleXorSync(lane_mask, val, mask));
+    val = std::max(
+        val, phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask));
   return val;
 }
 
@@ -259,7 +260,8 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val = std::min(val, CudaShuffleXorSync(lane_mask, val, mask, warpSize));
+    val = std::min(
+        val, phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask));
   return val;
 }
 
