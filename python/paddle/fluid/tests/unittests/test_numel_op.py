@@ -80,8 +80,9 @@ class TestNumelOpBF16(OpTest):
     def setUp(self):
         self.op_type = "size"
         self.python_api = paddle.numel
+        self.dtype = np.uint16
         self.init()
-        x = np.random.random((self.shape)).astype(self.dtype)
+        x = np.random.random((self.shape)).astype(np.float32)
         self.inputs = {'Input': convert_float_to_uint16(x)}
         self.outputs = {'Out': np.array([np.size(x)])}
 
@@ -90,19 +91,16 @@ class TestNumelOpBF16(OpTest):
         self.check_output_with_place(place)
 
     def init(self):
-        self.dtype = np.float32
         self.shape = (6, 56, 8, 55)
 
 
 class TestNumelOp1BF16(TestNumelOpBF16):
     def init(self):
-        self.dtype = np.float32
         self.shape = (11, 66)
 
 
 class TestNumelOp2BF16(TestNumelOpBF16):
     def init(self):
-        self.dtype = np.float32
         self.shape = (0,)
 
 
