@@ -435,7 +435,7 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  GetInfoFromTheFirstOp(
+  GetInfoFromTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
@@ -1249,6 +1249,10 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
 
     bool is_x_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(x, &is_x_unsigned);
+
+    // In the QAT process scales are prepared for only int8 data type,
+    // lstm scales should behave as input is int8 to get correct accuracy
+    is_x_unsigned = false;
 
     double input_x_shift{128.};
     if (is_x_unsigned) input_x_shift = 0.;

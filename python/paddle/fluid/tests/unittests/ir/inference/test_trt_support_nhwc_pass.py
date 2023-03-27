@@ -18,9 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.inference as inference
-import paddle.nn as nn
-import paddle.static as static
+from paddle import inference, nn, static
 
 paddle.enable_static()
 

@@ -17,9 +17,7 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, layers, program_guard
 from paddle.fluid.executor import Executor
 
 

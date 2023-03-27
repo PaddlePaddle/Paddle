@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 np.random.seed(10)
 
@@ -124,6 +124,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.init_kernel_type()
 
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)

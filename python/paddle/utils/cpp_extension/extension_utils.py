@@ -1277,7 +1277,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 

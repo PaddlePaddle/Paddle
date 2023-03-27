@@ -126,6 +126,7 @@ message BuildStrategy {
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
   optional string debug_graphviz_path = 17;
   optional bool fused_attention = 18 [ default = false];
+  optional bool fused_feedforward = 19 [ default = false];
 }
 
 message ExecutionStrategy {

@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.nn.functional import kl_div
@@ -55,12 +55,10 @@ class TestKLDivLossOp(OpTest):
         self.outputs = {'Loss': loss.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Loss', no_grad_set=set(["Target"]), check_eager=True
-        )
+        self.check_grad(['X'], 'Loss', no_grad_set=set(["Target"]))
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
@@ -114,12 +112,13 @@ class TestKLDivLossDygraph(unittest.TestCase):
         self.run_kl_loss('none')
 
     def test_kl_loss_static_api(self):
-        input = paddle.static.data(name='input', shape=[5, 20])
-        label = paddle.static.data(name='label', shape=[5, 20])
+        with paddle_static_guard():
+            input = paddle.static.data(name='input', shape=[5, 20])
+            label = paddle.static.data(name='label', shape=[5, 20])
 
-        paddle.nn.functional.kl_div(input, label)
-        paddle.nn.functional.kl_div(input, label, 'sum')
-        paddle.nn.functional.kl_div(input, label, 'batchmean')
+            paddle.nn.functional.kl_div(input, label)
+            paddle.nn.functional.kl_div(input, label, 'sum')
+            paddle.nn.functional.kl_div(input, label, 'batchmean')
 
 
 class TestKLDivLossTypePromotion(unittest.TestCase):

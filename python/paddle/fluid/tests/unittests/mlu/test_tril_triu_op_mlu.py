@@ -17,7 +17,7 @@ import sys
 
 sys.path.append('..')
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
@@ -33,9 +33,6 @@ class TrilTriuOpDefaultTest(OpTest):
         self.initTestCase()
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.python_api = (
-            paddle.tril if self.real_op_type == 'tril' else paddle.triu
-        )
         self.real_np_op = getattr(np, self.real_op_type)
 
         self.op_type = "tril_triu"
