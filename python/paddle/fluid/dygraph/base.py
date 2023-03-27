@@ -145,8 +145,10 @@ def _convert_into_variable(tensor):
             # and necessary for inferring. It will be pruned if it's not necessary for inferring.
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
-            # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(tensor.shape) > 0
+            # non-persistable. See case of `dropout_state` in lstm api.
+            is_persistable = True
+            if hasattr(new_var, "name") and "dropout_state" in new_var.name:
+                is_persistable = False
 
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
@@ -155,7 +157,7 @@ def _convert_into_variable(tensor):
         if new_var.persistable is True:
             # TODO(@xiongkun): 0d-tensor may be affected at present,
             # but there is no particularly good method to identify whether 0d-tensor
-            # is used as buffer or "drop_out_state" in LSTM buffer variable.
+            # is used as buffer or "dropout_state" in LSTM buffer variable.
             from paddle.jit.dy2static.program_translator import (
                 ProgramTranslator,
             )
