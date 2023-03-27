@@ -984,8 +984,7 @@ __global__ void masked_multihead_attention_kernel(
     // bool is_mask = false;
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
-      T mask = params.attn_mask[bhi * params.max_seq_length * Dh +
-                                bi * (params.timestep + 1) + ti];
+      T mask = params.attn_mask[bhi * (params.timestep + 1) + ti];
       qk += static_cast<float>(mask);
       qk_max = fmaxf(qk_max, qk);
 
