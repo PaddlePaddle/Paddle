@@ -408,12 +408,12 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 while block.ops[idx].type != 'c_allreduce_sum':
                     idx += 1
                 grad_segment, param_segment = grad_param_segments[i]
-                for param in param_segment:
+                for grad in grad_segment:
                     block._insert_op_without_sync(
                         idx + 1,
                         type='depend',
-                        inputs={'X': param, 'Dep': fused_var},
-                        outputs={'Out': param},
+                        inputs={'X': grad, 'Dep': fused_var},
+                        outputs={'Out': grad},
                     )
                     idx += 1
 
