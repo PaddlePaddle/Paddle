@@ -93,6 +93,7 @@ class GPUContextAllocator : public Allocator {
       if (event_) {
         platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
+
         PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
