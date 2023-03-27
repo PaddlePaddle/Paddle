@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
@@ -74,9 +74,9 @@ def gather(
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
 
-
     Returns:
-        None.
+        Async work handle,which can be wait on, if async_op is set to True.
+        None, if not async_op
 
     Examples:
         .. code-block:: python

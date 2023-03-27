@@ -13,8 +13,8 @@
 # limitations under the License.
 
 
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 
 def gather(tensor, gather_list=None, dst=0, group=None, sync_op=True):
@@ -32,7 +32,8 @@ def gather(tensor, gather_list=None, dst=0, group=None, sync_op=True):
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
-        None.
+        Async work handle,which can be wait on, if async_op is set to True.
+        None, if not async_op
 
     Examples:
         .. code-block:: python
