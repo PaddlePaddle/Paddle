@@ -15,16 +15,18 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestExpandAsBasic(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(100).astype("float64")
         target_tensor = np.random.rand(2, 100).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -34,16 +36,18 @@ class TestExpandAsBasic(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandAsOpRank2(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(10, 12).astype("float64")
         target_tensor = np.random.rand(10, 12).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -56,7 +60,9 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 class TestExpandAsOpRank3(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(2, 3, 20).astype("float64")
         target_tensor = np.random.rand(2, 3, 20).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -69,7 +75,9 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 class TestExpandAsOpRank4(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(1, 1, 7, 16).astype("float64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
@@ -84,7 +92,9 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
         x = np.random.rand(1, 1, 7, 16).astype("int64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}

@@ -168,7 +168,7 @@ class Imikolov(Dataset):
                         continue
                     self.data.append((src_seq, trg_seq))
                 else:
-                    assert False, 'Unknow data type'
+                    raise AssertionError('Unknow data type')
 
     def __getitem__(self, idx):
         return tuple([np.array(d) for d in self.data[idx]])

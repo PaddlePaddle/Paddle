@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.layer_helper import LayerHelper
@@ -75,7 +75,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -107,7 +107,7 @@ class ConvBNLayer(fluid.Layer):
         return y
 
 
-class BottleneckBlock(fluid.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
     ):
@@ -163,7 +163,7 @@ class BottleneckBlock(fluid.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.Layer):
+class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102, use_cudnn=True):
         super().__init__()
 

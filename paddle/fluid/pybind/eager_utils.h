@@ -327,9 +327,9 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
-
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none = false);
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

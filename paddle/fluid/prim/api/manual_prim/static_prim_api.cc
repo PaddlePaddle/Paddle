@@ -38,24 +38,6 @@ namespace paddle {
 namespace prim {
 
 template <>
-Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  // TODO(cxxly): move to auto generate dir.
-  op->SetType("reshape2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("shape", unsafe_vector_cast<int64_t, int>(shape.GetData()));
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
 Tensor full<DescTensor>(const IntArray& shape,
                         const Scalar& value,
                         DataType dtype,
@@ -125,32 +107,6 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->InferVarType(block);
   op->InferShape(*block);
   return out;
-}
-
-template <>
-std::vector<Tensor> split<DescTensor>(const Tensor& x,
-                                      const IntArray& sections,
-                                      const Scalar& axis) {
-  int elem_num = sections.size();
-  std::vector<std::string> outs_name;
-  std::vector<Tensor> outs;
-  for (int i = 0; i < elem_num; ++i) {
-    Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
-    std::string out_name =
-        std::static_pointer_cast<prim::DescTensor>(out.impl())->Name();
-    outs_name.push_back(std::move(out_name));
-    outs.push_back(out);
-  }
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("split");
-  op->SetAttr("sections", sections.GetData());
-  op->SetAttr("axis", axis.to<int>());
-  op->SetOutput("Out", outs_name);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return outs;
 }
 
 template <>
