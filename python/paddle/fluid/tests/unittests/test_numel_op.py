@@ -26,7 +26,7 @@ class TestNumelOp(OpTest):
         self.op_type = "size"
         self.python_api = paddle.numel
         self.init()
-        x = np.random.random((self.shape)).astype("float64")
+        x = np.random.random(self.shape).astype("float64")
         self.inputs = {
             'Input': x,
         }
