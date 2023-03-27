@@ -105,11 +105,10 @@ class TestOneGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            with paddle_static_guard():
-                place = core.CUDAPlace(0)
-                self.check_output_with_place(
-                    place, atol=1e-5, check_dygraph=False
-                )  # unique return sorted data in dygraph
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=False
+            )  # unique return sorted data in dygraph
 
 
 @unittest.skipIf(
@@ -133,11 +132,10 @@ class TestRandomGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            with paddle_static_guard():
-                place = core.CUDAPlace(0)
-                self.check_output_with_place(
-                    place, atol=1e-5, check_dygraph=False
-                )  # unique return sorted data in dygraph
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=False
+            )  # unique return sorted data in dygraph
 
 
 class TestSortedUniqueOp(TestUniqueOp):
