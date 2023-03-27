@@ -1322,7 +1322,7 @@ class RuleBasedTuner:
                                 stop_gradient=src_var.stop_gradient,
                                 is_data=src_var.is_data,
                                 belong_to_optimizer=src_var.belong_to_optimizer,
-                                **copied_kwargs
+                                **copied_kwargs,
                             )
                         else:
                             target_block._clone_variable(vars[var_name])
@@ -1524,7 +1524,7 @@ class RuleBasedTuner:
                         )
                 assert (
                     ref_dims_mapping is not None
-                ), "[{}] 's dims mapping is NONE".format(input_name)
+                ), f"[{input_name}] 's dims mapping is NONE"
                 grad_op_dist_attr.set_input_dims_mapping(
                     input_name, ref_dims_mapping
                 )

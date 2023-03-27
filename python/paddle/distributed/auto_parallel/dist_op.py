@@ -37,7 +37,7 @@ class DistributedOperator:
             # TODO: Do we really need to write back to serial op？
             self._serial_op.dist_attr = dist_attr
         else:
-            assert dist_attr is None, "{}".format(dist_attr)
+            assert dist_attr is None, f"{dist_attr}"
             # Use the dist attr of serial_op to do the initialization
             self._dist_attr = self._serial_op.dist_attr
         self._serial_inputs = {}

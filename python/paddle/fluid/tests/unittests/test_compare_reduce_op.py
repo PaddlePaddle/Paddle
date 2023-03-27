@@ -34,7 +34,7 @@ def create_test_not_equal_class(op_type, typename, callback):
         def test_output(self):
             self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -53,7 +53,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
         def test_output(self):
             self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_shape_equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -71,7 +71,7 @@ def create_test_equal_class(op_type, typename, callback):
         def test_output(self):
             self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -91,7 +91,7 @@ def create_test_dim1_class(op_type, typename, callback):
         def test_output(self):
             self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 

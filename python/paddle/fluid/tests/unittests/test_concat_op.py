@@ -249,7 +249,7 @@ def create_test_AxisTensor(parent):
                 )
             }
 
-    cls_name = "{0}_{1}".format(parent.__name__, "AxisTensor")
+    cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
     TestConcatAxisTensor.__name__ = cls_name
     globals()[cls_name] = TestConcatAxisTensor
 
@@ -269,7 +269,7 @@ def create_test_fp16(parent):
         def get_dtype(self):
             return np.float16
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestConcatFp16.__name__ = cls_name
     globals()[cls_name] = TestConcatFp16
 
@@ -291,7 +291,7 @@ def create_test_bf16(parent):
         def get_dtype(self):
             return np.uint16
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestConcatBf16.__name__ = cls_name
     globals()[cls_name] = TestConcatBf16
 

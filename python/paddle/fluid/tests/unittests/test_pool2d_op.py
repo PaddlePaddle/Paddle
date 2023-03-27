@@ -479,7 +479,7 @@ def create_test_cudnn_class(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOp")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -530,7 +530,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
     globals()[cls_name] = TestCUDNNFp16Case
 
@@ -571,7 +571,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
     globals()[cls_name] = TestFp16Case
 
@@ -604,7 +604,7 @@ def create_test_cudnn_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOpCeilMode")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -618,7 +618,7 @@ def create_test_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
+    cls_name = "{}_{}".format(parent.__name__, "CeilModeCast")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -1008,7 +1008,7 @@ def create_test_padding_SAME_class(parent):
             self.paddings = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -1040,7 +1040,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -1066,7 +1066,7 @@ def create_test_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -1098,7 +1098,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 

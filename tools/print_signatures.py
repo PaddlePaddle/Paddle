@@ -388,12 +388,12 @@ if __name__ == '__main__':
                 continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
             print(
-                "{0} ({2}, ('document', '{1}'))".format(
+                "{} ({}, ('document', '{}'))".format(
                     api_name,
-                    md5(api_info['docstring']),
                     api_info['signature']
                     if 'signature' in api_info
                     else 'ArgSpec()',
+                    md5(api_info['docstring']),
                 )
             )
 
@@ -402,7 +402,7 @@ if __name__ == '__main__':
     else:
         for erroritem in ErrorSet:
             print(
-                "Error, new function {} is unreachable".format(erroritem),
+                f"Error, new function {erroritem} is unreachable",
                 file=sys.stderr,
             )
         sys.exit(1)

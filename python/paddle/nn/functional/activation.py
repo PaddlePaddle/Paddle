@@ -924,12 +924,12 @@ def selu(
     """
     if scale <= 1.0:
         raise ValueError(
-            "The scale must be greater than 1.0. Received: {}.".format(scale)
+            f"The scale must be greater than 1.0. Received: {scale}."
         )
 
     if alpha < 0:
         raise ValueError(
-            "The alpha must be no less than zero. Received: {}.".format(alpha)
+            f"The alpha must be no less than zero. Received: {alpha}."
         )
 
     if in_dygraph_mode():

@@ -97,9 +97,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
     ]
     pruned_vars = OrderedDict(pruned_vars)
     pruned_vars_name = [name for name in pruned_vars]
-    logger.info(
-        "persistable vars in pruned program: {}".format(pruned_vars_name)
-    )
+    logger.info(f"persistable vars in pruned program: {pruned_vars_name}")
 
     for var_name in pruned_vars:
         var = pruned_vars[var_name]
@@ -423,7 +421,7 @@ def try_load_model_vars(
             )
         for i, v in enumerate(fetch_list):
             logger.info("fetch_targets name: %s" % v.name)
-            logger.info("fetch_targets: {}".format(results[i]))
+            logger.info(f"fetch_targets: {results[i]}")
         return results
 
 

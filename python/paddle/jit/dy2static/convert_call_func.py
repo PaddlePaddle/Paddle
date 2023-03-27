@@ -182,9 +182,7 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    translator_logger.log(
-        1, "Convert callable object: convert {}.".format(func)
-    )
+    translator_logger.log(1, f"Convert callable object: convert {func}.")
     func_self = None
     converted_call = None
 
@@ -288,7 +286,7 @@ def convert_call(func):
             # If func is not in __globals__, it does not need to be transformed
             # because it has been transformed before.
             converted_call = None
-        except (IOError, OSError):
+        except OSError:
             # NOTE:
             # If func has been decorated, its source code can not be get
             # so that it can not be transformed to static function.
@@ -297,7 +295,7 @@ def convert_call(func):
         try:
             converted_call = convert_to_static(func)
             func_self = getattr(func, '__self__', None)
-        except (IOError, OSError):
+        except OSError:
             # NOTE: func may have been decorated.
             converted_call = None
 
@@ -313,7 +311,7 @@ def convert_call(func):
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)
-            except (IOError, OSError, TypeError):
+            except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
@@ -322,14 +320,14 @@ def convert_call(func):
                 call_func = func.__class__.__call__
                 converted_call = convert_to_static(call_func)
                 func_self = func
-            except (IOError, OSError, TypeError):
+            except (OSError, TypeError):
                 # NOTE:
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed
                 func_self = None if func_self else func_self
     else:
         raise NotImplementedError(
-            "Callable {} can not be transformed at present.".format(func)
+            f"Callable {func} can not be transformed at present."
         )
 
     if converted_call is None:

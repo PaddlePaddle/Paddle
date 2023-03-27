@@ -404,7 +404,7 @@ class TestTimerOnly(unittest.TestCase):
                 p.step(num_samples=step_num_samples)
                 if i % 10 == 0:
                     step_info = p.step_info()
-                    print("Iter {}: {}".format(i, step_info))
+                    print(f"Iter {i}: {step_info}")
             p.stop()
             return step_info
 

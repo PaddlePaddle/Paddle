@@ -39,7 +39,7 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
         strides = [hop_length * x.itemsize] + list(strides)
 
     else:
-        raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
+        raise ValueError(f"Frame axis={axis} must be either 0 or -1")
 
     return as_strided(x, shape=shape, strides=strides)
 

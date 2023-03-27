@@ -68,9 +68,7 @@ def is_api_in_module(node, module_prefix):
         from paddle.fluid import layers  # noqa: F401
         from paddle.fluid.dygraph import to_variable  # noqa: F401
 
-        return eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
-        )
+        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
     except Exception:
         return False
 

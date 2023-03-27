@@ -909,8 +909,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -1231,8 +1231,8 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
     if groups is None:

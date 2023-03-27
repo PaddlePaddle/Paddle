@@ -170,7 +170,7 @@ def create_bf16_test_class(parent):
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestPReluBF16OneDNNOp
 

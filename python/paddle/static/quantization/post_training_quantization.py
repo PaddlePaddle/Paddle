@@ -109,7 +109,7 @@ def _apply_pass(
             ir_pass.set(attr, value)
     ir_pass.apply(cpp_graph)
     if debug:
-        graph.draw('.', 'qat_fp32_{}'.format(pass_name), graph.all_op_nodes())
+        graph.draw('.', f'qat_fp32_{pass_name}', graph.all_op_nodes())
     _remove_unused_var_nodes(graph)
     return graph
 
@@ -1132,7 +1132,7 @@ class PostTrainingQuantization:
         '''
         Calculate the KL or hist threshold of quantized variables.
         '''
-        _logger.info("Calculate {} threshold ...".format(self._algo))
+        _logger.info(f"Calculate {self._algo} threshold ...")
         assert self._algo in ["KL", "hist"], "The algo should be KL or hist."
 
         # Abs_max threshold for weights

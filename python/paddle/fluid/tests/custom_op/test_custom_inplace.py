@@ -25,9 +25,9 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_inplace\\custom_inplace.pyd'.format(get_build_directory())
+file = f'{get_build_directory()}\\custom_inplace\\custom_inplace.pyd'
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
@@ -41,7 +41,7 @@ custom_inplace = load(
 )
 
 # Temporarily assemble custom python API
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.core import CustomOpKernelContext
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper

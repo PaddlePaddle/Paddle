@@ -300,7 +300,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {0}.".format(
+                "condition expected shape as [1], but given shape as {}.".format(
                     list(cond.shape)
                 )
             )
@@ -461,8 +461,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     )
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
-            "the shape of the variable returned by cond should be [1],"
-            "but given shape as {0}.".format(list(pre_cond.shape))
+            "the shape of the variable returned by cond should be [1], but given shape as {}.".format(
+                list(pre_cond.shape)
+            )
         )
 
     if _non_static_mode():
@@ -499,8 +500,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             assert_same_structure(output_vars, loop_vars, check_types=False)
         except ValueError as e:
             raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
+                "body in while_loop should return the same arity (length and structure) as loop_vars: {}".format(
+                    e
+                )
             )
         now_cond = cond(*output_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
@@ -839,7 +841,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        "The type of function for key {}".format(key),
+                        f"The type of function for key {key}",
                         "branch_fns",
                         "switch_case",
                         "callable",

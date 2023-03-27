@@ -502,7 +502,7 @@ def add_optimizer_pass(program, config):
         for i in range(len(merged_ordernames)):
             if param == merged_ordernames[i]:
                 merged_p = merged_varnames[i]
-                merged_g = "{}@GRAD".format(merged_varnames[i])
+                merged_g = f"{merged_varnames[i]}@GRAD"
                 op._set_attr(OP_ROLE_VAR_ATTR_NAME, [merged_p, merged_g])
                 return True
         return False
@@ -786,7 +786,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         opt_idx,
     ):
         ids = global_block.create_var(
-            name="kSparseIDs@{}".format(table_name),
+            name=f"kSparseIDs@{table_name}",
             persistable=False,
             dtype="int64",
             shape=[1, 1],
@@ -906,7 +906,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             mode = "0"
             names_str = ",".join(value_names)
             dims_str = ",".join([str(dim) for dim in value_dims])
-            ids_name = "kSparseIDs@{}".format(param)
+            ids_name = f"kSparseIDs@{param}"
             cached_str = ",".join(acture_names + [ids_name])
             init_attr_str = get_initializer_attrs(acture_names)
 
@@ -922,7 +922,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                     entry_attr,
                 ]
             )
-            print("large_scale_metas: {}".format(meta_str))
+            print(f"large_scale_metas: {meta_str}")
             large_scale_kv_metas.append(meta_str)
 
         program.global_block().append_op(
