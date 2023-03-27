@@ -42,24 +42,17 @@ namespace cub = hipcub;
 
 namespace phi {
 
-template <typename T>
-__global__ void NormalizeProbability(T* norm_probs,
+template <typename T, typename MT>
+__global__ void NormalizeProbability(MT* norm_probs,
                                      const T* in_data,
-                                     T* sum_rows,
+                                     MT* sum_rows,
                                      int64_t num_distributions,
                                      int64_t num_categories) {
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
   if (id < num_distributions * num_categories) {
-    // PADDLE_ENFORCE(
-    //     in_data[id] >= 0.0,
-    //     "The input of multinomial distribution should be >= 0, but got %f.",
-    //     in_data[id]);
     int64_t row_id = id / num_categories;
-    // PADDLE_ENFORCE(sum_rows[row_id] > 0.0,
-    //                "The sum of one multinomial distribution probability
-    //                should " "be > 0, but got %f.", sum_rows[row_id]);
-    norm_probs[id] = in_data[id] / sum_rows[row_id];
+    norm_probs[id] = static_cast<MT>(in_data[id]) / sum_rows[row_id];
   }
 }
 
@@ -140,7 +133,6 @@ void MultinomialKernel(const Context& dev_ctx,
   int64_t dim_size = in_dims.size();
   const int64_t num_categories = in_dims[dim_size - 1];
   const int64_t num_distributions = dim_size > 1 ? in_dims[dim_size - 2] : 1;
-
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
   if (!replacement) {
@@ -154,23 +146,11 @@ void MultinomialKernel(const Context& dev_ctx,
       int zero_num = 0;
       for (size_t j = 0; j < num_categories; ++j) {
         T weight = cpu_in_data[i * num_categories + j];
-        // PADDLE_ENFORCE_GE(
-        //     weight,
-        //     0,
-        //     errors::InvalidArgument(
-        //         "Each element of multinomial'input must >= 0, but got %f.",
-        //         weight));
         if (weight == static_cast<T>(0)) {
           zero_num++;
         }
       }
       int valid_samples = num_categories - zero_num;
-      // PADDLE_ENFORCE_LE(
-      //     int_num_samples,
-      //     valid_samples,
-      //     errors::InvalidArgument("When replacement=False, 'num_samples' "
-      //                             "must less than or eaqual to the number of
-      //                             " "positive item of input"));
     }
 
     // Refer to [gumbel softmax algorithm]
@@ -218,7 +198,6 @@ void MultinomialKernel(const Context& dev_ctx,
     auto eigen_sum_rows = EigenVector<T>::Flatten(sum_rows_tensor);
     eigen_sum_rows.device(place) = eigen_input.sum(Eigen::DSizes<int, 1>(1));
   }
-
   // Normalize row of each distribution to get the probability in range [0,
   // 1].
   // norm_probs_data: probability of the distribution
@@ -230,13 +209,13 @@ void MultinomialKernel(const Context& dev_ctx,
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
-  NormalizeProbability<MT>
+
+  NormalizeProbability<T, MT>
       <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
-                                                       x.data<MT>(),
+                                                       in_data,
                                                        sum_rows_data,
                                                        num_distributions,
                                                        num_categories);
-
   // Get cumulative probability of each distribution. It's the same function
   // of ``cumsum`` op.
   DenseTensor cumulative_probs_tensor;
@@ -256,7 +235,6 @@ void MultinomialKernel(const Context& dev_ctx,
       std::plus<MT>(),
       /*reverse=*/false,
       dev_ctx);
-
   // Sample the multinomial distributions.
   dim3 block(128);
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
