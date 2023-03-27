@@ -49,6 +49,9 @@ class TestClipOp(OpTest):
         input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
         self.outputs = {'Out': np.clip(self.inputs['X'], min_v, max_v)}
+        self.check_cinn = ('Min' not in self.inputs) and (
+            'Max' not in self.inputs
+        )
 
     def test_check_output(self):
         paddle.enable_static()

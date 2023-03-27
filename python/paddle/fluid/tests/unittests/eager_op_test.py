@@ -1092,9 +1092,18 @@ class OpTest(unittest.TestCase):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                     fetch_list.append(str(out_name))
 
-            if enable_inplace is not None:
+            enable_cinn_test = (
+                core.is_compiled_with_cinn()
+                and core.is_compiled_with_cuda()
+                and isinstance(place, fluid.CUDAPlace)
+                and hasattr(self, "check_cinn")
+            )
+            if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
-                build_strategy.enable_inplace = enable_inplace
+                if enable_inplace is not None:
+                    build_strategy.enable_inplace = enable_inplace
+                if enable_cinn_test:
+                    build_strategy.build_cinn_pass = self.check_cinn
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
