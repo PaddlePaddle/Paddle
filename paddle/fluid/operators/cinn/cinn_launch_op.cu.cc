@@ -25,7 +25,7 @@ namespace details {
 
 template <>
 void SetCinnRandomSeed<phi::GPUContext>() {
-  auto seed = phi::DefaultCUDAGenerator()->GetCurrentSeed();
+  auto seed = phi::DefaultCUDAGenerator(0)->GetCurrentSeed();
   ::cinn::runtime::RandomSeed::GetOrSet(seed);
 }
 
