@@ -1961,7 +1961,7 @@ class RuleBasedTuner:
                     dist_context
                 )
 
-                if local_stage_memory > 0.85 * self.cluster.machines[0].devices[
+                if local_stage_memory > 0.9 * self.cluster.machines[0].devices[
                     0
                 ].memory * (1024**3):
                     cost = sys.maxsize
@@ -2096,7 +2096,7 @@ class RuleBasedTuner:
         self.layers = self.cluster_operators()
         end = time.time()
         self._logger.info(
-            "Cluster operators to {} layers in {}s.".format(
+            "Cluster operators to {} layers in {:.2f}s.".format(
                 len(self.layers), end - begin
             )
         )
@@ -2106,7 +2106,7 @@ class RuleBasedTuner:
         self.gen_fwd_sub_programs_by_clone()
         end = time.time()
         self._logger.info(
-            "Generate programs of every layer in {}s.".format(end - begin)
+            "Generate programs of every layer in {:.2f}s.".format(end - begin)
         )
 
         # step3: partition devices to device meshes
@@ -2117,7 +2117,7 @@ class RuleBasedTuner:
         )
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
-        self._logger.info("Partition cluster in {}s.".format(end - begin))
+        self._logger.info("Partition cluster in {:.2f}s.".format(end - begin))
 
         # step4: transform device mesh to process meshes
         dm_idx = 0
@@ -2157,7 +2157,9 @@ class RuleBasedTuner:
         begin = time.time()
         self.gen_full_program()
         end = time.time()
-        self._logger.info("Generate full program in {}s.".format(end - begin))
+        self._logger.info(
+            "Generate full program in {:.2f}s.".format(end - begin)
+        )
 
         # step6: complete forward sub programs
         begin = time.time()
@@ -2165,7 +2167,7 @@ class RuleBasedTuner:
             self.complete_sub_fwd_programs(process_mesh)
         end = time.time()
         self._logger.info(
-            "Complete all sub forward programs in {}s.".format(end - begin)
+            "Complete all sub forward programs in {:.2f}s.".format(end - begin)
         )
 
         if self.mode == "train":
@@ -2174,7 +2176,9 @@ class RuleBasedTuner:
             self.complete_sub_bwd_programs()
             end = time.time()
             self._logger.info(
-                "Complete all sub backward programs in {}s.".format(end - begin)
+                "Complete all sub backward programs in {:.2f}s.".format(
+                    end - begin
+                )
             )
 
             # step8: complete update sub programs
@@ -2332,7 +2336,7 @@ class RuleBasedTuner:
                         )
 
                         self._logger.info(
-                            "Cost Model: The max memory is {}GB and cost is {} when {} parallelism under process mesh shape {} on {} stages.".format(
+                            "Cost Model: The max memory is {:.2f}GB and cost is {:.2f} when {} parallelism under process mesh shape {} on {} stages.".format(
                                 memory / (1024**3),
                                 cost,
                                 parallelism,
@@ -2340,8 +2344,8 @@ class RuleBasedTuner:
                                 len(device_meshes),
                             )
                         )
-                        # 15% buffer is reserved for memory cost
-                        if memory > 0.85 * self.cluster.machines[0].devices[
+                        # 10% buffer is reserved safely for memory cost
+                        if memory > 0.9 * self.cluster.machines[0].devices[
                             0
                         ].memory * (1024**3):
                             cost = sys.maxsize
@@ -2350,7 +2354,7 @@ class RuleBasedTuner:
                             best_cost = cost
                             best_dist_context = dist_context_of_device_meshes
                             self._logger.info(
-                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {}GB.".format(
+                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {:.2f}GB.".format(
                                     parallelism,
                                     process_mesh_shape,
                                     len(device_meshes),
@@ -2398,7 +2402,7 @@ class RuleBasedTuner:
         begin = time.time()
         self.match_program(self._dist_context.serial_main_program)
         end = time.time()
-        self._logger.info("Pattern match in {}s.".format(end - begin))
+        self._logger.info("Pattern match in {:.2f}s.".format(end - begin))
 
         if self._use_dp:
             completer = Completer(self._dist_context)
@@ -2460,7 +2464,9 @@ class RuleBasedTuner:
         self._dist_context._process_meshes = best_dist_context._process_meshes
 
         end = time.time()
-        self._logger.info("Rule-based tuner end in {}s.".format(end - begin))
+        self._logger.info(
+            "Rule-based tuner end in {:.2f}s.".format(end - begin)
+        )
         self._logger.info("The best strategy found is as follows: ")
         print_program_with_dist_attr(self.full_main_program, best_dist_context)
 

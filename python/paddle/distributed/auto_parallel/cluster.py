@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import json
+import logging
 import os
 import re
 from enum import IntEnum, unique
 
 import paddle
+
+from ..utils.log_utils import get_logger
 
 
 @unique
@@ -830,6 +833,9 @@ class Cluster:
         return self.__str__()
 
 
+logger = get_logger(logging.INFO)
+
+
 def get_default_cluster(json_config=None):
     def is_by_json_config(json_config):
         if not json_config:
@@ -889,18 +895,15 @@ def get_default_cluster(json_config=None):
             memory = int(gpu_info.total_memory) // (1000**3)
             gpu_model = gpu_name
 
-    print(
-        "Node Count: ",
-        node_count,
-        "Local Device Size: ",
-        local_device_count,
-        "GPU Model: ",
-        gpu_model,
-        "GPU Memory: ",
-        memory,
-        "World size: ",
-        paddle.distributed.get_world_size(),
-        flush=True,
+    logger.info(
+        "Node Count: {}, Local Device Size: {}, GPU Model: {}, GPU Memory: {}GB, World size: {}, EndPoint: {}.".format(
+            node_count,
+            local_device_count,
+            gpu_model,
+            memory,
+            paddle.distributed.get_world_size(),
+            os.getenv("PADDLE_CURRENT_ENDPOINT", None),
+        )
     )
     cluster.gen_default_config_cluster(
         node_count=node_count,
