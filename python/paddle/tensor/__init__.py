@@ -197,6 +197,7 @@ from .math import multiply  # noqa: F401
 from .math import multiply_  # noqa: F401
 from .math import add  # noqa: F401
 from .math import add_  # noqa: F401
+from .math import nextafter  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
@@ -388,6 +389,7 @@ tensor_method_func = [  # noqa
     'multiply_',
     'add',
     'add_',
+    "nextafter",
     'subtract',
     'subtract_',
     'atan',

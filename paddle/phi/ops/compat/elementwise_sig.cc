@@ -25,6 +25,15 @@ KernelSignature ElementwiseAddOpArgumentMapping(
   return KernelSignature("add_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ElementwiseNextafterOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("nextafter", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature("nextafter_raw", {"X", "Y"}, {"axis"}, {"Out"});
+}
+
 KernelSignature ElementwiseGradAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});

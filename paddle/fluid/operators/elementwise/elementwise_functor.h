@@ -28,6 +28,13 @@ using AddFunctor = phi::funcs::AddFunctor<T>;
 template <typename T>
 using InverseAddFunctor = phi::funcs::InverseAddFunctor<T>;
 
+// Nextafter
+template <typename T>
+using NextafterFunctor = phi::funcs::NextafterFunctor<T>;
+
+template <typename T>
+using InverseNextafterFunctor = phi::funcs::InverseNextafterFunctor<T>;
+
 // Subtract
 template <typename T>
 using SubFunctor = phi::funcs::SubtractFunctor<T>;

@@ -41,6 +41,20 @@ struct InverseAddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
 };
 
+// Nextafter
+template <typename T>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::nextafter(a, b);
+  }
+};
+template <typename T>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::nextafter(a, b);
+  }
+};
+
 // Subtract
 template <typename T>
 struct SubtractFunctor {

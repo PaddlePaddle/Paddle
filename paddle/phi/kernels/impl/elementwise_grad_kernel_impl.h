@@ -109,6 +109,27 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void NextafterDoubleGradImpl(const Context& dev_ctx,
+                             const DenseTensor& y,
+                             const paddle::optional<DenseTensor>& ddx,
+                             const paddle::optional<DenseTensor>& ddy,
+                             const DenseTensor& dout,
+                             int axis,
+                             DenseTensor* ddout) {
+  if (ddout) {
+    DenseTensor ddx_safe, ddy_safe;
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+
+    dev_ctx.template Alloc<T>(ddout);
+    funcs::ElementwiseCompute<funcs::NextafterFunctor<T>, T>(
+        dev_ctx, ddx_safe, ddy_safe, axis, funcs::NextafterFunctor<T>(), ddout);
+  }
+}
+
 /*
 ******************************
     Divide Grad

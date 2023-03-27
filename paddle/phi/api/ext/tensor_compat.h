@@ -110,6 +110,7 @@ using experimental::multi_dot;
 using experimental::multinomial;
 using experimental::multiply;
 using experimental::mv;
+using experimental::nextafter;
 using experimental::nll_loss;
 using experimental::not_equal;
 using experimental::npu_identity;

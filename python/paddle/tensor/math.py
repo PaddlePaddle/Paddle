@@ -481,6 +481,7 @@ OP_NAMEMAPPING = {
     'elementwise_mul': 'multiply',
     'elementwise_div': 'divide',
     'elementwise_mod': 'remainder',
+    'elementwise_nextafter': 'nextafter',
 }
 
 
@@ -625,6 +626,13 @@ def add_(x, y, name=None):
         )
 
     return _C_ops.add_(x, y)
+
+
+def nextafter(x, y, name=None):
+    if in_dygraph_mode():
+        return _C_ops.nextafter(x, y)
+    else:
+        return _elementwise_op(LayerHelper('elementwise_nextafter', **locals()))
 
 
 def subtract(x, y, name=None):

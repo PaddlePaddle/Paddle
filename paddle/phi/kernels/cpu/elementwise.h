@@ -66,7 +66,29 @@ struct SameDimsAddFunctor<
     eigen_z.device(place) = eigen_x + eigen_y;
   }
 };
+// Nextafter
+template <typename DevCtx, typename T, class Enable = void>
+struct SameDimsNextafterFunctor {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z);
+};
 
+template <typename DevCtx, typename T>
+struct SameDimsNextafterFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    blas.VSUB(
+        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
+  }
+};
 // Subtract
 template <typename DevCtx, typename T, class Enable = void>
 struct SameDimsSubtractFunctor {

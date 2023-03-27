@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_nextafter_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
@@ -93,6 +94,14 @@ void AddKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  NextafterRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+}
+
+template <typename T, typename Context>
 void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
@@ -142,6 +151,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
 PD_REGISTER_KERNEL(subtract,
                    CPU,
