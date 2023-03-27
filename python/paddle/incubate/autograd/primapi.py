@@ -16,7 +16,7 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, core, framework
+from paddle.fluid import backward, framework
 from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
@@ -230,8 +230,6 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
         blacklist(frozenset): The Operators that will be exclude when lowering into primitives.
         whitelist(frozenset): Only the operators in whitelist will be lowering into primitives.
     """
-    if not core._is_fwd_prim_enabled():
-        return
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program

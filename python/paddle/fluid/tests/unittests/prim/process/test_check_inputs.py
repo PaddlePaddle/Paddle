@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 
 
 def fn(x, shape):
@@ -29,24 +28,23 @@ class TestIntarrayInput(unittest.TestCase):
     """This case is set to test int_array input process during composite rule."""
 
     def test_non_tensor_input(self):
-        core._set_prim_all_enabled(True)
         np_data = np.random.random([3, 4]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
-        net = paddle.jit.to_static(fn, backend='TEST')
+        net = paddle.jit.to_static(fn)
+        net.forward.enable_prim_all()
 
         _ = net(tensor_data, shape=[2, 3, 4]).numpy()
-        core._set_prim_all_enabled(False)
 
     def test_error_input(self):
         """In composite rules, tensor shape is not supported in int_array input"""
-        core._set_prim_all_enabled(True)
         np_data = np.random.random([3, 4]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
         shape = paddle.to_tensor([2, 3, 4])
-        net = paddle.jit.to_static(fn, backend='TEST')
+        net = paddle.jit.to_static(fn)
+        net.forward.enable_prim_all()
+
         with self.assertRaises(ValueError):
             _ = net(tensor_data, shape).numpy()
-        core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':

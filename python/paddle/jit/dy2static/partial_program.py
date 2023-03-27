@@ -200,6 +200,7 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
+        self._prim_info = kwargs.get('prim_info', None)
 
     def __call__(self, inputs):
         """
@@ -607,6 +608,16 @@ class PartialProgramLayer:
         for _var in to_processed_vars:
             _insert_aggregation_ops_for_var(target_program, _var)
 
+    def _switch_prim(self, value):
+        if not self._prim_info:
+            return
+        if self._prim_info.is_fwd_enabled():
+            core._set_prim_forward_enabled(value)
+        if self._prim_info.is_bwd_enabled():
+            core._set_prim_backward_enabled(value)
+        if self._prim_info.is_all_enabled():
+            core._set_prim_all_enabled(value)
+
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program.clone(for_test=False)
@@ -621,6 +632,7 @@ class PartialProgramLayer:
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
+            self._switch_prim(True)
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             backward.gradients(targets=targets, inputs=[])
 
@@ -631,6 +643,8 @@ class PartialProgramLayer:
             self.prepare_gradient_aggregation(
                 start_idx + 1, main_program, program
             )
+            self._switch_prim(False)
+            core.check_and_set_prim_all_enabled()
 
         self._forward_end_index_map[
             paddle.utils._hash_with_id(program, self)

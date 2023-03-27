@@ -284,6 +284,7 @@ def to_static(
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
+                backend=backend,
             ),
         )
 
@@ -298,11 +299,6 @@ def to_static(
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
-        paddle.fluid.core._set_prim_all_enabled(True)
-    elif backend == 'TEST':
-        pass
-    else:
-        paddle.fluid.core._set_prim_all_enabled(False)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:

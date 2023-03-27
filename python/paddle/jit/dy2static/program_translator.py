@@ -249,6 +249,7 @@ class CacheKey:
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         with_hook = self.kwargs.get("with_hook", False)
         is_train = self.kwargs.get("is_train", False)
+        prim_info = self.kwargs.get("prim_info", None)
         return hash(
             (
                 id(self.function_spec),
@@ -258,6 +259,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
+                prim_info,
             )
         )
 
@@ -294,6 +296,40 @@ def unwrap_decorators(func):
         else:
             break
     return decorators, cur
+
+
+class PrimInfo:
+    def __init__(self):
+        self.__prim_fwd = False
+        self.__prim_bwd = False
+
+    def enable_fwd(self):
+        self.__prim_fwd = True
+        self.__prim_bwd = False
+
+    def enable_bwd(self):
+        self.__prim_bwd = True
+        self.__prim_fwd = False
+
+    def enable_all(self):
+        self.__prim_fwd = True
+        self.__prim_bwd = True
+
+    def clear(self):
+        self.__prim_fwd = False
+        self.__prim_bwd = False
+
+    def is_fwd_enabled(self):
+        return self.__prim_fwd
+
+    def is_bwd_enabled(self):
+        return self.__prim_bwd
+
+    def is_all_enabled(self):
+        return self.__prim_fwd and self.__prim_bwd
+
+    def __hash__(self):
+        return hash((self.__prim_fwd, self.__prim_bwd))
 
 
 class StaticFunction:
@@ -352,8 +388,20 @@ class StaticFunction:
         self._training = True
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
-
         self._property = kwargs.get("property", False)
+
+        self._prim_info = PrimInfo()
+        if kwargs.get("backend", None):
+            self._prim_info.enable_all()
+
+    def enable_prim_fwd(self):
+        self._prim_info.enable_fwd()
+
+    def enable_prim_bwd(self):
+        self._prim_info.enable_bwd()
+
+    def enable_prim_all(self):
+        self._prim_info.enable_all()
 
     @property
     def is_property(self):
@@ -569,6 +617,7 @@ class StaticFunction:
             **self._kwargs,
             with_hook=with_hook,
             is_train=is_train,
+            prim_info=self._prim_info,
         )
 
         # 3. check whether hit the cache or build a new program for the input arguments
@@ -1139,6 +1188,7 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
+        prim_info = cache_key.kwargs.get('prim_info', None)
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
         # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
@@ -1183,9 +1233,9 @@ class ProgramCache:
                     )
 
         partial_program = partial_program_from(concrete_program)
-        if core._is_fwd_prim_enabled() and not _in_amp_guard():
+        if prim_info and prim_info.is_fwd_enabled() and not _in_amp_guard():
             partial_program.set_hooker(
-                PrimHooker(concrete_program.main_program)
+                PrimHooker(concrete_program.main_program, prim_info)
             )
         return concrete_program, partial_program
 
@@ -1243,13 +1293,14 @@ class ProgramCache:
 
 
 class PrimHooker(PartialProgramLayerHook):
-    def __init__(self, original_program):
+    def __init__(self, original_program, prim_info):
         if len(original_program.blocks) > 1:
             raise ValueError(
                 'The primitive mode only support one block currently.'
             )
         self.custom_vjps = set()
-        if core._is_all_prim_enabled():
+        self.prim_info = prim_info
+        if self.prim_info.is_all_enabled():
             self.custom_vjps = {
                 op.type
                 for op in original_program.block(0).ops
@@ -1257,19 +1308,19 @@ class PrimHooker(PartialProgramLayerHook):
             }
 
     def before_append_backward(self, forward_program):
-        if core._is_fwd_prim_enabled():
+        if self.prim_info.is_fwd_enabled():
             _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
         return forward_program
 
     def after_append_backward(self, whole_program, backward_start_idx):
         backward_length = len(whole_program.block(0).ops) - backward_start_idx
-        if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+        if self.prim_info.is_fwd_enabled() and len(self.custom_vjps) != 0:
             _to_prim(whole_program.blocks, whitelist=self.custom_vjps)
         new_start_index = len(whole_program.block(0).ops) - backward_length
         return whole_program, new_start_index
 
     def after_infer(self, infer_program):
-        if core._is_fwd_prim_enabled():
+        if self.prim_info.is_fwd_enabled():
             _to_prim(infer_program.block(0))
         return infer_program
 

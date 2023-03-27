@@ -14,7 +14,6 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
 
 
 class TestCustomVJP(unittest.TestCase):
@@ -62,50 +61,43 @@ class TestCustomVJP(unittest.TestCase):
         )
 
     def test_enable_prim_fwd(self):
-        core._set_prim_forward_enabled(True)
-        core._set_prim_backward_enabled(False)
+        f = paddle.jit.to_static(self.f)
+        f.enable_prim_fwd()
         self.assertEqual(
             self.ops_fwd_enable_bwd_disable,
             tuple(
                 op.type
-                for op in paddle.jit.to_static(self.f)
-                .get_concrete_program()[1]
+                for op in f.get_concrete_program()[1]
                 ._train_program.block(0)
                 .ops
             ),
         )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
 
     def test_enable_prim_bwd(self):
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(True)
+        f = paddle.jit.to_static(self.f)
+        f.enable_prim_bwd()
         self.assertEqual(
             self.ops_fwd_disable_bwd_enable,
             tuple(
                 op.type
-                for op in paddle.jit.to_static(self.f)
-                .get_concrete_program()[1]
+                for op in f.get_concrete_program()[1]
                 ._train_program.block(0)
                 .ops
             ),
         )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
 
     def test_enable_prim_all(self):
-        core._set_prim_all_enabled(True)
+        f = paddle.jit.to_static(self.f)
+        f.enable_prim_all()
         self.assertEqual(
             self.ops_all_enable,
             tuple(
                 op.type
-                for op in paddle.jit.to_static(self.f)
-                .get_concrete_program()[1]
+                for op in f.get_concrete_program()[1]
                 ._train_program.block(0)
                 .ops
             ),
         )
-        core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':
