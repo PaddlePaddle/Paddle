@@ -618,12 +618,16 @@ def _lower_composite(
             idx_list = range(start_idx, length)
 
         # Step2: Process all ops in the target block
-        for op_idx in idx_list:
+        for op_idx in range(length):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
 
             op_name = op.type
-            comp_flag = (lookup_fn(op_name) is not None) and filter_(op)
+            comp_flag = (
+                (lookup_fn(op_name) is not None)
+                and filter_(op)
+                and op_idx in idx_list
+            )
 
             if comp_flag:
                 change = True
