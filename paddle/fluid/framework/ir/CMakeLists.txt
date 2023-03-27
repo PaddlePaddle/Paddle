@@ -20,7 +20,7 @@ cc_library(
   graph_helper
   SRCS graph_helper.cc
   DEPS graph program_utils scale_loss_grad_op_handle
-       grad_merge_all_reduce_op_handle)
+       grad_merge_all_reduce_op_handle collective_helper)
 cc_library(
   pass
   SRCS pass.cc
