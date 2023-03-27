@@ -559,36 +559,34 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
-static paddle::experimental::Tensor PyArrayToTensor(
-    const paddle::experimental::DataType &dtype,
-    const phi::Place &place,
-    PyObject *value_obj) {
-  paddle::experimental::Tensor rt_tensor(
-      std::make_shared<phi::DenseTensor>(),
-      egr::Controller::Instance().GenerateUniqueName());
+static paddle::Tensor PyArrayToTensor(const paddle::DataType &dtype,
+                                      const phi::Place &place,
+                                      PyObject *value_obj) {
+  paddle::Tensor rt_tensor(std::make_shared<phi::DenseTensor>(),
+                           egr::Controller::Instance().GenerateUniqueName());
   py::object value_obj_tmp(py::handle(value_obj), true);
   py::object value = value_obj_tmp;
-  if (dtype == paddle::experimental::DataType::FLOAT32) {
+  if (dtype == paddle::DataType::FLOAT32) {
     if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
     }
-  } else if (dtype == paddle::experimental::DataType::FLOAT64) {
+  } else if (dtype == paddle::DataType::FLOAT64) {
     if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
     }
-  } else if (dtype == paddle::experimental::DataType::INT32) {
+  } else if (dtype == paddle::DataType::INT32) {
     if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
     }
-  } else if (dtype == paddle::experimental::DataType::INT64) {
+  } else if (dtype == paddle::DataType::INT64) {
     if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
     }
-  } else if (dtype == paddle::experimental::DataType::BOOL) {
+  } else if (dtype == paddle::DataType::BOOL) {
     if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
     }
-  } else if (dtype == paddle::experimental::DataType::FLOAT16) {
+  } else if (dtype == paddle::DataType::FLOAT16) {
     if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
     }
@@ -604,25 +602,23 @@ static paddle::experimental::Tensor PyArrayToTensor(
                        place,
                        false);
 
-  if (dtype == paddle::experimental::DataType::FLOAT16) {
-    return rt_tensor.cast(paddle::experimental::DataType::FLOAT16);
+  if (dtype == paddle::DataType::FLOAT16) {
+    return rt_tensor.cast(paddle::DataType::FLOAT16);
   }
   return rt_tensor;
 }
 
-static paddle::experimental::Tensor PyListToTensor(
-    const paddle::experimental::DataType &dtype,
-    const phi::Place &place,
-    PyObject *value_obj) {
+static paddle::Tensor PyListToTensor(const paddle::DataType &dtype,
+                                     const phi::Place &place,
+                                     PyObject *value_obj) {
   py::object value_obj_tmp((py::handle(value_obj)), true);
   return PyArrayToTensor(
       dtype, place, py::array_t<double>(value_obj_tmp).ptr());
 }
 
-static paddle::experimental::Tensor PyValueToTensor(
-    const paddle::experimental::DataType &dtype,
-    const phi::Place &place,
-    PyObject *value_obj) {
+static paddle::Tensor PyValueToTensor(const paddle::DataType &dtype,
+                                      const phi::Place &place,
+                                      PyObject *value_obj) {
   py::object value_obj_tmp((py::handle(value_obj)), true);
   return PyArrayToTensor(
       dtype, place, py::array_t<double>(value_obj_tmp).ptr());
@@ -736,10 +732,9 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::experimental::Tensor> &self,
-    const py::array_t<T> &array,
-    int device_id) {
+void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
+                             const py::array_t<T> &array,
+                             int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
@@ -1247,11 +1242,9 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
     // TODO(qili93): temporary for ascned npu performance to be removed along
     // with npu_identity op
-    paddle::experimental::Tensor tensor_out(
-        std::make_shared<phi::DenseTensor>());
+    paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
     if (tensor.storage_properties_initialized()) {
-      paddle::experimental::Tensor tensor_in(
-          std::make_shared<phi::DenseTensor>(tensor));
+      paddle::Tensor tensor_in(std::make_shared<phi::DenseTensor>(tensor));
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
@@ -1283,13 +1276,13 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
 // static paddle::experimental::IntArray BroadCastDims()
 
-static std::vector<paddle::experimental::Tensor> BroadCastAllTensor(
-    const std::vector<paddle::experimental::Tensor> &tensors) {
+static std::vector<paddle::Tensor> BroadCastAllTensor(
+    const std::vector<paddle::Tensor> &tensors) {
   if (tensors.empty()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support empty vector of tensor!"));
   }
-  std::vector<paddle::experimental::Tensor> rt_tensors;
+  std::vector<paddle::Tensor> rt_tensors;
 
   auto pre_dim = tensors[0].dims();
   auto tmp_dim = phi::make_ddim({0});

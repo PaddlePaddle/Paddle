@@ -17,7 +17,6 @@ import numpy as np
 import warnings
 import weakref
 import sys
-import time
 from paddle import _C_ops
 
 import paddle

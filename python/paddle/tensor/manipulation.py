@@ -4715,6 +4715,116 @@ def index_add_(x, index, axis, value, name=None):
     return _C_ops.index_add_(x, index, value, axis)
 
 
+@inplace_apis_in_dygraph_only
+def index_put_(x, indices, value, accumulate=False, name=None):
+    """
+    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
+    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
+    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
+
+    Args:
+        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool, complex64, complex128.
+        indices (Tensor): The tuple of Tensor containing the indices to index.
+            The data type of ``tensor in indices`` must be int32, int64 or bool
+        value (Tensor): The tensor used to be assigned to x.
+        accummulate (Bool): Whether the elements in values are added to x
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.zeros([3, 3])
+            y = paddle.ones([3])
+            ix1 = paddle.to_tensor([0,1,2])
+            ix2 = paddle.to_tensor([1,2,1])
+            indices=(ix1,ix2)
+
+            paddle.index_put_(x,indices,y)
+            print(x)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 1., 0.],
+            #         [0., 0., 1.],
+            #         [0., 1., 0.]])
+    """
+    assert len(indices) != 0, "indices can't be empty"
+
+    isBoolIndex = False
+    for index in indices:
+        assert isinstance(
+            index, Variable
+        ), "element of indices must be a Tensor"
+
+        if index.dtype == core.VarDesc.VarType.BOOL:
+            isBoolIndex = True
+            if len(indices) != 1:
+                raise IndexError(
+                    "When indices contains a bool tensor, its length must be 1, but received {}.".format(
+                        len(indices)
+                    )
+                )
+
+    if accumulate:
+        if isBoolIndex:
+            nonzero_ix = paddle.nonzero(indices[0])
+            x[:] = scatter_nd_add(x, nonzero_ix, value)
+            return
+        else:
+            if len(indices) != x.ndim:
+                raise IndexError(
+                    "When accumulate is True, size of indices shoule be equal to dims of x, but received {}.".format(
+                        len(indices)
+                    )
+                )
+            flat_indices = []
+            for ix in indices:
+                flat_indices.append(paddle.flatten(ix))
+            ix_tensor = paddle.stack(flat_indices, 1)
+            x[:] = scatter_nd_add(x, ix_tensor, value)
+            return
+    else:
+        if in_dygraph_mode():
+            if x.__advanced_index__(indices, value):
+                return
+            else:
+                return x.__setitem_eager_tensor__(indices, value)
+        else:
+            # Call c++ func __setitem_varbase__ to speedup.
+            return x.__setitem_varbase__(indices, value)
+
+
+def index_put(x, indices, value, accumulate=False, name=None):
+    """
+    Outplace version of ``index_put_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.zeros([3, 3])
+            y = paddle.ones([3])
+            ix1 = paddle.to_tensor([0,1,2])
+            ix2 = paddle.to_tensor([1,2,1])
+            indices=(ix1,ix2)
+
+            res = paddle.index_put(x,indices,y)
+            print(res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 1., 0.],
+            #         [0., 0., 1.],
+            #         [0., 1., 0.]])
+    """
+    y = x.clone()
+    index_put_(y, indices, value, accumulate)
+    return y
+
+
 # TODO(dev): We need avoid implementing it by this way.
 __METHODS = {
     'fill_': fill_,
