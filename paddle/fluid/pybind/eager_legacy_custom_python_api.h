@@ -40,7 +40,20 @@ static PyObject *eager_api_run_program(PyObject *self,
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
+    VLOG(3) << "yoki: CUDAGraph.size0: " << CUDAGraph.size();
+    for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+      VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    }
     run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, attrs);
+    VLOG(3) << "yoki: CUDAGraph.size1: " << CUDAGraph.size();
+    for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+      VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    }
+    SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+    VLOG(3) << "yoki: CUDAGraph.size2: " << CUDAGraph.size();
+    for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+      VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    }
     // run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;

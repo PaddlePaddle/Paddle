@@ -107,6 +107,7 @@ PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
+PyObject* ToPyObject(const paddle::operators::CUDAGraphWithInOuts* value);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
@@ -335,6 +336,13 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
 paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
+
+void SetCUDAGraphPtrListToArgs(
+    const std::string& op_type,
+    std::vector<paddle::operators::CUDAGraphWithInOuts*> cuda_graph,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable);
 
 std::vector<paddle::operators::CUDAGraphWithInOuts*>
 GetCUDAGraphPtrListFromArgs(const std::string& op_type,

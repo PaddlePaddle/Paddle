@@ -822,7 +822,8 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
-  py::class_<paddle::operators::CUDAGraphWithInOuts>(m, "CUDAGraphWithInOuts");
+  py::class_<paddle::operators::CUDAGraphWithInOuts>(m, "CUDAGraphWithInOuts")
+      .def(py::init<>());
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {

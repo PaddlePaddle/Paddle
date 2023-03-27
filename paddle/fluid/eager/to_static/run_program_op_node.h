@@ -466,7 +466,7 @@ inline void RunProgramAPI(
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     std::vector<paddle::Tensor *> &dout,                  // NOLINT
     std::vector<paddle::operators::CUDAGraphWithInOuts *>
-        inner_graphs,  // NOLINT
+        &inner_graphs,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -505,6 +505,7 @@ inline void RunProgramAPI(
   // &inner_graphs = *(cuda_graph->GetMutable<GraphVecType>());
   // std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>
   // inner_graphs;
+  VLOG(3) << "yoki: inner_graphs.size0: " << inner_graphs.size();
   inner_graphs.resize(std::max<size_t>(3, inner_graphs.size()));
   size_t graph_idx = is_test ? 0 : 1;
   if (inner_graphs[graph_idx] == nullptr) {
@@ -533,10 +534,13 @@ inline void RunProgramAPI(
                                   callable, x, out, dout, place, mode, pool_id)
                                   .get();
     VLOG(10) << "Capture Forward CUDA Graph";
+    VLOG(4) << "yoki: inner_graphs[" << graph_idx
+            << "]: " << inner_graphs[graph_idx];
   } else {
     VLOG(10) << "Run Forward CUDA Graph directly";
     paddle::operators::ExecuteCUDAGraph2(x, out, dout, inner_graphs[graph_idx]);
   }
+  VLOG(3) << "yoki: inner_graphs.size1: " << inner_graphs.size();
 #else
   PADDLE_THROW(
       phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "

@@ -772,6 +772,13 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
   return result;
 }
 
+PyObject* ToPyObject(const paddle::operators::CUDAGraphWithInOuts* value) {
+  VLOG(4) << "yoki topyobject cast CUDAGraphWithInOuts";
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const platform::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1473,6 +1480,23 @@ paddle::operators::CUDAGraphWithInOuts* CastPyArg2CUDAGraphPtr(PyObject* obj) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "PyObject can not be cast into CUDAGraphWithInOuts"));
   }*/
+}
+
+void SetCUDAGraphPtrListToArgs(
+    const std::string& op_type,
+    std::vector<paddle::operators::CUDAGraphWithInOuts*> cuda_graph,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  Py_ssize_t len = PyList_Size(list);
+  for (Py_ssize_t i = 0; i < len; i++) {
+    VLOG(4) << "yoki: i: " << i;
+    if (cuda_graph[i] != nullptr) {
+      VLOG(4) << "yoki to pyobject";
+      PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+    }
+  }
 }
 
 std::vector<paddle::operators::CUDAGraphWithInOuts*>

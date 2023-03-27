@@ -27,6 +27,8 @@ namespace operators {
 #ifdef PADDLE_WITH_CUDA
 class CUDAGraphWithInOuts {
  public:
+  CUDAGraphWithInOuts() {}
+
   template <typename Callable>
   CUDAGraphWithInOuts(Callable &&callable,
                       platform::CUDAPlace place,
@@ -130,8 +132,8 @@ template <typename Callable>
 static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
     Callable &&callable,
     const std::vector<paddle::Tensor> &x,
-    std::vector<paddle::Tensor *> out,
-    std::vector<paddle::Tensor *> dout,
+    std::vector<paddle::Tensor *> &out,   // NOLINT
+    std::vector<paddle::Tensor *> &dout,  // NOLINT
     platform::CUDAPlace place,
     cudaStreamCaptureMode mode,
     int64_t pool_id) {
@@ -165,8 +167,8 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
 }
 
 static void ExecuteCUDAGraph2(const std::vector<paddle::Tensor> &x,
-                              std::vector<paddle::Tensor *> out,
-                              std::vector<paddle::Tensor *> dout,
+                              std::vector<paddle::Tensor *> &out,   // NOLINT
+                              std::vector<paddle::Tensor *> &dout,  // NOLINT
                               CUDAGraphWithInOuts *graph) {
   std::vector<const phi::DenseTensor *> inputs;
   for (auto tensor : x) {

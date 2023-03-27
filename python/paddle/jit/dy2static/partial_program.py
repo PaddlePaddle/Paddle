@@ -218,6 +218,9 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
 
+        print("yoki: _cuda_graph_vec: ", flush=True)
+        print(self._cuda_graph_vec, flush=True)
+
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -983,7 +986,9 @@ class PartialProgramLayer:
         # else:
         #     var = [core.CUDAGraphWithInOuts()]
         # return var
-        return []
+        return [None, None, None]
+        # return None
+        # return [core.CUDAGraphWithInOuts(), core.CUDAGraphWithInOuts(), core.CUDAGraphWithInOuts()]
 
     def _restore_out(self, out_vars):
         """
