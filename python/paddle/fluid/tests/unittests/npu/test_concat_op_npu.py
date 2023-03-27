@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 
@@ -171,7 +171,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             with fluid.program_guard(self.program):
                 input = paddle.assign(self.x)
                 tensor_array = paddle.tensor.create_array(dtype='float32')
-                zero = fluid.layers.fill_constant(
+                zero = paddle.tensor.fill_constant(
                     shape=[1], value=0, dtype="int64"
                 )
 

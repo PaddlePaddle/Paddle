@@ -68,6 +68,28 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
   return MemoryUtils::Instance().DeviceMemoryStatCurrentValue(stat_type,
                                                               dev_id);
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void GpuMemoryUsage(size_t* available, size_t* total) {
+  return MemoryUtils::Instance().GpuMemoryUsage(available, total);
+}
+#endif
+
+void InitDevices() { MemoryUtils::Instance().InitDevices(); }
+
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  MemoryUtils::Instance().EmplaceDeviceContexts(
+      place_to_device_context,
+      places,
+      disable_setting_default_stream_for_allocator,
+      stream_priority);
+}
+
 }  // namespace memory_utils
 
 }  // namespace phi

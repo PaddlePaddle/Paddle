@@ -154,7 +154,6 @@ if(NOT WIN32)
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
@@ -197,7 +196,8 @@ if(NOT WIN32)
   if(NOT WITH_NV_JETSON
      AND NOT WITH_ARM
      AND NOT WITH_SW
-     AND NOT WITH_MIPS)
+     AND NOT WITH_MIPS
+     AND NOT WITH_LOONGARCH)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
   endif()
 endif()

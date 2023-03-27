@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO

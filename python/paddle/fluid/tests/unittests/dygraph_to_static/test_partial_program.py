@@ -18,8 +18,7 @@ import numpy as np
 from test_fetch_feed import Linear
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.layers.utils import flatten
+from paddle import fluid
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -109,10 +108,10 @@ class TestWithNestedOutput(unittest.TestCase):
 
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
-        dygraph_res = flatten(dygraph_res)
+        dygraph_res = paddle.utils.flatten(dygraph_res)
 
         static_res = self._run(to_static=True)
-        static_res = flatten(static_res)
+        static_res = paddle.utils.flatten(static_res)
 
         self.assertTrue(len(dygraph_res) == len(static_res))
 
@@ -174,7 +173,7 @@ class TestWithNoGrad(unittest.TestCase):
                 )
 
 
-class GPT2LMHeadModel(fluid.dygraph.Layer):
+class GPT2LMHeadModel(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.embedding0 = paddle.nn.Embedding(20, 16)

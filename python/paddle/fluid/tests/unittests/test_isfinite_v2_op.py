@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -29,7 +29,7 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         place = paddle.CUDAPlace(0)
     exe = fluid.Executor(place)
     with fluid.program_guard(main_program, startup_program):
-        x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=dtype)
+        x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
         static_result = exe.run(
