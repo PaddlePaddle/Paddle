@@ -37,7 +37,6 @@ namespace infra {
 class PassInstrumentation;
 class PassInstrumentor;
 class AnalysisManager;
-class PassManager;
 
 namespace detail {
 class AdaptorPass;
@@ -51,7 +50,7 @@ class PassManager {
  public:
   ~PassManager();
 
-  explicit PassManager(mlir::MLIRContext* context, int opt_level = 2);
+  explicit PassManager(mlir::MLIRContext *context, int opt_level = 2);
 
   using pass_iterator = llvm::pointee_iterator<
       llvm::MutableArrayRef<std::unique_ptr<Pass>>::iterator>;
@@ -77,9 +76,9 @@ class PassManager {
 
   bool empty() const { return begin() == end(); }
 
-  mlir::MLIRContext* GetContext() const { return context_; }
+  mlir::MLIRContext *GetContext() const { return context_; }
 
-  mlir::LogicalResult Run(mlir::Operation* op);
+  mlir::LogicalResult Run(mlir::Operation *op);
 
   void addPass(std::unique_ptr<Pass> pass) {
     passes_.emplace_back(std::move(pass));
@@ -87,18 +86,84 @@ class PassManager {
 
   void EnableTiming();
 
+  class IRPrinterConfig {
+   public:
+    using PrintCallBack = std::function<void(llvm::raw_ostream &)>;
+
+    explicit IRPrinterConfig(
+        const std::function<bool(Pass *, mlir::Operation *)>
+            &enable_print_before =
+                [](Pass *, mlir::Operation *) { return true; },
+        const std::function<bool(Pass *, mlir::Operation *)> &
+            enable_print_after = [](Pass *, mlir::Operation *) { return true; },
+        bool print_module = true,
+        bool print_on_change = true,
+        llvm::raw_ostream &out = llvm::outs(),
+        mlir::OpPrintingFlags op_printing_flags = mlir::OpPrintingFlags())
+        : enable_print_before_(enable_print_before),
+          enable_print_after_(enable_print_after),
+          print_module_(print_module),
+          print_on_change_(print_on_change),
+          out_(out),
+          op_printing_flags_(op_printing_flags) {
+      assert((enable_print_before_ || enable_print_after_) &&
+             "expected at least one valid filter function");
+    }
+
+    ~IRPrinterConfig() = default;
+
+    void PrintBeforeIfEnabled(Pass *pass,
+                              mlir::Operation *op,
+                              const PrintCallBack &print_callback) {
+      if (enable_print_before_ && enable_print_before_(pass, op)) {
+        print_callback(out_);
+      }
+    }
+
+    void PrintAfterIfEnabled(Pass *pass,
+                             mlir::Operation *op,
+                             const PrintCallBack &print_callback) {
+      if (enable_print_after_ && enable_print_after_(pass, op)) {
+        print_callback(out_);
+      }
+    }
+
+    bool EnablePrintModule() const { return print_module_; }
+
+    bool EnablePrintOnChange() const { return print_on_change_; }
+
+    mlir::OpPrintingFlags GetOpPrintingFlags() const {
+      return op_printing_flags_;
+    }
+
+   private:
+    std::function<bool(Pass *, mlir::Operation *)> enable_print_before_;
+    std::function<bool(Pass *, mlir::Operation *)> enable_print_after_;
+
+    bool print_module_;
+    bool print_on_change_;
+
+    // TODO(liuyuanle): Replace it with a local implementation.
+    // The stream to output to.
+    llvm::raw_ostream &out_;
+    // Flags to control printing behavior.
+    mlir::OpPrintingFlags op_printing_flags_;
+  };
+
+  void EnableIRPrinting(std::unique_ptr<IRPrinterConfig> config);
+
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
  private:
-  mlir::LogicalResult RunPasses(mlir::Operation* op, AnalysisManager am);
+  mlir::LogicalResult RunPasses(mlir::Operation *op, AnalysisManager am);
 
-  mlir::LogicalResult RunWithCrashRecovery(mlir::Operation* op,
+  mlir::LogicalResult RunWithCrashRecovery(mlir::Operation *op,
                                            AnalysisManager am);
 
-  mlir::LogicalResult Initialize(mlir::MLIRContext* context);
+  mlir::LogicalResult Initialize(mlir::MLIRContext *context);
 
  private:
-  mlir::MLIRContext* context_;
+  mlir::MLIRContext *context_;
 
   std::unique_ptr<PassInstrumentor> instrumentor_;
 

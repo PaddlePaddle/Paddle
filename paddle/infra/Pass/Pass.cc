@@ -139,7 +139,7 @@ mlir::LogicalResult PassManager::Run(mlir::Operation* op) {
     init_key_ = new_init_key;
   }
 
-  // Construct a  analysis manager for the pipeline.
+  // Construct a analysis manager for the pipeline.
   AnalysisManagerHolder am(op, instrumentor_.get());
 
   bool crash_recovery = false;

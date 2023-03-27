@@ -53,6 +53,7 @@ add_library(
   pass_infra
   Pass/Pass.cc
   Pass/PassRegistry.cc
+  Pass/IRPrinting.cc
   IR/PatternMatch.cc
   Rewrite/FrozenRewritePatternSet.cc
   Rewrite/PatternApplicator.cc
