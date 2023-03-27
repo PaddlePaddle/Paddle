@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
-import paddle.nn as nn
+
+import paddle
+from paddle import nn
 
 
 class Net_Cond(nn.Layer):
