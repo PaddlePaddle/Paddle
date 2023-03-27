@@ -14,8 +14,9 @@
 
 import unittest
 
+from op import OperatorFactory
+
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestFakeInitOpSelectedRows(unittest.TestCase):
@@ -33,7 +34,9 @@ class TestFakeInitOpSelectedRows(unittest.TestCase):
         var_shape = [4, 784]
 
         # create and run fake_init_op
-        fake_init_op = Operator("fake_init", Out=out_var_name, shape=var_shape)
+        fake_init_op = OperatorFactory(
+            "fake_init", Out=out_var_name, shape=var_shape
+        )
         fake_init_op.run(scope, place)
 
         self.assertEqual(var_shape, out_tensor._get_dims())

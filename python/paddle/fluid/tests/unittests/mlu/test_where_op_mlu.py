@@ -23,7 +23,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from eager_op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()

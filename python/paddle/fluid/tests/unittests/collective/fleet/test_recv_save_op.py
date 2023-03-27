@@ -25,7 +25,7 @@ from dist_test_utils import remove_ps_flag
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 from paddle.incubate.distributed.fleet.parameter_server.mode import (
     DistributedMode,
 )
@@ -103,7 +103,7 @@ class TestListenAndServOp(unittest.TestCase):
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
 
                 # create and run recv and save operator
-                remote_recv_op = Operator(
+                remote_recv_op = OperatorFactory(
                     "recv_save",
                     trainer_id=0,
                     shape=[10, 8],

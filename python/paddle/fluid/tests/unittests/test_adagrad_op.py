@@ -17,10 +17,10 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def adamgrad_wrapper(
@@ -140,7 +140,7 @@ class TestSparseAdagradOp(unittest.TestCase):
         moment_np_array = np.full((height, row_numel), 2.0).astype("float32")
         moment.set(moment_np_array, place)
 
-        adagrad_op = Operator(
+        adagrad_op = OperatorFactory(
             "adagrad",
             Param='Param',
             Grad='Grad',

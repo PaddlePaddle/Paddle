@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
@@ -177,7 +177,7 @@ class TestSparseFTRLOp(unittest.TestCase):
         )
 
         # create and run operator
-        op = Operator(
+        op = OperatorFactory(
             "ftrl",
             Param='Param',
             Grad='Grad',

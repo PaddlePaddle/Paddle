@@ -20,7 +20,6 @@ sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
 from eager_op_test import OpTest, _set_use_system_allocator
 from paddle.fluid import Program, program_guard
 

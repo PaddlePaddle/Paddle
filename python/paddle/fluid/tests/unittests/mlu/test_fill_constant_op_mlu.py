@@ -21,7 +21,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid import compiler, Program, program_guard
@@ -101,7 +101,7 @@ class TestFillConstantOpWithSelectedRows(unittest.TestCase):
         out = scope.var('Out').get_selected_rows()
 
         # create and run fill_constant_op operator
-        fill_constant_op = Operator(
+        fill_constant_op = OperatorFactory(
             "fill_constant", shape=[123, 92], value=3.8, Out='Out'
         )
         fill_constant_op.run(scope, place)

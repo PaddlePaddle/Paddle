@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 
 paddle.enable_static()
 
@@ -96,7 +96,7 @@ class XPUTestShapeOp(XPUOpTestWrapper):
             x_tensor = x.get_tensor()
             x_tensor.set(np_array, place)
             out_shape = scope.var("Out").get_tensor()
-            op = Operator("shape", Input="X", Out="Out")
+            op = OperatorFactory("shape", Input="X", Out="Out")
 
             op.run(scope, place)
 

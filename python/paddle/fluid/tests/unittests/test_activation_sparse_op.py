@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestSparseSquareOp(unittest.TestCase):
@@ -42,7 +42,7 @@ class TestSparseSquareOp(unittest.TestCase):
 
         out_selected_rows = scope.var('Out').get_selected_rows()
         # create and run sqrt operator
-        square_op = Operator("square", X='X', Out='Out')
+        square_op = OperatorFactory("square", X='X', Out='Out')
         square_op.run(scope, place)
 
         # get and compare result
@@ -79,7 +79,7 @@ class TestSparseSqrtOp(unittest.TestCase):
 
         out_selected_rows = scope.var('Out1').get_selected_rows()
         # create and run sqrt operator
-        sqrt_op = Operator("sqrt", X='X1', Out='Out1')
+        sqrt_op = OperatorFactory("sqrt", X='X1', Out='Out1')
         sqrt_op.run(scope, place)
 
         # get and compare result

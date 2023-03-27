@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 from paddle.nn import clip
 
 
@@ -69,7 +69,7 @@ class TestGetTensorFromSelectedRows(unittest.TestCase):
         # initialize input variable Out
         out = scope.var("Out").get_tensor()
 
-        op = Operator("get_tensor_from_selected_rows", X="X", Out="Out")
+        op = OperatorFactory("get_tensor_from_selected_rows", X="X", Out="Out")
 
         op.run(scope, place)
 

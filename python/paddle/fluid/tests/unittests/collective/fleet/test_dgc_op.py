@@ -18,7 +18,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 
 g_array_size = 102400
 
@@ -134,7 +134,7 @@ class TestDGCOp(unittest.TestCase):
             'regular_type': int(2),
         }
 
-        dgc_op = Operator('dgc', **kwargs)
+        dgc_op = OperatorFactory('dgc', **kwargs)
 
         # atol = 1e-6
         dgc_op.run(self.scope, self.place)

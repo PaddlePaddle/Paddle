@@ -16,8 +16,7 @@ import time
 
 import numpy as np
 from eager_op_test import OpTest
-
-from paddle.fluid.op import Operator
+from op import OperatorFactory
 
 
 class BenchmarkSuite(OpTest):
@@ -65,7 +64,9 @@ class BenchmarkSuite(OpTest):
             else:
                 outputs.append(var_name)
         if len(outputs) == 0:
-            for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+            for out_name, out_dup in OperatorFactory.get_op_outputs(
+                self.op_type
+            ):
                 outputs.append(str(out_name))
         return outputs
 

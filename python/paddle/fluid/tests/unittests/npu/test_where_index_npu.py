@@ -19,7 +19,6 @@ import sys
 
 sys.path.append("..")
 from eager_op_test import OpTest
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 

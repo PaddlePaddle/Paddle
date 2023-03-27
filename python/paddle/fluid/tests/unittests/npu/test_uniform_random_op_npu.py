@@ -22,7 +22,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from test_uniform_random_op import (
@@ -89,7 +89,7 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator(
+        op = OperatorFactory(
             "uniform_random",
             Out="X",
             shape=[1000, 784],

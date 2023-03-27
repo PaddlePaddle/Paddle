@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 import sys
 
 sys.path.append('..')
@@ -286,7 +286,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         mean_out_tensor = mean_tensor
         variance_out_tensor = variance_tensor
 
-        batch_norm_op = Operator(
+        batch_norm_op = OperatorFactory(
             "batch_norm",
             # inputs
             X="x_val",

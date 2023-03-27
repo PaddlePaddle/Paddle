@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def adam_wrapper(
@@ -430,7 +430,7 @@ class TestSparseAdamOp(unittest.TestCase):
             op_args[k] = self.attrs[k]
 
         # create and run sgd operator
-        adam_op = Operator("adam", **op_args)
+        adam_op = OperatorFactory("adam", **op_args)
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():

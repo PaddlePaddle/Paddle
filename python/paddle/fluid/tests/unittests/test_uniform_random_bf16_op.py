@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,
     output_hist_diag,
@@ -120,7 +120,7 @@ class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator(
+        op = OperatorFactory(
             "uniform_random",
             Out="X",
             shape=[1000, 784],
@@ -143,7 +143,7 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator(
+        op = OperatorFactory(
             "uniform_random",
             Out="X",
             shape=[500, 784],
@@ -194,7 +194,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
         shape_tensor = scope.var("Shape").get_tensor()
         shape_tensor.set(np.array([1000, 784]).astype("int64"), place)
         paddle.seed(10)
-        op = Operator(
+        op = OperatorFactory(
             "uniform_random",
             ShapeTensor="Shape",
             Out="X",
@@ -222,7 +222,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
         paddle.seed(10)
-        op = Operator(
+        op = OperatorFactory(
             "uniform_random",
             ShapeTensorList=["shape1", "shape2"],
             Out="X",

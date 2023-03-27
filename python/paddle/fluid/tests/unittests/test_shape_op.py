@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import OperatorFactory
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestShapeOp(OpTest):
@@ -73,7 +73,7 @@ class TestShapeWithSelectedRows(unittest.TestCase):
 
         # initialize input variable Out
         out_shape = scope.var("Out").get_tensor()
-        op = Operator("shape", Input="X", Out="Out")
+        op = OperatorFactory("shape", Input="X", Out="Out")
 
         op.run(scope, place)
 

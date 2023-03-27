@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
@@ -83,7 +83,7 @@ class TestBeamSearchDecodeNPUOp(unittest.TestCase):
         sentence_ids = self.scope.var("sentence_ids").get_tensor()
         sentence_scores = self.scope.var("sentence_scores").get_tensor()
 
-        beam_search_decode_op = Operator(
+        beam_search_decode_op = OperatorFactory(
             "beam_search_decode",
             # inputs
             Ids="ids",

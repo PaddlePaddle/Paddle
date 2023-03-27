@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestMergeSelectedRows(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestMergeSelectedRows(unittest.TestCase):
         # initialize input variable Out
         out = scope.var("Out").get_selected_rows()
 
-        op = Operator("merge_selected_rows", X="X", Out="Out")
+        op = OperatorFactory("merge_selected_rows", X="X", Out="Out")
 
         op.run(scope, place)
 

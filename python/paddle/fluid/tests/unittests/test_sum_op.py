@@ -25,13 +25,13 @@ from eager_op_test import (
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from op import OperatorFactory
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import enable_static, fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.op import Operator
 
 
 def sum_wrapper(X, use_mkldnn=False):
@@ -119,7 +119,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         out = scope.var(out_var_name).get_selected_rows()
 
         # create and run sum operator
-        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out=out_var_name)
+        sum_op = OperatorFactory("sum", X=["W1", "W2", "W3"], Out=out_var_name)
         sum_op.run(scope, place)
 
         has_data_w_num = 0
@@ -210,7 +210,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         out = scope.var(out_var_name).get_selected_rows()
 
         # create and run sum operator
-        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out=out_var_name)
+        sum_op = OperatorFactory("sum", X=["W1", "W2", "W3"], Out=out_var_name)
         sum_op.run(scope, place)
 
         has_data_w_num = 0
@@ -263,7 +263,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
             out_name = "out"
 
         # create and run sum operator
-        sum_op = Operator("sum", X=["x1", "x2"], Out=out_name)
+        sum_op = OperatorFactory("sum", X=["x1", "x2"], Out=out_name)
         sum_op.run(scope, place)
 
         result = np.ones((1, self.height)).astype(np.int32).tolist()[0]

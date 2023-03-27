@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
@@ -60,7 +60,7 @@ class TestAllFalse(unittest.TestCase):
         out = scope.var("Out").get_tensor()
         out.set(np.full(self.shape, 0).astype('int64'), place)
 
-        op = Operator("where_index", Condition="Condition", Out="Out")
+        op = OperatorFactory("where_index", Condition="Condition", Out="Out")
         op.run(scope, place)
 
         out_array = np.array(out)

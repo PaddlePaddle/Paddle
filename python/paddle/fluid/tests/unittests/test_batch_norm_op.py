@@ -17,12 +17,12 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, _set_use_system_allocator
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import grad_var_name
-from paddle.fluid.op import Operator
 
 _set_use_system_allocator(True)
 
@@ -284,7 +284,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         mean_out_tensor = mean_tensor
         variance_out_tensor = variance_tensor
 
-        batch_norm_op = Operator(
+        batch_norm_op = OperatorFactory(
             "batch_norm",
             # inputs
             X="x_val",

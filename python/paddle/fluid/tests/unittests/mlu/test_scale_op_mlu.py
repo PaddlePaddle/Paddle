@@ -21,7 +21,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -101,7 +101,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         out_tensor._set_dims(in_tensor._get_dims())
 
         # create and run sgd operator
-        scale_op = Operator("scale", X=in_name, Out=out_name, scale=scale)
+        scale_op = OperatorFactory("scale", X=in_name, Out=out_name, scale=scale)
         scale_op.run(scope, place)
 
         # get and compare result

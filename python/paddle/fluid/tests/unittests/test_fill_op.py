@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestFillOp1(OpTest):
@@ -63,7 +63,7 @@ class TestFillOp3(unittest.TestCase):
 
         # create and run fill_op operator
         val = np.random.random(size=[300, 200])
-        fill_op = Operator(
+        fill_op = OperatorFactory(
             "fill",
             value=val.flatten(),
             shape=[300, 200],

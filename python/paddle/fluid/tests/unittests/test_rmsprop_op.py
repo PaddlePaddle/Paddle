@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def create_selected_rows_and_tensor(
@@ -188,7 +188,7 @@ class TestRmspropOp(TestBase):
             kwargs['MeanGrad'] = self.mean_grad_name
             kwargs['MeanGradOut'] = self.mean_grad_name
 
-        rmsprop_op = Operator('rmsprop', **kwargs)
+        rmsprop_op = OperatorFactory('rmsprop', **kwargs)
         atol = 1e-6
 
         rmsprop_op.run(self.scope, self.place)

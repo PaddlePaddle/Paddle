@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def create_tensor(scope, name, np_data):
@@ -41,7 +41,7 @@ class BeamSearchOpTester(unittest.TestCase):
         self.scope.var('parent_idx').get_tensor()
 
     def test_run(self):
-        op = Operator(
+        op = OperatorFactory(
             'beam_search',
             pre_ids='pre_ids',
             pre_scores='pre_scores',

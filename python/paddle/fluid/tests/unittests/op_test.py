@@ -23,6 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
@@ -39,7 +40,6 @@ from paddle.fluid.framework import (
     _test_eager_guard,
     in_dygraph_mode,
 )
-from paddle.fluid.op import Operator
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
@@ -1063,7 +1063,9 @@ class OpTest(unittest.TestCase):
                         fetch_list.append(var.name)
             # if the fetch_list still empty, fill the fetch_list by the operator output.
             if len(fetch_list) == 0:
-                for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+                for out_name, out_dup in OperatorFactory.get_op_outputs(
+                    self.op_type
+                ):
                     fetch_list.append(str(out_name))
 
             if enable_inplace is not None:
@@ -1657,7 +1659,9 @@ class OpTest(unittest.TestCase):
                     self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
-                for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+                for out_name, out_dup in OperatorFactory.get_op_outputs(
+                    self.op_type
+                ):
                     if self._is_skip_name(out_name):
                         continue
                     if out_dup:

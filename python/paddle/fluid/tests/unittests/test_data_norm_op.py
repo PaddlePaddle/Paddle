@@ -17,11 +17,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -144,7 +144,7 @@ class TestDataNormOpInference(unittest.TestCase):
         scales_tensor = create_or_get_tensor(scope, "scales", None, place)
 
         if not enable_scale_and_shift:
-            data_norm_op = Operator(
+            data_norm_op = OperatorFactory(
                 "data_norm",
                 # inputs
                 X="x_val",
@@ -170,7 +170,7 @@ class TestDataNormOpInference(unittest.TestCase):
             bias_tensor = create_or_get_tensor(
                 scope, "bias", OpTest.np_dtype_to_fluid_dtype(bias), place
             )
-            data_norm_op = Operator(
+            data_norm_op = OperatorFactory(
                 "data_norm",
                 # inputs
                 X="x_val",

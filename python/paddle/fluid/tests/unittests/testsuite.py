@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import numpy as np
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
@@ -31,7 +31,7 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
         scope.var(var_name).get_tensor()
         kwargs[name].append(var_name)
 
-    for in_name, in_dup in Operator.get_op_inputs(op_type):
+    for in_name, in_dup in OperatorFactory.get_op_inputs(op_type):
         if in_name in inputs:
             kwargs[in_name] = []
             if in_dup:
@@ -47,7 +47,7 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
             scope.var(name)
             kwargs[name].append(name)
 
-    for out_name, out_dup in Operator.get_op_outputs(op_type):
+    for out_name, out_dup in OperatorFactory.get_op_outputs(op_type):
         if out_name in outputs:
             kwargs[out_name] = []
             if out_dup:
@@ -58,15 +58,15 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
             else:
                 __create_var__(out_name, out_name)
 
-    for attr_name in Operator.get_op_attr_names(op_type):
+    for attr_name in OperatorFactory.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
 
-    for extra_attr_name in Operator.get_op_extra_attr_names(op_type):
+    for extra_attr_name in OperatorFactory.get_op_extra_attr_names(op_type):
         if extra_attr_name in attrs:
             kwargs[extra_attr_name] = attrs[extra_attr_name]
 
-    return Operator(op_type, **kwargs)
+    return OperatorFactory(op_type, **kwargs)
 
 
 def set_input(scope, op, inputs, place):
@@ -83,7 +83,7 @@ def set_input(scope, op, inputs, place):
         elif isinstance(var, int):
             scope.find_var(var_name).set_int(var)
 
-    for in_name, in_dup in Operator.get_op_inputs(op.type()):
+    for in_name, in_dup in OperatorFactory.get_op_inputs(op.type()):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]

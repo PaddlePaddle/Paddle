@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
@@ -407,7 +407,7 @@ class TestSparseAdamOp(unittest.TestCase):
             op_args[k] = self.attrs[k]
 
         # create and run adam operator
-        adam_op = Operator("adam", **op_args)
+        adam_op = OperatorFactory("adam", **op_args)
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():

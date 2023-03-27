@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestShareDataOp(OpTest):
@@ -48,7 +48,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
         x.set(np_array, place)
         out = scope.var("Out").get_tensor()
 
-        op = Operator("share_data", X="X", Out="Out")
+        op = OperatorFactory("share_data", X="X", Out="Out")
         op.run(scope, place)
         np.testing.assert_allclose(np_array, out, rtol=1e-05)
 
@@ -70,7 +70,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
         out = scope.var("Out").get_selected_rows()
         out_tensor = out.get_tensor()
 
-        op = Operator("share_data", X="X", Out="Out")
+        op = OperatorFactory("share_data", X="X", Out="Out")
         op.run(scope, place)
 
         out_height = out.height()

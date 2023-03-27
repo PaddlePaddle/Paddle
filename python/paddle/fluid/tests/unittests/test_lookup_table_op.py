@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 from op_test import OpTest, check_out_dtype, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 class TestLookupTableOp(OpTest):
@@ -124,7 +124,9 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
         out_tensor = self.create_out_tensor(scope, place)
 
         # create and run lookup_table operator
-        lookup_table = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        lookup_table = OperatorFactory(
+            "lookup_table", W='W', Ids='Ids', Out='Out'
+        )
         lookup_table.run(scope, place)
 
         # get result from Out
@@ -300,7 +302,9 @@ class TestLookupTableWIsSelectedRowsInt8(unittest.TestCase):
         out_tensor = self.create_out_tensor(scope, place)
 
         # create and run lookup_table operator
-        lookup_table = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        lookup_table = OperatorFactory(
+            "lookup_table", W='W', Ids='Ids', Out='Out'
+        )
         lookup_table.run(scope, place)
 
         # get result from Out
@@ -424,7 +428,9 @@ class TestLookupTableWIsSelectedRowsInt16(unittest.TestCase):
         out_tensor = self.create_out_tensor(scope, place)
 
         # create and run lookup_table operator
-        lookup_table = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        lookup_table = OperatorFactory(
+            "lookup_table", W='W', Ids='Ids', Out='Out'
+        )
         lookup_table.run(scope, place)
 
         # get result from Out

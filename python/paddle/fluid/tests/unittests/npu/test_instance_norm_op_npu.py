@@ -23,7 +23,6 @@ import paddle
 from paddle import fluid
 from paddle.static import Program, program_guard
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.dygraph import to_variable
 
 paddle.enable_static()

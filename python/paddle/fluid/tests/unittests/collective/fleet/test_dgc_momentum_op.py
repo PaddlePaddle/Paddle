@@ -18,7 +18,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 
 
 class TestDGCMomentumOp1(unittest.TestCase):
@@ -116,7 +116,7 @@ class TestDGCMomentumOp1(unittest.TestCase):
     def check_momentum_step(self, place):
         self.setup(place=place)
 
-        dgc_momentum_op = Operator(self.op_type, **self.kwargs)
+        dgc_momentum_op = OperatorFactory(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
 
         self.check(
@@ -136,7 +136,7 @@ class TestDGCMomentumOp1(unittest.TestCase):
     def check_sgd_step(self, place):
         self.setup(place=place, step=15.0)
 
-        dgc_momentum_op = Operator(self.op_type, **self.kwargs)
+        dgc_momentum_op = OperatorFactory(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
 
         self.check(

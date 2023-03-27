@@ -16,12 +16,12 @@ import unittest
 
 import numpy
 import numpy as np
+from op import OperatorFactory
 from op_test import OpTest
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def calculate_momentum_by_numpy(
@@ -338,7 +338,7 @@ class TestSparseMomentumOp(unittest.TestCase):
         lr.set(lr_array, place)
 
         # create and run operator
-        op = Operator(
+        op = OperatorFactory(
             "momentum",
             Param='Param',
             Grad='Grad',
@@ -450,7 +450,7 @@ class TestSparseMomentumOpWithMultiPrecision(unittest.TestCase):
         lr.set(lr_array, place)
 
         # create and run operator
-        op = Operator(
+        op = OperatorFactory(
             "momentum",
             Param='Param',
             Grad='Grad',

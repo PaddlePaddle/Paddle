@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle import enable_static, fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -151,7 +151,9 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         out_tensor = self.scope.var('Out').get_tensor()
 
         # create and run lookup_table operator
-        lookup_table = Operator(self.op_type, W='W', Ids='Ids', Out='Out')
+        lookup_table = OperatorFactory(
+            self.op_type, W='W', Ids='Ids', Out='Out'
+        )
         lookup_table.run(self.scope, self.place)
 
         # get result from Out

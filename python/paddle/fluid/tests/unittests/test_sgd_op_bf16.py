@@ -16,11 +16,11 @@ import struct
 import unittest
 
 import numpy as np
+from op import OperatorFactory
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
@@ -148,7 +148,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
         )
         _, lr_value = self.create_dense_lr_var(scope, place)
 
-        sgd_op = Operator(
+        sgd_op = OperatorFactory(
             'sgd',
             Param='Param',
             Grad='Grad',
@@ -206,7 +206,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
         )
         _, lr_value = self.create_dense_lr_var(scope, place)
 
-        sgd_op = Operator(
+        sgd_op = OperatorFactory(
             'sgd',
             Param='Param',
             Grad='Grad',

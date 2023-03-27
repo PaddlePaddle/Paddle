@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import OperatorFactory
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
@@ -351,7 +351,7 @@ class TestSparseLambOp(unittest.TestCase):
             op_args[k] = self.attrs[k]
 
         # create and run sgd operator
-        lamb_op = Operator("lamb", **op_args)
+        lamb_op = OperatorFactory("lamb", **op_args)
         lamb_op.run(scope, place)
 
         for key, np_array in self.outputs.items():

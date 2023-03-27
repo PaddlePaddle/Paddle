@@ -17,12 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op import OperatorFactory
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
 
@@ -104,7 +104,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         out_tensor._set_dims(in_tensor._get_dims())
 
         # create and run sgd operator
-        scale_op = Operator("scale", X=in_name, Out=out_name, scale=scale)
+        scale_op = OperatorFactory(
+            "scale", X=in_name, Out=out_name, scale=scale
+        )
         scale_op.run(scope, place)
 
         # get and compare result

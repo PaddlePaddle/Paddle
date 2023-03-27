@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+import op
 
-from paddle.fluid import op
 from paddle.fluid.proto import framework_pb2
 
 
@@ -218,7 +218,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
 class TestOpCreations(unittest.TestCase):
     def test_all(self):
-        add_op = op.Operator("sum", X=["a", "b"], Out="z")
+        add_op = op.OperatorFactory("sum", X=["a", "b"], Out="z")
         self.assertIsNotNone(add_op)
         # Invoke C++ DebugString()
         self.assertEqual(

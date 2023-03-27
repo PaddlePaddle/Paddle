@@ -28,7 +28,7 @@ from xpu.get_test_cover_info import (
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import OperatorFactory
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
@@ -118,7 +118,7 @@ class TestSparseSGDOp(unittest.TestCase):
         lr.set(lr_array, place)
 
         # create and run sgd operator
-        sgd_op = Operator(
+        sgd_op = OperatorFactory(
             "sgd",
             Param='Param',
             Grad='Grad',
