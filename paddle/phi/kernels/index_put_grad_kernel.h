@@ -47,7 +47,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
                         const std::vector<const DenseTensor*>& indices_v,
                         const DenseTensor& value,
                         const DenseTensor& out_grad,
-                        DenseTensor* value_grad,
-                        DenseTensor* x_grad);
+                        DenseTensor* x_grad,
+                        DenseTensor* value_grad);
 
 }  // namespace phi
