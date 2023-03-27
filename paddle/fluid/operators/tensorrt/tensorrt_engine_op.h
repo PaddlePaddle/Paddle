@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #ifdef PADDLE_WITH_CUDA
 #include <memory>
 #include <string>
@@ -348,22 +349,42 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (trt_engine->engine()) {
           is_shape_tensor = trt_engine->GetITensor(name)->isShapeTensor();
         }
-        if (t.dtype() == paddle::experimental::DataType::INT32 &&
+        if ((t.dtype() == phi::DataType::INT32 ||
+             t.dtype() == phi::DataType::INT64) &&
             is_shape_tensor) {
           std::vector<int> int32_host(t.numel());
-          if (t.place() == platform::CPUPlace()) {
+          paddle::platform::DeviceContextPool &pool =
+              paddle::platform::DeviceContextPool::Instance();
+
+          if (platform::is_cpu_place(t.place())) {
+            auto &int32_tensor = t;
+            if (t.dtype() == phi::DataType::INT64) {
+              auto *cpu_ctx = pool.Get(platform::CPUPlace());
+              int32_tensor = phi::funcs::TransDataType(
+                  reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+                  t,
+                  DataType::INT32);
+            }
             paddle::memory::Copy(platform::CPUPlace(),
                                  int32_host.data(),
                                  platform::CPUPlace(),
-                                 t.data<int>(),
-                                 t.numel() * sizeof(int));
-          } else if (t.place() == platform::CUDAPlace()) {
+                                 int32_tensor.data<int>(),
+                                 int32_tensor.numel() * sizeof(int));
+          } else if (platform::is_gpu_place(t.place())) {
 #if defined(PADDLE_WITH_CUDA)
+            auto *dev_ctx = pool.Get(t.place());
+            auto &int32_tensor = t;
+            if (t.dtype() == phi::DataType::INT64) {
+              int32_tensor = phi::funcs::TransDataType(
+                  reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+                  t,
+                  DataType::INT32);
+            }
             paddle::memory::Copy(platform::CPUPlace(),
                                  int32_host.data(),
-                                 platform::CUDAPlace(),
-                                 t.data<int>(),
-                                 t.numel() * sizeof(int),
+                                 int32_tensor.place(),
+                                 int32_tensor.data<int>(),
+                                 int32_tensor.numel() * sizeof(int),
                                  nullptr);
 #endif
           }
