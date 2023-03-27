@@ -134,7 +134,7 @@ void MultinomialKernel(const Context& dev_ctx,
   using MT = typename kps::details::MPTypeTrait<T>::Type;
 
   auto int_num_samples = num_samples.to<int>();
-  auto* in_data = x.data<MT>();
+  auto* in_data = x.data<T>();
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
   auto in_dims = x.dims();
   int64_t dim_size = in_dims.size();
@@ -175,7 +175,7 @@ void MultinomialKernel(const Context& dev_ctx,
 
     // Refer to [gumbel softmax algorithm]
     DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
-    MT* rand_data = rand.data<MT>();
+    T* rand_data = rand.data<T>();
     funcs::uniform_distribution<MT> dist;
     funcs::exponential_transform<MT> trans(1.0);
     funcs::distribution_and_transform<T>(dev_ctx, &rand, dist, trans);
@@ -232,7 +232,7 @@ void MultinomialKernel(const Context& dev_ctx,
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
   NormalizeProbability<MT>
       <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
-                                                       in_data,
+                                                       x.data<MT>(),
                                                        sum_rows_data,
                                                        num_distributions,
                                                        num_categories);
