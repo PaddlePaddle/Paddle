@@ -18,7 +18,7 @@ import numpy as np
 from test_lac import DynamicGRU
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear

@@ -18,7 +18,7 @@ sys.path.append("..")
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from eager_op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,

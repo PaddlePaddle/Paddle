@@ -18,7 +18,7 @@ from operator import __add__, __mul__, __sub__, __truediv__
 import numpy as np
 
 import paddle
-import paddle.sparse as sparse
+from paddle import sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 

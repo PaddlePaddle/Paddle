@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -33,7 +33,6 @@ class TestSqrt(OpTest):
         self.op_type = "sqrt"
         self.dtype = 'float32'
         self.set_mlu()
-        self.python_api = paddle.sqrt
 
         np.random.seed(1023)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -47,7 +46,7 @@ class TestSqrt(OpTest):
         self.place = paddle.device.MLUPlace(0)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -58,7 +57,6 @@ class TestSqrtHalf(OpTest):
         self.op_type = "sqrt"
         self.dtype = 'float16'
         self.set_mlu()
-        self.python_api = paddle.sqrt
 
         np.random.seed(1023)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -73,7 +71,7 @@ class TestSqrtHalf(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_eager=False, max_relative_error=0.85
+            self.place, ['X'], 'Out', max_relative_error=0.85
         )
 
     def test_check_output(self):

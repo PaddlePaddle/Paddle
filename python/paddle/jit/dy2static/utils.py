@@ -31,7 +31,7 @@ import astor
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid  # noqa: F401
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -1405,7 +1405,7 @@ class GetterSetterHelper:
             names = []
         vars = self.getter()
         if vars is None:
-            return tuple()
+            return ()
         for n in names:
             assert (
                 n in self.name2id

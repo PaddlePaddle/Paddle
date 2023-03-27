@@ -20,8 +20,7 @@ import numpy as np
 from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
 

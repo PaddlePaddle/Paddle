@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.static as static
+from paddle import static
 from paddle.fluid import core
 from paddle.utils import unique_name
 
@@ -67,8 +67,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if self.user_defined_strategy.tensor_parallel:
             return False
         if self.user_defined_strategy.sharding:
-            return False
-        if self.user_defined_strategy.amp:
             return False
 
         if self.without_graph_optimization:

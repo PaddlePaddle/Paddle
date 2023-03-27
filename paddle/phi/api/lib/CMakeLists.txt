@@ -67,6 +67,26 @@ set(dygraph_api_source_file
 set(dygraph_api_header_file_tmp ${dygraph_api_header_file}.tmp)
 set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 
+# fused_op forward api file
+set(fused_api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_ops.yaml)
+set(fused_api_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/fused_api.h)
+set(fused_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/fused_api.cc)
+set(fused_api_header_file_tmp ${fused_api_header_file}.tmp)
+set(fused_api_source_file_tmp ${fused_api_source_file}.tmp)
+
+# fused_op backward api file
+set(fused_bw_api_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/backward_api_gen.py)
+set(fused_bw_api_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_backward.yaml)
+set(fused_bw_api_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/fused_backward_api.h)
+set(fused_bw_api_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/fused_backward_api.cc)
+set(fused_bw_api_header_file_tmp ${fused_bw_api_header_file}.tmp)
+set(fused_bw_api_source_file_tmp ${fused_bw_api_source_file}.tmp)
+
 # sparse api file
 set(sparse_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_api_gen.py)
@@ -169,6 +189,40 @@ add_custom_command(
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
   DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
           ${legacy_bw_api_yaml_file}
+  VERBATIM)
+
+# generate fused_op api
+add_custom_command(
+  OUTPUT ${fused_api_header_file} ${fused_api_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${fused_api_yaml_file}
+    --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
+    --api_source_path ${fused_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_api_header_file_tmp}
+          ${fused_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_api_source_file_tmp}
+          ${fused_api_source_file}
+  COMMENT "copy_if_different ${fused_api_header_file} ${fused_api_source_file}"
+  DEPENDS ${fused_api_yaml_file} ${api_gen_file} ${api_gen_base}
+  VERBATIM)
+
+# generate fused_op backward api
+add_custom_command(
+  OUTPUT ${fused_bw_api_header_file} ${fused_bw_api_source_file}
+         ${fused_bw_api_header_file_tmp} ${fused_bw_api_source_file_tmp}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${fused_bw_api_gen_file} --backward_yaml_path
+    ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
+    ${fused_bw_api_header_file_tmp} --backward_source_path
+    ${fused_bw_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_bw_api_header_file_tmp}
+          ${fused_bw_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${fused_bw_api_source_file_tmp}
+          ${fused_bw_api_source_file}
+  COMMENT
+    "copy_if_different ${fused_bw_api_header_file} ${fused_bw_api_source_file}"
+  DEPENDS ${fused_bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
   VERBATIM)
 
 # generate sparse api
@@ -333,7 +387,7 @@ cc_library(
        phi_profiler)
 cc_library(
   phi_function_api
-  SRCS ${api_source_file}
+  SRCS ${api_source_file} ${fused_api_source_file}
   DEPS phi_tensor_raw
        phi
        kernel_dispatch
@@ -344,7 +398,7 @@ cc_library(
        phi_profiler)
 cc_library(
   phi_bw_function_api
-  SRCS ${bw_api_source_file}
+  SRCS ${bw_api_source_file} ${fused_bw_api_source_file}
   DEPS phi_tensor_raw
        phi
        kernel_dispatch

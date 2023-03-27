@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     skip_check_grad_ci,

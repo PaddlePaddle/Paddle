@@ -62,6 +62,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+DECLARE_bool(set_to_1d);
+
 namespace paddle {
 namespace pybind {
 
@@ -124,7 +126,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   size_t numel = 1;
   if (py_rank == 0) {
     Py_ssize_t args_num = PyTuple_Size(args);
-    bool set_to_1d = true;
+    // true by default
+    bool set_to_1d = FLAGS_set_to_1d;
     if (args_num == (Py_ssize_t)1) {
       PyObject* obj = PyTuple_GET_ITEM(args, 0);
       if (obj == Py_False) {
@@ -1166,26 +1169,23 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           egr::Controller::Instance().GenerateUniqueName());
       py::object value_obj_tmp(py::handle(value_obj), true);
       py::object value = value_obj_tmp;
-      if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+      if (self->tensor.dtype() == phi::DataType::FLOAT32) {
         if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::FLOAT64) {
+      } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
         if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT32) {
+      } else if (self->tensor.dtype() == phi::DataType::INT32) {
         if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT64) {
+      } else if (self->tensor.dtype() == phi::DataType::INT64) {
         if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == paddle::experimental::DataType::BOOL) {
+      } else if (self->tensor.dtype() == phi::DataType::BOOL) {
         if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
         }
@@ -1210,26 +1210,21 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       if (py::isinstance<py::float_>(value_obj_tmp) ||
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp)) {
-        if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
           attrs["fp32_values"] =
               std::vector<float>{value_obj_tmp.cast<float>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT64) {
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
           attrs["fp64_values"] =
               std::vector<double>{value_obj_tmp.cast<double>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT32) {
+        } else if (self->tensor.dtype() == phi::DataType::INT32) {
           attrs["int32_values"] =
               std::vector<int32_t>{value_obj_tmp.cast<int32_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT64) {
+        } else if (self->tensor.dtype() == phi::DataType::INT64) {
           attrs["int64_values"] =
               std::vector<int64_t>{value_obj_tmp.cast<int64_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::BOOL) {
+        } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT16) {
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["fp16_values"] =
               std::vector<float>{value_obj_tmp.cast<float>()};
         } else {
