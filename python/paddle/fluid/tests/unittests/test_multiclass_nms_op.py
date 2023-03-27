@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops, fluid
 from paddle.fluid import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -797,7 +797,8 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        self.check_output()
+        place = fluid.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5, check_eager=True)
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
@@ -805,6 +806,68 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
+
+
+class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
+    def test_check_output(self):
+        self.__class__.op_type = "multiclass_nms3"
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            bboxes = fluid.layers.data(
+                name='BBoxes',
+                shape=self.inputs['BBoxes'].shape,
+                dtype='float32',
+            )
+            scores = fluid.layers.data(
+                name='Scores',
+                shape=self.inputs['Scores'].shape,
+                dtype='float32',
+            )
+            output, nms_rois_num, index = multiclass_nms3(
+                bboxes, scores, **self.attrs
+            )
+
+        place = fluid.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup_program)
+
+        output_, nms_rois_num_, index_ = exe.run(
+            main_program,
+            feed=self.inputs,
+            fetch_list=[output, nms_rois_num, index],
+        )
+
+        # Need to sort values before comparison
+        actual_outputs = {}
+        actual_outputs['Out'] = np.array(
+            sorted(output_, key=lambda i: [i[0], i[1]])
+        )
+        self.outputs['Out'] = np.array(
+            sorted(self.outputs['Out'], key=lambda i: [i[0], i[1]])
+        )
+        actual_outputs['Index'] = np.array(sorted(index_))
+        self.outputs['Index'] = np.array(sorted(self.outputs['Index']))
+        actual_outputs['NmsRoisNum'] = nms_rois_num_
+
+        for name in self.outputs:
+            np.testing.assert_allclose(
+                actual_outputs[name],
+                self.outputs[name],
+                rtol=1e-05,
+                equal_nan=False,
+                err_msg='Output ('
+                + name
+                + ') has diff at '
+                + str(place)
+                + '\nExpect '
+                + str(self.outputs[name])
+                + '\n'
+                + 'But Got'
+                + str(actual_outputs[name])
+                + ' in class '
+                + self.__class__.__name__,
+            )
 
 
 if __name__ == '__main__':
