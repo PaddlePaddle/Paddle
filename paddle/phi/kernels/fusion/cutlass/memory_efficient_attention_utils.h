@@ -62,18 +62,19 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
   return 0;
 }
 
-#define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                   \
-  do {                                                                      \
-    const auto __tmp = (__VA_ARGS__);                                       \
-    constexpr auto __max_dst_value = std::numeric_limits<                   \
-        typename std::remove_reference<decltype(__dst)>::type>::max();      \
-    if (!std::is_same<decltype(__tmp), decltype(__max_dst_value)>::value) { \
-      PADDLE_ENFORCE_LE(                                                    \
-          __tmp,                                                            \
-          __max_dst_value,                                                  \
-          phi::errors::InvalidArgument(#__dst " exceeds maximum value."));  \
-    }                                                                       \
-    __dst = __tmp;                                                          \
+#define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                    \
+  do {                                                                       \
+    auto __tmp = (__VA_ARGS__);                                              \
+    using __SrcType = decltype(&__tmp);                                      \
+    using __DstType = typename std::remove_reference<decltype(__dst)>::type; \
+    auto __max_dst_value = std::numeric_limits<__DstType>::max();            \
+    if (!std::is_same<__SrcType, __DstType>::value) {                        \
+      PADDLE_ENFORCE_LE(                                                     \
+          __tmp,                                                             \
+          __max_dst_value,                                                   \
+          phi::errors::InvalidArgument(#__dst " exceeds maximum value."));   \
+    }                                                                        \
+    __dst = __tmp;                                                           \
   } while (0)
 
 }  // namespace cutlass_internal
