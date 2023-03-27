@@ -1131,12 +1131,11 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
     PyObject* slice_item = PyTuple_GetItem(index_ptr, dim);
     if (PyCheckTensor(slice_item)) {
       auto dtype = reinterpret_cast<TensorObject*>(slice_item)->tensor.dtype();
-      if ((dtype == paddle::experimental::DataType::INT64) ||
-          (dtype == paddle::experimental::DataType::INT32)) {
-        indices_tensor.emplace_back(
-            reinterpret_cast<TensorObject*>(slice_item)
-                ->tensor.cast(paddle::experimental::DataType::INT64));
-      } else if (dtype == paddle::experimental::DataType::BOOL) {
+      if ((dtype == paddle::DataType::INT64) ||
+          (dtype == paddle::DataType::INT32)) {
+        indices_tensor.emplace_back(reinterpret_cast<TensorObject*>(slice_item)
+                                        ->tensor.cast(paddle::DataType::INT64));
+      } else if (dtype == paddle::DataType::BOOL) {
         if (size != 1) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When index contains a bool tensor, its length must be 1"));
@@ -1184,10 +1183,8 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When index contains bool list, the length of it must be 1"));
         }
-        auto non_zero_ix =
-            nonzero_ad_func(PyListToTensor(paddle::experimental::DataType::BOOL,
-                                           self->tensor.place(),
-                                           slice_item));
+        auto non_zero_ix = nonzero_ad_func(PyListToTensor(
+            paddle::DataType::BOOL, self->tensor.place(), slice_item));
         if (non_zero_ix.numel() == 0) {
           return ToPyObject(true);
         }
@@ -1196,26 +1193,20 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
         isBoolIndex = true;
       } else {
-        indices_tensor.emplace_back(
-            PyListToTensor(paddle::experimental::DataType::INT64,
-                           self->tensor.place(),
-                           slice_item));
+        indices_tensor.emplace_back(PyListToTensor(
+            paddle::DataType::INT64, self->tensor.place(), slice_item));
       }
     } else if (py::isinstance<py::int_>(slice_item)) {
-      indices_tensor.emplace_back(
-          PyValueToTensor(paddle::experimental::DataType::INT64,
-                          self->tensor.place(),
-                          slice_item));
+      indices_tensor.emplace_back(PyValueToTensor(
+          paddle::DataType::INT64, self->tensor.place(), slice_item));
     } else if (py::isinstance<py::array>(slice_item)) {
       if (py::isinstance<py::array_t<bool>>(slice_item)) {
         if (size != 1) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When index contains a bool ndarray, its length must be 1"));
         }
-        auto non_zero_ix = nonzero_ad_func(
-            PyArrayToTensor(paddle::experimental::DataType::BOOL,
-                            self->tensor.place(),
-                            slice_item));
+        auto non_zero_ix = nonzero_ad_func(PyArrayToTensor(
+            paddle::DataType::BOOL, self->tensor.place(), slice_item));
         if (non_zero_ix.numel() == 0) {
           return ToPyObject(true);
         }
@@ -1225,10 +1216,8 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
         isBoolIndex = true;
       } else if (py::isinstance<py::array_t<int>>(slice_item) ||
                  py::isinstance<py::array_t<int64_t>>(slice_item)) {
-        indices_tensor.emplace_back(
-            PyArrayToTensor(paddle::experimental::DataType::INT64,
-                            self->tensor.place(),
-                            slice_item));
+        indices_tensor.emplace_back(PyArrayToTensor(
+            paddle::DataType::INT64, self->tensor.place(), slice_item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When index contains a ndarray, its dtype must be int, int64 or "
