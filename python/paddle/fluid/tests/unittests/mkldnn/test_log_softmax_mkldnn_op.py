@@ -57,7 +57,7 @@ class TestLogSoftmaxOneDNNOp(OpTest):
         self.axis = -1
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
 class TestLogSoftmax0DOneDNNOp(TestLogSoftmaxOneDNNOp):

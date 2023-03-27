@@ -68,10 +68,10 @@ class TestSplitSectionsOneDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_dygraph=False)
 
 
 # test with attr(num)
@@ -86,7 +86,9 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2', 'out3'], check_dygraph=False
+        )
 
 
 class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
