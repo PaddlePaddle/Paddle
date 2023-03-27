@@ -62,6 +62,20 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
   return 0;
 }
 
+#define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                   \
+  do {                                                                      \
+    const auto __tmp = (__VA_ARGS__);                                       \
+    constexpr auto __max_dst_value = std::numeric_limits<                   \
+        typename std::remove_reference<decltype(__dst)>::type>::max();      \
+    if (!std::is_same<decltype(__tmp), decltype(__max_dst_value)>::value) { \
+      PADDLE_ENFORCE_LE(                                                    \
+          __tmp,                                                            \
+          __max_dst_value,                                                  \
+          phi::errors::InvalidArgument(#__dst " exceeds maximum value."));  \
+    }                                                                       \
+    __dst = __tmp;                                                          \
+  } while (0)
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
