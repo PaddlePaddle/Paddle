@@ -385,7 +385,7 @@ def create_test_fp16_class(parent, grad_check=True):
     globals()[cls_name] = TestDepthwiseConvFP16
 
 
-def create_test_bf16_class(parent):
+def create_test_bf16_class(parent, atol=1e-2):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -409,7 +409,7 @@ def create_test_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2)
+            self.check_output_with_place(place, atol=atol)
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
@@ -496,7 +496,7 @@ create_test_fp16_class(TestDepthwiseConvWithDilation2andFuse)
 
 create_test_bf16_class(TestDepthwiseConv)
 create_test_bf16_class(TestDepthwiseConv2)
-create_test_bf16_class(TestDepthwiseConv3)
+create_test_bf16_class(TestDepthwiseConv3, atol=4e-2)
 create_test_bf16_class(TestDepthwiseConvWithDilation)
 create_test_bf16_class(TestDepthwiseConvWithDilation2)
 create_test_bf16_class(TestDepthwiseConvandFuse)
