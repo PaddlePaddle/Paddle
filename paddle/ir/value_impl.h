@@ -28,14 +28,10 @@ class OpOperandImpl;
 ///
 /// \brief ValueImpl is the base class of all drived Value classes such as
 /// OpResultImpl. This class defines all the information and usage interface in
-/// the IR Value. Each Value include three attributes: type_(ir::Type),
-/// offset_first_user_(first operand address with offset of this value,
-/// OpOperandImpl*), index(the position where the output list of the parent
-/// operator). The members of the OpOperandImpl include four pointers, this
-/// class is 8-byte aligned, and the lower 3 bits of its address are 0, so the
-/// index is stored in these 3 bits: 0-5 means inline
-/// output(OpInlineResultImpl), 6 means outline output(OpOutlineResultImpl), and
-/// 7 is reserved.
+/// the IR Value. Each Value include three attributes:
+/// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first operand
+/// address with offset of this value; (3) index: the position where the output
+/// list of the parent operator.
 ///
 class alignas(8) ValueImpl {
  public:
@@ -43,6 +39,7 @@ class alignas(8) ValueImpl {
   /// \brief Interface functions of "type_" attribute.
   ///
   ir::Type type() const { return type_; }
+
   void SetType(ir::Type type) { type_ = type; }
 
   ///
@@ -51,10 +48,12 @@ class alignas(8) ValueImpl {
   uint32_t index() const {
     return reinterpret_cast<uintptr_t>(offset_first_user_) & 0x07;
   }
+
   OpOperandImpl *first_user() {
     return reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(offset_first_user_) & (~0x07));
   }
+
   void SetFirstUser(OpOperandImpl *first_user) {
     uint32_t offset = index();
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
@@ -63,6 +62,7 @@ class alignas(8) ValueImpl {
             << ". Offset and set first user: " << first_user << " -> "
             << offset_first_user_ << ".";
   }
+
   OpOperandImpl **first_user_addr() { return &offset_first_user_; }
 
  protected:
@@ -78,7 +78,20 @@ class alignas(8) ValueImpl {
             << ". The offset first_user address is: " << offset_first_user_;
   }
 
+  ///
+  /// \brief Attribute1: Type of value.
+  ///
   ir::Type type_;
+
+  ///
+  /// \brief Attribute2/3: Record the UD-chain of value and index.
+  /// NOTE: The members of the OpOperandImpl include four pointers, so this
+  /// class is 8-byte aligned, and the lower 3 bits of its address are 0, so the
+  /// index can be stored in these 3 bits, stipulate:
+  /// (1) index = 0~5: inline output(OpInlineResultImpl);
+  /// (2) index = 6: outline output(OpOutlineResultImpl);
+  /// (3) index = 7 is reserved.
+  ///
   OpOperandImpl *offset_first_user_ = nullptr;
 };
 
