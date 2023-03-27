@@ -110,7 +110,6 @@ class TestFleetMetaOptimizerPrecision(TestDistRunnerBase):
             fleet.init(role)
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
-            strategy.fuse_all_reduce_ops = False
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )

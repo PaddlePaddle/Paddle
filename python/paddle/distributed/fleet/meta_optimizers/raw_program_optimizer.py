@@ -212,6 +212,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if not grad_vars:
             return
 
+        gm_block._insert_op(
+            first_optimize_op_idx,
+            type="c_sync_calc_stream",
+            inputs={'X': grad_vars[0]},
+            outputs={'Out': grad_vars[0]},
+            attrs={OP_ROLE_KEY: OpRole.Backward},
+        )
+
         insert_op_num = 1
         ring_id = self.global_ring_id
 
@@ -228,6 +236,17 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 },
             )
             insert_op_num += 1
+
+        gm_block._insert_op(
+            first_optimize_op_idx + insert_op_num,
+            type="c_sync_comm_stream",
+            inputs={'X': grad_vars},
+            outputs={'Out': grad_vars},
+            attrs={
+                'ring_id': ring_id,
+                OP_ROLE_KEY: OpRole.Backward,
+            },
+        )
 
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
