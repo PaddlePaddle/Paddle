@@ -18,8 +18,8 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.vision.models import resnet50, resnet101
 
@@ -1175,7 +1175,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
     def test_value_error(self):
         def test():
             import paddle
-            import paddle.nn as nn
+            from paddle import nn
 
             model = nn.Sequential(nn.Linear(3, 4))
 

@@ -15,7 +15,7 @@
 import os
 import unittest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 

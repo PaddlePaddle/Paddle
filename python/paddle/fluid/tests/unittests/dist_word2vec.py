@@ -17,7 +17,7 @@ import os
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 IS_SPARSE = True
 EMBED_SIZE = 32

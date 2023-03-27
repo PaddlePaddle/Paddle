@@ -20,9 +20,8 @@ from eager_op_test import OpTest, convert_uint16_to_float
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.fluid.op import Operator
 from paddle.tensor import random
