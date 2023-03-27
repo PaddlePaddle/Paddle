@@ -54,11 +54,63 @@ inline rocsparse_operation GetTransposeOperation(const bool trans) {
   }
 }
 
-inline rocsparse_spmm_alg GetSpMMAlgorithm(const SparseCooTensor& x) {
+template <typename TensorType>
+inline rocsparse_spmm_alg GetSpMMAlgorithm(const TensorType& x) {
   return rocsparse_spmm_alg_default;
 }
 
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/
+template <typename T, typename IntT>
+inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
+                                const phi::GPUContext& dev_ctx,
+                                rocsparse_spmat_descr* descriptor) {
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  auto x_ndims = xdim_vec.size();
+  PADDLE_ENFORCE_GE(
+      x_ndims,
+      2,
+      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+                                   "greater than or eaqual to 2."));
+  int64_t M = xdim_vec[x_ndims - 2];
+  int64_t N = xdim_vec[x_ndims - 1];
+  int batch_size = 1;
+  for (int i = 0; i < x_ndims - 2; i++) {
+    batch_size *= xdim_vec[i];
+  }
+  PADDLE_ENFORCE_EQ(x.non_zero_crows().numel(),
+                    batch_size * (M + 1),
+                    phi::errors::PreconditionNotMet(
+                        "the length of SparseCsrTensor crows is not right."));
+
+  const IntT* crows_data = x.non_zero_crows().data<IntT>();
+  const IntT* cols_data = x.non_zero_cols().data<IntT>();
+  const T* values_data = x.non_zero_elements().data<T>();
+
+  int64_t batch_nnz = x.nnz() / batch_size;
+  rocsparse_indextype itype = GetGpuIndexType<int64_t>();
+  rocsparse_indextype jtype = GetGpuIndexType<int64_t>();
+  rocsparse_datatype ttype = GetGpuDataType<T>();
+  dev_ctx.CusparseCall([&](rocsparse_handle handle) {
+    phi::dynload::rocsparse_create_csr_descr(descriptor,
+                                             M,
+                                             N,
+                                             batch_nnz,
+                                             const_cast<IntT*>(crows_data),
+                                             const_cast<IntT*>(cols_data),
+                                             const_cast<T*>(values_data),
+                                             itype,
+                                             jtype,
+                                             rocsparse_index_base_zero,
+                                             ttype);
+  });
+  if (batch_size > 1) {
+    // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Batch Sparse matmul use 'rocsparse_coo_set_strided_batch', which is "
+        "supported from ROCM 5.2.0"));
+  }
+}
+
 template <typename T, typename IntT>
 inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
@@ -101,8 +153,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   });
 
   if (batch_size > 1) {
-    // TODO(umiswing): Add batch sparse matmul support for ROCM starting from
-    // version 5.2.0
+    // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'rocsparse_coo_set_strided_batch', which is "
         "supported from ROCM 5.2.0"));
@@ -112,6 +163,15 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 template <typename T>
 class RocSparseSpMatDescriptor {
  public:
+  explicit RocSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
+                                    const phi::GPUContext& dev_ctx)
+      : dev_ctx_(dev_ctx) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        x.non_zero_crows().dtype(), "Csr RocSparseSpMatDescriptor", ([&] {
+          CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
+        }));
+    VLOG(6) << "Create csr rocsparse_spmat_descr " << &descriptor_;
+  }
   explicit RocSparseSpMatDescriptor(const phi::SparseCooTensor& x,
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
@@ -172,8 +232,7 @@ class RocSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
-      // TODO(umiswing): Add batch sparse matmul support for ROCM starting from
-      // version 5.2.0
+      // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
       PADDLE_THROW(phi::errors::Unimplemented(
           "Batch Sparse matmul use 'rocsparse_dnmat_set_strided_batch', which "
           "is "
@@ -212,6 +271,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
 
   rocsparse_datatype ttype = GetGpuDataType<T>();
   size_t buffer_size = 0;
+
   // Query SpMM buffer
   dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
     phi::dynload::rocsparse_spmm(handle,
@@ -230,12 +290,12 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   });
 
   // Allocate buffer
-
   phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
+
   // Preprocess data
   dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
     phi::dynload::rocsparse_spmm(handle,

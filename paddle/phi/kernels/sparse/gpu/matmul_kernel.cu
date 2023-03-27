@@ -115,9 +115,7 @@ void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
-#if PADDLE_WITH_CUDA
   MatmulKernelImpl<T>(dev_ctx, x, y, out);
-#endif
 }
 
 template <typename T, typename Context>

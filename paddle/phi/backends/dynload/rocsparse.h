@@ -51,6 +51,7 @@ extern void *rocsparse_dso_handle;
 
 #define ROCSPARSE_ROUTINE_EACH(__macro)   \
   __macro(rocsparse_create_coo_descr);    \
+  __macro(rocsparse_create_csr_descr);    \
   __macro(rocsparse_destroy_spmat_descr); \
   __macro(rocsparse_create_dnmat_descr);  \
   __macro(rocsparse_destroy_dnmat_descr); \
