@@ -430,31 +430,6 @@ if(LINUX AND WITH_MKLDNN)
 
 endif()
 
-# Since the tests for Quant & INT8 comparison support only testing on Linux
-# with MKL-DNN, we remove it here to not test it on other systems.
-list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
-     quant_int8_image_classification_comparison quant_int8_nlp_comparison)
-
-#TODO(wanghaoshuang): Fix this unitest failed on GCC8.
-list(REMOVE_ITEM TEST_OPS test_auto_pruning)
-list(REMOVE_ITEM TEST_OPS test_filter_pruning)
-
-# fix
-if(WIN32)
-  set(SINGLE_CARD_TEST_OPS
-      test_user_defined_quantization
-      test_quantization_scale_pass
-      test_quantization_pass
-      test_moving_average_abs_max_scale_op
-      test_imperative_qat_channelwise
-      test_imperative_qat
-      test_imperative_qat_lsq
-      test_imperative_qat_matmul
-      test_imperative_out_scale
-      test_graph)
-  list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
-endif()
-
 # setting timeout value for old unittests
 if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_lstm_model
