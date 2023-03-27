@@ -158,7 +158,6 @@
   args : (Tensor out_grad, DataType dtype)
   output : Tensor(x_grad)
   composite: cast_grad(out_grad, x.dtype(), x_grad)
-  no_need_buffer : x
 
 - backward_op : channel_shuffle_grad
   forward : channel_shuffle (Tensor x, int groups, str data_format="NCHW") -> Tensor(out)
