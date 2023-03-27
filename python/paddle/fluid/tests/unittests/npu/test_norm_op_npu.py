@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
 
@@ -106,7 +106,7 @@ class API_NormTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_norm_x_type():
-                data = fluid.data(name="x", shape=[3, 3], dtype="float64")
+                data = paddle.static.data(name="x", shape=[3, 3], dtype="float64")
                 out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)

@@ -20,6 +20,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import paddle
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 from .attn_bias import (
     BlockDiagonalCausalMask,
@@ -65,7 +68,7 @@ def _get_tensor_bias(attn_bias):
 
 
 def memory_efficient_attention(
-    query, key, value, attn_bias, p=0.0, scale=None, training=True
+    query, key, value, attn_bias=None, p=0.0, scale=None, training=True
 ):
     assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
     causal = isinstance(
@@ -76,9 +79,10 @@ def memory_efficient_attention(
             BlockDiagonalCausalWithOffsetPaddedKeysMask,
         ),
     )
-    seqstart_k, seqstart_q, max_seqlen_q, _ = _get_seqlen_info(attn_bias)
+    seqstart_k, seqstart_q, max_seqlen_q, max_seqlen_k = _get_seqlen_info(
+        attn_bias
+    )
     # NOTE: compute_logsumexp = training
-    is_test = not training
     causal_diagonal = (
         attn_bias.causal_diagonal
         if isinstance(attn_bias, BlockDiagonalCausalWithOffsetPaddedKeysMask)
@@ -89,5 +93,60 @@ def memory_efficient_attention(
         if isinstance(attn_bias, BlockDiagonalCausalWithOffsetPaddedKeysMask)
         else None
     )
-    attn_bias = _get_tensor_bias(attn_bias)
-    # TODO(zhangdanyang): add C++ codes here
+    if scale is None:
+        scale = -1.0
+
+    bias = _get_tensor_bias(attn_bias)
+    is_test = not training
+
+    if in_dygraph_mode():
+        output, logsumexp, seed_and_offset = _C_ops.memory_efficient_attention(
+            query,
+            key,
+            value,
+            bias,
+            seqstart_q,
+            seqstart_k,
+            causal_diagonal,
+            seqlen_k,
+            max_seqlen_q,
+            max_seqlen_k,
+            causal,
+            p,
+            scale,
+            is_test,
+        )
+        return output
+
+    helper = LayerHelper('memory_efficient_attention', **locals())
+    output = helper.create_variable_for_type_inference(dtype=query.dtype)
+    logsumexp = helper.create_variable_for_type_inference(dtype='float')
+    seed_and_offset = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='memory_efficient_attention',
+        inputs={
+            'query': query,
+            'key': key,
+            'value': value,
+            'bias': bias,
+            "cu_seqlens_q": seqstart_q,
+            "cu_seqlens_k": seqstart_k,
+            "causal_diagonal": causal_diagonal,
+            "seqlen_k": seqlen_k,
+        },
+        args={
+            "max_seqlen_q": max_seqlen_q,
+            "max_seqlen_k": max_seqlen_k,
+            "causal": causal,
+            "dropout_p": p,
+            "scale": scale,
+            "is_test": is_test,
+        },
+        outputs={
+            'output': output,
+            'logsumexp': logsumexp,
+            "seed_and_offset": seed_and_offset,
+        },
+    )
+
+    return output

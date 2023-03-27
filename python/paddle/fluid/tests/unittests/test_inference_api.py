@@ -19,7 +19,7 @@ import paddle
 paddle.enable_static()
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.core import PaddleDType, PaddleTensor
 from paddle.inference import (
     Config,
@@ -79,7 +79,9 @@ def get_sample_model():
     main_program = fluid.Program()
     startup_program = fluid.Program()
     with fluid.program_guard(main_program, startup_program):
-        data = fluid.data(name="data", shape=[-1, 6, 64, 64], dtype="float32")
+        data = paddle.static.data(
+            name="data", shape=[-1, 6, 64, 64], dtype="float32"
+        )
         conv_out = paddle.static.nn.conv2d(
             input=data,
             num_filters=3,

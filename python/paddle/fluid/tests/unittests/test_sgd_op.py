@@ -18,8 +18,8 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 paddle.enable_static()
@@ -196,8 +196,8 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 class TestSGDOpWithLargeInput(unittest.TestCase):
     def runTest(self):
         paddle.enable_static()
-        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
-        label = fluid.layers.fill_constant(
+        data = paddle.tensor.fill_constant(shape=[1], value=128, dtype='int64')
+        label = paddle.tensor.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
         emb = paddle.static.nn.embedding(

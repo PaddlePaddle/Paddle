@@ -507,7 +507,7 @@ class Inserter:
         # use slice
         else:
             inputs = {'Input': tensor}
-            infer_flags = list(1 for i in range(len(axes)))
+            infer_flags = [1 for i in range(len(axes))]
             attrs = {
                 "axes": axes,
                 "starts": starts,
@@ -1483,15 +1483,15 @@ class Resharder:
                         [source_partition_index, [source_process], [False]]
                     )
                 else:
-                    partition_list = list(
-                        [item[0] for item in partition_process_mapping_list]
-                    )
-                    process_list = list(
-                        [item[1] for item in partition_process_mapping_list]
-                    )
-                    has_used = list(
-                        [item[2] for item in partition_process_mapping_list]
-                    )
+                    partition_list = [
+                        item[0] for item in partition_process_mapping_list
+                    ]
+                    process_list = [
+                        item[1] for item in partition_process_mapping_list
+                    ]
+                    has_used = [
+                        item[2] for item in partition_process_mapping_list
+                    ]
 
                     if partition_list.count(source_partition_index) == 1:
                         index = partition_list.index(source_partition_index)
@@ -1536,15 +1536,15 @@ class Resharder:
                         )
                         and source_partition_index not in has_sent
                     ):
-                        idx = list(
-                            [item[0] for item in partition_process_mapping_list]
-                        ).index(source_partition_index)
-                        has_used = list(
-                            [item[2] for item in partition_process_mapping_list]
-                        )[idx]
-                        process_list = list(
-                            [item[1] for item in partition_process_mapping_list]
-                        )[idx]
+                        idx = [
+                            item[0] for item in partition_process_mapping_list
+                        ].index(source_partition_index)
+                        has_used = [
+                            item[2] for item in partition_process_mapping_list
+                        ][idx]
+                        process_list = [
+                            item[1] for item in partition_process_mapping_list
+                        ][idx]
                         i = 0
                         while i < len(has_used):
                             if not has_used[i]:
@@ -2213,7 +2213,11 @@ class Resharder:
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
-        assert op_input_attrs
+        assert (
+            op_input_attrs
+        ), "The input '{}' of op '{}' has no distibution attributes in subblock".format(
+            op.name, var_name
+        )
 
         return op_input_attrs
 
@@ -2944,7 +2948,7 @@ class Resharder:
                         to_slice_tensor_shape = op_desc.shape
                     slice_desc = {}
                     slice_desc["op"] = "slice"
-                    infer_flags = list(1 for i in range(len(op_desc.axes)))
+                    infer_flags = [1 for i in range(len(op_desc.axes))]
                     slice_desc["attrs"] = {
                         "axes": op_desc.axes,
                         "starts": op_desc.starts,

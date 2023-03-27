@@ -26,12 +26,12 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import (
     RawProgramOptimizer as RawProgram,
 )
 from paddle.fluid import compiler
+from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
     fleet,
@@ -802,7 +802,7 @@ class TestParallelDyGraphRunnerBase:
         return out_losses
 
     def run_use_fleet_api_trainer(self, args):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         # 1. enable dygraph
         paddle.disable_static()

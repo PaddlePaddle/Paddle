@@ -99,6 +99,8 @@ if(WIN32)
       COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
         ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
+              ${PADDLE_BINARY_DIR}/test
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -108,6 +110,8 @@ if(WIN32)
       COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
         ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
+              ${PADDLE_BINARY_DIR}/test
       COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
               bdist_wheel
       COMMENT "Packing whl packages------>>>"
@@ -121,6 +125,7 @@ else()
       COMMAND touch stub.cc
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -130,6 +135,7 @@ else()
       COMMAND touch stub.cc
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
@@ -143,9 +149,7 @@ add_custom_target(paddle_python ALL
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if(WITH_TESTING)
-  add_subdirectory(paddle/reader/tests)
   add_subdirectory(paddle/dataset/tests)
-  add_subdirectory(paddle/tests)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
   add_subdirectory(paddle/static/quantization/tests)

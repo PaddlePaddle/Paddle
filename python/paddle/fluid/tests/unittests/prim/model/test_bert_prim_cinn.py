@@ -21,9 +21,9 @@ import numpy as np
 from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.dataset.common import DATA_HOME, download
+from paddle.fluid import core
 
 SEED = 2023
 BATCH_SIZE = 2
@@ -120,16 +120,17 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-1)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
         np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-6)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
     )
     def test_prim_cinn(self):
+        core._add_skip_comp_ops("layer_norm")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

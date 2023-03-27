@@ -18,9 +18,9 @@ import numpy as np
 from quant_dequant_test import QuantDequantTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -29,10 +29,12 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,
@@ -129,10 +131,12 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             reshape_out = paddle.reshape(self.data, shape=[1, 4, 14, 14])
             matmul_out = paddle.matmul(
                 x=reshape_out,
@@ -231,10 +235,12 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[-1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,

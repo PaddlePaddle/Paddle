@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.communication.stream as stream
+from paddle.distributed.communication import stream
 
 
 def recv(tensor, src=0, group=None, sync_op=True):

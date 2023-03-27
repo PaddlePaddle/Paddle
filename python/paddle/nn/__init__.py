@@ -14,7 +14,6 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-from ..fluid.dygraph.layers import Layer  # noqa: F401
 from .layer.container import LayerList  # noqa: F401
 from .layer.container import ParameterList  # noqa: F401
 from .layer.container import Sequential  # noqa: F401
@@ -150,6 +149,8 @@ from .layer.vision import PixelUnshuffle  # noqa: F401
 from .layer.vision import ChannelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
 
+from .layer.layers import Layer  # noqa: F401
+
 from .utils.spectral_norm_hook import spectral_norm
 
 # TODO: remove loss, keep it for too many used in unitests
@@ -161,7 +162,7 @@ from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
 # TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 
 @deprecated(

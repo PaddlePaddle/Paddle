@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 from paddle.fluid import core
 
 TOLERANCE = {
@@ -46,7 +45,7 @@ class PrimeNet(
     paddle.nn.Layer,
 ):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x):
@@ -185,31 +184,24 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.assertTrue('reduce_mean' not in fwd_ops)
 
     def test_cinn_prim(self):
-        plat = platform.system()
-        if plat == "Linux":
-            for shape in self.shapes:
-                for dtype in self.dtypes:
-                    # mean-kernel on cpu not support float16
-                    if (
-                        paddle.device.get_device() == "cpu"
-                        and dtype == "float16"
-                    ):
-                        print("need pass this case")
-                        continue
-                    data = generate_data(shape, dtype)
-                    data_t = paddle.to_tensor(data)
-                    data_t.stop_gradient = False
-                    dy_res = self.train(use_prim=False, data=data_t)
-                    cinn_res = self.train(use_prim=True, data=data_t)
+        for shape in self.shapes:
+            for dtype in self.dtypes:
+                # mean-kernel on cpu not support float16
+                if paddle.device.get_device() == "cpu" and dtype == "float16":
+                    print("need pass this case")
+                    continue
+                data = generate_data(shape, dtype)
+                data_t = paddle.to_tensor(data)
+                data_t.stop_gradient = False
+                dy_res = self.train(use_prim=False, data=data_t)
+                cinn_res = self.train(use_prim=True, data=data_t)
 
-                    np.testing.assert_allclose(
-                        cinn_res,
-                        dy_res,
-                        rtol=TOLERANCE[dtype]['rtol'],
-                        atol=TOLERANCE[dtype]['atol'],
-                    )
-        else:
-            pass
+                np.testing.assert_allclose(
+                    cinn_res,
+                    dy_res,
+                    rtol=TOLERANCE[dtype]['rtol'],
+                    atol=TOLERANCE[dtype]['atol'],
+                )
 
 
 if __name__ == '__main__':
