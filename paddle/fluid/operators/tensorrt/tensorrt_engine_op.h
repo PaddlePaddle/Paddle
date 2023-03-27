@@ -329,8 +329,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     auto *trt_engine = GetEngine(scope, dev_place);
     if (trt_engine->with_dynamic_shape()) {
-      // get runtime input shapes.
+      // get runtime input shapes and shape tensors.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
+      std::map<std::string, std::vector<int32_t>> runtime_shape_tensor;
       for (auto name : runtime_input_names_) {
         auto &t =
             inference::analysis::GetFromScope<phi::DenseTensor>(scope, name);
@@ -338,8 +339,37 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 << t.dims() << ")";
         auto t_shape = phi::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
+        // We need collect value range for shape tensor for Paddle-TRT's use.
+        // To be noticed, this method to identify all shape tensors is based on
+        // assumption that all shape tensors in the model have numbers <= 7.
+        // This is a simple method to identify all shape tensors with some
+        // mistakes, but it doesn't matter.
+        auto is_shape_tensor = t.numel() <= 7 && t.numel() >= 1;
+        if (trt_engine->engine()) {
+          is_shape_tensor = trt_engine->GetITensor(name)->isShapeTensor();
+        }
+        if (t.dtype() == paddle::experimental::DataType::INT32 &&
+            is_shape_tensor) {
+          std::vector<int> int32_host(t.numel());
+          if (t.place() == platform::CPUPlace()) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 int32_host.data(),
+                                 platform::CPUPlace(),
+                                 t.data<int>(),
+                                 t.numel() * sizeof(int));
+          } else if (t.place() == platform::CUDAPlace()) {
+#if defined(PADDLE_WITH_CUDA)
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 int32_host.data(),
+                                 platform::CUDAPlace(),
+                                 t.data<int>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+#endif
+          }
+          runtime_shape_tensor[name] = int32_host;
+        }
       }
-
       if (!allow_build_at_runtime_) {
         std::map<std::string, std::vector<int>> min_input_shape =
             trt_engine->min_input_shape();
@@ -364,12 +394,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
         // compare runtime_input_shape and trt_engine dynamic shapes.
         std::vector<std::string> shape_changed_name;
-        bool is_adjusted = trt_engine->AdjustDynamicShapeRange(
-            runtime_input_shape, &shape_changed_name);
+        std::vector<std::string> tensor_changed_name;
+        bool is_adjusted =
+            trt_engine->AdjustDynamicShapeRange(runtime_input_shape,
+                                                runtime_shape_tensor,
+                                                &shape_changed_name,
+                                                &tensor_changed_name);
         if (is_adjusted) {
           LOG(INFO) << "Adjust dynamic shape range, rebuild trt engine!";
-          trt_engine->ResetContext();
-          trt_engine->ClearTensorMap();
+          if (trt_engine->engine()) {
+            trt_engine->ResetContext();
+            trt_engine->ClearTensorMap();
+          }
           auto *anc = scope.parent();
           while (anc && anc->parent()) {
             anc = anc->parent();
@@ -384,7 +420,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                             trt_engine->min_input_shape(),
                                             trt_engine->max_input_shape(),
                                             trt_engine->optim_input_shape(),
-                                            shape_changed_name);
+                                            trt_engine->min_shape_tensor(),
+                                            trt_engine->max_shape_tensor(),
+                                            trt_engine->optim_shape_tensor(),
+                                            shape_changed_name,
+                                            tensor_changed_name);
           }
 
           if (use_static_engine_) {

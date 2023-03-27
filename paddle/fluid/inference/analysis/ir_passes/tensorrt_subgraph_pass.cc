@@ -352,7 +352,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
-  if (trt_tuned_dynamic_shape) {
+  if (trt_tuned_dynamic_shape && shape_range_info_path != "") {
     VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
@@ -584,6 +584,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
+  trt_engine->SetWithDynamicShape(Get<bool>("with_dynamic_shape"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -605,6 +606,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                "does not match Current Version, TRT engine will be rebuilded";
       }
     }
+  }
+
+  // If with_dynamic_shape is configured，but min_input_shape is empty,
+  // create trt engine in runtime instead of in pass.
+  if (Get<bool>("with_dynamic_shape") && min_input_shape.empty()) {
+    return;
   }
 
   // the following code will NOT run in following situation:
