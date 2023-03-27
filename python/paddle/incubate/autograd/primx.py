@@ -609,9 +609,9 @@ def _lower_composite(
         # Only process required sliced block
         length = len(block.ops)
         idx_list = range(length)
-        assert (backward_length + start_idx) > 0
         assert 0 <= backward_length <= length
         assert 0 <= start_idx < length
+        assert not (backward_length > 0 and start_idx > 0)
         if backward_length > 0:
             idx_list = range(length - backward_length)
         if start_idx > 0:
