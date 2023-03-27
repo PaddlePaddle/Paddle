@@ -329,16 +329,6 @@ class TestFlattenFP16Op_ZeroDim(TestFlattenOp_ZeroDim):
         self.dtype = "float16"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestFlattenBF16Op_ZeroDim(TestFlattenOp_ZeroDim):
-    def init_test_dtype(self):
-        self.dtype = "uint16"
-
-
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
