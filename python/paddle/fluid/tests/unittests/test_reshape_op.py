@@ -125,6 +125,7 @@ class TestReshapeFP16Op(OpTest):
         self.op_type = "reshape2"
         self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.dtype = np.float16
         self.inputs = {"X": np.random.random(self.ori_shape).astype(self.dtype)}
