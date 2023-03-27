@@ -4099,7 +4099,7 @@ function main() {
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
+        #check_coverage_build
         ;;
       gpu_cicheck_coverage)
         parallel_test

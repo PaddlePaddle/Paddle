@@ -19,6 +19,7 @@ set(THIRD_PARTY_PATH
     "${CMAKE_BINARY_DIR}/third_party"
     CACHE STRING
           "A path setting third party libraries download & build directories.")
+
 set(THIRD_PARTY_CACHE_PATH
     "${CMAKE_SOURCE_DIR}"
     CACHE STRING
