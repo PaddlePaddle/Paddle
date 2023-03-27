@@ -224,22 +224,6 @@ function(convert_model2dot_test target model_path save_graph_dir
          ${save_graph_name})
 endfunction()
 
-if(WIN32)
-  list(REMOVE_ITEM TEST_OPS test_light_nas)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
-  list(REMOVE_ITEM TEST_OPS test_imperative_ptq)
-  list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
-  list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
-  list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
-  list(REMOVE_ITEM TEST_OPS test_imperative_qat_matmul)
-
-endif()
-
 if(LINUX AND WITH_MKLDNN)
 
   #### Image classification dataset: ImageNet (small)
