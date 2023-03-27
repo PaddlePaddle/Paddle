@@ -31,7 +31,7 @@ class TestIntarrayInput(unittest.TestCase):
         np_data = np.random.random([3, 4]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
         net = paddle.jit.to_static(fn)
-        net.forward.enable_prim_all()
+        net.enable_prim_all()
 
         _ = net(tensor_data, shape=[2, 3, 4]).numpy()
 
@@ -41,7 +41,7 @@ class TestIntarrayInput(unittest.TestCase):
         tensor_data = paddle.to_tensor(np_data)
         shape = paddle.to_tensor([2, 3, 4])
         net = paddle.jit.to_static(fn)
-        net.forward.enable_prim_all()
+        net.enable_prim_all()
 
         with self.assertRaises(ValueError):
             _ = net(tensor_data, shape).numpy()

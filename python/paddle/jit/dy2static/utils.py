@@ -34,6 +34,7 @@ import paddle
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -1520,3 +1521,24 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def dy2st_prim_guard(prim_info):
+    orign_fwd = core._is_fwd_prim_enabled()
+    orign_bwd = core._is_bwd_prim_enabled()
+    orign_all = core._is_all_prim_enabled()
+
+    if prim_info is not None:
+        if prim_info.is_fwd_enabled():
+            core._set_prim_forward_enabled(True)
+        if prim_info.is_bwd_enabled():
+            core._set_prim_backward_enabled(True)
+        if prim_info.is_all_enabled():
+            core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        core._set_prim_forward_enabled(orign_fwd)
+        core._set_prim_backward_enabled(orign_bwd)
+        core._set_prim_all_enabled(orign_all)

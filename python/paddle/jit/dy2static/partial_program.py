@@ -26,7 +26,12 @@ from paddle.fluid.framework import _apply_pass
 from paddle.nn.layer import layers
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    _out_grad_names,
+    _param_grad_names,
+    dy2st_prim_guard,
+)
 
 __all__ = []
 
@@ -608,16 +613,6 @@ class PartialProgramLayer:
         for _var in to_processed_vars:
             _insert_aggregation_ops_for_var(target_program, _var)
 
-    def _switch_prim(self, value):
-        if not self._prim_info:
-            return
-        if self._prim_info.is_fwd_enabled():
-            core._set_prim_forward_enabled(value)
-        if self._prim_info.is_bwd_enabled():
-            core._set_prim_backward_enabled(value)
-        if self._prim_info.is_all_enabled():
-            core._set_prim_all_enabled(value)
-
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program.clone(for_test=False)
@@ -632,9 +627,9 @@ class PartialProgramLayer:
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
-            self._switch_prim(True)
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            backward.gradients(targets=targets, inputs=[])
+            with dy2st_prim_guard(self._prim_info):
+                backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
@@ -643,8 +638,6 @@ class PartialProgramLayer:
             self.prepare_gradient_aggregation(
                 start_idx + 1, main_program, program
             )
-            self._switch_prim(False)
-            core.check_and_set_prim_all_enabled()
 
         self._forward_end_index_map[
             paddle.utils._hash_with_id(program, self)
