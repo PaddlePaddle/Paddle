@@ -21,7 +21,7 @@ import paddle
 from paddle import _C_ops
 
 
-def compute_index_put_ref(x_np, value_np, indices_np):
+def compute_index_put_ref(x_np, indices_np, value_np):
     x_np[indices_np] = value_np
     return x_np
 
@@ -32,8 +32,8 @@ def raw_index_put(x, indices, value):
 
 def gen_indices_np(x_shape, indices_shapes, index_type):
     indices = []
-    if index_type == np.bool:
-        indices = np.zeros(indices_shapes[0], dtype=np.bool)
+    if index_type == np.bool_:
+        indices = np.zeros(indices_shapes[0], dtype=np.bool_)
         indices.flatten()
         for i in range(len(indices)):
             indices[i] = (i & 1) == 0
@@ -76,7 +76,7 @@ class TestIndexPutOp(unittest.TestCase):
 
     def test_forward(self):
         ref_res = compute_index_put_ref(
-            self.x_np, self.value_np, self.indices_np
+            self.x_np, self.indices_np, self.value_np
         )
         pd_res = raw_index_put(self.x_pd, self.indices_pd, self.value_pd)
         np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
@@ -166,7 +166,7 @@ class TestIndexPutOpInt64(TestIndexPutOp):
 
 class TestIndexPutOpBool(TestIndexPutOp):
     def init_dtype_type(self):
-        self.dtype_np = np.bool
+        self.dtype_np = np.bool_
         self.index_type_np = np.int64
         self.x_shape = (100, 110)
         self.indices_shapes = ((21,), (21,))
