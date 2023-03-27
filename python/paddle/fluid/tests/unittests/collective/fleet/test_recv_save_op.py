@@ -22,11 +22,13 @@ from multiprocessing import Process
 import numpy as np
 from dist_test_utils import remove_ps_flag
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.op import Operator
+from paddle.incubate.distributed.fleet.parameter_server.mode import (
+    DistributedMode,
+)
 
 
 def run_pserver(pserver_id):

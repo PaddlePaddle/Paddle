@@ -25,7 +25,7 @@ from .base_quanter import BaseQuanter
 from .config import QuantConfig
 
 
-class Quantization(object, metaclass=abc.ABCMeta):
+class Quantization(metaclass=abc.ABCMeta):
     r"""
     Abstract class used to prepares a copy of the model for quantization calibration or quantization-aware training.
     Args:
@@ -84,11 +84,13 @@ class Quantization(object, metaclass=abc.ABCMeta):
     def _convert_to_quant_layers(self, model: Layer, config: QuantConfig):
         replaced = {}
         for name, child in model.named_children():
-            if config._is_quantifiable(child):
-                if type(child) not in config.qat_layer_mappings:
-                    self._convert_to_quant_layers(child, config)
-                else:
-                    replaced[name] = config._get_qat_layer(child)
+            if (
+                config._is_quantifiable(child)
+                and type(child) in config.qat_layer_mappings
+            ):
+                replaced[name] = config._get_qat_layer(child)
+            else:
+                self._convert_to_quant_layers(child, config)
         for key, value in replaced.items():
             model._sub_layers[key] = value
 

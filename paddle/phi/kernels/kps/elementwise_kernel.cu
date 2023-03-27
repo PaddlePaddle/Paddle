@@ -56,7 +56,23 @@ void FloorDivideKernel(const Context& dev_ctx,
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 // Create the definition of Heaviside
-DEFINE_CUDA_ELEMENTWISE_OP(ElementwiseHeaviside)
+template <typename T, typename Context>
+void HeavisideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, -1, funcs::ElementwiseHeavisideFunctor<T>());
+}
+
 // Create the definition of Pow
 DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 template <typename T, typename Context>
@@ -93,10 +109,10 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(fmax_raw,
+PD_REGISTER_KERNEL(fmax,
                    KPS,
                    ALL_LAYOUT,
-                   phi::FMaxRawKernel,
+                   phi::FMaxKernel,
                    float,
                    double,
                    int,
@@ -148,10 +164,10 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    phi::FloorDivideRawKernel,
                    int,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_heaviside_raw,
+PD_REGISTER_KERNEL(heaviside,
                    KPS,
                    ALL_LAYOUT,
-                   phi::ElementwiseHeavisideRawKernel,
+                   phi::HeavisideKernel,
                    float,
                    double,
                    int,
@@ -165,5 +181,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 #endif

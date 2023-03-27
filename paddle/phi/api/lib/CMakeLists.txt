@@ -1,23 +1,36 @@
-add_subdirectory(utils)
-
 if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+    DEPS tensor_base
+         dense_tensor
+         phi_enforce
+         context_pool
+         tensor_api
+         int_array
+         scalar)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -98,8 +111,10 @@ set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
 # tensor and tensor operants file
+set(tensor_api_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
 set(tensor_gen_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_operants_gen.py)
 set(operants_base_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
 set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
@@ -249,6 +264,7 @@ execute_process(
     --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
     --operants_manager_header_path ${operants_manager_header_file_tmp}
     --operants_manager_source_path ${operants_manager_source_file_tmp}
+    --tensor_api_yaml_path ${tensor_api_yaml_path}
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "tensor codegen failed, exiting.")
@@ -286,7 +302,11 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_backends phi_enforce place init)
+  DEPS phi_backends phi_enforce place init phi_device_context)
+cc_library(
+  api_tensor_utils
+  SRCS tensor_utils.cc
+  DEPS phi_tensor_raw)
 
 cc_library(
   kernel_dispatch
@@ -320,6 +340,7 @@ cc_library(
        api_gen_utils
        phi_data_transform
        api_custom_impl
+       api_tensor_utils
        phi_profiler)
 cc_library(
   phi_bw_function_api

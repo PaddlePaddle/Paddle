@@ -28,7 +28,6 @@ math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
 
-math_library(sequence_padding DEPS lod_tensor)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 if(WITH_ASCEND_CL)
   math_library(beam_search DEPS math_function beam_search_npu)
@@ -55,10 +54,6 @@ cc_test(
   vol2col_test
   SRCS vol2col_test.cc
   DEPS vol2col)
-cc_test(
-  sequence_padding_test
-  SRCS sequence_padding_test.cc
-  DEPS sequence_padding)
 cc_test(
   sequence_pooling_test
   SRCS sequence_pooling_test.cc

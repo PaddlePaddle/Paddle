@@ -27,7 +27,10 @@ class Bilinear(Initializer):
     """
     This initializer can be used in transposed convolution operator to
     act as upsampling. Users can upsample a feature map with shape of
-    (B, C, H, W) by any integer factor. The usage is:
+    (B, C, H, W) by any integer factor.
+
+    Returns:
+        Bilinear initializer instance objects.
 
     Examples:
 

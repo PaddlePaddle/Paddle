@@ -27,7 +27,7 @@ from transformer_dygraph_model import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 trainer_count = 1
 place = (
@@ -172,7 +172,7 @@ def train_static(args, batch_generator):
                     model_path = os.path.join(
                         args.save_static_model_path, "transformer"
                     )
-                    fluid.save(train_prog, model_path)
+                    paddle.static.save(train_prog, model_path)
                 break
     return np.array(avg_loss)
 

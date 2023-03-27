@@ -872,6 +872,7 @@ void BatchNormKernel(const Context &ctx,
     } else {
       double this_factor = 1. - momentum;
 #ifdef PADDLE_WITH_HIP
+      this_factor = momentum;
       const int num = transformed_x.numel();
       const int block = 256;
       const int max_threads = ctx.GetMaxPhysicalThreadCount();
@@ -945,6 +946,7 @@ void BatchNormKernel(const Context &ctx,
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
       if (use_native_kernel) {
+        double this_factor = momentum;
         dim3 block;
         dim3 grid;
         const int block_size = 512;

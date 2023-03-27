@@ -209,11 +209,11 @@ class RecomputeFunction(PyLayer):
                     if isinstance(inp, (core.VarBase, core.eager.Tensor))
                 )
             else:
-                grads = list(
+                grads = [
                     inp._grad_ivar()
                     for inp in detached_inputs
                     if isinstance(inp, (core.VarBase, core.eager.Tensor))
-                )
+                ]
             return grads
 
 
@@ -379,7 +379,7 @@ def recompute(function, *args, **kwargs):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super(Naive_fc_net, self).__init__()
+                    super().__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -470,9 +470,11 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
 
     Examples:
         .. code-block:: python
-
-            model = paddle.nn.Sequential(...)
-            input = recompute_sequential({'segments' : 1}, model, input)
+            import paddle
+            from paddle.incubate.distributed.fleet import recompute_sequential
+            input = paddle.ones(shape=[8, 10])
+            model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
+            output = recompute_sequential({'segments' : 1}, model, input)
     """
     segments = ctx.get('segments', 1)
     preserve_rng_state = ctx.get('preserve_rng_state', True)

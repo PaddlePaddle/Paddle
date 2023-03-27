@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 namespace paddle {
@@ -59,7 +59,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     int device_id = context.GetPlace().GetDeviceId();
-    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
     auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
     if (seed == 0) {

@@ -20,10 +20,10 @@ import unittest
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
-import paddle.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+import paddle.incubate.distributed.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle import fluid
 from paddle.fluid.trainer_factory import TrainerFactory
-from paddle.incubate.fleet.parameter_server.pslib.node import (
+from paddle.incubate.distributed.fleet.parameter_server.pslib.node import (
     DownpourServer,
     DownpourWorker,
 )

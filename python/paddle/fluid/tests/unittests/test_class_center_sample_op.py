@@ -15,11 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def class_center_sample_numpy(label, classes_list, num_samples):
@@ -114,9 +113,7 @@ class TestClassCenterSampleOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=['SampledLocalClassCenter'], check_eager=True
-        )
+        self.check_output(no_check_set=['SampledLocalClassCenter'])
 
 
 class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):
@@ -149,42 +146,46 @@ class TestClassCenterSampleV2(unittest.TestCase):
         self.dtype = np.int64
 
     def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
+        with paddle_static_guard():
+            for place in self.places:
+                self.check_static_result(place=place)
 
     def check_static_result(self, place):
-        with program_guard(Program(), Program()):
-            label_np = np.random.randint(
-                0, self.num_classes, (self.batch_size,), dtype=self.dtype
-            )
+        with paddle_static_guard():
+            with program_guard(Program(), Program()):
+                label_np = np.random.randint(
+                    0, self.num_classes, (self.batch_size,), dtype=self.dtype
+                )
 
-            label = paddle.static.data(
-                name='label', shape=[self.batch_size], dtype=self.dtype
-            )
-            (
-                remapped_label,
-                sampled_class_index,
-            ) = paddle.nn.functional.class_center_sample(
-                label, self.num_classes, self.num_samples
-            )
+                label = paddle.static.data(
+                    name='label', shape=[self.batch_size], dtype=self.dtype
+                )
+                (
+                    remapped_label,
+                    sampled_class_index,
+                ) = paddle.nn.functional.class_center_sample(
+                    label, self.num_classes, self.num_samples
+                )
 
-            (
-                remapped_label_np,
-                sampled_class_center_np,
-            ) = class_center_sample_numpy(
-                label_np, [self.num_classes], self.num_samples
-            )
-            exe = paddle.fluid.Executor(place)
-            [remapped_label_res, sampled_class_index_res] = exe.run(
-                paddle.fluid.default_main_program(),
-                feed={'label': label_np},
-                fetch_list=[remapped_label, sampled_class_index],
-            )
-            np.testing.assert_allclose(remapped_label_res, remapped_label_np)
-            np.testing.assert_allclose(
-                sampled_class_index_res[: len(sampled_class_center_np[0])],
-                sampled_class_center_np[0],
-            )
+                (
+                    remapped_label_np,
+                    sampled_class_center_np,
+                ) = class_center_sample_numpy(
+                    label_np, [self.num_classes], self.num_samples
+                )
+                exe = paddle.fluid.Executor(place)
+                [remapped_label_res, sampled_class_index_res] = exe.run(
+                    paddle.fluid.default_main_program(),
+                    feed={'label': label_np},
+                    fetch_list=[remapped_label, sampled_class_index],
+                )
+                np.testing.assert_allclose(
+                    remapped_label_res, remapped_label_np
+                )
+                np.testing.assert_allclose(
+                    sampled_class_index_res[: len(sampled_class_center_np[0])],
+                    sampled_class_center_np[0],
+                )
 
     def test_dynamic(self):
         for place in self.places:

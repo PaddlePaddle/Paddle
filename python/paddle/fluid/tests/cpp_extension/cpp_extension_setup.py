@@ -25,13 +25,14 @@ for site_packages_path in getsitepackages():
     paddle_includes.append(
         os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
     )
+# Add current dir, search custom_power.h
+paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 
 setup(
     name='custom_cpp_extension',
     ext_modules=CppExtension(
-        sources=["custom_add.cc", "custom_sub.cc"],
-        include_dirs=paddle_includes
-        + [os.path.dirname(os.path.abspath(__file__))],
+        sources=["custom_extension.cc", "custom_sub.cc"],
+        include_dirs=paddle_includes,
         extra_compile_args={'cc': ['-w', '-g']},
         verbose=True,
     ),

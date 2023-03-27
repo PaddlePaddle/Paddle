@@ -56,7 +56,7 @@ class CAllReduceOpConverter : public OpConverter {
         output_num,
         1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT c_allreduce op. "
+            "The output Out's size must equal to 1 in TRT c_allreduce op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs

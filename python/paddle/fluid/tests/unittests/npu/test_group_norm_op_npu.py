@@ -20,7 +20,7 @@ import sys
 sys.path.append("..")
 
 from operator import mul
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -216,7 +216,7 @@ class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
 class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
-        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+        data = paddle.static.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
             out = paddle.static.nn.group_norm(

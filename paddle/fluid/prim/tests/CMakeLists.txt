@@ -29,14 +29,17 @@ cc_test_old(
   prim_utils
   operator
   elementwise_mul_op
-  scale_op
+  elementwise_sub_op
+  elementwise_pow_op
+  fill_constant_op
   activation_op
   phi_api
   phi_dygraph_api
   static_global_utils
   static_tensor_operants
   tensor_api
-  operants_manager)
+  operants_manager
+  generated_static_op)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(

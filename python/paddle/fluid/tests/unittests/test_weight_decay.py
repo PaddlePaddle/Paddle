@@ -19,9 +19,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 
 def get_places():
@@ -126,11 +125,7 @@ class TestWeightDecay(unittest.TestCase):
         build_strategy.memory_optimize = use_ir_memory_optimize
 
         train_cp = compiler.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(
-            loss_name=loss.name,
-            exec_strategy=exec_strategy,
-            build_strategy=build_strategy,
+            fluid.default_main_program(), build_strategy=build_strategy
         )
 
         loss_set = []

@@ -15,11 +15,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {

@@ -15,15 +15,15 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     PipelineLayer,
     PipelineParallelWithInterleave,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 
 class ReshapeHelp(Layer):

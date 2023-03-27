@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
@@ -105,7 +105,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.ids_shape, dtype='int64'
             )
-            self.emb = fluid.input.embedding(
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(

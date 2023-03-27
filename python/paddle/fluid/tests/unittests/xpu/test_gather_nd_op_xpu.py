@@ -52,7 +52,7 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_eager=False)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
         def init_data(self):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
@@ -163,6 +163,18 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             self.xnp = np.random.uniform(0, 100, (10, 10)).astype(self.in_type)
             self.inp = np.array([1, 2]).astype("int64")
+            self.output = self.xnp[tuple(self.inp.T)]
+
+    class XPUTestGatherNdOpMultiDimIndex1(XPUTestGatherNdBase):
+        def init_data(self):
+            self.xnp = np.random.uniform(0, 100, (10, 10)).astype(self.in_type)
+            self.inp = np.array([2, 2]).astype("int32")
+            self.output = self.xnp[tuple(self.inp.T)]
+
+    class XPUTestGatherNdOpMultiDimIndex2(XPUTestGatherNdBase):
+        def init_data(self):
+            self.xnp = np.random.uniform(0, 100, (10, 10)).astype(self.in_type)
+            self.inp = np.array([2, 2]).astype("int64")
             self.output = self.xnp[tuple(self.inp.T)]
 
 

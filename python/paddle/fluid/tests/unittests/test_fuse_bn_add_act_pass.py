@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -198,8 +198,8 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         )
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_add_act_ops = True
-        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy_fused
+        binary_fused = fluid.CompiledProgram(
+            main_program, build_strategy=build_strategy_fused
         )
         exe = fluid.Executor(place)
         loss_vals_fused = []
@@ -221,8 +221,8 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         # build_origin_program: turn off fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_add_act_ops = False
-        binary = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy_fused
+        binary = fluid.CompiledProgram(
+            main_program, build_strategy=build_strategy_fused
         )
         loss_vals = []
         scope = fluid.Scope()

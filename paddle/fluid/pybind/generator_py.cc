@@ -21,10 +21,10 @@ limitations under the License. */
 #endif
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/pybind/generator_py.h"
 
 namespace py = pybind11;
@@ -72,27 +72,24 @@ void BindGenerator(py::module* m_ptr) {
       });
 
   py::class_<std::mt19937_64>(m, "mt19937_64", "");
-  py::class_<framework::Generator, std::shared_ptr<framework::Generator>>(
-      m, "Generator")
+  py::class_<phi::Generator, std::shared_ptr<phi::Generator>>(m, "Generator")
       .def("__init__",
-           [](framework::Generator& self) {
-             new (&self) framework::Generator();
-           })
-      .def("get_state", &framework::Generator::GetState)
-      .def("set_state", &framework::Generator::SetState)
+           [](phi::Generator& self) { new (&self) phi::Generator(); })
+      .def("get_state", &phi::Generator::GetState)
+      .def("set_state", &phi::Generator::SetState)
       .def("manual_seed",
-           [](std::shared_ptr<framework::Generator>& self, uint64_t seed) {
+           [](std::shared_ptr<phi::Generator>& self, uint64_t seed) {
              self->SetCurrentSeed(seed);
              return self;
            })
-      .def("seed", &framework::Generator::Seed)
-      .def("initial_seed", &framework::Generator::GetCurrentSeed)
-      .def("random", &framework::Generator::Random64);
-  m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
-  m.def("default_cuda_generator", &framework::DefaultCUDAGenerator);
-  m.def("default_xpu_generator", &framework::DefaultXPUGenerator);
-  m.def("set_random_seed_generator", &framework::SetRandomSeedGenerator);
-  m.def("get_random_seed_generator", &framework::GetRandomSeedGenerator);
+      .def("seed", &phi::Generator::Seed)
+      .def("initial_seed", &phi::Generator::GetCurrentSeed)
+      .def("random", &phi::Generator::Random64);
+  m.def("default_cpu_generator", &phi::DefaultCPUGenerator);
+  m.def("default_cuda_generator", &phi::DefaultCUDAGenerator);
+  m.def("default_xpu_generator", &phi::DefaultXPUGenerator);
+  m.def("set_random_seed_generator", &phi::SetRandomSeedGenerator);
+  m.def("get_random_seed_generator", &phi::GetRandomSeedGenerator);
 }
 }  // namespace pybind
 }  // namespace paddle
