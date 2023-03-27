@@ -1695,6 +1695,6 @@ def enable_to_static(enable_to_static_bool):
 def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
     """Swith to static graph and call to_prim."""
     # TODO(Aurelius84): Fix this cycle import problem
-    from paddle.incubate.autograd import primapi
+    from ...incubate.autograd.primapi import to_prim
 
-    primapi.to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
+    to_prim(blocks, blacklist=blacklist, whitelist=whitelist)

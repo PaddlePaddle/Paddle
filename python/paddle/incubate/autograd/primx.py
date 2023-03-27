@@ -20,7 +20,6 @@ import paddle
 from paddle.fluid import framework as framework
 from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
-from paddle.incubate.autograd.utils import as_tensors
 
 from .composite_rules import _composite
 from .primops import add, fill_const
@@ -33,6 +32,7 @@ from .primreg import (
 )
 from .primrules import _jvp, _orig2prim, _prim2orig, _transpose
 from .utils import (
+    as_tensors,
     flatten,
     flatten_and_remove_none,
     get_input_var_list,

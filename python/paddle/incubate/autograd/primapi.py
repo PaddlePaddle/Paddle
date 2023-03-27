@@ -18,7 +18,8 @@ import typing
 import paddle
 from paddle.fluid import backward, core, framework
 from paddle.fluid.core import prim_config
-from paddle.incubate.autograd import primx, utils
+
+from . import primx, utils
 
 
 @framework.static_only
