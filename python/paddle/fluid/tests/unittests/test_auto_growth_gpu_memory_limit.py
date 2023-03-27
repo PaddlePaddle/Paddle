@@ -16,18 +16,23 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import fluid
 
-fluid.core.globals()['FLAGS_allocator_strategy'] = 'auto_growth'
+# it should be set at the beginning
+paddle.set_flags(
+    {
+        'FLAGS_allocator_strategy': 'auto_growth',
+        'FLAGS_auto_growth_chunk_size_in_mb': 10,
+    }
+)
 
-if fluid.is_compiled_with_cuda():
-    fluid.core.globals()['FLAGS_gpu_memory_limit_mb'] = 10
 
-
-class TestBase(unittest.TestCase):
+class TestMemoryLimit(unittest.TestCase):
     def setUp(self):
+        self._limit = 10
         if fluid.is_compiled_with_cuda():
-            self._limit = fluid.core.globals()['FLAGS_gpu_memory_limit_mb']
+            paddle.set_flags({'FLAGS_gpu_memory_limit_mb': 10})
 
     def test_allocate(self):
         if not fluid.is_compiled_with_cuda():
@@ -51,6 +56,21 @@ class TestBase(unittest.TestCase):
             self.assertTrue(False)
         except:
             self.assertTrue(True)
+
+
+class TestChunkSize(unittest.TestCase):
+    def test_allocate(self):
+        if not fluid.is_compiled_with_cuda():
+            return
+
+        paddle.rand([1024])
+        reserved, allocated = (
+            paddle.device.cuda.max_memory_reserved(),
+            paddle.device.cuda.max_memory_allocated(),
+        )
+
+        self.assertEqual(reserved, 1024 * 1024 * 10)
+        self.assertEqual(allocated, 1024 * 4)
 
 
 if __name__ == '__main__':
