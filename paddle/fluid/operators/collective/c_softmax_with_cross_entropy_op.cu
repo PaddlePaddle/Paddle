@@ -276,16 +276,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                                                      N);
     }
 
-    // auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
-    // auto eigen_predicted_logits =
-    //     phi::funcs::EigenMatrix<T>::From(predicted_logits);
-
-    // eigen_loss.device(*dev_ctx.eigen_device()) =
-    //     (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>())
-    //     -
-    //      eigen_predicted_logits)
-    //         .unaryExpr(phi::funcs::TolerableValue<T>());
-
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));
@@ -432,16 +422,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
                                                      ignore_index,
                                                      N);
     }
-
-    // auto eigen_loss = phi::funcs::EigenMatrix<T>::From(loss_2d);
-    // auto eigen_predicted_logits =
-    //     phi::funcs::EigenMatrix<T>::From(predicted_logits);
-
-    // eigen_loss.device(*dev_ctx.eigen_device()) =
-    //     (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>())
-    //     -
-    //      eigen_predicted_logits)
-    //         .unaryExpr(phi::funcs::TolerableValue<T>());
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
