@@ -831,10 +831,6 @@ add_subdirectory(autograd)
 add_subdirectory(distribution)
 add_subdirectory(prim)
 
-if(NOT WIN32 OR NOT WITH_GPU)
-  add_subdirectory(fft)
-endif()
-
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
