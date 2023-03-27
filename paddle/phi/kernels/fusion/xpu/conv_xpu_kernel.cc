@@ -42,14 +42,23 @@ void ConvXPUKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = Input.dims();
   auto filter_dims = Filter.dims();
+  // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
+  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                input_dims,
+                                strides,
+                                ksize);
 
   int batch = static_cast<int>(input_dims[0]);
   int in_c = static_cast<int>(input_dims[1]);
   int in_h = static_cast<int>(input_dims[2]);
   int in_w = static_cast<int>(input_dims[3]);
-  int filter_num = static_cast<int>(filter_dims[0]);
+  int out_c = static_cast<int>(filter_dims[0]);
   int win_h = static_cast<int>(filter_dims[2]);
   int win_w = static_cast<int>(filter_dims[3]);
 
@@ -72,30 +81,30 @@ void ConvXPUKernel(const Context& ctx,
     act.hard_sigmoid_slope = act_param;
   }
   LOG(INFO) << "-------------start running xpu::conv2d_fusion";
-  int r = xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX, TW.
-                                                                   // TY, TGEMM
-      ctx.x_context(),                                             // ctx
-      input_data,                                                  // input
-      Filter.data<int16_t>(),                                      // filter
-      out_data,                                                    // output
-      batch,                                                       // batch
-      in_c,                                                        // in_c
-      in_h,                                                        // in_h
-      in_w,                                                        // in_w
-      filter_num,                                                  // out_c
-      std::vector<int>{win_h, win_w},                              // k_size
-      strides,                                                     // strides
-      paddings_vec,                                                // paddings
-      dilations_vec,                                               // dilations
-      groups,                                                      // group
-      input_max_data,                                              // in_maxptr
-      FilterMax.data<float>(),               // filter_maxptr
-      ctx.template Alloc<float>(OutputMax),  // out_maxptr
-      true,                                  // ?
-      bias_data,                             // bias
-      branch_data,                           // branch
-      act,                                   // act
-      nullptr);                              // branch_maxptr
+  int r =
+      xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX/TW/TY/TGEMM
+          ctx.x_context(),                                     // ctx
+          input_data,                                          // input
+          Filter.data<int16_t>(),                              // filter
+          out_data,                                            // output
+          batch,                                               // batch
+          in_c,                                                // in_c
+          in_h,                                                // in_h
+          in_w,                                                // in_w
+          out_c,                                               // out_c
+          std::vector<int>{win_h, win_w},                      // k_size
+          strides,                                             // strides
+          paddings_vec,                                        // paddings
+          dilations_vec,                                       // dilations
+          groups,                                              // group
+          input_max_data,                                      // in_maxptr
+          FilterMax.data<float>(),                             // filter_maxptr
+          ctx.template Alloc<float>(OutputMax),                // out_maxptr
+          true,                                                // ?
+          bias_data,                                           // bias
+          branch_data,                                         // branch
+          act,                                                 // act
+          nullptr);                                            // branch_maxptr
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
 }
 

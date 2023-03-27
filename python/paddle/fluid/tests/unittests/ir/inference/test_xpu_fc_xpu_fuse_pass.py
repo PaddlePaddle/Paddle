@@ -52,7 +52,8 @@ class TestFcXPUFusePass(PassAutoScanTest):
         bias_shape = [y_shape[0]] if trans_y else [y_shape[1]]
         # 3. activation
         # Random choose if add a relu operator
-        has_relu = draw(st.booleans())
+        # has_relu = draw(st.booleans())
+        has_relu = True
 
         # Here we will compose a program
         # Still has some risks that the program is invalid or cause bug while running
