@@ -89,7 +89,7 @@ class alignas(8) OpResultImpl : public ValueImpl {
  public:
   using ValueImpl::ValueImpl;
 
-  static bool classof(const ValueImpl *value) { return value->index() < 7; }
+  static bool classof(const ValueImpl &value) { return value.index() < 7; }
 
   ///
   /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
@@ -119,7 +119,7 @@ class OpInlineResultImpl : public OpResultImpl {
     assert(result_index < GetMaxInlineResultIndex());
   }
 
-  static bool classof(const OpResultImpl *value) { return value->index() < 6; }
+  static bool classof(const OpResultImpl &value) { return value.index() < 6; }
 
   uint32_t GetResultIndex() const { return index(); }
 };
@@ -133,7 +133,7 @@ class OpOutlineResultImpl : public OpResultImpl {
   OpOutlineResultImpl(ir::Type type, uint32_t outline_index)
       : OpResultImpl(type, 6), outline_index_(outline_index) {}
 
-  static bool classof(const OpResultImpl *value) { return value->index() == 6; }
+  static bool classof(const OpResultImpl &value) { return value.index() == 6; }
 
   uint32_t GetResultIndex() const {
     return outline_index_ + GetMaxInlineResultIndex();

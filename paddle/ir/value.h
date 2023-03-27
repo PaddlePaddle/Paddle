@@ -19,44 +19,6 @@
 
 namespace ir {
 ///
-/// \brief OpOperand
-///
-class OpOperand {
- public:
-  OpOperand() = default;
-
-  OpOperand(const OpOperand &other) = default;
-
-  explicit OpOperand(const detail::OpOperandImpl *impl)
-      : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
-
-  OpOperand &operator=(const OpOperand &rhs) {
-    if (this == &rhs) return *this;
-    impl_ = rhs.impl_;
-    return *this;
-  }
-
-  OpOperand &operator=(const detail::OpOperandImpl *impl) {
-    if (this->impl_ == impl) return *this;
-    impl_ = const_cast<detail::OpOperandImpl *>(impl);
-    return *this;
-  }
-
-  bool operator==(OpOperand other) const { return impl_ == other.impl_; }
-
-  bool operator!=(OpOperand other) const { return impl_ != other.impl_; }
-
-  bool operator!() const { return impl_ == nullptr; }
-
-  explicit operator bool() const { return impl_; }
-
-  detail::OpOperandImpl *impl() const { return impl_; }
-
- private:
-  detail::OpOperandImpl *impl_{nullptr};
-};
-
-///
 /// \brief Value
 ///
 class Value {
@@ -110,6 +72,44 @@ class OpResult : public Value {
   detail::OpResultImpl *impl() const {
     return reinterpret_cast<detail::OpResultImpl *>(impl_);
   }
+};
+
+///
+/// \brief OpOperand
+///
+class OpOperand {
+ public:
+  OpOperand() = default;
+
+  OpOperand(const OpOperand &other) = default;
+
+  explicit OpOperand(const detail::OpOperandImpl *impl)
+      : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
+
+  OpOperand &operator=(const OpOperand &rhs) {
+    if (this == &rhs) return *this;
+    impl_ = rhs.impl_;
+    return *this;
+  }
+
+  OpOperand &operator=(const detail::OpOperandImpl *impl) {
+    if (this->impl_ == impl) return *this;
+    impl_ = const_cast<detail::OpOperandImpl *>(impl);
+    return *this;
+  }
+
+  bool operator==(OpOperand other) const { return impl_ == other.impl_; }
+
+  bool operator!=(OpOperand other) const { return impl_ != other.impl_; }
+
+  bool operator!() const { return impl_ == nullptr; }
+
+  explicit operator bool() const { return impl_; }
+
+  detail::OpOperandImpl *impl() const { return impl_; }
+
+ private:
+  detail::OpOperandImpl *impl_{nullptr};
 };
 
 }  // namespace ir
