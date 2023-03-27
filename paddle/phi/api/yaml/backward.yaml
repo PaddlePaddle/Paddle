@@ -1499,7 +1499,7 @@
     func : SpectralNormGradInferMeta
   kernel :
     func : spectral_norm_grad
-    data_type : out_grad
+    data_type : weight
 
 - backward_op : sqrt_double_grad
   forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
