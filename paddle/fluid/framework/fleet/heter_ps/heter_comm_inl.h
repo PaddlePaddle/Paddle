@@ -251,7 +251,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::init_path() {
         node.out_stream = resource_->remote_stream(j, transfer_id);
         node.key_storage = NULL;
         node.val_storage = NULL;
-        node.sync = 0;
+        node.sync = 1;
         node.dev_num = j;
       }
     }
