@@ -136,12 +136,13 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T, MT>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
-      phi::funcs::ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx,
-          intermediate,
-          out,
-          kps::IdentityFunctor<MT, T>(),
-          reduce_axis);
+      phi::funcs::
+          ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<MT, T>>(
+              dev_ctx,
+              intermediate,
+              out,
+              kps::IdentityFunctor<MT, T>(),
+              reduce_axis);
 
     } else if (p == INFINITY) {
       T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
@@ -167,7 +168,7 @@ void DistKernel(const Context& dev_ctx,
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
       phi::funcs::
-          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
               dev_ctx,
               intermediate,
               out,
