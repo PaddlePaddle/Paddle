@@ -19,7 +19,7 @@ import unittest
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_bce_with_logits_loss import (
     call_bce_layer,
     call_bce_functional,

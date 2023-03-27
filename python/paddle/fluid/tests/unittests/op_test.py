@@ -25,9 +25,8 @@ from copy import copy
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import unique_name
+from paddle import fluid
+from paddle.fluid import core, unique_name
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
@@ -665,7 +664,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -2328,9 +2327,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():

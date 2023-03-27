@@ -47,3 +47,5 @@
 - where
 - reshape
 - split
+- erf
+- tanh

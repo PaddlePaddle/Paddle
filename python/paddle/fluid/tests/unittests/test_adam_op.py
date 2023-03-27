@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
@@ -414,7 +414,7 @@ class TestSparseAdamOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place, lazy_mode)
 
-        op_args = dict()
+        op_args = {}
         op_args['lazy_mode'] = lazy_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()

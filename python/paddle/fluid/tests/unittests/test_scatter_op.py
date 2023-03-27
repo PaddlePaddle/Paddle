@@ -16,11 +16,11 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
@@ -48,11 +48,11 @@ class TestScatterOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=False, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+            ["X", "Updates"], "Out", check_prim=True
         )
 
 
@@ -74,8 +74,9 @@ class TestScatterBF16Op(TestScatterOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_eager=False, check_prim=True
+                place, check_prim=True
             )
+
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -84,9 +85,9 @@ class TestScatterBF16Op(TestScatterOp):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
+
 
 
 class TestScatterOp0(OpTest):
@@ -114,11 +115,11 @@ class TestScatterOp0(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=False, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+            ["X", "Updates"], "Out", check_prim=True
         )
 
 
@@ -140,7 +141,7 @@ class TestScatterBF16Op0(TestScatterOp0):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_eager=False, check_prim=True
+                place, check_prim=True
             )
 
     def test_check_grad(self):
@@ -150,7 +151,6 @@ class TestScatterBF16Op0(TestScatterOp0):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -183,11 +183,11 @@ class TestScatterOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=False, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+            ["X", "Updates"], "Out", check_prim=True
         )
 
 
@@ -209,7 +209,7 @@ class TestScatterBF16Op1(TestScatterOp1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_eager=False, check_prim=True
+                place, check_prim=True
             )
 
     def test_check_grad(self):
@@ -219,7 +219,6 @@ class TestScatterBF16Op1(TestScatterOp1):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -254,7 +253,7 @@ class TestScatterOp2(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-3, check_eager=False, check_prim=True
+                place, atol=1e-3, check_prim=True
             )
 
     def test_check_grad(self):
@@ -264,7 +263,6 @@ class TestScatterOp2(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -321,8 +319,9 @@ class TestScatterOp3(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-3, check_eager=False, check_prim=True
+                place, atol=1e-3, check_prim=True
             )
+
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -331,7 +330,6 @@ class TestScatterOp3(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -378,11 +376,11 @@ class TestScatterOp4(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=False, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Updates'], 'Out', check_eager=False, check_prim=True
+            ['X', 'Updates'], 'Out', check_prim=True
         )
 
 
@@ -404,7 +402,7 @@ class TestScatterBF16Op4(TestScatterOp4):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_eager=False, check_prim=True
+                place, check_prim=True
             )
 
     def test_check_grad(self):
@@ -414,7 +412,6 @@ class TestScatterBF16Op4(TestScatterOp4):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -449,7 +446,7 @@ class TestScatterOp5(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-3, check_eager=False, check_prim=True
+                place, atol=1e-3, check_prim=True
             )
 
     def test_check_grad(self):
@@ -459,7 +456,6 @@ class TestScatterOp5(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 
@@ -507,11 +503,11 @@ class TestScatterOp6(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=False, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ["X", "Updates"], "Out", check_eager=False, check_prim=True
+            ["X", "Updates"], "Out", check_prim=True
         )
 
 
@@ -533,7 +529,7 @@ class TestScatterBF16Op6(TestScatterOp6):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_eager=False, check_prim=True
+                place, check_prim=True
             )
 
     def test_check_grad(self):
@@ -543,7 +539,6 @@ class TestScatterBF16Op6(TestScatterOp6):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_eager=False,
                 check_prim=True,
             )
 

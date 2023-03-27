@@ -3742,6 +3742,7 @@ def gather_nd(x, index, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int16',

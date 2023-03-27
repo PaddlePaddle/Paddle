@@ -25,7 +25,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         self.inputs = {'X': ['x']}
         self.outputs = {'Out': ['y']}
         self.no_grad_var = set()
-        self.grad_sub_block = tuple()
+        self.grad_sub_block = ()
         self.desired_ops = 'tanh_grad'
         self.desired_ops_no_skip = (
             'elementwise_mul',
