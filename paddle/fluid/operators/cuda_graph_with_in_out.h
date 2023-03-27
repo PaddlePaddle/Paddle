@@ -25,6 +25,47 @@ namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_CUDA
+class CUDAGraphWithInOutsManager {
+ public:
+  static CUDAGraphWithInOutsManager &Instance() {
+    static CUDAGraphWithInOutsManager *cuda_graph_with_in_outs_manager =
+        new CUDAGraphWithInOutsManager;
+    return *cuda_graph_with_in_outs_manager;
+  }
+
+  CUDAGraphWithInOuts *Get(int64_t pool_id) {
+    if (cuda_graph_pool_.find(pool_id) == cuda_graph_pool_.end()) {
+      return cuda_graph_pool_[pool_id].get();
+    } else {
+      return nullptr;
+    }
+  }
+
+  template <typename Callable>
+  CUDAGraphWithInOuts *Create(
+      Callable &&callable,
+      platform::CUDAPlace place,
+      const std::vector<const phi::DenseTensor *> &in_ptrs,
+      cudaStreamCaptureMode mode,
+      int64_t pool_id) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+
+    if (cuda_graph_pool_.find(pool_id) == cuda_graph_pool_.end()) {
+      cuda_graph_pool_[pool_id] = std::make_unique<CUDAGraphWithInOuts>(
+          callable, place, in_ptrs, mode, pool_id);
+    }
+    return cuda_graph_pool_[pool_id].get();
+  }
+
+ private:
+  CUDAGraphWithInOutsManager() {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphWithInOutsManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<int64_t, std::unique_ptr<CUDAGraphWithInOuts>>
+      cuda_graph_pool_;
+};
+
 class CUDAGraphWithInOuts {
  public:
   CUDAGraphWithInOuts() {}
@@ -64,6 +105,8 @@ class CUDAGraphWithInOuts {
       }
     }
   }
+
+  ~CUDAGraphWithInOuts() { VLOG(4) << "yoki: ~CUDAGraphWithInOuts"; }
 
   void Run(const std::vector<const phi::DenseTensor *> &ins) {
     PADDLE_ENFORCE_EQ(
@@ -129,7 +172,7 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
 }
 
 template <typename Callable>
-static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
+static CUDAGraphWithInOuts *CaptureCUDAGraph2(
     Callable &&callable,
     const std::vector<paddle::Tensor> &x,
     std::vector<paddle::Tensor *> &out,   // NOLINT
@@ -162,7 +205,9 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
     return outputs;
   };
 
-  return std::make_unique<CUDAGraphWithInOuts>(
+  // return std::make_unique<CUDAGraphWithInOuts>(
+  //     func, place, inputs, mode, pool_id);
+  return CUDAGraphWithInOutsManager::Instance().Create(
       func, place, inputs, mode, pool_id);
 }
 

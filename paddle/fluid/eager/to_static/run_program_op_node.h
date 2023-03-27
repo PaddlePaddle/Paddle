@@ -531,8 +531,7 @@ inline void RunProgramAPI(
           x, params, out, step_scope, dout, require_any_grad, attrs);
     };
     inner_graphs[graph_idx] = paddle::operators::CaptureCUDAGraph2(
-                                  callable, x, out, dout, place, mode, pool_id)
-                                  .get();
+        callable, x, out, dout, place, mode, pool_id);
     VLOG(10) << "Capture Forward CUDA Graph";
     VLOG(4) << "yoki: inner_graphs[" << graph_idx
             << "]: " << inner_graphs[graph_idx];
