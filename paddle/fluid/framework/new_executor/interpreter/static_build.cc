@@ -46,11 +46,13 @@ std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 // kernels have not moved to PHI yet.
 std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "cudnn_lstm",
+    "dequantize",
     "distributed_fused_lamb",
     "fused_attention",
     "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
+    "fusion_group",
     "pow2_decay_with_linear_warmup",
     "sequence_mask",
     "sequence_pool",
@@ -87,7 +89,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
     bool is_custom_op =
         egr::Controller::Instance().GetOpMetaInfoMap().count(op_type);
-    bool use_mkldnn = op->GetAttrIfExists<bool>("use_mkldnn");
+    bool use_mkldnn = false;
+    if (op->HasAttr("use_mkldnn")) {
+      Attribute attr = op->GetAttr("use_mkldnn");
+      use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
+                                     : PADDLE_GET_CONST(bool, attr);
+    }
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
@@ -149,6 +156,11 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
+  }
+
+  if (op_type == "coalesce_tensor" && parameter_name == "Output") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
   }
 
   if (op_type == "fake_quantize_range_abs_max") {
@@ -393,7 +405,6 @@ void FakeInitializeOutputsForFunctionKernel(
                         "the size of kernel output_defs (%d).",
                         output_names.size(),
                         output_defs.size()));
-
   size_t start_idx = 0;
   for (size_t i = 0; i < output_names.size(); ++i) {
     const std::string& parameter_name = output_names[i];
@@ -406,7 +417,6 @@ void FakeInitializeOutputsForFunctionKernel(
       ++start_idx;
       continue;
     }
-
     auto& outs_vector = it->second;
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
@@ -449,7 +459,7 @@ void FakeInitializeOutputsForFunctionKernel(
           if (op_type == "adam" || op_type == "adamw") {
             dtype = InferMPDType(runtime_ctx, "Param");
           } else if (op_type == "arg_min" || op_type == "arg_max" ||
-                     op_type == "one_hot_v2") {
+                     op_type == "coalesce_tensor" || op_type == "one_hot_v2") {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
