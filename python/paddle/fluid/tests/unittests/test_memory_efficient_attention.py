@@ -21,9 +21,9 @@ from typing import List, Sequence, Tuple
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.incubate.nn.attn_bias as ab
 import paddle.nn.functional as F
+from paddle.fluid import core
 from paddle.incubate.nn.memory_efficient_attention import (
     memory_efficient_attention,
 )

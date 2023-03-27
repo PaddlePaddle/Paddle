@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, fluid
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 
@@ -103,10 +102,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -127,7 +126,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPnormOp(OpTest):
@@ -150,10 +149,10 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -349,7 +348,7 @@ class TestPnormBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -358,7 +357,6 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
-            check_eager=True,
         )
 
     def init_test_case(self):

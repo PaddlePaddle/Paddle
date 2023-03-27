@@ -18,6 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
 
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cum_kernel.h"
@@ -481,7 +482,8 @@ void MemoryEfficientAttentionBackwardKernel(
 
     if (bias) {
       p.bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
-      p.bias_strideB = q_dims[2] * q_dims[1] * k_dims[1];
+      p.bias_strideB =
+          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims);
       p.bias_strideH = q_dims[1] * k_dims[1];
       p.bias_strideM = k_dims[1];
       VLOG(3) << "p.bias_ptr" << p.bias_ptr;

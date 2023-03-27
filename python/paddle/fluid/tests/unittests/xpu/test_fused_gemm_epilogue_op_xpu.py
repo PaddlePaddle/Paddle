@@ -27,8 +27,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid.core as core
 from paddle import _legacy_C_ops
+from paddle.fluid import core
 
 
 def gelu(x):
