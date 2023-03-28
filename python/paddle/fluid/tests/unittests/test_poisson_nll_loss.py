@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 np.random.seed(100)
 
@@ -198,6 +198,12 @@ class TestPoissonNLLLossErrCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
         self.test_err_reduction()
         self.test_err_epsilon()
+
+
+class TestPoissonNLLLossFloat16Case(TestPoissonNLLLossBasicCase):
+    def test_api(self):
+        self.test_static_case(dtype="float16")
+        self.test_dynamic_case(dtype="float16")
 
 
 class TestPoissonNLLLossFloat32Case(TestPoissonNLLLossBasicCase):

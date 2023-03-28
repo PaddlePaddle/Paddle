@@ -215,6 +215,7 @@ __all__ = [  # noqa
     'margin_ranking_loss',
     'multi_label_soft_margin_loss',
     'nll_loss',
+    'poisson_nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
     'smooth_l1_loss',
