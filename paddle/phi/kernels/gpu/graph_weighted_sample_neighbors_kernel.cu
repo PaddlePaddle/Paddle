@@ -313,7 +313,7 @@ void GraphWeightedSampleNeighborsKernel(
     const Context& dev_ctx,
     const DenseTensor& row,
     const DenseTensor& col_ptr,
-    const DenseTensor& edge_weights,
+    const DenseTensor& edge_weight,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& eids,
     int sample_size,
@@ -323,7 +323,7 @@ void GraphWeightedSampleNeighborsKernel(
     DenseTensor* out_eids) {
   auto* row_data = row.data<T>();
   auto* col_ptr_data = col_ptr.data<T>();
-  auto* weights_data = edge_weights.data<float>();
+  auto* weights_data = edge_weight.data<float>();
   auto* x_data = x.data<T>();
   auto* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());

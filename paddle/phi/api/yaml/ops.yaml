@@ -654,7 +654,7 @@
   backward : gelu_grad
 
 - op : graph_weighted_sample_neighbors
-  args : (Tensor row, Tensor colptr, Tensor edge_weights, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
+  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
   output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
   infer_meta :
     func : GraphWeightedSampleNeighborsInferMeta

@@ -3151,12 +3151,12 @@ void GraphWeightedSampleNeighborsInferMeta(const MetaTensor& row,
     }
   };
 
-  GSNShapeCheck(row.dims(), "Row");
-  GSNShapeCheck(col_ptr.dims(), "ColPtr");
-  GSNShapeCheck(edge_weight.dims(), "EdgeWeight");
-  GSNShapeCheck(x.dims(), "X");
+  GSNShapeCheck(row.dims(), "row");
+  GSNShapeCheck(col_ptr.dims(), "colptr");
+  GSNShapeCheck(edge_weight.dims(), "edge_weight");
+  GSNShapeCheck(x.dims(), "input_nodes");
   if (return_eids) {
-    GSNShapeCheck(eids.dims(), "Eids");
+    GSNShapeCheck(eids.dims(), "eids");
     out_eids->set_dims({-1});
     out_eids->set_dtype(row.dtype());
   }

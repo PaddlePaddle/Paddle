@@ -175,7 +175,7 @@ def sample_neighbors(
 def weighted_sample_neighbors(
     row,
     colptr,
-    edge_weights,
+    edge_weight,
     input_nodes,
     sample_size=-1,
     eids=None,
@@ -202,7 +202,7 @@ def weighted_sample_neighbors(
         ) = _C_ops.graph_weighted_sample_neighbors(
             row,
             colptr,
-            edge_weights,
+            edge_weight,
             input_nodes,
             eids,
             sample_size,
@@ -219,8 +219,8 @@ def weighted_sample_neighbors(
         colptr, "colptr", ("int32", "int64"), "graph_weighted_sample_neighbors"
     )
     check_variable_and_dtype(
-        edge_weights,
-        "edge_weights",
+        edge_weight,
+        "edge_weight",
         ("float32"),
         "graph_weighted_sample_neighbors",
     )
@@ -244,7 +244,7 @@ def weighted_sample_neighbors(
         inputs={
             "row": row,
             "colptr": colptr,
-            "edge_weights": edge_weights,
+            "edge_weight": edge_weight,
             "input_nodes": input_nodes,
             "eids": eids if return_eids else None,
         },

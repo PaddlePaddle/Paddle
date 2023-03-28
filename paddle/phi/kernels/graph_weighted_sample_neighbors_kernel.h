@@ -23,7 +23,7 @@ void GraphWeightedSampleNeighborsKernel(
     const Context& dev_ctx,
     const DenseTensor& row,
     const DenseTensor& col_ptr,
-    const DenseTensor& edge_weights,
+    const DenseTensor& edge_weight,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& eids,
     int sample_size,
