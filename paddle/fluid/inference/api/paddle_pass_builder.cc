@@ -527,6 +527,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "one_beam_size_fuse_pass",
       "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",
+      "conv_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "delete_op_device_pass",
       "delete_isolated_node_pass",

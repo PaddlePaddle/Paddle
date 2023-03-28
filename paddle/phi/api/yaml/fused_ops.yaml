@@ -3,6 +3,16 @@
 # The operators in the file have extra configuration item "support_dygraph_mode".
 # If one operator have "support_dygraph_mode : True", it supports dygraph mode.
 
+- op : conv_xpu
+  args : (Tensor Input, Tensor InputMax, Tensor Filter, Tensor FilterMax, Tensor Bias, Tensor Branch, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
+  output : Tensor(Output), Tensor(OutputMax)
+  infer_meta :
+    func : ConvXPUInferMeta
+  kernel :
+    func : conv_xpu
+    data_type : Input
+  optional : Bias, Branch, InputMax
+  
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
   output: Tensor

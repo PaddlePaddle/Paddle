@@ -238,6 +238,7 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(conv_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
