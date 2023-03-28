@@ -212,7 +212,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             scale_h = 0
             scale_w = 0
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0:
                         scale_d = scale_h = scale_w = float(self.scale)
                         self.scale = [self.scale]
@@ -450,7 +450,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             if self.scale_by_1Dtensor:
                 self.inputs['Scale'] = np.array([self.scale]).astype("float32")
             elif self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0:
                         scale_h = scale_w = float(self.scale)
                 if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -477,7 +477,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.attrs['out_h'] = self.out_h
             self.attrs['out_w'] = self.out_w
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0:
                         self.scale = [self.scale]
                 if isinstance(self.scale, list) and len(self.scale) == 1:

@@ -14,8 +14,8 @@
 
 import unittest
 
-import numpy.random as random
 from eager_op_test import OpTest
+from numpy import random
 
 
 class TestIOUSimilarityOp(OpTest):

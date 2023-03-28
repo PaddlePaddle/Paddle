@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()

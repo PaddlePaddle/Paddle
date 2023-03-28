@@ -163,7 +163,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), ['Out'])
+        self.check_grad({'X'}, ['Out'])
 
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"

@@ -19,8 +19,8 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from testsuite import create_op
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
@@ -126,7 +126,7 @@ class TestGroupNormOp(OpTest):
         self.op = create_op(
             self.scope, self.op_type, op_inputs, op_outputs, op_attrs
         )
-        inputs_to_check = set(['X', 'Scale', 'Bias'])
+        inputs_to_check = {'X', 'Scale', 'Bias'}
         output_names = 'Y'
         cpu_grads = self._get_gradient(
             inputs_to_check, place, output_names, None
@@ -148,12 +148,12 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
+        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
-                set(['X', 'Scale', 'Bias']),
+                {'X', 'Scale', 'Bias'},
                 'Y',
             )
 
@@ -187,7 +187,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
+        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
 
     def init_test_case(self):
         self.dtype = np.float16
@@ -250,7 +250,7 @@ class TestGroupNormBF16Op(OpTest):
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
+        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
 
     def init_test_case(self):
         pass

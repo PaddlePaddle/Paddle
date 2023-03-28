@@ -44,7 +44,7 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
 def custom_relu_static(func, device, dtype, np_x, use_func=True):
     import paddle
-    import paddle.static as static
+    from paddle import static
 
     paddle.enable_static()
     paddle.set_device(device)

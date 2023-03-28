@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def conv2d_forward_naive(
@@ -276,7 +276,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
-                    self.place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    self.place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
@@ -285,7 +285,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
-                    self.place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    self.place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_test_case(self):
@@ -440,7 +440,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
-                    self.place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    self.place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
@@ -450,7 +450,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
-                    self.place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    self.place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_test_case(self):

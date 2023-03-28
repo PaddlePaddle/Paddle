@@ -726,16 +726,6 @@
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
-- op : fused_linear_param_grad_add
-  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
-  output : Tensor(dweight_out), Tensor(dbias_out)
-  infer_meta:
-    func : FusedLinearParamGradAddInferMeta
-  optional : dweight, dbias
-  kernel:
-    func : fused_linear_param_grad_add
-    data_type : dout
-
 - op : gather
   args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
@@ -823,15 +813,6 @@
     data_type : x
   backward : hsigmoid_loss_grad
 
-- op : huber_loss
-  args : (Tensor input, Tensor label, float delta)
-  output : Tensor(out), Tensor(residual)
-  infer_meta :
-    func : HuberLossInferMeta
-  kernel :
-    func : huber_loss
-  backward : huber_loss_grad
-
 - op : increment
   args : (Tensor x, float value = 1.0)
   output : Tensor(out)
@@ -901,15 +882,6 @@
     param: [start, stop, number, dtype]
     data_type : dtype
     backend : place
-
-- op : log_softmax
-  args : (Tensor x,  int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMetaCheckAxis
-  kernel :
-    func : log_softmax
-  backward : log_softmax_grad
 
 - op : logcumsumexp
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
@@ -990,16 +962,6 @@
   kernel :
     func : lu
   backward : lu_grad
-
-- op : margin_cross_entropy
-  args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
-  output : Tensor(softmax), Tensor(loss)
-  infer_meta :
-    func : MarginCrossEntropyInferMeta
-  kernel :
-    func : margin_cross_entropy
-    data_type : logits
-  backward : margin_cross_entropy_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)

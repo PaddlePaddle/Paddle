@@ -20,7 +20,7 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
