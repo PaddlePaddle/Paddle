@@ -76,6 +76,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -224,6 +225,7 @@ namespace pybind {
 PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
+PyTypeObject *g_cuda_graph_with_in_outs_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -822,6 +824,9 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+  py::class_<paddle::operators::CUDAGraphWithInOuts, std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph_with_in_outs(m, "CUDAGraphWithInOuts");
+  cuda_graph_with_in_outs.def(py::init<>());
+  g_cuda_graph_with_in_outs_pytype = reinterpret_cast<PyTypeObject *>(cuda_graph_with_in_outs.ptr());
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {

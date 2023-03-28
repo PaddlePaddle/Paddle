@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/api/include/tensor.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
@@ -24,8 +25,49 @@ namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_CUDA
+class CUDAGraphWithInOutsManager {
+ public:
+  static CUDAGraphWithInOutsManager &Instance() {
+    static CUDAGraphWithInOutsManager *cuda_graph_with_in_outs_manager =
+        new CUDAGraphWithInOutsManager;
+    return *cuda_graph_with_in_outs_manager;
+  }
+
+  CUDAGraphWithInOuts *Get(int64_t pool_id) {
+    if (cuda_graph_pool_.find(pool_id) == cuda_graph_pool_.end()) {
+      return cuda_graph_pool_[pool_id].get();
+    } else {
+      return nullptr;
+    }
+  }
+
+  template <typename Callable>
+  CUDAGraphWithInOuts *Create(Callable &&callable,
+                      platform::CUDAPlace place,
+                      const std::vector<const phi::DenseTensor *> &in_ptrs,
+                      cudaStreamCaptureMode mode,
+                      int64_t pool_id) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+
+    if (cuda_graph_pool_.find(pool_id) == cuda_graph_pool_.end()) {
+      cuda_graph_pool_[pool_id] = std::make_unique<CUDAGraphWithInOuts>(
+                callable, place, in_ptrs, mode, pool_id);
+    }
+    return cuda_graph_pool_[pool_id].get();
+  }
+
+ private:
+  CUDAGraphWithInOutsManager() {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphWithInOutsManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<int64_t, std::unique_ptr<CUDAGraphWithInOuts>> cuda_graph_pool_;
+};
+
 class CUDAGraphWithInOuts {
  public:
+  CUDAGraphWithInOuts() {}
+
   template <typename Callable>
   CUDAGraphWithInOuts(Callable &&callable,
                       platform::CUDAPlace place,
@@ -61,6 +103,8 @@ class CUDAGraphWithInOuts {
       }
     }
   }
+
+  ~CUDAGraphWithInOuts() { VLOG(4) << "yoki: ~CUDAGraphWithInOuts"; }
 
   void Run(const std::vector<const phi::DenseTensor *> &ins) {
     PADDLE_ENFORCE_EQ(
@@ -123,6 +167,90 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
 
   return std::make_unique<CUDAGraphWithInOuts>(
       func, ctx.GetPlace(), inputs, mode, pool_id);
+}
+
+template <typename Callable>
+static std::shared_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
+    Callable &&callable,
+    const std::vector<paddle::Tensor> &x,
+    std::vector<paddle::Tensor *> &out,   // NOLINT
+    std::vector<paddle::Tensor *> &dout,  // NOLINT
+    platform::CUDAPlace place,
+    cudaStreamCaptureMode mode,
+    int64_t pool_id) {
+  std::vector<const phi::DenseTensor *> inputs;
+  for (auto &tensor : x) {
+    if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
+      phi::DenseTensor *dense_tensor =
+          static_cast<phi::DenseTensor *>(tensor.impl().get());
+      inputs.push_back(dense_tensor);
+    }
+  }
+
+  auto func = [&](const std::vector<const phi::DenseTensor *> &inputs) {
+    callable();
+    std::vector<phi::DenseTensor *> outputs;
+    for (auto *tensor : out) {
+      phi::DenseTensor *dense_tensor =
+          static_cast<phi::DenseTensor *>(tensor->impl().get());
+      outputs.push_back(dense_tensor);
+    }
+    for (auto *tensor : dout) {
+      phi::DenseTensor *dense_tensor =
+          static_cast<phi::DenseTensor *>(tensor->impl().get());
+      outputs.push_back(dense_tensor);
+    }
+    return outputs;
+  };
+
+  return std::make_shared<CUDAGraphWithInOuts>(
+      func, place, inputs, mode, pool_id);
+  // return CUDAGraphWithInOutsManager::Instance().Create(func, place, inputs, mode, pool_id);
+}
+
+static void ExecuteCUDAGraph2(const std::vector<paddle::Tensor> &x,
+                              std::vector<paddle::Tensor *> &out,   // NOLINT
+                              std::vector<paddle::Tensor *> &dout,  // NOLINT
+                              CUDAGraphWithInOuts *graph) {
+  std::vector<const phi::DenseTensor *> inputs;
+  for (auto tensor : x) {
+    phi::DenseTensor *dense_tensor =
+        static_cast<phi::DenseTensor *>(tensor.impl().get());
+    inputs.push_back(dense_tensor);
+  }
+
+  graph->Run(inputs);
+  auto outputs = graph->GetOutputs();
+
+  size_t idx = 0;
+  for (auto *tensor : out) {
+    phi::DenseTensor *dense_tensor =
+        static_cast<phi::DenseTensor *>(tensor->impl().get());
+    if (outputs[idx] != nullptr) {
+      *dense_tensor = *outputs[idx];
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dense_tensor,
+          nullptr,
+          phi::errors::InvalidArgument(
+              "The %d-th output variable should be nullptr.", idx));
+    }
+    ++idx;
+  }
+  for (auto *tensor : dout) {
+    phi::DenseTensor *dense_tensor =
+        static_cast<phi::DenseTensor *>(tensor->impl().get());
+    if (outputs[idx] != nullptr) {
+      *dense_tensor = *outputs[idx];
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dense_tensor,
+          nullptr,
+          phi::errors::InvalidArgument(
+              "The %d-th output variable should be nullptr.", idx));
+    }
+    ++idx;
+  }
 }
 
 static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,

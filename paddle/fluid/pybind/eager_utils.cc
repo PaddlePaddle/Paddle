@@ -58,6 +58,7 @@ extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
 extern PyTypeObject* g_jit_function_pytype;
+extern PyTypeObject* g_cuda_graph_with_in_outs_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -772,6 +773,14 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
   return result;
 }
 
+PyObject* ToPyObject(const std::shared_ptr<paddle::operators::CUDAGraphWithInOuts> value) {
+  VLOG(4) << "yoki topyobject cast CUDAGraphWithInOuts";
+  // auto obj = ::pybind11::cast(std::move(value), py::return_value_policy::reference);
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const platform::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1452,6 +1461,111 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
+
+
+std::shared_ptr<paddle::operators::CUDAGraphWithInOuts> CastPyArg2CUDAGraphPtr(PyObject* obj) {
+  // std::unique_ptr<paddle::operators::CUDAGraphWithInOuts> cuda_graph_unique_ptr;
+  // paddle::operators::CUDAGraphWithInOuts* cuda_graph_ptr = ::pybind11::handle(obj).cast<paddle::operators::CUDAGraphWithInOuts*>();
+  // VLOG(4) << "yoki: " << cuda_graph_ptr;
+  // cuda_graph_unique_ptr.reset(cuda_graph_ptr);
+  // return cuda_graph_unique_ptr;
+  return ::pybind11::handle(obj).cast<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>();
+  /*if (PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(g_cuda_graph_with_in_outs_pytype))) {
+    return ::pybind11::handle(obj).cast<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>();
+    // return ::pybind11::cast<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>(std::move(pybind11::handle(obj)));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "PyObject can not be cast into CUDAGraphWithInOuts"));
+  }*/
+  // return ::pybind11::handle(obj).cast<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>();
+  // if (PyObject_IsInstance(
+  //         obj, reinterpret_cast<PyObject*>(g_framework_scope_pytype))) {
+  //   return ::pybind11::handle(obj).cast<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>();
+  // } else {
+  //   PADDLE_THROW(platform::errors::InvalidArgument(
+  //       "PyObject can not be cast into CUDAGraphWithInOuts"));
+  // }
+}
+
+
+void SetCUDAGraphPtrListToArgs(
+    const std::string& op_type,
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  Py_ssize_t len = PyList_Size(list);
+  for (Py_ssize_t i = 0; i < len; i++) {
+    VLOG(4) << "yoki: i: " << i;
+    if (cuda_graph[i] != nullptr) {
+      VLOG(4) << "yoki to pyobject";
+      PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+    }
+  }
+}
+
+
+std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> GetCUDAGraphPtrListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of CUDAGraphWithInOuts, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+  }
+
+  std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> result;
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of CUDAGraphWithInOuts, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2CUDAGraphPtr(PyList_GetItem(list, i)));
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of CUDAGraphWithInOuts, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2CUDAGraphPtr(PyList_GetItem(list, i)));
+    }
+  } else if (list == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+  return result;
+}
+
 
 paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
   if (PyObject_IsInstance(

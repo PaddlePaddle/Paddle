@@ -59,6 +59,7 @@ inline void run_program_ad_func(
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     std::vector<paddle::Tensor*>& dout,                  // NOLINT
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>& cuda_graph,            // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
@@ -77,7 +78,10 @@ inline void run_program_ad_func(
           << require_any_grad;
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  // RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  VLOG(3) << "yoki: cuda_graph.size0: " << cuda_graph.size();
+  RunProgramAPI(x, params, out, step_scope, dout, cuda_graph, require_any_grad, attrs);
+  VLOG(3) << "yoki: cuda_graph.size1: " << cuda_graph.size();
   VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {

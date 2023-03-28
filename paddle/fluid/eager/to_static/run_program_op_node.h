@@ -21,6 +21,9 @@
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
+#endif
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -277,7 +280,7 @@ static void GcScope(paddle::framework::Scope *scope) {
 
 }  // namespace details
 
-inline void RunProgramAPI(
+inline std::shared_ptr<paddle::framework::InterpreterCore> RunProgramAPIImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor *> &out,                   // NOLINT
@@ -451,6 +454,79 @@ inline void RunProgramAPI(
 
 #ifdef PADDLE_WITH_MKLDNN
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
+#endif
+
+  return interpreter_core;
+}
+
+inline void RunProgramAPI(
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    std::vector<paddle::Tensor *> &out,                   // NOLINT
+    std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
+    std::vector<paddle::Tensor *> &dout,                  // NOLINT
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> &inner_graphs,   // NOLINT
+    bool require_any_grad,
+    const paddle::framework::AttributeMap &attrs) {
+  VLOG(2) << "RunProgramOpKernel Compute";
+  // In the original run_program OP, the default value of the is_test
+  // attribute is false, we should check if there is is_test parameter
+  // in attrs
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+
+  const auto &capture_mode = PADDLE_GET_CONST(std::string, attrs.at("cuda_graph_capture_mode"));
+
+  if (capture_mode.empty()) {
+    RunProgramAPIImpl(x, params, out, step_scope, dout, require_any_grad, attrs);
+    return;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  auto mode = paddle::operators::details::StringToCUDAGraphCaptureMode(capture_mode);
+  PADDLE_ENFORCE_EQ(
+        paddle::platform::is_gpu_place(place), true,
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+  // PADDLE_ENFORCE_NOT_NULL(
+  //       cuda_graph,
+  //       phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+  //                                    "cuda_graph_capture_mode is valid."));
+  // using GraphVecType = std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>;
+  // auto &inner_graphs = *(cuda_graph->GetMutable<GraphVecType>());
+  // std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>> inner_graphs;
+    VLOG(3) << "yoki: inner_graphs.size0: " << inner_graphs.size();
+    inner_graphs.resize(std::max<size_t>(3, inner_graphs.size()));
+    size_t graph_idx = is_test ? 0 : 1;
+    if (inner_graphs[graph_idx].get() == nullptr) {
+      int64_t pool_id;
+      if (inner_graphs[1 - graph_idx].get() != nullptr) {
+        pool_id = inner_graphs[1 - graph_idx]->PoolID();
+      } else {
+        pool_id = PADDLE_GET_CONST(int64_t, attrs.at("cuda_graph_pool_id"));
+      }
+
+      std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core = nullptr;
+      auto callable = [is_test, x, params, &out, &step_scope, &dout, require_any_grad, attrs, &interpreter_core]() {
+        interpreter_core = RunProgramAPIImpl(x, params, out, step_scope, dout, require_any_grad, attrs);
+      };
+      inner_graphs[graph_idx] = paddle::operators::CaptureCUDAGraph2(
+        callable, x, out, dout, place, mode, pool_id);
+      VLOG(10) << "Capture Forward CUDA Graph";
+      VLOG(4) << "yoki: inner_graphs[" << graph_idx << "]: " << inner_graphs[graph_idx].get();
+    } else {
+      VLOG(10) << "Run Forward CUDA Graph directly";
+      paddle::operators::ExecuteCUDAGraph2(x, out, dout,
+                       inner_graphs[graph_idx].get());
+    }
+    VLOG(3) << "yoki: inner_graphs.size1: " << inner_graphs.size();
+#else
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
 #endif
 }
 

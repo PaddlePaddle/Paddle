@@ -218,6 +218,9 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
 
+        print("yoki: _cuda_graph_vec: ", flush=True)
+        print(self._cuda_graph_vec, flush=True)
+
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -971,15 +974,21 @@ class PartialProgramLayer:
         return tmp_scope_vec
 
     def _create_cuda_graph_vec(self):
-        var = core.VarBase(
-            core.VarDesc.VarType.FP32,
-            [],
-            "cuda_graph",
-            core.VarDesc.VarType.RAW,
-            True,
-        )
-        var.stop_gradient = True
-        return var
+        # if not framework.global_var._in_eager_mode_:
+        #     var = core.VarBase(
+        #         core.VarDesc.VarType.FP32,
+        #         [],
+        #         "cuda_graph",
+        #         core.VarDesc.VarType.RAW,
+        #         True,
+        #     )
+        #     var.stop_gradient = True
+        # else:
+        #     var = [core.CUDAGraphWithInOuts()]
+        # return var
+        return [None, None, None]
+        # return None
+        # return [core.CUDAGraphWithInOuts(), core.CUDAGraphWithInOuts(), core.CUDAGraphWithInOuts()]
 
     def _restore_out(self, out_vars):
         """
