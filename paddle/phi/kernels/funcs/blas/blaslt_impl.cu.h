@@ -30,41 +30,27 @@ namespace funcs {
 
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 
-// While cublasLtEpilogue_t is same for some cuBlaslt operation
-// modes. Estabulish this enum to distinguish each operation
-// for descriptor cache.
-enum MatmulFusedType {
-  kMatmul,
-  kMatmulGrad,
-  kMatmulGradWithoutBias,
-  kMatmulBias,
-  kMatmulRelu,
-  kMatmulBiasRelu,
-  kMatmulBiasGelu,
-  kMatmulBiasReluWithReservedData,
-  kMatmulBiasGeluWithReservedData,
-  kMatmulReluGrad,
-  kMatmulGeluGrad,
-  kMatmulBiasGrad,
-  kMatmulBiasGradTrans
-};
-
 // Set this enum according to
 // https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
-static std::map<MatmulFusedType, cublasLtEpilogue_t> MatmulFusedMap = {
-    {kMatmul, CUBLASLT_EPILOGUE_DEFAULT},  // No special postprocessing.
-    {kMatmulGrad, CUBLASLT_EPILOGUE_DEFAULT},
-    {kMatmulGradWithoutBias, CUBLASLT_EPILOGUE_DEFAULT},
-    {kMatmulBias, CUBLASLT_EPILOGUE_BIAS},
-    {kMatmulRelu, CUBLASLT_EPILOGUE_RELU},
-    {kMatmulBiasRelu, CUBLASLT_EPILOGUE_RELU_BIAS},
-    {kMatmulBiasGelu, CUBLASLT_EPILOGUE_GELU_BIAS},
-    {kMatmulBiasReluWithReservedData, CUBLASLT_EPILOGUE_RELU_AUX_BIAS},
-    {kMatmulBiasGeluWithReservedData, CUBLASLT_EPILOGUE_GELU_AUX_BIAS},
-    {kMatmulReluGrad, CUBLASLT_EPILOGUE_DRELU},
-    {kMatmulGeluGrad, CUBLASLT_EPILOGUE_DGELU},
-    {kMatmulBiasGrad, CUBLASLT_EPILOGUE_BGRADA},
-    {kMatmulBiasGradTrans, CUBLASLT_EPILOGUE_BGRADB}};
+// While kMatmul, kMatmulGrad, kMatmulGradWithoutBias share the same
+// enum value, but if all elements for MatmulPlanner->GetKey() is same,
+// no matter forward or backward, they could share the same descriptor
+// cache, in that the descritpor is for decription of matmul operation.
+enum MatmulFusedType {
+  kMatmul = CUBLASLT_EPILOGUE_DEFAULT,
+  kMatmulGrad = CUBLASLT_EPILOGUE_DEFAULT,
+  kMatmulGradWithoutBias = CUBLASLT_EPILOGUE_DEFAULT,
+  kMatmulBias = CUBLASLT_EPILOGUE_BIAS,
+  kMatmulRelu = CUBLASLT_EPILOGUE_RELU,
+  kMatmulBiasRelu = CUBLASLT_EPILOGUE_RELU_BIAS,
+  kMatmulBiasGelu = CUBLASLT_EPILOGUE_GELU_BIAS,
+  kMatmulBiasReluWithReservedData = CUBLASLT_EPILOGUE_RELU_AUX_BIAS,
+  kMatmulBiasGeluWithReservedData = CUBLASLT_EPILOGUE_GELU_AUX_BIAS,
+  kMatmulReluGrad = CUBLASLT_EPILOGUE_DRELU,
+  kMatmulGeluGrad = CUBLASLT_EPILOGUE_DGELU,
+  kMatmulBiasGradToA = CUBLASLT_EPILOGUE_BGRADA,
+  kMatmulBiasGradToB = CUBLASLT_EPILOGUE_BGRADB
+};
 
 enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
 
@@ -138,7 +124,8 @@ struct MatmulPlanner {
                 MatmulFusedType impl_type,
                 const void* bias_data = nullptr,
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.
-                bool use_addto = false)
+                bool use_addto = false,
+                bool no_exchange = true)
       : bias(bias_data), aux_data(reserve_data), use_addto_(use_addto) {
     type = impl_type;
     key = phi::autotune::GenKey(x_dims,
@@ -147,7 +134,8 @@ struct MatmulPlanner {
                                 static_cast<int>(trans_y),
                                 static_cast<int>(dtype),
                                 static_cast<int>(impl_type),
-                                static_cast<int>(use_addto));
+                                static_cast<int>(use_addto),
+                                static_cast<int>(no_exchange));
   }
 
   MatmulFusedType ImplType() const { return type; }
@@ -191,11 +179,10 @@ struct MatmulDescriptor {
 
   ~MatmulDescriptor() {
     if (!is_cached) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutDestroy(out_desc));
+      dynload::cublasLtMatmulDescDestroy(op_desc);
+      dynload::cublasLtMatrixLayoutDestroy(y_desc);
+      dynload::cublasLtMatrixLayoutDestroy(x_desc);
+      dynload::cublasLtMatrixLayoutDestroy(out_desc);
       delete algo;
 
       op_desc = nullptr;
@@ -207,20 +194,18 @@ struct MatmulDescriptor {
   }
 
   // x_desc, y_desc, op_desc are allocated in heap memory.
-  template <typename T,
-            typename DYT = T,
-            bool TransX = false,
-            bool TransY = false>
-  void Create(const int M,
-              const int N,
-              const int K,
+  template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
+  void Create(const int64_t M,
+              const int64_t N,
+              const int64_t K,
               const bool trans_x,
               const bool trans_y,
               phi::funcs::MatmulPlanner* planner,
               const int batch_size = 1,
-              int64_t stride_x = 0,
-              int64_t stride_y = 0,
-              int64_t stride_out = 0) {
+              const int64_t stride_x = 0,
+              const int64_t stride_y = 0,
+              const int64_t stride_out = 0,
+              bool grad_for_dx = true) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
@@ -295,7 +280,42 @@ struct MatmulDescriptor {
     return out.str();
   }
 
- private:
+  void ExchangeXYDesc(bool no_exchange) {}
+
+ protected:
+  void SetFusedEpilogueOpDescriptor(phi::funcs::MatmulPlanner* planner,
+                                    const bool trans_x,
+                                    const bool trans_y,
+                                    int64_t lead_dim) {
+    cublasOperation_t cublas_trans_x = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cublas_trans_y = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                CUBLASLT_MATMUL_DESC_TRANSB,
+                                                &cublas_trans_x,
+                                                sizeof(cublas_trans_x)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                CUBLASLT_MATMUL_DESC_TRANSA,
+                                                &cublas_trans_y,
+                                                sizeof(cublas_trans_y)));
+    if (planner->ImplType() != kMatmul) {
+      auto fused_type = static_cast<cublasLtEpilogue_t>(planner->ImplType());
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                  CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                                  &fused_type,
+                                                  sizeof(fused_type)));
+    }
+    if (planner->aux_data) {
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+          op_desc,
+          CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+          &lead_dim,
+          sizeof(lead_dim)));
+    }
+  }
+
   void CreateMatrixLayout(cublasLtMatrixLayout_t* desc,
                           cudaDataType type,
                           uint64_t rows,
@@ -324,60 +344,25 @@ struct MatmulDescriptor {
         &stride,
         sizeof(stride)));
   }
-
-  void SetFusedEpilogueOpDescriptor(phi::funcs::MatmulPlanner* planner,
-                                    const bool trans_x,
-                                    const bool trans_y,
-                                    int64_t lead_dim) {
-    cublasOperation_t cublas_trans_x = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-    cublasOperation_t cublas_trans_y = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatmulDescSetAttribute(op_desc,
-                                                CUBLASLT_MATMUL_DESC_TRANSB,
-                                                &cublas_trans_x,
-                                                sizeof(cublas_trans_x)));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatmulDescSetAttribute(op_desc,
-                                                CUBLASLT_MATMUL_DESC_TRANSA,
-                                                &cublas_trans_y,
-                                                sizeof(cublas_trans_y)));
-    if (planner->ImplType() != kMatmul) {
-      auto fused_type = MatmulFusedMap[planner->ImplType()];
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatmulDescSetAttribute(op_desc,
-                                                  CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                                  &fused_type,
-                                                  sizeof(fused_type)));
-    }
-    if (planner->aux_data) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-          op_desc,
-          CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
-          &lead_dim,
-          sizeof(lead_dim)));
-    }
-  }
 };
 
 struct MatmulGradDescriptor : MatmulDescriptor {
  public:
   MatmulGradDescriptor() {}
 
-  template <typename T, typename DYT, bool TransX, bool TransY>
-  void Create(const int M,
-              const int N,
-              const int K,
+  template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
+  void Create(const int64_t M,
+              const int64_t N,
+              const int64_t K,
               const bool trans_x,
               const bool trans_y,
               phi::funcs::MatmulPlanner* planner,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
-              int64_t stride_out = 0) {
+              int64_t stride_out = 0,
+              bool grad_for_dx = true) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
-
-    using Trait = FusedGEMMGradTrait<TransX, TransY>;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
@@ -385,74 +370,33 @@ struct MatmulGradDescriptor : MatmulDescriptor {
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(&op_desc, compute_type, scale_type));
     this->SetFusedEpilogueOpDescriptor(
-        planner, Trait::kXGradATrans, Trait::kXGradBTrans, TransX ? M : K);
+        planner, trans_x, trans_y, TransX ? M : K);
 
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
-    CreateMatrixLayout(&x_desc, mat_type, M, N, TransX);
-    CreateMatrixLayout(&y_desc, mat_type, K, N, TransY);
-    CreateMatrixLayout(
-        &out_desc, phi::backends::gpu::ToCudaDataType<DYT>(), K, N, TransY);
-  }
-
-  void ExchangeXYDesc(bool is_exchange) {
-    if (is_exchange) {
-      auto* temp = y_desc;
-      y_desc = x_desc;
-      x_desc = temp;
-    }
-  }
-};
-
-template <class DescT,
-          typename T,
-          typename DYT = T,
-          bool TransX = false,
-          bool TransY = false>
-struct DescriptorSetter {
- public:
-  DescT desc;
-  size_t sub_key{std::numeric_limits<size_t>::min()};
-
-  DescriptorSetter(phi::funcs::MatmulPlanner* planner,
-                   const int M,
-                   const int N,
-                   const int K,
-                   const bool trans_x,
-                   const bool trans_y,
-                   const int batch_size = 1,
-                   int64_t stride_x = 0,
-                   int64_t stride_y = 0,
-                   int64_t stride_out = 0) {
-    if (planner != nullptr) {
-      sub_key = planner->GenSubKey(static_cast<size_t>(planner->ImplType()));
-    }
-
-    auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    if (mamtul_cache.FindSubKey(sub_key)) {
-      desc = *(reinterpret_cast<DescT*>(mamtul_cache.GetSubKey(sub_key)));
-      desc.template SetFusedEpiloguePtr<DYT>(planner);
-      VLOG(6) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
+    this->CreateMatrixLayout(&x_desc, mat_type, N, M, true);
+    if (grad_for_dx) {
+      this->CreateMatrixLayout(&y_desc, mat_type, K, N, TransY);
+      this->CreateMatrixLayout(
+          &out_desc, phi::backends::gpu::ToCudaDataType<DXT>(), M, K, TransX);
     } else {
-      desc.template Create<T, DYT, TransX, TransY>(M,
-                                                   N,
-                                                   K,
-                                                   trans_x,
-                                                   trans_y,
-                                                   planner,
-                                                   batch_size,
-                                                   stride_x,
-                                                   stride_y,
-                                                   stride_out);
-      if (planner != nullptr) {
-        desc.template SetFusedEpiloguePtr<DYT>(planner);
-      }
-      VLOG(6) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
+      this->CreateMatrixLayout(&y_desc, mat_type, M, K, TransX);
+      this->CreateMatrixLayout(
+          &out_desc, phi::backends::gpu::ToCudaDataType<DYT>(), K, N, TransY);
     }
+  }
+
+  void ExchangeXYDesc(bool no_exchange) {
+    if (no_exchange) {
+      return;
+    }
+    auto* temp = y_desc;
+    y_desc = x_desc;
+    x_desc = temp;
   }
 };
 
-template <typename T>
+template <typename T, typename OutT = T, class MatmulDescT = MatmulDescriptor>
 struct CublasLtBase {
  public:
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -465,11 +409,11 @@ struct CublasLtBase {
   }
 
   static void RunImpl(const phi::GPUContext& ctx,
-                      MatmulDescriptor* desc,
+                      MatmulDescT* desc,
                       const size_t sub_key,
                       const T* x_ptr,
                       const T* y_ptr,
-                      T* out_ptr,
+                      OutT* out_ptr,
                       phi::funcs::MatmulPlanner* planner) {
     MT alpha = static_cast<MT>(1);
     MT beta = planner->UseAddTo() ? static_cast<MT>(1) : static_cast<MT>(0);
@@ -494,7 +438,7 @@ struct CublasLtBase {
                        out_ptr,
                        workspace->ptr(),
                        workspace_size);
-        MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
+        MatmulDescT* best_desc = new MatmulDescT(*desc);
         VLOG(6) << best_desc->GetDescResultString(
             "[Searched CublasltDescriptor] ");
 
@@ -525,7 +469,7 @@ struct CublasLtBase {
 
   static void SearchBestAlgo(const phi::GPUContext& ctx,
                              const cublasLtHandle_t& lt_handle,
-                             MatmulDescriptor* desc,
+                             MatmulDescT* desc,
                              const void* alpha,
                              const void* beta,
                              const void* y_data,
@@ -594,7 +538,7 @@ struct CublasLtBase {
         }
       }
       float time_cnt = (cur_time / (repeats - 1));
-      VLOG(4) << "Time cost in MatmulWithCublaslt algo[" << algo_idx << "]"
+      VLOG(6) << "Time cost in MatmulWithCublaslt algo[" << algo_idx << "]"
               << "is : " << time_cnt << " s";
 
       if (cur_time < min_time_cost) {
@@ -602,10 +546,64 @@ struct CublasLtBase {
         min_time_cost = cur_time;
       }
     }
-    VLOG(4) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
+    VLOG(6) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
     *best_algo = heuristic_results[best_algo_idx].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
+  }
+};
+
+// To judge if desc is cached or not.
+template <class DescT,
+          typename T,
+          typename DXT = T,
+          typename DYT = T,
+          bool TransX = false,
+          bool TransY = false>
+struct DescriptorSetter {
+ public:
+  DescT desc;
+  size_t sub_key{std::numeric_limits<size_t>::min()};
+
+  DescriptorSetter(phi::funcs::MatmulPlanner* planner,
+                   const int64_t M,
+                   const int64_t N,
+                   const int64_t K,
+                   const bool trans_x,
+                   const bool trans_y,
+                   const int batch_size = 1,
+                   int64_t stride_x = 0,
+                   int64_t stride_y = 0,
+                   int64_t stride_out = 0,
+                   const bool no_exchange = true,
+                   bool grad_for_dx = true) {
+    if (planner != nullptr) {
+      sub_key = planner->GenSubKey(static_cast<size_t>(planner->ImplType()));
+    }
+
+    auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+    if (mamtul_cache.FindSubKey(sub_key)) {
+      desc = *(reinterpret_cast<DescT*>(mamtul_cache.GetSubKey(sub_key)));
+      desc.template SetFusedEpiloguePtr<DYT>(planner);
+      VLOG(6) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
+    } else {
+      desc.template Create<T, DXT, DYT, TransX, TransY>(M,
+                                                        N,
+                                                        K,
+                                                        trans_x,
+                                                        trans_y,
+                                                        planner,
+                                                        batch_size,
+                                                        stride_x,
+                                                        stride_y,
+                                                        stride_out,
+                                                        grad_for_dx);
+      desc.ExchangeXYDesc(no_exchange);
+      if (planner != nullptr) {
+        desc.template SetFusedEpiloguePtr<DYT>(planner);
+      }
+      VLOG(6) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
+    }
   }
 };
 
@@ -617,9 +615,9 @@ struct MatmulWithCublasLt : public CublasLtBase<T> {
                   const T* x_data,
                   const T* y_data,
                   T* out_data,
-                  const int M,
-                  const int N,
-                  const int K,
+                  const int64_t M,
+                  const int64_t N,
+                  const int64_t K,
                   const bool trans_x,
                   const bool trans_y,
                   phi::funcs::MatmulPlanner* planner = nullptr) {
@@ -633,9 +631,9 @@ struct MatmulWithCublasLt : public CublasLtBase<T> {
                            const T* x_data,
                            const T* y_data,
                            T* out_data,
-                           const int M,
-                           const int N,
-                           const int K,
+                           const int64_t M,
+                           const int64_t N,
+                           const int64_t K,
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
@@ -661,9 +659,9 @@ struct MatmulWithCublasLt : public CublasLtBase<T> {
                            const T** x_data,
                            const T** y_data,
                            T** out_data,
-                           const int M,
-                           const int N,
-                           const int K,
+                           const int64_t M,
+                           const int64_t N,
+                           const int64_t K,
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
@@ -692,9 +690,9 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                   phi::DenseTensor* out,
                   const void* bias_data,
                   void* reserve_data,
-                  const int M,
-                  const int N,
-                  const int K,
+                  const int64_t M,
+                  const int64_t N,
+                  const int64_t K,
                   const bool trans_x,
                   const bool trans_y,
                   const MatmulFusedType fused_type) {
@@ -718,7 +716,7 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
   }
 };
 
-template <typename T, typename DYT, bool TransX, bool TransY>
+template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 struct LinearGradWithCublasLt : public CublasLtBase<T> {
   static void Run(const phi::GPUContext& ctx,
                   const phi::DenseTensor* x,
@@ -726,34 +724,57 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
                   phi::DenseTensor* out,
                   const void* bias_data,
                   void* reserve_data,
-                  const int M,
-                  const int N,
-                  const int K,
+                  const int64_t M,
+                  const int64_t N,
+                  const int64_t K,
                   const MatmulFusedType fused_type,
-                  const bool is_exchange,
-                  const bool use_addto) {
-    using Trait = FusedGEMMGradTrait<TransX, TransY>;
+                  const bool trans_x,
+                  const bool trans_y,
+                  const bool use_addto,
+                  const bool no_exchange,  // exchange x_desc and y_desc.
+                  bool grad_for_dx = true) {
     auto planner = phi::funcs::MatmulPlanner(vectorize(x->dims()),
                                              vectorize(y->dims()),
-                                             Trait::kXGradATrans,
-                                             Trait::kXGradBTrans,
+                                             trans_x,
+                                             trans_y,
                                              phi::CppTypeToDataType<T>::Type(),
                                              fused_type,
                                              bias_data,
                                              reserve_data,
                                              use_addto);
-    auto* out_data = ctx.Alloc<DYT>(out, out->numel() * sizeof(DYT));
     auto setter =
-        DescriptorSetter<MatmulGradDescriptor, T, DYT, TransX, TransY>(
-            &planner, M, N, K, TransX, TransY);
-    setter.desc.ExchangeXYDesc(is_exchange);
-    CublasLtBase<T>::RunImpl(ctx,
-                             &setter.desc,
-                             setter.sub_key,
-                             is_exchange ? x->data<T>() : y->data<T>(),
-                             is_exchange ? y->data<T>() : x->data<T>(),
-                             out_data,
-                             &planner);
+        DescriptorSetter<MatmulGradDescriptor, T, DXT, DYT, TransX, TransY>(
+            &planner,
+            M,
+            N,
+            K,
+            trans_x,
+            trans_y,
+            /*batch_size=*/1,
+            /*stride_x=*/0,
+            /*stride_y=*/0,
+            /*stride_out=*/0,
+            /*exchange_x_y_desc=*/no_exchange,
+            /*grad_for_dx=*/grad_for_dx);
+    if (grad_for_dx) {
+      CublasLtBase<T, DXT, MatmulGradDescriptor>::RunImpl(
+          ctx,
+          &setter.desc,
+          setter.sub_key,
+          no_exchange ? x->data<T>() : y->data<T>(),
+          no_exchange ? y->data<T>() : x->data<T>(),
+          out->data<DXT>(),
+          &planner);
+    } else {
+      CublasLtBase<T, DYT, MatmulGradDescriptor>::RunImpl(
+          ctx,
+          &setter.desc,
+          setter.sub_key,
+          no_exchange ? x->data<T>() : y->data<T>(),
+          no_exchange ? y->data<T>() : x->data<T>(),
+          out->data<DYT>(),
+          &planner);
+    }
   }
 };
 #else
