@@ -235,7 +235,7 @@ def to_prim(
     Args:
         blacklist(frozenset): The Operators that will be exclude when lowering into primitives.
         whitelist(frozenset): Only the operators in whitelist will be lowering into primitives.
-        start_idx(int): If start_idx exceeds -1, ops[start_idx:] will be processed. Default: 0.
+        start_idx(int): If start_idx exceeds 0, ops[start_idx:] will be processed. Default: 0.
         backward_length(int): If backward_length exceeds 0, ops[:-backward_length] will be processed. Default: 0.
     """
     if not core._is_fwd_prim_enabled():
