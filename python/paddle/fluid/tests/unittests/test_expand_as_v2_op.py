@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestExpandAsBasic(OpTest):
@@ -130,6 +131,22 @@ class TestExpandAsV2API(unittest.TestCase):
             fetch_list=[out_1],
         )
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestExpandAsOpRank4FP16(TestExpandAsBasic):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
+        x = np.random.rand(1, 1, 7, 16).astype("float16")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float16")
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
 
 
 if __name__ == "__main__":
