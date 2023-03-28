@@ -27,25 +27,27 @@ class TestLinspaceOpCommonCase(OpTest):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
         self._set_dtype()
+        self._set_data()
+        self.attrs = {'dtype': self.attr_dtype}
+
+    def _set_dtype(self):
+        self.dtype = "float32"
+        self.attr_dtype = int(core.VarDesc.VarType.FP32)
+
+    def _set_data(self):
+        self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
         self.inputs = {
             'Start': np.array([0]).astype(self.dtype),
             'Stop': np.array([10]).astype(self.dtype),
             'Num': np.array([11]).astype('int32'),
         }
-        self.attrs = {'dtype': self.attr_dtype}
-        self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
-
-    def _set_dtype(self):
-        self.dtype = "float32"
-        self.attr_dtype = int(core.VarDesc.VarType.FP32)
 
     def test_check_output(self):
         self.check_output()
 
 
 class TestLinspaceOpReverseCase(TestLinspaceOpCommonCase):
-    def setUp(self):
-        super().setUp()
+    def _set_data(self):
         self.inputs = {
             'Start': np.array([10]).astype(self.dtype),
             'Stop': np.array([0]).astype(self.dtype),
@@ -58,8 +60,7 @@ class TestLinspaceOpReverseCase(TestLinspaceOpCommonCase):
 
 
 class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
-    def setUp(self):
-        super().setUp()
+    def _set_data(self):
         self.inputs = {
             'Start': np.array([10]).astype(self.dtype),
             'Stop': np.array([0]).astype(self.dtype),
