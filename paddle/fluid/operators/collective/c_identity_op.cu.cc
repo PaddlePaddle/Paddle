@@ -19,6 +19,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(c_identity,
                         ops::CIdentityOpKernel<float>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CIdentityOpKernel<plat::bfloat16>,
+#endif
                         ops::CIdentityOpKernel<double>,
                         ops::CIdentityOpKernel<int>,
                         ops::CIdentityOpKernel<int64_t>,
