@@ -28,7 +28,7 @@
 #endif
 
 #include "cub/cub.cuh"
-#include "math.h"
+#include "math.h"  // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/block_radix_topk.cuh"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/random.cuh"
 #include "paddle/fluid/memory/memory.h"
@@ -40,11 +40,12 @@
 
 namespace phi {
 
-__device__ __forceinline__ float GenKeyFromWeight(const float weight,
-                                                  RandomNumGen& rng) {
+__device__ __forceinline__ float GenKeyFromWeight(
+    const float weight,
+    RandomNumGen& rng) {  // NOLINT
   rng.NextValue();
   float u = -rng.RandomUniformFloat(1.0f, 0.5f);
-  long long random_num2 = 0;
+  long long random_num2 = 0;  // NOLINT
   int seed_count = -1;
   do {
     random_num2 = rng.Random64();
@@ -66,7 +67,7 @@ __global__ void GetSampleCountAndNeighborCountKernel(const T* col_ptr,
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i >= n) return;
   T nid = input_nodes[i];
-  int neighbor_size = (int)(col_ptr[nid + 1] - col_ptr[nid]);
+  int neighbor_size = static_cast<int>(col_ptr[nid + 1] - col_ptr[nid]);
   // sample_size < 0 means sample all.
   int k = neighbor_size;
   if (sample_size >= 0) {
@@ -89,21 +90,27 @@ __launch_bounds__(BLOCK_SIZE) __global__
                                    const T* in_rows,
                                    const T* col_ptr,
                                    const float* edge_weight,
+                                   const T* eids,
                                    int max_sample_count,
-                                   unsigned long long random_seed) {
+                                   unsigned long long random_seed,  // NOLINT
+                                   T* out_eids,
+                                   bool return_eids) {
   int i = blockIdx.x;
   if (i >= input_node_count) return;
   int gidx = threadIdx.x + blockIdx.x * BLOCK_SIZE;
   T nid = input_nodes[i];
   T start = col_ptr[nid + 1];
   T end = col_ptr[nid];
-  int neighbor_count = (int)(end - start);
+  int neighbor_count = static_cast<int>(end - start);
 
   float* weight_keys_local_buff = weight_keys_buf + target_neighbor_offset[i];
   int offset = sample_offset[i];
   if (neighbor_count <= max_sample_count) {
     for (int j = threadIdx.x; j < neighbor_count; j += BLOCK_SIZE) {
       sample_output[offset + j] = in_rows[start + j];
+      if (return_eids) {
+        out_eids[offset + j] = eids[start + j];
+      }
     }
   } else {
     RandomNumGen rng(gidx, random_seed);
@@ -146,6 +153,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
         if (has_topk) {
           int write_index = atomicAdd(&cnt, 1);
           sample_output[offset + write_index] = in_rows[start + j];
+          if (return_eids) {
+            out_eids[offset + write_index] = eids[start + j];
+          }
         }
       }
     } else {
@@ -156,6 +166,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
         if (has_topk) {
           int write_index = atomicAdd(&cnt, 1);
           sample_output[offset + write_index] = in_rows[start + j];
+          if (return_eids) {
+            out_eids[offset + write_index] = eids[start + j];
+          }
         }
       }
       __syncthreads();
@@ -169,6 +182,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
             break;
           }
           sample_output[offset + write_index] = in_rows[start + j];
+          if (return_eids) {
+            out_eids[offset + write_index] = eids[start + j];
+          }
         }
       }
     }
@@ -181,17 +197,23 @@ __global__ void SampleAllKernel(T* sample_output,
                                 const T* input_nodes,
                                 int input_node_count,
                                 const T* in_rows,
-                                const T* col_ptr) {
+                                const T* col_ptr,
+                                const T* eids,
+                                T* out_eids,
+                                bool return_eids) {
   int i = blockIdx.x;
   if (i >= input_node_count) return;
   T nid = input_nodes[i];
   T start = col_ptr[nid + 1];
   T end = col_ptr[nid];
-  int neighbor_count = (int)(end - start);
+  int neighbor_count = static_cast<int>(end - start);
   if (neighbor_count <= 0) return;
   int offset = sample_offset[i];
   for (int j = threadIdx.x; j < neighbor_count; j += blockDim.x) {
     sample_output[offset + j] = in_rows[start + j];
+    if (return_eids) {
+      out_eids[offset + j] = eids[start + j];
+    }
   }
 }
 
@@ -205,20 +227,26 @@ __launch_bounds__(BLOCK_SIZE) __global__
                               const T* in_rows,
                               const T* col_ptr,
                               const float* edge_weight,
+                              const T* eids,
                               int max_sample_count,
-                              unsigned long long random_seed) {
+                              unsigned long long random_seed,  // NOLINT
+                              T* out_eids,
+                              bool return_eids) {
   int i = blockIdx.x;
   if (i >= input_node_count) return;
   int gidx = threadIdx.x + blockIdx.x * BLOCK_SIZE;
   T nid = input_nodes[i];
   T start = col_ptr[nid];
   T end = col_ptr[nid + 1];
-  int neighbor_count = (int)(end - start);
+  int neighbor_count = static_cast<int>(end - start);
   int offset = sample_offset[i];
 
   if (neighbor_count <= max_sample_count) {
     for (int j = threadIdx.x; j < neighbor_count; j += BLOCK_SIZE) {
       sample_output[offset + j] = in_rows[start + j];
+      if (return_eids) {
+        out_eids[offset + j] = eids[start + j];
+      }
     }
   } else {
     RandomNumGen rng(gidx, random_seed);
@@ -272,6 +300,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
       int idx = j * BLOCK_SIZE + tx;
       if (idx < max_sample_count) {
         sample_output[offset + idx] = in_rows[start + neighbor_idxs[j]];
+        if (return_eids) {
+          out_eids[offset + idx] = eids[start + neighbor_idxs[j]];
+        }
       }
     }
   }
@@ -294,19 +325,22 @@ void GraphWeightedSampleNeighborsKernel(
   auto* col_ptr_data = col_ptr.data<T>();
   auto* weights_data = edge_weights.data<float>();
   auto* x_data = x.data<T>();
+  auto* eids_data =
+      (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
   int bs = x.dims()[0];
-  int64_t len_col_ptr = col_ptr.dims()[0];
 
   thread_local std::random_device rd;
   thread_local std::mt19937 gen(rd());
-  thread_local std::uniform_int_distribution<unsigned long long> distrib;
-  unsigned long long random_seed = distrib(gen);
+  thread_local std::uniform_int_distribution<unsigned long long>  // NOLINT
+      distrib;
+  unsigned long long random_seed = distrib(gen);  // NOLINT
   const bool need_neighbor_count = sample_size > SAMPLE_SIZE_THRESHOLD;
 
   out_count->Resize({bs});
   int* out_count_data =
       dev_ctx.template Alloc<int>(out_count);  // finally copy sample_count
   int* neighbor_count_ptr = nullptr;
+  std::shared_ptr<phi::Allocation> neighbor_count;
   auto sample_count = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       (bs + 1) * sizeof(int),
@@ -315,7 +349,7 @@ void GraphWeightedSampleNeighborsKernel(
 
   int grid_size = (bs + 127) / 128;
   if (need_neighbor_count) {
-    auto neighbor_count = paddle::memory::Alloc(
+    neighbor_count = paddle::memory::AllocShared(
         dev_ctx.GetPlace(),
         (bs + 1) * sizeof(int),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -378,6 +412,11 @@ void GraphWeightedSampleNeighborsKernel(
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
+  T* out_eids_data = nullptr;
+  if (return_eids) {
+    out_eids->Resize({static_cast<int>(total_sample_size)});
+    out_eids_data = dev_ctx.template Alloc<T>(out_eids);
+  }
 
   // large sample size
   if (sample_size > SAMPLE_SIZE_THRESHOLD) {
@@ -420,11 +459,23 @@ void GraphWeightedSampleNeighborsKernel(
                                                   row_data,
                                                   col_ptr_data,
                                                   weights_data,
+                                                  eids_data,
                                                   sample_size,
-                                                  random_seed);
+                                                  random_seed,
+                                                  out_eids_data,
+                                                  return_eids);
+    cudaStreamSynchronize(dev_ctx.stream());
   } else if (sample_size <= 0) {
-    SampleAllKernel<T><<<bs, 64, 0, dev_ctx.stream()>>>(
-        out_data, sample_offset_ptr, x_data, bs, row_data, col_ptr_data);
+    SampleAllKernel<T><<<bs, 64, 0, dev_ctx.stream()>>>(out_data,
+                                                        sample_offset_ptr,
+                                                        x_data,
+                                                        bs,
+                                                        row_data,
+                                                        col_ptr_data,
+                                                        eids_data,
+                                                        out_eids_data,
+                                                        return_eids);
+    cudaStreamSynchronize(dev_ctx.stream());
   } else {  // sample_size < sample_count_threshold
     using WeightedSampleFuncType = void (*)(T*,
                                             const int*,
@@ -433,8 +484,11 @@ void GraphWeightedSampleNeighborsKernel(
                                             const T*,
                                             const T*,
                                             const float*,
+                                            const T*,
                                             int,
-                                            unsigned long long);
+                                            unsigned long long,  // NOLINT
+                                            T*,
+                                            bool);
     static const WeightedSampleFuncType func_array[7] = {
         WeightedSampleKernel<T, 4, 128>,
         WeightedSampleKernel<T, 6, 128>,
@@ -468,8 +522,12 @@ void GraphWeightedSampleNeighborsKernel(
         row_data,
         col_ptr_data,
         weights_data,
+        eids_data,
         sample_size,
-        random_seed);
+        random_seed,
+        out_eids_data,
+        return_eids);
+    cudaStreamSynchronize(dev_ctx.stream());
   }
 }
 

@@ -22,6 +22,7 @@ from .math import segment_max  # noqa: F401
 from .reindex import reindex_graph  # noqa: F401
 from .reindex import reindex_heter_graph  # noqa: F401
 from .sampling import sample_neighbors  # noqa: F401
+from .sampling import weighted_sample_neighbors  # noqa: F401
 
 __all__ = [
     'send_u_recv',
@@ -34,4 +35,5 @@ __all__ = [
     'reindex_graph',
     'reindex_heter_graph',
     'sample_neighbors',
+    'weighted_sample_neighbors',
 ]
