@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestScaleOp(OpTest):
@@ -38,7 +38,7 @@ class TestScaleOp(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestScaleOp_ZeroDim(TestScaleOp):
@@ -65,7 +65,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestScaleOpScaleTensor(OpTest):
@@ -80,10 +80,10 @@ class TestScaleOpScaleTensor(OpTest):
         self.outputs = {'Out': self.inputs['X'] * self.scale}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
@@ -101,10 +101,10 @@ class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 if __name__ == "__main__":

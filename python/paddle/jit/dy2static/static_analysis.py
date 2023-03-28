@@ -179,9 +179,7 @@ class StaticAnalysisVisitor:
 
         self.ancestor_wrappers.append(cur_wrapper)
         for child in gast.iter_child_nodes(node):
-            if isinstance(child, gast.FunctionDef) or isinstance(
-                child, gast.AsyncFunctionDef
-            ):
+            if isinstance(child, (gast.FunctionDef, gast.AsyncFunctionDef)):
                 # TODO: current version is function name mapping to its type
                 # consider complex case involving parameters
                 self.var_env.enter_scope(

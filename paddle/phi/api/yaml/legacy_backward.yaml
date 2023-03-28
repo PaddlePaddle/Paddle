@@ -622,16 +622,6 @@
   no_need_buffer : bias
   optional : scale, bias
 
-- backward_op : log_softmax_grad
-  forward : log_softmax(Tensor x,  int axis) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad,  int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [out]
-  kernel :
-    func : log_softmax_grad
-
 - backward_op : logcumsumexp_grad
   forward : logcumsumexp(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
   infer_meta :

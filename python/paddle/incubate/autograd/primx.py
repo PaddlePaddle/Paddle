@@ -17,7 +17,7 @@ import typing
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors

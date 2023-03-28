@@ -1103,6 +1103,10 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
