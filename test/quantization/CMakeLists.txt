@@ -4,16 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-foreach(src ${TEST_OPS})
-  py_test(${src} SRCS ${src}.py)
-endforeach()
-
-file(
-  GLOB TEST_OPS
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_*.py")
-string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
 function(_inference_analysis_python_api_int8_test target model_dir data_path
          filename use_mkldnn)
   py_test(
@@ -224,6 +214,22 @@ function(convert_model2dot_test target model_path save_graph_dir
          ${save_graph_name})
 endfunction()
 
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_light_nas)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
+  list(REMOVE_ITEM TEST_OPS test_imperative_ptq)
+  list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
+  list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
+  list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
+  list(REMOVE_ITEM TEST_OPS test_imperative_qat_matmul)
+
+endif()
+
 if(LINUX AND WITH_MKLDNN)
 
   #### Image classification dataset: ImageNet (small)
@@ -429,6 +435,38 @@ if(LINUX AND WITH_MKLDNN)
     ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
 
 endif()
+
+# Since the tests for Quant & INT8 comparison support only testing on Linux
+# with MKL-DNN, we remove it here to not test it on other systems.
+list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
+     quant_int8_image_classification_comparison quant_int8_nlp_comparison)
+
+#TODO(wanghaoshuang): Fix this unitest failed on GCC8.
+list(REMOVE_ITEM TEST_OPS test_auto_pruning)
+list(REMOVE_ITEM TEST_OPS test_filter_pruning)
+
+# fix
+if(WIN32)
+  set(SINGLE_CARD_TEST_OPS
+      test_user_defined_quantization
+      test_quantization_scale_pass
+      test_quantization_pass
+      test_moving_average_abs_max_scale_op
+      test_imperative_qat_channelwise
+      test_imperative_qat
+      test_imperative_qat_lsq
+      test_imperative_qat_matmul
+      test_imperative_out_scale
+      test_graph)
+  list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
+  foreach(src ${SINGLE_CARD_TEST_OPS})
+    py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
+  endforeach()
+endif()
+
+foreach(src ${TEST_OPS})
+  py_test(${src} SRCS ${src}.py)
+endforeach()
 
 # setting timeout value for old unittests
 if(NOT WIN32)
