@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -34,10 +34,9 @@ class SimpleNet(paddle.nn.Layer):
     not core.is_float16_supported(core.CUDAPlace(0)), "core is not support fp16"
 )
 class TestMasterGrad(unittest.TestCase):
-    def check_results(self, fp16_grads, fp32_grads):
-        for i in range(len(fp16_grads)):
-            self.assertEqual(fp32_grads[i].dtype, paddle.float32)
-            np.testing.assert_allclose(fp16_grads[i], fp32_grads[i])
+    def check_results(self, fp32_grads):
+        for grad in fp32_grads:
+            self.assertEqual(grad.dtype, paddle.float32)
 
     def run_dygraph(self):
         accumulate_batchs_num = 2
@@ -59,9 +58,8 @@ class TestMasterGrad(unittest.TestCase):
                 )
             scaled = scaler.scale(loss)
             scaled.backward()
-            fp16_grads = [model.linear.weight.grad, model.linear.bias.grad]
             fp32_grads = [model.linear.weight.grad, model.linear.bias.grad]
-            self.check_results(fp16_grads, fp32_grads)
+            self.check_results(fp32_grads)
             if (i + 1) % accumulate_batchs_num == 0:
                 scaler.step(opt)
                 scaler.update()
