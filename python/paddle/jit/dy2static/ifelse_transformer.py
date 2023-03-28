@@ -339,8 +339,8 @@ def transform_if_else(node, root):
     """
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
-    return_name_ids = sorted(list(node.pd_scope.modified_vars()))
-    push_pop_ids = sorted(list(node.pd_scope.variadic_length_vars()))
+    return_name_ids = sorted(node.pd_scope.modified_vars())
+    push_pop_ids = sorted(node.pd_scope.variadic_length_vars())
     nonlocal_names = list(return_name_ids)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.

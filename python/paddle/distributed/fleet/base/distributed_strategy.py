@@ -543,7 +543,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
