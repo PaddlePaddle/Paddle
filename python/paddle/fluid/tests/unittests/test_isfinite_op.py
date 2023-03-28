@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op_test import convert_float_to_uint16
 
 from paddle.fluid import core
 
@@ -48,6 +49,23 @@ class TestFP16Inf(TestInf):
         self.dtype = np.float16
 
 
+# BFP16 isinf Test
+class TestInfBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isinf"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.inf
+
+        out = np.isinf(x).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_output(self):
+        self.check_output()
+
+
 class TestNAN(OpTest):
     def setUp(self):
         self.op_type = "isnan"
@@ -74,6 +92,23 @@ class TestNAN(OpTest):
 class TestFP16NAN(TestNAN):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isnan Test
+class TestNANBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isnan"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.nan
+        x[-1] = np.nan
+
+        out = np.isnan(x).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_output(self):
+        self.check_output()
 
 
 class TestIsfinite(OpTest):
@@ -103,6 +138,23 @@ class TestIsfinite(OpTest):
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isfinite Test
+class TestIsfiniteBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isfinite"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.nan
+
+        out = np.isfinite(x).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':
