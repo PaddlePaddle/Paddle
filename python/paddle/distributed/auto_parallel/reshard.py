@@ -1483,15 +1483,15 @@ class Resharder:
                         [source_partition_index, [source_process], [False]]
                     )
                 else:
-                    partition_list = list(
-                        [item[0] for item in partition_process_mapping_list]
-                    )
-                    process_list = list(
-                        [item[1] for item in partition_process_mapping_list]
-                    )
-                    has_used = list(
-                        [item[2] for item in partition_process_mapping_list]
-                    )
+                    partition_list = [
+                        item[0] for item in partition_process_mapping_list
+                    ]
+                    process_list = [
+                        item[1] for item in partition_process_mapping_list
+                    ]
+                    has_used = [
+                        item[2] for item in partition_process_mapping_list
+                    ]
 
                     if partition_list.count(source_partition_index) == 1:
                         index = partition_list.index(source_partition_index)
@@ -1536,15 +1536,15 @@ class Resharder:
                         )
                         and source_partition_index not in has_sent
                     ):
-                        idx = list(
-                            [item[0] for item in partition_process_mapping_list]
-                        ).index(source_partition_index)
-                        has_used = list(
-                            [item[2] for item in partition_process_mapping_list]
-                        )[idx]
-                        process_list = list(
-                            [item[1] for item in partition_process_mapping_list]
-                        )[idx]
+                        idx = [
+                            item[0] for item in partition_process_mapping_list
+                        ].index(source_partition_index)
+                        has_used = [
+                            item[2] for item in partition_process_mapping_list
+                        ][idx]
+                        process_list = [
+                            item[1] for item in partition_process_mapping_list
+                        ][idx]
                         i = 0
                         while i < len(has_used):
                             if not has_used[i]:
@@ -1948,9 +1948,7 @@ class Resharder:
                     )
                 idx = idx_list[0]
 
-            elif isinstance(op_desc, SliceOpDesc) or isinstance(
-                op_desc, AllGatherConcatOpDesc
-            ):
+            elif isinstance(op_desc, (SliceOpDesc, AllGatherConcatOpDesc)):
                 target_tensor = None
                 if isinstance(op_desc, SliceOpDesc):
                     assert (
@@ -2716,6 +2714,8 @@ class Resharder:
                 )
                 # simplified processing: ignore union process mesh and output reshard
                 dist_op = self.dist_context.get_dist_op_for_program(op)
+                if not dist_tensor or not dist_op:
+                    return reshard_op_cost
                 dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
                     tensor.name
                 )

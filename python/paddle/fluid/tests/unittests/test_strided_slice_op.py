@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -99,7 +99,7 @@ class TestStrideSliceOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out', check_eager=True)
+        self.check_grad({'Input'}, 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)

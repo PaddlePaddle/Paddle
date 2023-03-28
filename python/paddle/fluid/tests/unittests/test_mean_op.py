@@ -21,9 +21,8 @@ from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 np.random.seed(10)
 

@@ -25,7 +25,7 @@ from test_dist_base import (
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.nn import Linear
 
 seed = 90

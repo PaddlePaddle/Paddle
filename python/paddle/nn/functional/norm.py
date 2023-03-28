@@ -16,8 +16,7 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype

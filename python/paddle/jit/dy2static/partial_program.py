@@ -1127,8 +1127,10 @@ def add_build_strategy_for(
         )
         ir_graph = framework.IrGraph(compiled_program._graph)
         builded_program = ir_graph.to_program()
-        if hasattr(compiled_program._program, 'lr_sheduler'):
-            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+        if hasattr(compiled_program._program, 'lr_scheduler'):
+            builded_program.lr_scheduler = (
+                compiled_program._program.lr_scheduler
+            )
     else:
         # can't just create a new program, we need copy the vardesc.
         builded_program = paddle.static.Program()
