@@ -64,17 +64,14 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
 
 #define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                    \
   do {                                                                       \
-    auto __tmp = (__VA_ARGS__);                                              \
-    using __SrcType = decltype(&__tmp);                                      \
+    auto __src = (__VA_ARGS__);                                              \
+    using __SrcType = decltype(&__src);                                      \
     using __DstType = typename std::remove_reference<decltype(__dst)>::type; \
-    auto __max_dst_value = std::numeric_limits<__DstType>::max();            \
-    if (!std::is_same<__SrcType, __DstType>::value) {                        \
-      PADDLE_ENFORCE_LE(                                                     \
-          __tmp,                                                             \
-          __max_dst_value,                                                   \
+    if (__src < std::numeric_limits<__DstType>::max()) {                     \
+      PADDLE_THROW(                                                          \
           phi::errors::InvalidArgument(#__dst " exceeds maximum value."));   \
     }                                                                        \
-    __dst = __tmp;                                                           \
+    __dst = __src;                                                           \
   } while (0)
 
 }  // namespace cutlass_internal
