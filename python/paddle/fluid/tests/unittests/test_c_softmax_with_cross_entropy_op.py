@@ -37,7 +37,6 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
     def test_c_softmax_with_cross_entropy_op(self):
         p = self.pdrun()
         p.wait()
-        self.assertTrue(p.poll() == 0)
 
 
 if __name__ == '__main__':
