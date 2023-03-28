@@ -15,15 +15,13 @@
 import unittest
 
 import numpy as np
+import parameterized as param
 from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     paddle_static_guard,
     skip_check_grad_ci,
 )
-from testsuite import create_op
-import parameterized as param
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from testsuite import create_op
 
 import paddle
@@ -48,22 +46,11 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
-def group_norm_wrapper(x, scale, bias, epsilon, groups, data_layout):
-    num_channels = x.shape[1]
-    func = paddle.nn.GroupNorm(
-        groups, num_channels, epsilon, False, False, data_layout
-    )
-    func.weight.stop_gradient = False
-    func.bias.stop_gradient = False
-    paddle.assign(scale, func.weight)
-    paddle.assign(bias, func.bias)
-    return func(x)
-
-
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+
                 def test_x_type():
                     input = np.random.random(2, 100, 3, 5).astype('float32')
                     groups = 2
