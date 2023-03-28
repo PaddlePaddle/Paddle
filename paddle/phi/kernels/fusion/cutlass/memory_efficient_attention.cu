@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
 
 namespace phi {
 namespace fusion {
@@ -195,7 +196,8 @@ void MemoryEfficientAttentionForwardKernel(
 
     if (bias) {
       p.attn_bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
-      p.bias_strideB = q_dims[2] * q_dims[1] * k_dims[1];
+      p.bias_strideB =
+          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims);
       p.bias_strideH = q_dims[1] * k_dims[1];
       p.bias_strideM = k_dims[1];
     } else {

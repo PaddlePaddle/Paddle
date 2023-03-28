@@ -981,7 +981,7 @@ def add_sync_comm(program, sharding_ring_id):
 
     assert sharding_ring_id >= 0, "sharding_ring_id should larger than zero"
     block = program.global_block()
-    not_sync_vars = set([])
+    not_sync_vars = set()
     for op in block.ops:
         if op.type in ["c_broadcast", "c_allreduce"]:
             for input_name in op.desc.input_arg_names():
