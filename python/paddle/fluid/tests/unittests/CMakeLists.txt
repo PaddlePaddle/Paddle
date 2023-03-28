@@ -1214,9 +1214,9 @@ set(TEST_CINN_OPS
     test_meshgrid_op
     test_gather_op)
 
-foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
+foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+    set_tests_properties(${TEST_CINN_OP} PROPERTIES LABELS "RUN_TYPE=CINN")
   endif()
 endforeach()
 
