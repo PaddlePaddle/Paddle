@@ -110,9 +110,9 @@ class TestProcessGroupFp32(unittest.TestCase):
 
         send_recv_result = paddle.assign(tensor_x)
         if rank == 0:
-            task = pg.send(tensor_x, 0)
+            task = pg.send(tensor_x, 1, True)
         else:
-            task = pg.recv(tensor_y, 1)
+            task = pg.recv(tensor_y, 0, True)
             assert np.array_equal(send_recv_result, tensor_y)
         print("test send_recv api ok")
 
