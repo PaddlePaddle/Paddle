@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -363,17 +363,12 @@ PD_REGISTER_KERNEL(fused_attention,
                    phi::dtype::float16,
                    double,
                    float) {
-  phi::DataType data_type;
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-      kernel_key.dtype() == phi::DataType::FLOAT32) {
-    data_type = phi::DataType::FLOAT32;
-  } else {
-    data_type = phi::DataType::FLOAT64;
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(15).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(16).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(0).SetDataType(data_type);
-  kernel->OutputAt(1).SetDataType(data_type);
-  kernel->OutputAt(3).SetDataType(data_type);
-  kernel->OutputAt(4).SetDataType(data_type);
-  kernel->OutputAt(15).SetDataType(data_type);
-  kernel->OutputAt(16).SetDataType(data_type);
 }
