@@ -34,7 +34,7 @@ def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
     var_tile = np.reshape(var, (n, c, 1, 1))
     var_tile = np.tile(var_tile, (1, 1, h, w))
 
-    x_norm = (x - mean_tile) / np.sqrt(var_tile + epsilon).astype('float32')
+    x_norm = (x - mean_tile) / np.sqrt(var_tile + epsilon)
     scale_tile = np.reshape(scale, (1, c, 1, 1))
     scale_tile = np.tile(scale_tile, (n, 1, h, w))
     bias_tile = np.reshape(bias, (1, c, 1, 1))
@@ -197,8 +197,14 @@ class TestInstanceNormFP64(TestInstanceNormOp):
 
     def test_check_output_cpu(self):
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-03, check_eager=True, check_prim=True
+            core.CPUPlace(), atol=1e-3, check_eager=True, check_prim=True
         )
+
+    def test_check_output_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), atol=1e-14, check_eager=True, check_prim=True
+            )
 
 
 class TestInstanceNormCase1(TestInstanceNormOp):
