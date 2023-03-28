@@ -592,7 +592,8 @@ class PrimForwardChecker:
                 args, len(inputs_sig)
             )
             ret = flatten(_as_list(self.public_python_api(*args)))
-            primapi.to_prim(main_program.blocks)
+            if core._is_fwd_prim_enabled():
+                primapi.to_prim(main_program.blocks)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1022,7 +1023,8 @@ class PrimGradChecker(PrimForwardChecker):
             outputs_dict = self.get_output_dict(
                 self.outputs, fw_outs, outputs_sig
             )
-            primapi.to_prim(main_program.blocks)
+            if core._is_fwd_prim_enabled():
+                primapi.to_prim(main_program.blocks)
             ys = []
             if isinstance(self.output_names, list):
                 for output_name in self.output_names:

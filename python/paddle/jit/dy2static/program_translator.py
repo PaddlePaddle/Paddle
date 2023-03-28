@@ -381,22 +381,12 @@ class StaticFunction:
         self._prim_state = PrimState()
         if kwargs.get("backend", None):
             self._prim_state.enable_all()
-
-        if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None), self._prim_state
-        ):
-            from paddle.static import InputSpec
-
-            for spec in flatten(input_spec):
-                if isinstance(spec, InputSpec) and -1 in spec.shape:
-                    input_spec = None
-                    warnings.warn(
-                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
-                    )
-                    break
-
+        self._build_strategy = kwargs.get("build_strategy", None)
         self._input_spec = input_spec
-        self._function_spec = FunctionSpec(function, input_spec)
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+
+        self._function_spec = FunctionSpec(function, self._input_spec)
         self._program_cache = ProgramCache()
         self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
@@ -407,14 +397,43 @@ class StaticFunction:
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
 
+    def _check_spec_neg_shape(self):
+        if self._input_spec is not None and prim_or_cinn_is_enabled(
+            self._build_strategy, self._prim_state
+        ):
+            from paddle.static import InputSpec
+
+            for spec in flatten(self._input_spec):
+                if isinstance(spec, InputSpec) and -1 in spec.shape:
+                    warnings.warn(
+                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
+                    )
+                    return True
+        return False
+
     def enable_prim_fwd(self):
         self._prim_state.enable_fwd()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
 
     def enable_prim_bwd(self):
         self._prim_state.enable_bwd()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
 
     def enable_prim_all(self):
         self._prim_state.enable_all()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
 
     @property
     def is_property(self):

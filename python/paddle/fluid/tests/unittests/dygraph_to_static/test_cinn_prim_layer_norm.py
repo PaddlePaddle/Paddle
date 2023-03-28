@@ -69,11 +69,11 @@ class TestPrimForward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_forward_enabled(use_prim)
         core._add_skip_comp_ops("sqrt")
         # TODO(Ruting) delete this after modify sqrt
         if use_prim:
             net = apply_to_static(net, use_prim)
+            net.forward.enable_prim_fwd()
 
         out = net(self.x, self.w, self.b)
         loss = paddle.mean(out)
@@ -139,11 +139,11 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_all_enabled(use_prim)
         core._add_skip_comp_ops("sqrt")
         # TODO(Ruting) delete this after modify sqrt
         if use_prim:
             net = apply_to_static(net, use_prim)
+            net.forward.enable_prim_all()
 
         out = net(self.x, self.w, self.b)
         loss = paddle.mean(out)
