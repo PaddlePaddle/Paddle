@@ -134,18 +134,17 @@ void ConvXPUInferMeta(const MetaTensor& Input,
           groups));
 
   // update paddings and dilations accoring to padding_algorithm
-  LOG(INFO) << "--------updating padding and dilations--------";
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
-                           &dilations_vec,
-                           padding_algorithm,
-                           in_data_dims,
-                           strides,
-                           ksize);
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_data_dims,
+                                strides,
+                                ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
@@ -157,12 +156,8 @@ void ConvXPUInferMeta(const MetaTensor& Input,
                                     strides[i]));
   }
   // set output and output max dims
-  for (size_t i = 0; i < out_shape.size(); ++i) {
-    LOG(INFO) << "out_shape[" << i << "] is:" << out_shape[i];
-  }
   Output->set_dims(DDim(out_shape.data(), out_shape.size()));
   OutputMax->set_dims(phi::make_ddim({4}));
-  LOG(INFO) << "--------infer out shape of conv_xpu done";
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(

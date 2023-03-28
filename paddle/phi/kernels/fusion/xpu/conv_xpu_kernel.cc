@@ -38,6 +38,7 @@ void ConvXPUKernel(const Context& ctx,
                    float act_param,
                    DenseTensor* Output,
                    DenseTensor* OutputMax) {
+  VLOG(4) << "-------------start running xpu::conv2d_fusion";
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = Input.dims();
   auto filter_dims = Filter.dims();
@@ -80,7 +81,6 @@ void ConvXPUKernel(const Context& ctx,
   } else if (act_type == 15) {
     act.hard_sigmoid_slope = act_param;
   }
-  LOG(INFO) << "-------------start running xpu::conv2d_fusion";
   int r =
       xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX/TW/TY/TGEMM
           /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
@@ -105,7 +105,7 @@ void ConvXPUKernel(const Context& ctx,
           /* const TY* branch */ branch_data,
           /* const baidu::xpu::api::Activation_t& act */ act,
           /* const float* branch_maxptr */ nullptr);
-          // /* const float* scale */ nullptr);
+  // /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
 }
 

@@ -26,7 +26,7 @@ class TestConvXPUFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["conv_xpu"], (1e-3, 1e-3)
 
-    def is_program_valid(self, prog_config): 
+    def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
         strides = prog_config.ops[0].attrs["strides"]
         groups = prog_config.ops[0].attrs["groups"]
@@ -118,8 +118,8 @@ class TestConvXPUFusePass(PassAutoScanTest):
 
         axis = 1
         ew_bias_shape = [w_shape[0]]
-        
-         # Random choose if add a relu operator
+
+        # Random choose if add a relu operator
         has_relu = True
 
         def generate_data(shape):
@@ -184,6 +184,7 @@ class TestConvXPUFusePass(PassAutoScanTest):
             max_examples=25,
             passes=["conv_xpu_fuse_pass"],
         )
+
 
 if __name__ == "__main__":
     unittest.main()
