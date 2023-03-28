@@ -2196,7 +2196,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
           "The number of input tensors in multi_dot op should > 1."));
 
   const size_t n = inputs_dims.size();
-  auto first_dim = inputs_dims.at(0);
+  auto first_dim = inputs_dims[0];
 
   bool is_vector = false;
   phi::DDim out_dim;
