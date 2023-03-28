@@ -75,7 +75,7 @@ from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
 )
 from paddle.incubate.distributed.fleet.parameter_server.ir import (
-    public as public,
+    public,
 )
 
 

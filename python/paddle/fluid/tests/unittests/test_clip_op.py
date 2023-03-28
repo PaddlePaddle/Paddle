@@ -116,7 +116,7 @@ class TestCase5(TestClipOp):
 
 class TestCase6(TestClipOp):
     def initTestCase(self):
-        self.dtype == np.float16
+        self.dtype = np.float16
         self.shape = (4, 8, 8)
         self.max = 0.7
         self.min = 0.2

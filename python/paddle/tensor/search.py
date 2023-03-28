@@ -430,6 +430,22 @@ def nonzero(x, as_tuple=False):
     if in_dygraph_mode():
         outs = _C_ops.nonzero(x)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'int16',
+                'int32',
+                'int64',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'bool',
+            ],
+            'where_index',
+        )
+
         helper = LayerHelper("where_index", **locals())
 
         outs = helper.create_variable_for_type_inference(

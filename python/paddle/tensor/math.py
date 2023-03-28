@@ -1651,7 +1651,7 @@ def add_n(inputs, name=None):
     else:
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             if len(inputs) > 0:
                 for input in inputs:
                     check_variable_and_dtype(

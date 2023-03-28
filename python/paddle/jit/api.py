@@ -915,9 +915,7 @@ def save(layer, path, input_spec=None, **configs):
         )
 
     if not (
-        isinstance(layer, Layer)
-        or inspect.isfunction(layer)
-        or isinstance(layer, StaticFunction)
+        isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
