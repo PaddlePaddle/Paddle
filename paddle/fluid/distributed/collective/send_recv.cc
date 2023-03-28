@@ -27,7 +27,7 @@ void send_recv(SendRecvOptions* opts) {
   const auto& context = opts->context;
   gloo::transport::UnboundBuffer* in = opts->in.get();
   gloo::transport::UnboundBuffer* out = opts->out.get();
-  const auto slot = gloo::Slot::build(gloo::kBroadcastSlotPrefix, opts->tag);
+  const auto slot = gloo::Slot::build(kSendRecvSlotPrefix, opts->tag);
 
   if (context->rank == opts->src) {
     in->send((context->rank + 1) % 2, slot);
