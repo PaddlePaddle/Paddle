@@ -133,13 +133,14 @@ void tanh_double_grad(const Tensor& out,
                       Tensor* grad_out_grad) {
   // tanh grad grad : ddout = (1 - out^2) * ddx, dout = - (dout_old * 2 * out *
   // ddx)
+  auto out_m_grad_x_grad = out * grad_x_grad;
   if (out_grad) {
-    auto out_grad_tmp = -1 * grad_out * 2 * out * grad_x_grad;
+    auto out_grad_tmp = -2 * grad_out * out_m_grad_x_grad;
     set_output<T>(out_grad_tmp, out_grad);
   }
 
   if (grad_out_grad) {
-    auto grad_out_grad_tmp = (1 - out * out) * grad_x_grad;
+    auto grad_out_grad_tmp = grad_x_grad - out * out_m_grad_x_grad;
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }
