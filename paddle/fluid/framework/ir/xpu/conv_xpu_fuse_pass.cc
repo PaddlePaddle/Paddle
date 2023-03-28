@@ -96,7 +96,6 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
       with_branch_(with_branch_x || with_branch_y),
       with_branch_x_(with_branch_x),
       with_branch_y_(with_branch_y) {
-  LOG(INFO) << "---------conv_type is: " << conv_type;
   auto conv = pattern->NewNode(conv_repr())->assert_is_op(conv_type_);
   auto input = pattern->NewNode(input_repr())
                    ->assert_is_op_input(conv_type_, "Input")
@@ -113,7 +112,6 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
   PDNode* ew_bias_add_y = nullptr;
   PDNode* ew_bias_add_out = nullptr;
   if (with_conv_bias_) {
-    LOG(INFO) << "--------------pattern---------------with_conv_bias";
     conv_out->assert_is_op_input("elementwise_add", "X");
     ew_bias_add_y = pattern->NewNode(ew_bias_add_y_repr())
                         ->assert_is_op_input("elementwise_add", "Y")
@@ -122,8 +120,7 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
     ew_bias_add =
         pattern->NewNode(ew_bias_add_repr())->assert_is_op("elementwise_add");
     ew_bias_add_out = pattern->NewNode(ew_bias_add_out_repr())
-                          ->assert_is_op_output("elementwise_add", "Out")
-                          ->assert_var_not_persistable();
+                          ->assert_is_op_output("elementwise_add", "Out");
     ew_bias_add->LinksFrom({conv_out, ew_bias_add_y})
         .LinksTo({ew_bias_add_out});
   } else {
@@ -146,7 +143,6 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
   PDNode* act_out = nullptr;
   // batch_norm op
   if (with_bn_) {
-    LOG(INFO) << "-------------pattern-------------with_bn";
     ew_bias_add_out->assert_is_op_input("batch_norm", "X");
     bn_bias = pattern->NewNode(bn_bias_repr())
                   ->assert_is_op_input("batch_norm", "Bias")
@@ -162,8 +158,7 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
                  ->assert_has_n_outputs(1);
     bn = pattern->NewNode(bn_repr())->assert_is_op("batch_norm");
     bn_out = pattern->NewNode(bn_out_repr())
-                 ->assert_is_op_output("batch_norm", "Y")
-                 ->assert_var_not_persistable();
+                 ->assert_is_op_output("batch_norm", "Y");
     bn_mean_out = pattern->NewNode(bn_mean_out_repr())
                       ->assert_is_op_output("batch_norm", "MeanOut");
     bn_saved_mean = pattern->NewNode(bn_saved_mean_repr())
@@ -181,31 +176,28 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
   // ew_branch_add op
   if (with_branch_) {
     if (with_branch_x_) {
-      LOG(INFO) << "-------------pattern-------------with_branch_x";
-      bn_out->assert_is_op_input("elementwise_add", "Y");
+      bn_out->assert_is_op_input("elementwise_add", "Y")
+            ->AsIntermediate();
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "X")
-                             ->assert_is_persistable_var()
                              ->AsInput()
                              ->assert_more([](Node* node) {
-                               return node->Var()->GetShape().size() == 4;
-                             });
+                              return node->Var()->GetShape().size() == 4;
+                            });
     } else if (with_branch_y_) {
-      LOG(INFO) << "-------------pattern-------------with_branch_y";
-      bn_out->assert_is_op_input("elementwise_add", "X");
+      bn_out->assert_is_op_input("elementwise_add", "X")
+            ->AsIntermediate();
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "Y")
-                             ->assert_is_persistable_var()
                              ->AsInput()
                              ->assert_more([](Node* node) {
-                               return node->Var()->GetShape().size() == 4;
-                             });
+                              return node->Var()->GetShape().size() == 4;
+                            });
     }
     ew_branch_add =
         pattern->NewNode(ew_branch_add_repr())->assert_is_op("elementwise_add");
     ew_branch_add_out = pattern->NewNode(ew_branch_add_out_repr())
-                            ->assert_is_op_output("elementwise_add", "Out")
-                            ->assert_var_not_persistable();
+                            ->assert_is_op_output("elementwise_add", "Out");
     ew_branch_add->LinksFrom({bn_out, ew_branch_add_in})
         .LinksTo({ew_branch_add_out});
   } else {
@@ -213,8 +205,8 @@ ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
   }
   // act op
   if (!act_type_.empty()) {
-    LOG(INFO) << "-------------pattern-------------with_act:" << act_type_;
-    ew_branch_add_out->assert_is_op_input(act_type_, "X");
+    ew_branch_add_out->assert_is_op_input(act_type_, "X")
+                     ->AsIntermediate();
     act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
     act_out = pattern->NewNode(act_out_repr())
                   ->assert_is_op_output(act_type_, "Out")
@@ -332,13 +324,13 @@ void ConvXPUFusePass::ApplyImpl(ir::Graph* graph) const {
             for (auto act_type : {
                      "relu",
                      "sigmoid",
-                     "tanh",
-                     "gelu",
-                     "leaky_relu",
-                     "hard_swish",
-                     "hard_sigmoid",
-                     "relu6",
-                     "swish",
+                    //  "tanh",
+                    //  "gelu",
+                    //  "leaky_relu",
+                    //  "hard_swish",
+                    //  "hard_sigmoid",
+                    //  "relu6",
+                    //  "swish",
                      "",
                  }) {
               if (with_branch_x && with_branch_y) continue;
@@ -356,7 +348,6 @@ void ConvXPUFusePass::ApplyImpl(ir::Graph* graph) const {
     }
   }
   AddStatis(found_subgraph_count);
-  LOG(INFO) << "------------Detected subgraph num is: " << found_subgraph_count;
 }
 
 int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
@@ -377,8 +368,6 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
                                    with_bn,
                                    with_branch_x,
                                    with_branch_y);
-  LOG(INFO) << "---------------pattern dot is:"
-            << gpd.mutable_pattern()->DotString();
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -497,6 +486,7 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
       }
     }
+    LOG(INFO) << "----------end process fusion_bias_ptr" ;
     // filter max
     Node* filter_int16 = nullptr;
     Node* filter_max = nullptr;
@@ -536,19 +526,20 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
       conv_xpu_op_desc.SetAttr("has_bias", has_bias);
     }
     // set ew_branch_add input node
-    if (ew_branch_add != nullptr) {
+    if (ew_branch_add_in != nullptr) {
       LOG(INFO) << "----deal with branch node,it's name is: "
                 << ew_branch_add_in->Name();
-      auto* branch_t = scope->FindVar(ew_branch_add_in->Name())
-                           ->GetMutable<phi::DenseTensor>();
-      auto branch_dims = branch_t->dims();
-      PADDLE_ENFORCE_EQ(branch_dims.size(),
-                        4UL,
-                        platform::errors::InvalidArgument(
-                            "Required shape rank of Attribute(%s) == 4, "
-                            "but received rank == %s",
-                            ew_branch_add_in->Name(),
-                            branch_dims.size()));
+      // auto* branch_t = scope->FindVar(ew_branch_add_in->Name())
+      //                      ->GetMutable<phi::DenseTensor>();
+      // LOG(INFO) << "-------get ew_branch_add_in tensor";
+      // auto branch_dims = branch_t->dims();
+      // PADDLE_ENFORCE_EQ(branch_dims.size(),
+      //                   4UL,
+      //                   platform::errors::InvalidArgument(
+      //                       "Required shape rank of Attribute(%s) == 4, "
+      //                       "but received rank == %s",
+      //                       ew_branch_add_in->Name(),
+      //                       branch_dims.size()));
       conv_xpu_op_desc.SetInput("Branch", {ew_branch_add_in->Name()});
     }
     // set attrs of conv_xpu
@@ -614,7 +605,7 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
       SAFE_IR_NODE_LINK_TO(fusion_bias_node, conv_xpu);
       // LOG(INFO) << "----fusion_bias node link success!";
     }
-    if (ew_branch_add) {
+    if (ew_branch_add_in) {
       IR_NODE_LINK_TO(ew_branch_add_in, conv_xpu);
       // LOG(INFO) << "----ew_branch_add node link success!";
     }
@@ -630,7 +621,6 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
       IR_NODE_LINK_TO(conv_xpu, conv_out);
     }
     IR_NODE_LINK_TO(conv_xpu, conv_xpu_out_max);
-    LOG(INFO) << "----conv_out node link success!";
     LOG(INFO) << "----start delete useless node";
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {conv};
