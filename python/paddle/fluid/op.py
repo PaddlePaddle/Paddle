@@ -35,7 +35,7 @@ def make_scalar_proto(value):
         complex_value = framework_pb2.Complex()
         complex_value.r = value.real
         complex_value.i = value.imag
-        s.c.CopyFrom(value)
+        s.c.CopyFrom(complex_value)
     return s
 
 

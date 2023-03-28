@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid import framework
+from paddle.fluid import framework, op
 
 
 class TestWarpAsScalar(unittest.TestCase):
@@ -100,3 +100,22 @@ class TestScalarValue(unittest.TestCase):
         s1 = framework.wrap_as_scalar(42)
         s2 = framework.wrap_as_scalar(s1)
         self.assertEqual(s2.value(), s1.value())
+
+
+class TestScalarProto(unittest.TestCase):
+    def test_make_scalar_proto_for_int(self):
+        s = op.make_scalar_proto(42)
+        self.assertEqual(s.i, 42)
+
+    def test_make_scalar_proto_for_float(self):
+        s = op.make_scalar_proto(42.1)
+        self.assertEqual(s.r, 42.1)
+
+    def test_make_scalar_proto_for_bool(self):
+        s = op.make_scalar_proto(True)
+        self.assertEqual(s.b, True)
+
+    def test_make_scalar_proto_for_complex(self):
+        s = op.make_scalar_proto(42.1 + 42.2j)
+        self.assertEqual(s.c.r, 42.1)
+        self.assertEqual(s.c.i, 42.2)
