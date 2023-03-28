@@ -553,7 +553,7 @@ def _lower(block, reverse, blacklist):
 def _lower_composite(
     block,
     filter_: typing.Callable[[framework.Operator], bool] = lambda x: True,
-    start_idx=-1,
+    start_idx=0,
     backward_length=0,
 ):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
