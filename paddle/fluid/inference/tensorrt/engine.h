@@ -808,6 +808,7 @@ class TensorRTEngine {
   // TensorRT related internal members
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
+  infer_ptr<nvinfer1::IRuntime> infer_runtime_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
