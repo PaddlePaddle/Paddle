@@ -813,15 +813,6 @@
     data_type : x
   backward : hsigmoid_loss_grad
 
-- op : huber_loss
-  args : (Tensor input, Tensor label, float delta)
-  output : Tensor(out), Tensor(residual)
-  infer_meta :
-    func : HuberLossInferMeta
-  kernel :
-    func : huber_loss
-  backward : huber_loss_grad
-
 - op : increment
   args : (Tensor x, float value = 1.0)
   output : Tensor(out)
