@@ -1736,22 +1736,26 @@ __global__ void ActFFNGlu(const T *input,
                           T *output,
                           Functor act_functor,
                           const int token_num,
-                          const int hid_dim) {
-  int bi = blockIdx.x;
-  const T *input_this_thread = input + bi * hid_dim * 2;
-  T *output_this_thread = output + bi * hid_dim;
+                          const int hid_dim,
+                          const int elem_num) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec1;
   LoadT src_vec2;
-  for (int i = threadIdx.x * VecSize; i < hid_dim; i += blockDim.x * VecSize) {
-    phi::Load<T, VecSize>(&input_this_thread[i], &src_vec1);
-    phi::Load<T, VecSize>(&input_this_thread[i + hid_dim], &src_vec2);
+  const int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = global_tid * VecSize; i < elem_num;
+       i += gridDim.x * blockDim.x * VecSize) {
+    int bi = i / hid_dim;
+    int idx = i % hid_dim;
+    const T *input_this_thread = input + bi * hid_dim * 2;
+    T *output_this_thread = output + bi * hid_dim;
+    phi::Load<T, VecSize>(&input_this_thread[idx], &src_vec1);
+    phi::Load<T, VecSize>(&input_this_thread[idx + hid_dim], &src_vec2);
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
       src_vec1[j] = act_functor(src_vec1[j]);
       src_vec1[j] *= src_vec2[j];
     }
-    phi::Store<T, VecSize>(src_vec1, &output_this_thread[i]);
+    phi::Store<T, VecSize>(src_vec1, &output_this_thread[idx]);
   }
 }
 
@@ -1789,28 +1793,31 @@ class FFNGluHelper {
     Functor functor;
     constexpr int VecSize = 16;
     constexpr int PackSize = VecSize / sizeof(T);
-    int grid_size = token_num_;
-    int block_size = 256;
+    const int elem_cnt = token_num_ * hid_dim_;
+    const int blocksize = 128;
+    int grid_size = 1;
     switch (hid_dim_ % PackSize) {
       case 0:
-        block_size = min(hid_dim_ / PackSize, 256);
+        GetNumBlocks(elem_cnt / PackSize, &grid_size);
         ActFFNGlu<T, Functor, PackSize>
-            <<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
+            <<<grid_size, blocksize, 0, dev_ctx_.stream()>>>(
                 bias_out->data<T>(),
                 output->data<T>(),
                 functor,
                 token_num_,
-                hid_dim_);
+                hid_dim_,
+                elem_cnt);
         break;
       default:
-        block_size = min(hid_dim_, 256);
+        GetNumBlocks(elem_cnt, &grid_size);
         ActFFNGlu<T, Functor, 1>
-            <<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
+            <<<grid_size, blocksize, 0, dev_ctx_.stream()>>>(
                 bias_out->data<T>(),
                 output->data<T>(),
                 functor,
                 token_num_,
-                hid_dim_);
+                hid_dim_,
+                elem_cnt);
         break;
     }
   }
