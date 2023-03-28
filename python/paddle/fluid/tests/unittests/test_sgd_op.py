@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
@@ -25,9 +25,19 @@ from paddle.fluid.op import Operator
 paddle.enable_static()
 
 
+def sgd_wrapper(
+    param, learning_rate, grad, master_param=None, multi_precision=False
+):
+    paddle._C_ops.sgd_(
+        param, learning_rate, grad, master_param, multi_precision
+    )
+
+
 class TestSGDOp(OpTest):
     def setUp(self):
         self.op_type = "sgd"
+        self.python_api = sgd_wrapper
+        self.python_out_sig = ['Out']
         self.conf()
         w = np.random.random((self.h, self.w)).astype("float32")
         g = np.random.random((self.h, self.w)).astype("float32")

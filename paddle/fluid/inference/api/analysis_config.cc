@@ -211,11 +211,25 @@ void AnalysisConfig::EnableNpu(int device_id) {
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
-                                        int device_id) {
+                                        int device_id,
+                                        Precision precision_mode) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   use_custom_device_ = true;
   custom_device_id_ = device_id;
   custom_device_type_ = device_type;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_custom_device_mixed_ = true;
+    LOG(INFO) << "enable_custom_device_mixed_";
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-CustomDevice inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableCustomDevice function."));
+  }
 #else
   LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
   use_custom_device_ = false;
@@ -540,6 +554,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+  CP_MEMBER(enable_custom_device_mixed_);
 
   // JITLayer relate
   CP_MEMBER(apply_optim_);

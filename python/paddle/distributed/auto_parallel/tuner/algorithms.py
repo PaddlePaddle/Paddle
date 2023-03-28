@@ -119,7 +119,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         stage_range = self._config.sharding.get("tuning_range", None)
         if stage_range:
             assert set(stage_range).issubset(
-                set([0, 1, 2, 3])
+                {0, 1, 2, 3}
             ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
                 stage_range
             )
