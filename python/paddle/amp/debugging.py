@@ -31,10 +31,14 @@ def _get_operator_stats_flag():
 
 def _print_operator_stats(op_count_dict):
     """
-    Parse and print the stats of operators, mainly including the calls of dtypes such as different fp32, fp16, bf16 and others.
+    Parse and print the stats of operators, mainly including the calls of
+    dtypes such as different fp32, fp16, bf16 and others.
 
     Args:
-        op_count_dict(dict): a dict to record the number of calls for different operator and dtype. An example is {'conv2d': '1,0,0,0', 'elementwise_add': '1,0,0,0'}.
+        op_count_dict(dict): a dict to record the number of calls for different
+            operator and dtype. An example is
+            {'conv2d': '1,0,0,0', 'elementwise_add': '1,0,0,0'} or
+            {'conv2d': [1, 0, 0, 0], 'elementwise_add': [1, 0, 0, 0]}.
     """
     print("<{:-^120}>".format(" op list "))
     total_ops = 0
@@ -73,11 +77,9 @@ def _print_operator_stats(op_count_dict):
 
 @dygraph_only
 def enable_operator_stats_collection():
-    if _get_operator_stats_flag():
-        # Clear the previous stats.
-        pass
-    else:
-        paddle.set_flags({'FLAGS_low_precision_op_list': 1})
+    # Clear the previous stats.
+    paddle.fluid.core.clear_low_precision_op_list()
+    paddle.set_flags({'FLAGS_low_precision_op_list': 1})
 
 
 @dygraph_only
