@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -211,7 +211,7 @@ class TestEyeBF16OP(OpTest):
             'num_rows': 219,
             'num_columns': 319,
         }
-        self.outputs = {'Out': convert_float_to_uint16(np.eye(219, 319))}
+        self.outputs = {'Out': np.eye(219, 319)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
