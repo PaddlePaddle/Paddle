@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/include/experimental/phi/common/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -84,9 +85,9 @@ void LaunchMultiTensorApplyKernel(
           "input_vector[0].size() is not > 0, please cheack params."));
   auto ctx_place = dev_ctx.GetPlace();
   PADDLE_ENFORCE_EQ(
-      ctx_place.GetType() == phi::AllocationType::GPU,
+      ctx_place.GetType() == AllocationType::GPU,
       true,
-      paddle::platform::errors::PreconditionNotMet(
+      errors::PreconditionNotMet(
           "Context place error, excepted GPUPlace, but actually %s.",
           ctx_place));
   auto place = input_vector[0][0]->place();
