@@ -16,6 +16,12 @@
 
 namespace ir {
 namespace detail {
+uint32_t ValueImpl::index() const {
+  uint32_t index = reinterpret_cast<uintptr_t>(offset_first_user_) & 0x07;
+  if (index < 6) return index;
+  return ir::dyn_cast<OpOutlineResultImpl>(ir::dyn_cast<OpResultImpl>(this))
+      ->GetResultIndex();
+}
 
 uint32_t OpResultImpl::GetResultIndex() const {
   if (const auto *outline_result = ir::dyn_cast<OpOutlineResultImpl>(this)) {
@@ -35,7 +41,8 @@ ir::Operation *OpResultImpl::owner() const {
   // maximum inline result.
   const OpOutlineResultImpl *outline_result =
       (const OpOutlineResultImpl *)(this);
-  outline_result += (outline_result->outline_index_ + 1);
+  outline_result +=
+      (outline_result->outline_index_ - GetMaxInlineResultIndex());
   // The offset of the maximum inline result distance op is
   // GetMaxInlineResultIndex.
   const auto *inline_result =

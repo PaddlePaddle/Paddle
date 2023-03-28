@@ -47,9 +47,7 @@ class alignas(8) ValueImpl {
   ///
   /// \brief Interface functions of "offset_first_user_" attribute.
   ///
-  uint32_t index() const {
-    return reinterpret_cast<uintptr_t>(offset_first_user_) & 0x07;
-  }
+  uint32_t index() const;
 
   OpOperandImpl *first_user() {
     return reinterpret_cast<OpOperandImpl *>(
@@ -105,9 +103,7 @@ class alignas(8) OpResultImpl : public ValueImpl {
  public:
   using ValueImpl::ValueImpl;
 
-  static bool classof(const ValueImpl &value) {
-    return value.index() <= OUTLINE_OP_RESULT_INDEX;
-  }
+  static bool classof(const ValueImpl &value) { return true; }
 
   ///
   /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
@@ -157,12 +153,10 @@ class OpOutlineResultImpl : public OpResultImpl {
         outline_index_(outline_index) {}
 
   static bool classof(const OpResultImpl &value) {
-    return value.index() == OUTLINE_OP_RESULT_INDEX;
+    return value.index() >= OUTLINE_OP_RESULT_INDEX;
   }
 
-  uint32_t GetResultIndex() const {
-    return outline_index_ + GetMaxInlineResultIndex() + 1;
-  }
+  uint32_t GetResultIndex() const { return outline_index_; }
 
   uint32_t outline_index_;
 };
