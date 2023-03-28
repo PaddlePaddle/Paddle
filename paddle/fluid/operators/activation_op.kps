@@ -218,7 +218,10 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<phi::GPUContext,                           \
                                     ops::grad_functor<plat::bfloat16>>);
 
-REGISTER_ACTIVATION_CUDA_KERNEL(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor)
+REGISTER_ACTIVATION_CUDA_KERNEL(soft_relu,
+                                SoftRelu,
+                                CudaSoftReluFunctor,
+                                CudaSoftReluGradFunctor)
 
 #ifdef PADDLE_WITH_XPU_KP
 REGISTER_OP_KERNEL(
