@@ -19,57 +19,55 @@ import yaml
 ####################
 # Global Variables #
 ####################
-ops_to_fill_zero_for_empty_grads = set(
-    [
-        "split_grad",
-        "split_with_num_grad",
-        "rnn_grad",
-        "matmul_double_grad",
-        "matmul_triple_grad",
-        "sigmoid_double_grad",
-        "sigmoid_triple_grad",
-        "add_double_grad",
-        "add_triple_grad",
-        "multiply_grad",
-        "multiply_double_grad",
-        "multiply_triple_grad",
-        "conv2d_grad_grad",
-        "conv2d_transpose_double_grad",
-        "batch_norm_double_grad",
-        "tanh_grad",
-        "tanh_double_grad",
-        "tanh_triple_grad",
-        "sin_double_grad",
-        "sin_triple_grad",
-        "cos_double_grad",
-        "cos_triple_grad",
-        "subtract_double_grad",
-        "divide_double_grad",
-        "log_double_grad",
-        "elu_double_grad",
-        "leaky_relu_double_grad",
-        "sqrt_double_grad",
-        "rsqrt_double_grad",
-        "square_double_grad",
-        "celu_double_grad",
-        "pad_double_grad",
-        "pad3d_double_grad",
-        "squeeze_double_grad",
-        "unsqueeze_double_grad",
-        "instance_norm_double_grad",
-        "conv3d_double_grad",
-        "depthwise_conv2d_grad_grad",
-        "concat_double_grad",
-        "expand_grad",
-        "argsort_grad",
-        "eigh_grad",
-        "add_grad",
-        "subtract_grad",
-        "multiply_grad",
-        "divide_grad",
-        "matmul_grad",
-    ]
-)
+ops_to_fill_zero_for_empty_grads = {
+    "split_grad",
+    "split_with_num_grad",
+    "rnn_grad",
+    "matmul_double_grad",
+    "matmul_triple_grad",
+    "sigmoid_double_grad",
+    "sigmoid_triple_grad",
+    "add_double_grad",
+    "add_triple_grad",
+    "multiply_grad",
+    "multiply_double_grad",
+    "multiply_triple_grad",
+    "conv2d_grad_grad",
+    "conv2d_transpose_double_grad",
+    "batch_norm_double_grad",
+    "tanh_grad",
+    "tanh_double_grad",
+    "tanh_triple_grad",
+    "sin_double_grad",
+    "sin_triple_grad",
+    "cos_double_grad",
+    "cos_triple_grad",
+    "subtract_double_grad",
+    "divide_double_grad",
+    "log_double_grad",
+    "elu_double_grad",
+    "leaky_relu_double_grad",
+    "sqrt_double_grad",
+    "rsqrt_double_grad",
+    "square_double_grad",
+    "celu_double_grad",
+    "pad_double_grad",
+    "pad3d_double_grad",
+    "squeeze_double_grad",
+    "unsqueeze_double_grad",
+    "instance_norm_double_grad",
+    "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad",
+    "concat_double_grad",
+    "expand_grad",
+    "argsort_grad",
+    "eigh_grad",
+    "add_grad",
+    "subtract_grad",
+    "multiply_grad",
+    "divide_grad",
+    "matmul_grad",
+}
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -119,12 +117,31 @@ def ReadFwdFile(filepath):
     # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
+    # not all fused ops supoort dygraph
+    if filepath.endswith("fused_ops.yaml") is True:
+        new_apis = [
+            api
+            for api in contents
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        contents = new_apis
     return contents if contents is not None else []
 
 
 def ReadBwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
+    # not all fused ops supoort dygraph
+    if filepath.endswith("fused_backward.yaml") is True:
+        new_apis = [
+            api
+            for api in contents
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        contents = new_apis
+
     ret = {}
     if contents is not None:
         for content in contents:

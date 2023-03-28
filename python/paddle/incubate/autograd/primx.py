@@ -17,7 +17,7 @@ import typing
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
@@ -633,14 +633,13 @@ def _lower_composite(
                             f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                             f'but orig_out: {orig_out.name}.dtype={orig_out.dtype} and new_out: {new_out.name}.dtype={new_out.dtype}'
                         )
-                        if orig_out.shape and new_out.shape:
-                            assert (
-                                -1 not in new_out.shape
-                            ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
-                            assert orig_out.shape == new_out.shape, (
-                                f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
-                                f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
-                            )
+                        assert (
+                            -1 not in new_out.shape
+                        ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        assert orig_out.shape == new_out.shape, (
+                            f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                            f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
+                        )
                         assert not (orig_out is None) ^ (
                             new_out is None
                         ), "orig_out and new_out should match."
