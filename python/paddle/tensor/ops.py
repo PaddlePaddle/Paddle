@@ -47,6 +47,7 @@ __inplace_unary_func__ = [
     'floor_',
     'round_',
     'reciprocal_',
+    'sigmoid_',
 ]
 
 __all__ = []
@@ -919,7 +920,10 @@ def sqrt(x, name=None):
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sqrt'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'sqrt',
         )
         helper = LayerHelper('sqrt', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1021,7 +1025,7 @@ def erf(x, name=None):
         return _C_ops.erf(x)
 
     locals_var = locals().copy()
-    kwargs = dict()
+    kwargs = {}
     for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val

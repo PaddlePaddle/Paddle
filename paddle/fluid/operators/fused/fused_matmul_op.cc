@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -37,96 +44,6 @@ static std::vector<int64_t> GetInputShape(phi::DDim dim,
 class FusedMatmulOp : public MatMulV2Op {
  public:
   using MatMulV2Op::MatMulV2Op;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fused_matmul");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fused_matmul");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fused_matmul");
-    bool trans_x = ctx->Attrs().Get<bool>("trans_x");
-    bool trans_y = ctx->Attrs().Get<bool>("trans_y");
-
-    std::vector<int64_t> dims_x =
-        GetInputShape(ctx->GetInputDim("X"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_X"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_X"));
-    std::vector<int64_t> dims_y =
-        GetInputShape(ctx->GetInputDim("Y"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_Y"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_Y"));
-
-    auto ndims_x = dims_x.size();
-    auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-
-    bool x_broadcasted = false;
-    bool y_broadcasted = false;
-
-    if (ndims_x == 1) {
-      dims_x.insert(dims_x.begin(), 1);
-      ndims_x = 2;
-      x_broadcasted = true;
-    }
-
-    if (ndims_y == 1) {
-      dims_y.push_back(1);
-      ndims_y = 2;
-      y_broadcasted = true;
-    }
-
-    size_t M, N;
-    if (trans_x) {
-      M = dims_x[ndims_x - 1];
-    } else {
-      M = dims_x[ndims_x - 2];
-    }
-    if (trans_y) {
-      N = dims_y[ndims_y - 2];
-    } else {
-      N = dims_y[ndims_y - 1];
-    }
-
-    std::vector<int64_t> new_dims;
-    if (ndims_x > ndims_y) {
-      new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else if (ndims_x < ndims_y) {
-      new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-    } else {
-      new_dims.reserve(ndims_x);
-      for (size_t i = 0; i < ndims_x - 2; ++i) {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-      }
-    }
-    if (!x_broadcasted) {
-      new_dims.push_back(M);
-    }
-    if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
-    }
-
-    auto ddim_out = phi::make_ddim(new_dims);
-
-    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    auto is_output_fused = (!shape.empty() && !axis.empty());
-    if (is_output_fused) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-
-    ctx->SetOutputDim("Out", ddim_out);
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 class FusedMatmulOpMaker : public MatMulV2OpMaker {
@@ -198,9 +115,13 @@ class FusedMatmulOpMaker : public MatMulV2OpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(fused_matmul,
+                            FusedMatmulInferShapeFunctor,
+                            PD_INFER_META(phi::FusedMatmulInferMeta));
 REGISTER_OPERATOR(
     fused_matmul,
     ops::FusedMatmulOp,
     ops::FusedMatmulOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FusedMatmulInferShapeFunctor);

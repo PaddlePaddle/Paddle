@@ -16,12 +16,11 @@ import platform
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.nn.functional import interpolate
 
 
@@ -178,12 +177,12 @@ class TestLinearInterpOp(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7, check_eager=True)
+            self.check_output(atol=1e-7)
         else:
-            self.check_output(atol=1e-5, check_eager=True)
+            self.check_output(atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'linear'
@@ -340,6 +339,7 @@ class TestResizeLinearOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "linear_interp_v2"
+        self.python_api = linear_interp_test
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
@@ -400,32 +400,39 @@ class TestResizeLinearOpUint8(OpTest):
 
 class TestLinearInterpOpError(unittest.TestCase):
     def test_error(self):
-        with program_guard(Program(), Program()):
+        with paddle_static_guard():
+            with program_guard(Program(), Program()):
 
-            def input_shape_error():
-                x1 = fluid.data(name="x1", shape=[1], dtype="float32")
-                out1 = paddle.nn.Upsample(
-                    size=[256], data_format='NCW', mode='linear'
-                )
-                out1_res = out1(x1)
+                def input_shape_error():
+                    x1 = paddle.static.data(
+                        name="x1", shape=[1], dtype="float32"
+                    )
+                    out1 = paddle.nn.Upsample(
+                        size=[256], data_format='NCW', mode='linear'
+                    )
+                    out1_res = out1(x1)
 
-            def data_format_error():
-                x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
-                out2 = paddle.nn.Upsample(
-                    size=[256], data_format='NHWCD', mode='linear'
-                )
-                out2_res = out2(x2)
+                def data_format_error():
+                    x2 = paddle.static.data(
+                        name="x2", shape=[1, 3, 128], dtype="float32"
+                    )
+                    out2 = paddle.nn.Upsample(
+                        size=[256], data_format='NHWCD', mode='linear'
+                    )
+                    out2_res = out2(x2)
 
-            def out_shape_error():
-                x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
-                out3 = paddle.nn.Upsample(
-                    size=[256, 256], data_format='NHWC', mode='linear'
-                )
-                out3_res = out3(x3)
+                def out_shape_error():
+                    x3 = paddle.static.data(
+                        name="x3", shape=[1, 3, 128], dtype="float32"
+                    )
+                    out3 = paddle.nn.Upsample(
+                        size=[256, 256], data_format='NHWC', mode='linear'
+                    )
+                    out3_res = out3(x3)
 
-            self.assertRaises(ValueError, input_shape_error)
-            self.assertRaises(ValueError, data_format_error)
-            self.assertRaises(ValueError, out_shape_error)
+                self.assertRaises(ValueError, input_shape_error)
+                self.assertRaises(ValueError, data_format_error)
+                self.assertRaises(ValueError, out_shape_error)
 
 
 @unittest.skipIf(

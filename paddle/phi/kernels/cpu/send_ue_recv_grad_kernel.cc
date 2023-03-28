@@ -70,12 +70,12 @@ void CalculateXGrad(const Context& ctx,
           ElementwiseInnerOperation<T, IndexT, GraphSendRecvSumFunctor<T>>(
               out_grad_tensor, &x_grad_v2, src, dst, false, sum_functor);
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -128,12 +128,12 @@ void CalculateXGrad(const Context& ctx,
             }
           }
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
@@ -163,12 +163,12 @@ void CalculateXGrad(const Context& ctx,
           auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad_slice);
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -217,12 +217,12 @@ void CalculateXGrad(const Context& ctx,
             x_grad_off[j] += (val / s_count[src]);
           }
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }

@@ -45,8 +45,7 @@ import re
 from functools import partial
 
 import paddle
-import paddle.framework as framework
-import paddle.nn as nn
+from paddle import framework, nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ...utils.log_util import layer_to_str, logger
@@ -433,9 +432,9 @@ class PipelineLayer(nn.Layer):
             return
 
         layers_desc = self._layers_desc
-        shared_layer_names = set(
+        shared_layer_names = {
             s.layer_name for s in layers_desc if isinstance(s, SharedLayerDesc)
-        )
+        }
         for key in shared_layer_names:
             shared_layers = []
             for idx, layer in enumerate(layers_desc):
@@ -445,9 +444,9 @@ class PipelineLayer(nn.Layer):
                 ):
                     shared_layers.append(idx)
 
-            shared_stages = set(
+            shared_stages = {
                 self.get_stage_from_index(idx) for idx in shared_layers
-            )
+            }
             self._dp_degree = self._topo.get_dim('data')
             self._mp_degree = self._topo.get_dim('model')
             self._sharding_degree = self._topo.get_dim('sharding')
@@ -493,7 +492,7 @@ class PipelineLayer(nn.Layer):
 
             for param in comm['layer'].parameters():
                 if self.global_rank != min(comm['ranks']):
-                    setattr(param, 'is_firstly_shared', False)
+                    param.is_firstly_shared = False
 
     def allreduce_shared_weight_gradients(self):
         for key, comm in self.shared_comm.items():
@@ -502,7 +501,10 @@ class PipelineLayer(nn.Layer):
             if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad, group=comm['group']
+                        param.grad
+                        if not hasattr(param, "main_grad")
+                        else param.main_grad,
+                        group=comm['group'],
                     )
             else:
                 with paddle.framework.no_grad():
@@ -641,7 +643,7 @@ class PipelineLayer(nn.Layer):
                     for param in self.shared_layers[
                         layer.layer_name
                     ].parameters():
-                        setattr(param, "is_firstly_shared", True)
+                        param.is_firstly_shared = True
 
                 if layer.forward_func is None:
                     run_function.append(self.shared_layers[layer.layer_name])

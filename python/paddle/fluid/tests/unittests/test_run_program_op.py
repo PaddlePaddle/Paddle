@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -27,7 +26,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import global_var
-from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -145,7 +143,7 @@ class RunProgramOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         ]
 
     def get_param_grad_names(self):
@@ -395,7 +393,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',

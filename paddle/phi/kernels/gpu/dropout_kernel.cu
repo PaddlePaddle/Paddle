@@ -45,8 +45,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                                           x,
                                           seed_tensor.get_ptr(),
                                           mask,
-                                          out,
-                                          false);
+                                          out);
 }
 
 template <typename T, typename Context>
@@ -76,7 +75,8 @@ void DropoutNdKernel(const Context& dev_ctx,
                                           seed_tensor.get_ptr(),
                                           mask,
                                           out,
-                                          true);
+                                          true,
+                                          axis);
 }
 
 }  // namespace phi
@@ -90,7 +90,7 @@ PD_REGISTER_KERNEL(dropout,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 
 PD_REGISTER_KERNEL(dropout_nd,
@@ -102,5 +102,5 @@ PD_REGISTER_KERNEL(dropout_nd,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

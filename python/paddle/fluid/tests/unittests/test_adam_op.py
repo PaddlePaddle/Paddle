@@ -15,18 +15,55 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.op import Operator
+
+
+def adam_wrapper(
+    param,
+    grad,
+    LearningRate,
+    moment1,
+    moment2,
+    beta1_pow,
+    beta2_pow,
+    master_weight=None,
+    find_inf=None,
+    beta1=0.78,
+    beta2=0.836,
+    epsilon=1e-4,
+    lazy_mode=False,
+):
+    _, _, _, _, _, _ = paddle._C_ops.adam_(
+        param,
+        grad,
+        LearningRate,
+        moment1,
+        moment2,
+        beta1_pow,
+        beta2_pow,
+        master_weight,
+        find_inf,
+        beta1,
+        beta2,
+        epsilon,
+        lazy_mode,
+        1000,
+        False,
+        False,
+    )
 
 
 class TestAdamOp1(OpTest):
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -73,6 +110,8 @@ class TestAdamOp2(OpTest):
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         self.set_shape()
         param = np.random.uniform(-1, 1, self.shape).astype("float32")
         grad = np.random.uniform(-1, 1, self.shape).astype("float32")
@@ -122,6 +161,8 @@ class TestAdamOpMultipleSteps(OpTest):
     def setUp(self):
         '''Test Adam Operator with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         self.num_steps = 10
 
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -373,7 +414,7 @@ class TestSparseAdamOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place, lazy_mode)
 
-        op_args = dict()
+        op_args = {}
         op_args['lazy_mode'] = lazy_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
@@ -414,6 +455,8 @@ class TestAdamOpBetaVariable(OpTest):
     def setUp(self):
         '''Test Adam Op with beta as Variable'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -459,6 +502,8 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
     def setUp(self):
         '''Test Adam Op with beta/epsilon as Variable'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -505,6 +550,8 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -554,6 +601,8 @@ class TestAdamOpWithSkipUpdate(OpTest):
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -607,7 +656,7 @@ class TestAdamOpV2(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
+                data = paddle.static.data(name="data", shape=shape)
                 conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
@@ -933,8 +982,8 @@ class TestAdamOptimizer(unittest.TestCase):
             trainable=True,
         )
         with fluid.program_guard(main):
-            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, weight_attr=weight_attr)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

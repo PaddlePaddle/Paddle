@@ -22,7 +22,7 @@ import numpy as np
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TranspilerTest(unittest.TestCase):
@@ -1467,7 +1467,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
 
     def transpiler_test_impl(self):
         trainer, _ = self.get_trainer()
-        params_to_check = list()
+        params_to_check = []
         for op in trainer.blocks[0].ops:
             if op.type == "hierarchical_sigmoid":
                 params_to_check = [op.input("W")[0], op.input("Bias")[0]]

@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import paddle.fluid.optimizer as optimizer
+from paddle import fluid
+from paddle.fluid import core, optimizer
 from paddle.fluid.framework import Program, program_guard
 
 BATCH_SIZE = 1
@@ -91,15 +88,15 @@ def static(
             opt.minimize(avg_loss)
             return avg_loss
 
-        image = fluid.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
-        label = fluid.data('label', [BATCH_SIZE, 1], 'int64')
+        image = paddle.static.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
+        label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
-        id = fluid.data('id', [1], 'int32')
-        two = layers.fill_constant([1], 'int32', 2)
+        id = paddle.static.data('id', [1], 'int32')
+        two = paddle.tensor.fill_constant([1], 'int32', 2)
         mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
@@ -142,7 +139,7 @@ def static(
     return out_hidden, out_pred, loss
 
 
-class DygraphLayer(fluid.dygraph.Layer):
+class DygraphLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.fc_1 = paddle.nn.Linear(
@@ -249,68 +246,6 @@ class TestMultiTask(unittest.TestCase):
             np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
             np.testing.assert_allclose(pre_1, pre_2, rtol=1e-05)
             np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
-
-
-class TestMultiOptimizersMultiCardsError(unittest.TestCase):
-    def test_error(self):
-        startup_program = Program()
-        main_program = Program()
-        use_cuda = core.is_compiled_with_cuda()
-        with program_guard(main_program, startup_program):
-
-            def fn_1(opt, avg_loss):
-                opt.minimize(avg_loss)
-
-            def fn_2(opt, avg_loss):
-                opt.minimize(avg_loss)
-
-            x = paddle.static.data("X", [-1, 10], 'float32')
-            hidden = paddle.static.nn.fc(x, 5)
-            avg_loss = paddle.mean(hidden)
-
-            adam = optimizer.Adam(learning_rate=LR)
-            sgd = optimizer.SGD(learning_rate=LR)
-
-            cond = layers.fill_constant([1], 'bool', True)
-
-            paddle.static.nn.case(
-                [(cond, lambda: fn_1(adam, avg_loss))],
-                lambda: fn_2(sgd, avg_loss),
-            )
-
-        cpu_place = fluid.CPUPlace()
-        cuda_place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-
-        for place in [cpu_place, cuda_place]:
-
-            exe = fluid.Executor(place)
-            exe.run(startup_program)
-
-            np.random.seed(SEED)
-
-            # NOTE(liym27):
-            # This test needs to run in multi cards to test NotImplementedError.
-            # Here, move this test from RUN_TYPE=DIST in tests/unittests/CMakeList.txt,
-            # to use multi cards ** only on CPU ** not GPU to reduce CI time.
-            os.environ['CPU_NUM'] = str(2)
-
-            pe_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=avg_loss.name,
-            )
-            num_devices = pe_exe.device_count
-
-            def not_implemented_error():
-                pe_exe.run(
-                    feed={
-                        'X': np.random.random(size=[64, 10]).astype('float32'),
-                    },
-                    fetch_list=[avg_loss.name],
-                )
-
-            if num_devices > 1:
-                self.assertRaises(NotImplementedError, not_implemented_error)
 
 
 if __name__ == '__main__':

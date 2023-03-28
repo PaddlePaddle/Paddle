@@ -46,7 +46,8 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import ParamBase, _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, layers, to_variable
+from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
@@ -165,8 +166,9 @@ def sync_params_buffers(
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, (ParamBase, core.eager.Tensor)):
-            if is_model_parallel and param.is_distributed:
-                continue
+            if is_model_parallel:
+                if hasattr(param, "is_distributed") and param.is_distributed:
+                    continue
 
             # NOTE(shenliang03): Support situations that do not require synchronization parameters,
             # such as moe's expert parameters
@@ -1114,7 +1116,7 @@ def init_parallel_env():
         paddle.distributed.barrier(group=group)
         return group
 
-    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
+    node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":

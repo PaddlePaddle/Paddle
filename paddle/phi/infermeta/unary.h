@@ -39,6 +39,10 @@ void AffineGridInferMeta(const MetaTensor& input,
                          bool align_corners,
                          MetaTensor* output);
 
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
+void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -123,6 +127,10 @@ void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
 void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
+
+void DistBroadcastInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 

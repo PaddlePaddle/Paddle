@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -339,15 +339,15 @@ class TestPool3D_Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
-                    place, set(['X']), 'Out', max_relative_error=1e-2
+                    place, {'X'}, 'Out', max_relative_error=1e-2
                 )
             else:
-                self.check_grad_with_place(place, set(['X']), 'Out')
+                self.check_grad_with_place(place, {'X'}, 'Out')
         elif self.pool_type != "max":
             if core.is_compiled_with_rocm():
-                self.check_grad(set(['X']), 'Out', max_relative_error=1e-2)
+                self.check_grad({'X'}, 'Out', max_relative_error=1e-2)
             else:
-                self.check_grad(set(['X']), 'Out')
+                self.check_grad({'X'}, 'Out')
 
     def init_data_format(self):
         self.data_format = "NCDHW"
@@ -783,10 +783,10 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00
             )
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):

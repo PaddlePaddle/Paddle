@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-
-#include "paddle/fluid/framework/ir/delete_dropout_op_pass.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {

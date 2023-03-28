@@ -26,7 +26,7 @@ from codegen_utils import (
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set([])
+skipped_forward_api_names = set()
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -52,13 +52,15 @@ atype_to_parsing_function = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
-    "paddle::experimental::DataType": "CastPyArg2DataType",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
-        assert False, f"Unable to find {atype} in atype_to_parsing_function."
+        raise AssertionError(
+            f"Unable to find {atype} in atype_to_parsing_function."
+        )
 
     return atype_to_parsing_function[atype]
 

@@ -19,10 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core, framework, layers
 
 
 def exponential_decay(

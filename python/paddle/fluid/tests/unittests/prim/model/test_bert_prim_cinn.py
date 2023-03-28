@@ -21,9 +21,9 @@ import numpy as np
 from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.dataset.common import DATA_HOME, download
+from paddle.fluid import core
 
 SEED = 2023
 BATCH_SIZE = 2
@@ -58,20 +58,9 @@ def train(to_static, enable_prim, enable_cinn):
         worker_init=None,
     )
 
-    bert = Bert(to_static)
+    # Now only apply dy2st for encoder
+    bert = Bert(to_static, enable_cinn)
     criterion = BertPretrainingCriterion()
-    if to_static:
-        # input_sepc = [
-        #     InputSpec(shape=(-1, -1), dtype=paddle.int64, name='input_ids'),
-        #     InputSpec(shape=(-1, -1), dtype=paddle.int64, name='segment_ids'),
-        #     None,
-        #     InputSpec(shape=(-1, 1, 1, -1), dtype=paddle.float32, name='input_mask'),
-        #     InputSpec(shape=(-1,), dtype=paddle.int32, name='masked_lm_positions'),
-        # ]
-        input_sepc = None
-        build_strategy = paddle.static.BuildStrategy()
-        if enable_cinn:
-            build_strategy.build_cinn_pass = True
 
     optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
 
@@ -131,16 +120,17 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-1)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
         np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-6)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+        not paddle.is_compiled_with_cinn(), "paddle is not compiled with CINN"
     )
     def test_prim_cinn(self):
+        core._add_skip_comp_ops("layer_norm")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

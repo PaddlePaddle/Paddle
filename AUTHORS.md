@@ -123,3 +123,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
 | [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
+| [gouzil](https://github.com/gouzil) | Chuan Tian |

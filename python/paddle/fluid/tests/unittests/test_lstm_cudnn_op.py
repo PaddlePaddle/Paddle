@@ -20,7 +20,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -80,7 +80,7 @@ class LSTMCell(LayerMixin):
         self.hidden_size = hidden_size
         self.bias = bias
         self.dtype = np.float64
-        self.parameters = dict()
+        self.parameters = {}
         self.weight_ih = weight.weight_ih
         self.weight_hh = weight.weight_hh
         self.parameters['weight_ih'] = self.weight_ih
@@ -534,7 +534,7 @@ class TestCUDNNLstmOp(OpTest):
         for var_name in var_name_list:
             self.check_grad_with_place(
                 place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                {'Input', var_name, 'InitH', 'InitC'},
                 ['Out', 'LastH', 'LastC'],
             )
 

@@ -523,4 +523,6 @@ PD_REGISTER_KERNEL(fused_matmul,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
