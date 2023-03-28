@@ -23,7 +23,7 @@
 
 #include <cublasLt.h>
 
-#include "paddle/phi/commom/memory_utils.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/scope_guard.h"
 
 #include "paddle/phi/backends/dynload/cublasLt.h"
