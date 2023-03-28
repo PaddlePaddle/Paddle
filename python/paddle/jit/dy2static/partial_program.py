@@ -229,15 +229,15 @@ class PartialProgramLayer:
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
         main_program = self._origin_main_program
-        if hasattr(main_program, 'lr_sheduler') and hasattr(
+        if hasattr(main_program, 'lr_scheduler') and hasattr(
             main_program, 'lr_var'
         ):
-            lr_scheduler = main_program.lr_sheduler
+            lr_scheduler = main_program.lr_scheduler
             lr_var = main_program.lr_var
 
             assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
-            lr_sheduler = self._origin_main_program.lr_sheduler
-            lr_value = lr_sheduler()
+            lr_scheduler = self._origin_main_program.lr_scheduler
+            lr_value = lr_scheduler()
             data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
             lr_var.set_value(data)
 
