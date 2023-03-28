@@ -1027,7 +1027,7 @@ class TestStrideSliceFP16Op(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out', check_eager=True)
+        self.check_grad({'Input'}, 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -1063,7 +1063,7 @@ class TestStrideSliceBF16Op(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out', check_eager=True)
+        self.check_grad({'Input'}, 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
