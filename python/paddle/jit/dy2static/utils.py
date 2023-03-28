@@ -1479,9 +1479,9 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
         op = program_desc.block(0).op(i)
         # If prim forward op, fill_any_like will be decomposite as fill_constant.
         if core._is_fwd_prim_enabled():
-            target = 'fill_any_like'
-        else:
             target = ('fill_any_like', 'fill_constant')
+        else:
+            target = 'fill_any_like'
         if op.type() in target:
             var_name = op.output('Out')[0]
             names.append(var_name)
