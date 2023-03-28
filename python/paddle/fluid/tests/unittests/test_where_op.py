@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -32,10 +32,10 @@ class TestWhereOp(OpTest):
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float64')
@@ -80,12 +80,12 @@ class TestWhereBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=False)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_eager=False, numeric_grad_delta=0.05
+            place, ['X', 'Y'], 'Out', numeric_grad_delta=0.05
         )
 
     def init_config(self):
