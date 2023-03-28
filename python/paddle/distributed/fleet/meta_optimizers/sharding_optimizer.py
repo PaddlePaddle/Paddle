@@ -78,8 +78,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._startup_program = None
         self._segments = []
         # params and fp16 params is for broadcast
-        self._params = set([])
-        self._broadcast_vars = set([])
+        self._params = set()
+        self._broadcast_vars = set()
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         self._shard = Shard()

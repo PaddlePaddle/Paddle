@@ -16,11 +16,8 @@ import unittest
 import unittest.mock
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.tensor as tensor
-import paddle.utils as utils
+from paddle import nn, static, tensor, utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto

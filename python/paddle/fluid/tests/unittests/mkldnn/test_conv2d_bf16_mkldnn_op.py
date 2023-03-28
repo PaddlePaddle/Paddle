@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
@@ -206,7 +206,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             core.CPUPlace(),
             ["Input"],
             "Output",
-            set(['Filter']),
+            {'Filter'},
             user_defined_grads=[dx],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
         )
@@ -222,7 +222,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             core.CPUPlace(),
             ["Filter"],
             "Output",
-            set(['Input']),
+            {'Input'},
             user_defined_grads=[dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
         )
