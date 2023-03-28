@@ -31,21 +31,50 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypeVar
 
+DEFAULT_ARCH = [50, 70, 75, 80]
 MAX_ARCH = 90
 ENABLE_MACRO = "PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
+
+assert sorted(DEFAULT_ARCH) == DEFAULT_ARCH
+
+
+def find_arch_range(min_arch, max_arch):
+    assert min_arch >= DEFAULT_ARCH[0] and min_arch < MAX_ARCH
+    assert max_arch >= DEFAULT_ARCH[0] and max_arch < MAX_ARCH
+    assert min_arch <= max_arch
+    n = len(DEFAULT_ARCH)
+
+    start_idx = 0
+    for i in range(n - 1):
+        if DEFAULT_ARCH[i] <= min_arch and min_arch < DEFAULT_ARCH[i + 1]:
+            start_idx = i
+            break
+
+    end_idx = n
+    for i in range(n - 1):
+        if DEFAULT_ARCH[i] <= max_arch and max_arch < DEFAULT_ARCH[i + 1]:
+            end_idx = i + 1
+    return DEFAULT_ARCH[start_idx:end_idx]
+
+
+def find_max_arch(arch):
+    arch = list(sorted(arch))
+    idx = DEFAULT_ARCH.index(arch[-1])
+    if idx == len(DEFAULT_ARCH) - 1:
+        return MAX_ARCH
+    else:
+        return DEFAULT_ARCH[idx + 1]
 
 
 def convert_to_arch_list(arch):
     arch = arch.lower().strip()
     if arch == "all":
-        return [50, 70, 75, 80]
+        return DEFAULT_ARCH
 
-    arch = [int(s.strip()) for s in arch.split(' ') if s.strip()]
+    arch = [int(s.strip()) for s in arch.split(';') if s.strip()]
     arch = list(set(arch))
     arch.sort()
-    for each_arch in arch:
-        assert each_arch < MAX_ARCH
-    return arch
+    return find_arch_range(arch[0], arch[-1])
 
 
 def parse_args():
@@ -64,7 +93,9 @@ def parse_args():
         default=convert_to_arch_list("All"),
         help="The CUDA architecture to be generated.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.max_arch = find_max_arch(args.cuda_arch)
+    return args
 
 
 args = parse_args()
@@ -170,7 +201,7 @@ class FwdKernel:
     def get_all(cls) -> List["FwdKernel"]:
         kernels: List[FwdKernel] = []
         for aligned, dtype, (sm, sm_max) in itertools.product(
-            [True, False], DTYPES.keys(), zip(SM, SM[1:] + [MAX_ARCH])
+            [True, False], DTYPES.keys(), zip(SM, SM[1:] + [args.max_arch])
         ):
             # Remove some kernels we don't use
             if dtype == "bf16" and sm < 80:
@@ -280,7 +311,7 @@ class BwdKernel:
         ) in itertools.product(
             [True, False],
             DTYPES.keys(),
-            zip(SM, SM[1:] + [MAX_ARCH]),
+            zip(SM, SM[1:] + [args.max_arch]),
             [True, False],
             [32, 64, 128, 2**16],
         ):

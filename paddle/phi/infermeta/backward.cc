@@ -633,6 +633,91 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
+                                           const MetaTensor& key,
+                                           const MetaTensor& value,
+                                           const MetaTensor& bias,
+                                           const MetaTensor& cu_seqlens_q,
+                                           const MetaTensor& cu_seqlens_k,
+                                           const MetaTensor& output,
+                                           const MetaTensor& logsumexp,
+                                           const MetaTensor& seed_and_offset,
+                                           const MetaTensor& output_grad,
+                                           const Scalar& max_seqlen_q,
+                                           const Scalar& max_seqlen_k,
+                                           const bool causal,
+                                           const double dropout_p,
+                                           const float scale,
+                                           MetaTensor* query_grad,
+                                           MetaTensor* key_grad,
+                                           MetaTensor* value_grad,
+                                           MetaTensor* bias_grad) {
+  PADDLE_ENFORCE_EQ(
+      output_grad.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   output_grad.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      output.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   output_grad.dims().size()));
+
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_seq_length = query.dims()[1];
+  const int64_t query_num_head = query.dims()[2];
+  const int64_t query_head_size = query.dims()[3];
+
+  const int64_t key_batch_size = key.dims()[0];
+  const int64_t key_seq_length = key.dims()[1];
+  const int64_t key_num_head = key.dims()[2];
+  const int64_t key_head_size = key.dims()[3];
+
+  const int64_t value_batch_size = value.dims()[0];
+  const int64_t value_seq_length = value.dims()[1];
+  const int64_t value_num_head = value.dims()[2];
+  const int64_t value_head_size = value.dims()[3];
+
+  std::vector<int64_t> query_grad_dims(
+      {query_batch_size, query_seq_length, query_num_head, query_head_size});
+  std::vector<int64_t> key_grad_dims(
+      {key_batch_size, key_seq_length, key_num_head, key_head_size});
+  std::vector<int64_t> value_grad_dims(
+      {value_batch_size, value_seq_length, value_num_head, value_head_size});
+
+  query_grad->set_dims(phi::make_ddim(query_grad_dims));
+  query_grad->share_lod(query);
+  query_grad->set_dtype(query.dtype());
+  query_grad->set_layout(query.layout());
+
+  key_grad->set_dims(phi::make_ddim(key_grad_dims));
+  key_grad->share_lod(key);
+  key_grad->set_dtype(key.dtype());
+  key_grad->set_layout(key.layout());
+
+  value_grad->set_dims(phi::make_ddim(value_grad_dims));
+  value_grad->share_lod(value);
+  value_grad->set_dtype(value.dtype());
+  value_grad->set_layout(value.layout());
+
+  if (bias) {
+    const int64_t bias_batch_size = bias.dims()[0];
+    const int64_t bias_seq_length = bias.dims()[1];
+    const int64_t bias_num_head = bias.dims()[2];
+    const int64_t bias_head_size = bias.dims()[3];
+
+    std::vector<int64_t> bias_grad_dims(
+        {bias_batch_size, bias_seq_length, bias_num_head, bias_head_size});
+
+    bias_grad->set_dims(phi::make_ddim(bias_grad_dims));
+    bias_grad->share_lod(bias);
+    bias_grad->set_dtype(bias.dtype());
+    bias_grad->set_layout(bias.layout());
+  }
+}
+
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
                            const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad) {
@@ -1049,91 +1134,6 @@ void IndexAddGradInferMeta(const MetaTensor& index,
     add_value_grad->set_dtype(add_value.dtype());
     add_value_grad->set_layout(add_value.layout());
     add_value_grad->share_lod(add_value);
-  }
-}
-
-void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
-                                           const MetaTensor& key,
-                                           const MetaTensor& value,
-                                           const MetaTensor& bias,
-                                           const MetaTensor& cu_seqlens_q,
-                                           const MetaTensor& cu_seqlens_k,
-                                           const MetaTensor& output,
-                                           const MetaTensor& logsumexp,
-                                           const MetaTensor& seed_and_offset,
-                                           const MetaTensor& output_grad,
-                                           const Scalar& max_seqlen_q,
-                                           const Scalar& max_seqlen_k,
-                                           const bool causal,
-                                           const double dropout_p,
-                                           const float scale,
-                                           MetaTensor* query_grad,
-                                           MetaTensor* key_grad,
-                                           MetaTensor* value_grad,
-                                           MetaTensor* bias_grad) {
-  PADDLE_ENFORCE_EQ(
-      output_grad.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%s)",
-                                   output_grad.dims().size()));
-  PADDLE_ENFORCE_EQ(
-      output.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%s)",
-                                   output_grad.dims().size()));
-
-  const int64_t query_batch_size = query.dims()[0];
-  const int64_t query_seq_length = query.dims()[1];
-  const int64_t query_num_head = query.dims()[2];
-  const int64_t query_head_size = query.dims()[3];
-
-  const int64_t key_batch_size = key.dims()[0];
-  const int64_t key_seq_length = key.dims()[1];
-  const int64_t key_num_head = key.dims()[2];
-  const int64_t key_head_size = key.dims()[3];
-
-  const int64_t value_batch_size = value.dims()[0];
-  const int64_t value_seq_length = value.dims()[1];
-  const int64_t value_num_head = value.dims()[2];
-  const int64_t value_head_size = value.dims()[3];
-
-  std::vector<int64_t> query_grad_dims(
-      {query_batch_size, query_seq_length, query_num_head, query_head_size});
-  std::vector<int64_t> key_grad_dims(
-      {key_batch_size, key_seq_length, key_num_head, key_head_size});
-  std::vector<int64_t> value_grad_dims(
-      {value_batch_size, value_seq_length, value_num_head, value_head_size});
-
-  query_grad->set_dims(phi::make_ddim(query_grad_dims));
-  query_grad->share_lod(query);
-  query_grad->set_dtype(query.dtype());
-  query_grad->set_layout(query.layout());
-
-  key_grad->set_dims(phi::make_ddim(key_grad_dims));
-  key_grad->share_lod(key);
-  key_grad->set_dtype(key.dtype());
-  key_grad->set_layout(key.layout());
-
-  value_grad->set_dims(phi::make_ddim(value_grad_dims));
-  value_grad->share_lod(value);
-  value_grad->set_dtype(value.dtype());
-  value_grad->set_layout(value.layout());
-
-  if (bias) {
-    const int64_t bias_batch_size = bias.dims()[0];
-    const int64_t bias_seq_length = bias.dims()[1];
-    const int64_t bias_num_head = bias.dims()[2];
-    const int64_t bias_head_size = bias.dims()[3];
-
-    std::vector<int64_t> bias_grad_dims(
-        {bias_batch_size, bias_seq_length, bias_num_head, bias_head_size});
-
-    bias_grad->set_dims(phi::make_ddim(bias_grad_dims));
-    bias_grad->share_lod(bias);
-    bias_grad->set_dtype(bias.dtype());
-    bias_grad->set_layout(bias.layout());
   }
 }
 
