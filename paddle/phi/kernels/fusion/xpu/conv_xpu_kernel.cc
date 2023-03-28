@@ -44,12 +44,13 @@ void ConvXPUKernel(const Context& ctx,
   // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
+  DDim in_data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
   DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
-                                input_dims,
+                                in_data_dims,
                                 strides,
                                 ksize);
 
@@ -86,11 +87,11 @@ void ConvXPUKernel(const Context& ctx,
           /* const TX* input */ input_data,
           /* const TW* filter */ Filter.data<int16_t>(),
           /* TY* output */ out_data,
-          /* int64_t */ batch,
-          /* int64_t */ in_c,
-          /* int64_t */ in_h,
-          /* int64_t */ in_w,
-          /* int64_t */ out_c,
+          /* int64_t n */ batch,
+          /* int64_t ic */ in_c,
+          /* int64_t h */ in_h,
+          /* int64_t w */ in_w,
+          /* int64_t oc */ out_c,
           /* const std::vector<int>& ksize */ std::vector<int>{win_h, win_w},
           /* const std::vector<int>& strides */ strides,
           /* const std::vector<int>& paddings */ paddings_vec,
@@ -99,12 +100,12 @@ void ConvXPUKernel(const Context& ctx,
           /* const float* in_maxptr */ input_max_data,
           /* const float* filter_maxptr */ FilterMax.data<float>(),
           /* float* out_maxptr */ ctx.template Alloc<float>(OutputMax),
-          /* bool ? */ true,
+          /* bool is_nchw */ true,
           /* const float* bias */ bias_data,
           /* const TY* branch */ branch_data,
           /* const baidu::xpu::api::Activation_t& act */ act,
-          /* const float* branch_maxptr */ nullptr,
-          /* const float* ? */ nullptr);
+          /* const float* branch_maxptr */ nullptr);
+          // /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
 }
 

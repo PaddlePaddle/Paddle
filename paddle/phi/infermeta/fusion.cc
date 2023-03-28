@@ -137,12 +137,13 @@ void ConvXPUInferMeta(const MetaTensor& Input,
   LOG(INFO) << "--------updating padding and dilations--------";
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
+  DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  UpdatePaddingAndDilation(&paddings_vec,
+  phi::UpdatePaddingAndDilation(&paddings_vec,
                            &dilations_vec,
                            padding_algorithm,
-                           in_dims,
+                           in_data_dims,
                            strides,
                            ksize);
 
