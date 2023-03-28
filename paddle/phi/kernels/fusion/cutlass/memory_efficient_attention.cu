@@ -153,13 +153,15 @@ void MemoryEfficientAttentionForwardKernel(
       p.seqstart_k_ptr = nullptr;
     }
 
-    p.num_heads = q_dims[2];
-    p.head_dim = q_dims[3];
-    p.head_dim_value = v_dims[3];
+    PD_MEA_CHECK_OVERFLOW(p.num_heads, q_dims[2]);
+    PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
+    PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
 
-    p.num_queries = max_seqlen_q_tmp;
-    p.num_keys = max_seqlen_k_tmp;
-    p.num_batches = cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
+    PD_MEA_CHECK_OVERFLOW(p.num_queries, max_seqlen_q_tmp);
+    PD_MEA_CHECK_OVERFLOW(p.num_keys, max_seqlen_k_tmp);
+    PD_MEA_CHECK_OVERFLOW(
+        p.num_batches,
+        cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0]);
     p.causal = causal;
     if (causal_diagonal) {
       p.causal_diagonal_ptr = SafeGetTensorPtr<int32_t>(causal_diagonal);
@@ -183,23 +185,24 @@ void MemoryEfficientAttentionForwardKernel(
     }
     VLOG(3) << "scale " << p.scale;
 
-    p.q_strideB = DimStride(query.dims(), 0);
-    p.k_strideB = DimStride(key.dims(), 0);
-    p.v_strideB = DimStride(value.dims(), 0);
-    p.q_strideM = DimStride(query.dims(), 1);
-    p.k_strideM = DimStride(key.dims(), 1);
-    p.v_strideM = DimStride(value.dims(), 1);
-    p.q_strideH = DimStride(query.dims(), 2);
-    p.k_strideH = DimStride(key.dims(), 2);
-    p.v_strideH = DimStride(value.dims(), 2);
-    p.o_strideM = DimStride(output->dims(), 1);
+    PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(key.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideB, DimStride(value.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideM, DimStride(query.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideM, DimStride(key.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideM, DimStride(value.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideH, DimStride(query.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideH, DimStride(key.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideH, DimStride(value.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.o_strideM, DimStride(output->dims(), 1));
 
     if (bias) {
       p.attn_bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
-      p.bias_strideB =
-          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims);
-      p.bias_strideH = q_dims[1] * k_dims[1];
-      p.bias_strideM = k_dims[1];
+      PD_MEA_CHECK_OVERFLOW(
+          p.bias_strideB,
+          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
+      PD_MEA_CHECK_OVERFLOW(p.bias_strideH, q_dims[1] * k_dims[1]);
+      PD_MEA_CHECK_OVERFLOW(p.bias_strideM, k_dims[1]);
     } else {
       p.attn_bias_ptr = nullptr;
     }
