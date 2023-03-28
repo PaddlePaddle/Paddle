@@ -30,7 +30,7 @@ class TestConcatOp(OpTest):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -49,6 +49,9 @@ class TestConcatOp(OpTest):
 
     def get_dtype(self):
         return "float64"
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         if self.dtype == np.uint16:
@@ -290,6 +293,9 @@ def create_test_bf16(parent):
     class TestConcatBf16(parent):
         def get_dtype(self):
             return np.uint16
+
+        def if_enable_cinn(self):
+            self.enable_cinn = False
 
     cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
     TestConcatBf16.__name__ = cls_name
