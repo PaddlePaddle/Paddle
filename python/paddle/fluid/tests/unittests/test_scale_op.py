@@ -148,7 +148,7 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)

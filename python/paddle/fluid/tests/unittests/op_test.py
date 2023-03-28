@@ -519,7 +519,7 @@ class OpTest(unittest.TestCase):
             return False
         # CINN not support 0D-tensor now, skip cinn test
         for var in inputs.values():
-            if len(var.shape) == 0:
+            if len(var.shape()) == 0:
                 return False
         for var in outputs.values():
             if len(var.shape) == 0:
@@ -1089,9 +1089,8 @@ class OpTest(unittest.TestCase):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                     fetch_list.append(str(out_name))
 
-            enable_cinn_test = (
-                self._enable_check_cinn_test(place, inputs, outputs)
-                and check_cinn
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_map, outputs
             )
             if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
@@ -2845,9 +2844,8 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = grad_inputs
 
-            enable_cinn_test = (
-                self._enable_check_cinn_test(place, inputs, outputs)
-                and check_cinn
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_dict, outputs
             )
             if parallel or enable_cinn_test:
                 use_cuda = False
