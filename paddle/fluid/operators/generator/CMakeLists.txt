@@ -6,6 +6,7 @@ set(op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml)
 set(legacy_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml)
 set(bw_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/backward.yaml)
 set(static_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_ops.yaml)
+set(fused_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_ops.yaml)
 set(legacy_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_backward.yaml)
 set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
@@ -13,6 +14,8 @@ set(sparse_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
 set(static_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_backward.yaml)
+set(fused_bw_op_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_backward.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -40,10 +43,14 @@ set(generated_op_path_4
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op4.cc)
 set(generated_static_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_static_op.cc)
+set(generated_fused_op_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_fused_op.cc)
 set(generated_sparse_ops_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_sparse_op.cc)
 set(generated_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
+set(generated_fused_argument_mapping_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_fused_sig.cc)
 set(generated_static_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_static_sig.cc)
 set(generated_sparse_argument_mapping_path
@@ -54,7 +61,9 @@ message(
 - ${op_yaml_file}
 - ${legacy_op_yaml_file}
 - ${bw_op_yaml_file}
-- ${legacy_bw_op_yaml_file}")
+- ${legacy_bw_op_yaml_file}
+- ${fused_op_yaml_file}
+- ${static_op_yaml_file}")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
@@ -69,6 +78,8 @@ execute_process(
     --output_path ./parsed_ops/legacy_backward_ops.parsed.yaml --backward
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
           --output_path ./parsed_ops/static_ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
+          --output_path ./parsed_ops/fused_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
           --output_path ./parsed_ops/sparse_ops.parsed.yaml
   COMMAND
@@ -77,6 +88,9 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
     --output_path ./parsed_ops/static_backward.parsed.yaml --backward
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_bw_op_yaml_file}
+    --output_path ./parsed_ops/fused_backward.parsed.yaml --backward
     RESULTS_VARIABLE _results)
 foreach(_result in ${_results})
   if(${_result})
@@ -109,6 +123,17 @@ execute_process(
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "static ops validation failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
+  COMMAND
+    ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
+    ./parsed_ops/fused_ops.parsed.yaml --backward_yaml_paths
+    ./parsed_ops/fused_backward.parsed.yaml
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "fused ops validation failed, exiting.")
 endif()
 
 execute_process(
@@ -161,6 +186,21 @@ endif()
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
+    ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
+    ./parsed_ops/fused_ops.parsed.yaml --backward_yaml_path
+    ./parsed_ops/fused_backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
+    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
+    --output_op_path "${generated_fused_op_path}.tmp" --output_arg_map_path
+    "${generated_fused_argument_mapping_path}.tmp"
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "operator codegen failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
+  COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
     ./parsed_ops/sparse_ops.parsed.yaml --backward_ops_yaml_path
     ./parsed_ops/sparse_backward.parsed.yaml --output_op_path
@@ -177,10 +217,12 @@ set(generated_static_files
     "${generated_op_path_3}"
     "${generated_op_path_4}"
     "${generated_static_op_path}"
+    "${generated_fused_op_path}"
     "${generated_sparse_ops_path}"
     "${generated_argument_mapping_path}"
     "${generated_static_argument_mapping_path}"
-    "${generated_sparse_argument_mapping_path}")
+    "${generated_sparse_argument_mapping_path}"
+    "${generated_fused_argument_mapping_path}")
 
 foreach(generated_static_file ${generated_static_files})
   if(EXISTS "${generated_static_file}.tmp" AND EXISTS
