@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -868,10 +869,6 @@ if(WITH_IPU)
   add_subdirectory(ipu)
 endif()
 
-if(WITH_MLU)
-  add_subdirectory(mlu)
-endif()
-
 add_subdirectory(asp)
 
 add_subdirectory(ir)
@@ -1116,6 +1113,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1213,7 +1211,10 @@ set(TEST_CINN_OPS
     test_reshape_op
     test_mean_op
     test_unsqueeze2_op
-    test_gather_op)
+    test_meshgrid_op
+    test_gather_op
+    test_cast_op
+    test_dropout_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

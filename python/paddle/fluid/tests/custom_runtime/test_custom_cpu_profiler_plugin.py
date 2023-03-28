@@ -49,7 +49,7 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
 
     def test_custom_profiler(self):
         import paddle
-        import paddle.profiler as profiler
+        from paddle import profiler
 
         paddle.set_device('custom_cpu')
 

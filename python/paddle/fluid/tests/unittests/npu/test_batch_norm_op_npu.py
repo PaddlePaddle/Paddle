@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
-from op_test import OpTest, _set_use_system_allocator
+from eager_op_test import OpTest, _set_use_system_allocator
 from paddle.fluid import Program, program_guard
 
 from test_batch_norm_op import (
@@ -588,7 +588,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]

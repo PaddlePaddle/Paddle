@@ -44,8 +44,7 @@ class TestCustomVJP(unittest.TestCase):
             'fill_any_like',
             'cast',
             'elementwise_mul',
-            'fill_constant',
-            'elementwise_div',
+            'scale',
         )
         self.ops_all_enable = (
             'uniform_random',
@@ -59,8 +58,7 @@ class TestCustomVJP(unittest.TestCase):
             'fill_any_like',
             'cast',
             'elementwise_mul',
-            'fill_constant',
-            'elementwise_div',
+            'scale',
         )
 
     def test_enable_prim_fwd(self):

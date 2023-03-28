@@ -81,7 +81,7 @@ class FunctionCache:
         # Caches the converted static functions. {dygraph_func: static_func}
         self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
-        self._code_to_ast_caches = dict()
+        self._code_to_ast_caches = {}
         self._dygraph_to_static = DygraphToStaticAst()
 
     def convert_with_cache(self, func):
@@ -993,7 +993,7 @@ class ConcreteProgram:
 
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
-                # 1. Adds `fluid.data` layers for input if needed
+                # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
                 )

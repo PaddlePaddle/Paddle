@@ -90,8 +90,7 @@ inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
 
 inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
 
-inline cnnlDataType_t ToCnnlDataType(
-    const paddle::experimental::DataType& dtype) {
+inline cnnlDataType_t ToCnnlDataType(const phi::DataType& dtype) {
   cnnlDataType_t type = CNNL_DTYPE_FLOAT;
   switch (dtype) {
     case DataType::FLOAT16:
@@ -138,8 +137,7 @@ inline cnnlDataType_t ToCnnlDataType() {
   return ToCnnlDataType(type);
 }
 
-inline mluOpDataType_t ToMluOpDataType(
-    const paddle::experimental::DataType& dtype) {
+inline mluOpDataType_t ToMluOpDataType(const phi::DataType& dtype) {
   mluOpDataType_t type = MLUOP_DTYPE_FLOAT;
   switch (dtype) {
     case DataType::FLOAT16:

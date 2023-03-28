@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
@@ -56,7 +56,7 @@ class TestNPUAbs(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-# To-do(qili93): numeric_place will use CPUPlace in op_test.py and abs do not have CPUKernel for float16, to be uncommented after numeric_place fixed
+# To-do(qili93): numeric_place will use CPUPlace in eager_op_test.py and abs do not have CPUKernel for float16, to be uncommented after numeric_place fixed
 # @unittest.skipIf(not paddle.is_compiled_with_npu(), "core is not compiled with NPU")
 # class TestNPUAbsFP16(TestNPUAbs):
 #     def init_dtype(self):

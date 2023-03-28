@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -1428,7 +1427,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "less_than" || op_type == "greater_than" ||
         op_type == "logical_or" || op_type == "logical_xor" ||
-        op_type == "logical_and" || op_type == "less_equal") {
+        op_type == "logical_and" || op_type == "less_equal" ||
+        op_type == "greater_equal") {
 #if IS_TRT_VERSION_GE(8400)
       // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
@@ -1449,7 +1449,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
       if (op_type == "less_than" || op_type == "greater_than" ||
-          op_type == "less_equal") {
+          op_type == "less_equal" || op_type == "greater_equal") {
         if (x_dtype == framework::proto::VarType::BOOL ||
             y_dtype == framework::proto::VarType::BOOL) {
           VLOG(3)
@@ -2768,6 +2768,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_xor",
       "logical_and",
       "less_equal",
+      "greater_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2924,6 +2925,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_xor",
       "logical_and",
       "less_equal",
+      "greater_equal",
       "dropout",
       "fill_any_like",
       "prelu",
