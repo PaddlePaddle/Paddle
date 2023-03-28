@@ -231,7 +231,7 @@ __global__ void neighbor_sample_kernel_walking(GpuPsCommGraph graph,
   }
 }
 
-__global__ void neighbor_sample_kernel_all_edge_type(
+/*__global__ void neighbor_sample_kernel_all_edge_type(
     GpuPsCommGraph* graphs,
     GpuPsNodeInfo* node_info_base,
     int* actual_size_base,
@@ -311,7 +311,7 @@ __global__ void neighbor_sample_kernel_all_edge_type(
       }
     }
   }
-}
+}*/
 
 // For Weighted Sample
 
