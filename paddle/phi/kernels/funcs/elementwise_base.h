@@ -35,7 +35,7 @@ namespace kps = phi::kps;
 
 namespace phi {
 
-enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
@@ -508,6 +508,22 @@ struct Unroller<Func, VecSize, End, End> {
   static HOSTDEVICE inline void step(Args &&...args) {}
 };
 
+// static unroller without VecSize for broadcast
+template <template <int Index> typename Func, int End, int Begin = 0>
+struct UnrollerWithoutVecSize {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&...args) {
+    Func<Begin>::Apply(std::forward<Args>(args)...);
+    UnrollerWithoutVecSize<Func, End, Begin + 1>::step(args...);
+  }
+};
+
+template <template <int Index> typename Func, int End>
+struct UnrollerWithoutVecSize<Func, End, End> {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&...args) {}
+};
+
 template <int Index, int VecSize>
 struct Loader {
   template <typename Array, typename ArgsT>
@@ -536,7 +552,7 @@ struct Loader {
   }
 };
 
-template <int Index, int VecSize>
+template <int Index>
 struct InputSetter {
   template <typename Array>
   static HOSTDEVICE void Apply(
@@ -545,7 +561,7 @@ struct InputSetter {
   }
 };
 
-template <int Index, int VecSize>
+template <int Index>
 struct VecSizeGetter {
   template <typename ArgsT>
   static HOSTDEVICE void Apply(const std::vector<const DenseTensor *> &ins,
@@ -569,8 +585,7 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
   int vec_size = 4;
   uint64_t addr = static_cast<uint64_t>(0);
   ArgsT arg;
-  // The Arg VecSize=1 is to match the Unroller template.
-  Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
+  UnrollerWithoutVecSize<VecSizeGetter, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
     addr = (addr | reinterpret_cast<uint64_t>((*iter)->data<OutT>()));
   }
@@ -802,7 +817,7 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
   phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
-  Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
+  UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
