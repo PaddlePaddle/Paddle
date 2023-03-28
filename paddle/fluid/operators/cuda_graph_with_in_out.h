@@ -172,33 +172,31 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
 template <typename Callable>
 static std::shared_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
     Callable &&callable,
-    const std::vector<paddle::Tensor> &x,
-    std::vector<paddle::Tensor *> &out,   // NOLINT
-    std::vector<paddle::Tensor *> &dout,  // NOLINT
+    const std::vector<std::vector<paddle::Tensor>> &tensor_inputs,
+    const std::vector<std::vector<paddle::Tensor *>> &tensor_outputs,   // NOLINT
     platform::CUDAPlace place,
     cudaStreamCaptureMode mode,
     int64_t pool_id) {
   std::vector<const phi::DenseTensor *> inputs;
-  for (auto &tensor : x) {
-    if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
-      phi::DenseTensor *dense_tensor =
-          static_cast<phi::DenseTensor *>(tensor.impl().get());
-      inputs.push_back(dense_tensor);
+  for (auto input : tensor_inputs) {
+    for (auto tensor : input) {
+      if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
+        phi::DenseTensor *dense_tensor =
+            static_cast<phi::DenseTensor *>(tensor.impl().get());
+        inputs.push_back(dense_tensor);
+      }
     }
   }
 
   auto func = [&](const std::vector<const phi::DenseTensor *> &inputs) {
     callable();
     std::vector<phi::DenseTensor *> outputs;
-    for (auto *tensor : out) {
-      phi::DenseTensor *dense_tensor =
-          static_cast<phi::DenseTensor *>(tensor->impl().get());
-      outputs.push_back(dense_tensor);
-    }
-    for (auto *tensor : dout) {
-      phi::DenseTensor *dense_tensor =
-          static_cast<phi::DenseTensor *>(tensor->impl().get());
-      outputs.push_back(dense_tensor);
+    for (auto output : tensor_outputs) {
+      for (auto *tensor : output) {
+        phi::DenseTensor *dense_tensor =
+            static_cast<phi::DenseTensor *>(tensor->impl().get());
+        outputs.push_back(dense_tensor);
+      }
     }
     return outputs;
   };
@@ -208,48 +206,37 @@ static std::shared_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph2(
   // return CUDAGraphWithInOutsManager::Instance().Create(func, place, inputs, mode, pool_id);
 }
 
-static void ExecuteCUDAGraph2(const std::vector<paddle::Tensor> &x,
-                              std::vector<paddle::Tensor *> &out,   // NOLINT
-                              std::vector<paddle::Tensor *> &dout,  // NOLINT
+static void ExecuteCUDAGraph2(const std::vector<std::vector<paddle::Tensor>> &tensor_inputs,
+                              const std::vector<std::vector<paddle::Tensor *>> &tensor_outputs,   // NOLINT
                               CUDAGraphWithInOuts *graph) {
   std::vector<const phi::DenseTensor *> inputs;
-  for (auto tensor : x) {
-    phi::DenseTensor *dense_tensor =
-        static_cast<phi::DenseTensor *>(tensor.impl().get());
-    inputs.push_back(dense_tensor);
+  for (auto input : tensor_inputs) {
+    for (auto tensor : input) {
+      phi::DenseTensor *dense_tensor =
+          static_cast<phi::DenseTensor *>(tensor.impl().get());
+      inputs.push_back(dense_tensor);
+    }
   }
 
   graph->Run(inputs);
   auto outputs = graph->GetOutputs();
 
   size_t idx = 0;
-  for (auto *tensor : out) {
-    phi::DenseTensor *dense_tensor =
-        static_cast<phi::DenseTensor *>(tensor->impl().get());
-    if (outputs[idx] != nullptr) {
-      *dense_tensor = *outputs[idx];
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dense_tensor,
-          nullptr,
-          phi::errors::InvalidArgument(
-              "The %d-th output variable should be nullptr.", idx));
+  for (auto output : tensor_outputs) {
+    for (auto *tensor : output) {
+      phi::DenseTensor *dense_tensor =
+          static_cast<phi::DenseTensor *>(tensor->impl().get());
+      if (outputs[idx] != nullptr) {
+        *dense_tensor = *outputs[idx];
+      } else {
+        PADDLE_ENFORCE_EQ(
+            dense_tensor,
+            nullptr,
+            phi::errors::InvalidArgument(
+                "The %d-th output variable should be nullptr.", idx));
+      }
+      ++idx;
     }
-    ++idx;
-  }
-  for (auto *tensor : dout) {
-    phi::DenseTensor *dense_tensor =
-        static_cast<phi::DenseTensor *>(tensor->impl().get());
-    if (outputs[idx] != nullptr) {
-      *dense_tensor = *outputs[idx];
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dense_tensor,
-          nullptr,
-          phi::errors::InvalidArgument(
-              "The %d-th output variable should be nullptr.", idx));
-    }
-    ++idx;
   }
 }
 

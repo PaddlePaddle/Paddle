@@ -514,12 +514,12 @@ inline void RunProgramAPI(
         interpreter_core = RunProgramAPIImpl(x, params, out, step_scope, dout, require_any_grad, attrs);
       };
       inner_graphs[graph_idx] = paddle::operators::CaptureCUDAGraph2(
-        callable, x, out, dout, place, mode, pool_id);
+        callable, {x}, {out, dout}, place, mode, pool_id);
       VLOG(10) << "Capture Forward CUDA Graph";
       VLOG(4) << "yoki: inner_graphs[" << graph_idx << "]: " << inner_graphs[graph_idx].get();
     } else {
       VLOG(10) << "Run Forward CUDA Graph directly";
-      paddle::operators::ExecuteCUDAGraph2(x, out, dout,
+      paddle::operators::ExecuteCUDAGraph2({x}, {out, dout},
                        inner_graphs[graph_idx].get());
     }
     VLOG(3) << "yoki: inner_graphs.size1: " << inner_graphs.size();
@@ -530,7 +530,7 @@ inline void RunProgramAPI(
 #endif
 }
 
-inline void RunProgramGradAPI(
+inline std::shared_ptr<paddle::framework::InterpreterCore> RunProgramGradAPIImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
@@ -540,7 +540,7 @@ inline void RunProgramGradAPI(
     std::vector<paddle::Tensor *> &params_grad  // NOLINT
 ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
-  if (x_grad.empty() && params_grad.empty()) return;
+  if (x_grad.empty() && params_grad.empty()) return nullptr;
 
   auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
@@ -659,6 +659,73 @@ inline void RunProgramGradAPI(
         false);  // can't reuse util call `~GradNodeRunProgram`
     details::GcScope(global_inner_scope);
   }
+
+  return interpreter_core;
+}
+
+inline void RunProgramGradAPI(
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    const std::vector<paddle::Tensor> &out_grad,
+    const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> &cuda_graph,  // NOLINT
+    const paddle::framework::AttributeMap &attrs,
+    std::vector<paddle::Tensor *> &x_grad,      // NOLINT
+    std::vector<paddle::Tensor *> &params_grad  // NOLINT
+) {
+  VLOG(2) << "RunProgramGradAPI";
+  // In the original run_program OP, the default value of the is_test
+  // attribute is false, we should check if there is is_test parameter
+  // in attrs
+  
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+
+  const auto &capture_mode = PADDLE_GET_CONST(std::string, attrs.at("cuda_graph_capture_mode"));
+
+  if (capture_mode.empty()) {
+    RunProgramGradAPIImpl(x, params, out_grad, step_scope, attrs, x_grad, params_grad);
+    return;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  auto mode = paddle::operators::details::StringToCUDAGraphCaptureMode(capture_mode);
+  PADDLE_ENFORCE_EQ(
+        paddle::platform::is_gpu_place(place), true,
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+  // PADDLE_ENFORCE_NOT_NULL(
+  //       cuda_graph,
+  //       phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+  //                                    "cuda_graph_capture_mode is valid."));
+  // using GraphVecType = std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>>;
+  // auto &inner_graphs = *(cuda_graph->GetMutable<GraphVecType>());
+  // std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>> inner_graphs;
+    VLOG(3) << "yoki: cuda_graph.size0: " << cuda_graph.size();
+    size_t graph_idx = 2;
+    if (cuda_graph[graph_idx].get() == nullptr) {
+      std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core = nullptr;
+      auto callable = [x, params, &out_grad, &step_scope, attrs, &x_grad, &params_grad,  &interpreter_core]() {
+        interpreter_core = RunProgramGradAPIImpl(x, params, out_grad, step_scope, attrs, x_grad, params_grad);
+      };
+
+      int64_t pool_id = cuda_graph[0].get() != nullptr
+                            ? cuda_graph[0]->PoolID()
+                            : cuda_graph[1]->PoolID();
+      cuda_graph[graph_idx] = paddle::operators::CaptureCUDAGraph2(
+        callable, {out_grad}, {x_grad}, place, mode, pool_id);
+      VLOG(10) << "Capture Backward CUDA Graph";
+      VLOG(4) << "yoki: cuda_graph[" << graph_idx << "]: " << cuda_graph[graph_idx].get();
+    } else {
+      VLOG(10) << "Run Backward CUDA Graph directly";
+      paddle::operators::ExecuteCUDAGraph2({out_grad}, {x_grad},
+                       cuda_graph[graph_idx].get());
+    }
+    VLOG(3) << "yoki: cuda_graph.size1: " << cuda_graph.size();
+#else
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+#endif
 }
 
 class GradNodeRunProgram : public egr::GradNodeBase {
@@ -730,6 +797,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       params_,
                       hooked_grads[0],
                       step_scope_,
+                      cuda_graph_,
                       attrs_,
                       x_grad_ptr,
                       params_grad_ptr);
@@ -752,6 +820,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   void SetStepScope(const std::vector<paddle::framework::Scope *> &scopes) {
     step_scope_ = scopes;
+  }
+
+  void SetCUDAGraph(const std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> &cuda_graph) {
+    cuda_graph_ = cuda_graph;
   }
 
  protected:
@@ -807,6 +879,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::Tensor> x_;
   std::vector<paddle::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
+  std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;

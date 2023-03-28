@@ -96,6 +96,7 @@ inline void run_program_ad_func(
 
     grad_node->SetFwdParams(params);
     grad_node->SetStepScope(step_scope);
+    grad_node->SetCUDAGraph(cuda_graph);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
