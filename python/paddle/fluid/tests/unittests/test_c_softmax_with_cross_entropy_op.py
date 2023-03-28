@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import subprocess
 import sys
 import unittest
@@ -23,15 +22,14 @@ sys.path.append(".")
 class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
     def pdrun(self):
         cmd = [
-            sys.executable.split('/')[-1],
+            sys.executable,
             "-m",
             "paddle.distributed.launch",
             "--devices",
             "0,1",
             "c_softmax_with_cross_entropy_op.py",
         ]
-        env = os.environ.copy()
-        proc = subprocess.Popen(cmd, env=env)
+        proc = subprocess.Popen(cmd)
         return proc
 
     def test_c_softmax_with_cross_entropy_op(self):
