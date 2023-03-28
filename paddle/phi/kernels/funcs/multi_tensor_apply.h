@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/include/experimental/phi/common/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
