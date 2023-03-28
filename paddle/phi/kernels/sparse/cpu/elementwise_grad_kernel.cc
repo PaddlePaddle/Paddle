@@ -40,6 +40,7 @@ void AllocCsrPtr(const Context& dev_ctx,
   DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
   DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  dx->set_meta(x.meta());
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -49,14 +50,15 @@ void AllocCooPtr(const Context& dev_ctx,
                  SparseCooTensor* dx) {
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  dx->set_meta(x.meta());
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
 
 template <typename T, typename IntT, typename Context>
-void CopySameIndices(const Context& dev_ctx,
-                     const SparseCooTensor& dout,
-                     const SparseCooTensor& x,
-                     SparseCooTensor* dx) {
+void CopyCooValues(const Context& dev_ctx,
+                   const SparseCooTensor& dout,
+                   const SparseCooTensor& x,
+                   SparseCooTensor* dx) {
   Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, dx->mutable_indices());
 
   const int sparse_dim = x.sparse_dim();
@@ -103,6 +105,58 @@ void CopySameIndices(const Context& dev_ctx,
       ++j;
     } else {
       ++i;
+    }
+  }
+  while (j < x_indexs.size()) {
+    memset(dx_values_ptr + j * element_size, 0, element_size * sizeof(T));
+    ++j;
+  }
+}
+
+template <typename T, typename IntT, typename Context>
+void CopyCsrValues(const Context& dev_ctx,
+                   const SparseCsrTensor& dout,
+                   const SparseCsrTensor& x,
+                   SparseCsrTensor* dx) {
+  Copy(dev_ctx, x.crows(), dev_ctx.GetPlace(), false, dx->mutable_crows());
+  Copy(dev_ctx, x.cols(), dev_ctx.GetPlace(), false, dx->mutable_cols());
+
+  const auto& x_dims = x.dims();
+  int batch = x_dims.size() == 2 ? 1 : x_dims[0];
+  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+
+  const IntT* x_crows_ptr = x.crows().data<IntT>();
+  const IntT* x_cols_ptr = x.cols().data<IntT>();
+
+  const IntT* dout_crows_ptr = dout.crows().data<IntT>();
+  const IntT* dout_cols_ptr = dout.cols().data<IntT>();
+  const T* dout_values_ptr = dout.values().data<T>();
+
+  T* dx_values_ptr = dx->mutable_values()->data<T>();
+
+  for (int b = 0; b < batch; b++) {
+    for (int r = 0; r < rows; r++) {
+      int x_start = x_crows_ptr[b * (rows + 1) + r];
+      int dout_start = dout_crows_ptr[b * (rows + 1) + r];
+      int x_row_nnz = x_crows_ptr[b * (rows + 1) + r + 1] - x_start;
+      int dout_row_nnz = dout_crows_ptr[b * (rows + 1) + r + 1] - dout_start;
+      int i = 0, j = 0;
+      while (i < x_row_nnz && j < dout_row_nnz) {
+        if (x_cols_ptr[x_start + i] == dout_cols_ptr[dout_start + j]) {
+          dx_values_ptr[x_start + i] = dout_values_ptr[dout_start + j];
+          ++i;
+          ++j;
+        } else if (x_cols_ptr[x_start + i] < dout_cols_ptr[dout_start + j]) {
+          dx_values_ptr[x_start + i] = static_cast<T>(0);
+          ++i;
+        } else {
+          ++j;
+        }
+      }
+      while (i < x_row_nnz) {
+        dx_values_ptr[x_start + i] = static_cast<T>(0);
+        ++i;
+      }
     }
   }
 }
@@ -182,17 +236,24 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
   if (dx) {
     //    dout/y
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, dout, y, dx);
+    SparseCsrTensor tmp_dx;
+    AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
+    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
     //    -dout * out / y
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    SparseCsrTensor tmp_dy;
+    AllocCsrPtr<T, IntT>(dev_ctx, y, &tmp_dy);
+
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, &tmp_dy);
     phi::NegativeKernel<T, Context>(
-        dev_ctx, dout.values(), dy->mutable_values());
-    auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, *dy, out);
-    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, dy);
+        dev_ctx, dout.values(), tmp_dy.mutable_values());
+    auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, tmp_dy, out);
+    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
 
@@ -207,16 +268,16 @@ void ElementWiseAddCooGradCPUKernel(const Context& dev_ctx,
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, x, dx);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, x, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, y, dy);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, y, dy);
   } else {
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, x, dx);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, y, dy);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, x, dx);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, y, dy);
   }
 }
 
@@ -229,12 +290,12 @@ void ElementWiseSubtractCooGradCPUKernel(const Context& dev_ctx,
                                          SparseCooTensor* dy) {
   if (dx) {
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, x, dx);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, x, dx);
   }
 
   if (dy) {
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopySameIndices<T, IntT, Context>(dev_ctx, dout, y, dy);
+    CopyCooValues<T, IntT, Context>(dev_ctx, dout, y, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), dy->mutable_values());
   }
@@ -253,7 +314,7 @@ void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
     sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
-    CopySameIndices<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
+    CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
@@ -262,7 +323,7 @@ void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
     SparseCooTensor tmp_dy;
     AllocCooPtr<T, IntT>(dev_ctx, y, &tmp_dy);
     sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, x, &tmp_dy);
-    CopySameIndices<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
+    CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
 
@@ -280,7 +341,7 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
     sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
-    CopySameIndices<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
+    CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
@@ -293,7 +354,7 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
         dev_ctx, dout.values(), tmp_dy.mutable_values());
     auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, tmp_dy, out);
     sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
-    CopySameIndices<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
+    CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
 
