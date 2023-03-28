@@ -19,6 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -153,6 +154,9 @@ class TestFP16Case5(TestClipOp):
         self.min = 0.5
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestClipBF16Op(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
@@ -199,17 +203,15 @@ class TestClipBF16Op(OpTest):
             paddle.disable_static()
 
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (4, 10, 10)
         self.max = 0.8
         self.min = 0.3
-        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
-        self.inputs['Min'] = np.array([0.1]).astype(self.dtype)
+        self.inputs['Max'] = np.array([0.8]).astype(np.float32)
+        self.inputs['Min'] = np.array([0.1]).astype(np.float32)
 
 
 class TestBF16Case1(TestClipBF16Op):
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (8, 16, 8)
         self.max = 0.7
         self.min = 0.0
@@ -217,7 +219,6 @@ class TestBF16Case1(TestClipBF16Op):
 
 class TestBF16Case2(TestClipBF16Op):
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (8, 16)
         self.max = 1.0
         self.min = 0.0
@@ -225,7 +226,6 @@ class TestBF16Case2(TestClipBF16Op):
 
 class TestBF16Case3(TestClipBF16Op):
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
@@ -233,17 +233,15 @@ class TestBF16Case3(TestClipBF16Op):
 
 class TestBF16Case4(TestClipBF16Op):
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (4, 8, 8)
         self.max = 0.7
         self.min = 0.2
-        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
-        self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
+        self.inputs['Max'] = np.array([0.8]).astype(np.float32)
+        self.inputs['Min'] = np.array([0.3]).astype(np.float32)
 
 
 class TestBF16Case5(TestClipBF16Op):
     def initTestCase(self):
-        self.dtype = np.uint16
         self.shape = (4, 8, 16)
         self.max = 0.5
         self.min = 0.5
