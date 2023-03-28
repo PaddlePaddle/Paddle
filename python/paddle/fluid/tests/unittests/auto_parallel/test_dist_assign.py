@@ -65,8 +65,7 @@ class TestDistAssign(unittest.TestCase):
         for op in ops:
             if op.type == "assign":
                 dist_op = dist_context.get_dist_op_for_program(op)
-                dist_op.dist_attr.impl_type == "assign"
-                dist_op.dist_attr.impl_idx == 0
+                assert dist_op.dist_attr.impl_type == "assign"
 
                 x_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]

@@ -534,7 +534,7 @@ class TestCUDNNLstmOp(OpTest):
         for var_name in var_name_list:
             self.check_grad_with_place(
                 place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                {'Input', var_name, 'InitH', 'InitC'},
                 ['Out', 'LastH', 'LastC'],
                 check_dygraph=False,
             )
