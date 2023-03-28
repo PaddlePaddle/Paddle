@@ -354,9 +354,11 @@ extern "C" {
 
 #ifndef _WIN32
 // C-API to get global OpMetaInfoMap.
+#ifdef __cplusplus
 paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
   return paddle::OpMetaInfoMap::Instance();
 }
+#endif
 #endif
 
 #ifdef __cplusplus
