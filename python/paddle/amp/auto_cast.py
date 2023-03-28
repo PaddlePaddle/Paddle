@@ -102,7 +102,8 @@ def amp_state():
 class AMPGlobalState:
     def __init__(self):
         self.model_parameters = []
-        self.master_grad = False
+        self.use_master_grad = False
+        self.already_register_final_backward_hook = False
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val
@@ -465,6 +466,21 @@ def amp_guard(
         amp_level = AMP_LEVEL.O0
         amp_dtype = "float32"
 
+    # master_grad_hook will run at the end of backward.
+    # Since backward_final_hook will be cleared once they have been
+    # done, we should register the hook every step.
+    if (
+        amp_global_state().use_master_grad
+        and not amp_global_state().already_register_final_backward_hook
+    ):
+
+        def master_grad_hook():
+            core.eager.set_master_grads(amp_global_state().model_parameters)
+            amp_global_state().already_register_final_backward_hook = False
+
+        core.eager._add_backward_final_hook(master_grad_hook)
+        amp_global_state().already_register_final_backward_hook = True
+
     if tracer:
         # enable auto_cast
         original_amp_level = tracer._amp_level
@@ -649,7 +665,7 @@ def amp_decorate(
 
         # support master_grad
         if master_grad:
-            amp_global_state().master_grad = True
+            amp_global_state().use_master_grad = True
             for idx in range(len(models)):
                 amp_global_state().model_parameters.extend(
                     models[idx].parameters()

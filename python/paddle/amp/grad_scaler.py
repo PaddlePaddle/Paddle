@@ -19,7 +19,6 @@ from enum import Enum
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.amp.auto_cast import amp_global_state
 from paddle.fluid import core, in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
@@ -183,16 +182,6 @@ class AmpScaler:
 
         if not self._enable:
             return var
-
-        # master_grad_hook will run at the end of backward.
-        # Since backward_final_hook will be cleared once they have been
-        # done, we should register the hook every step.
-        if amp_global_state().master_grad:
-
-            def master_grad_hook():
-                core.eager.set_master_grads(amp_global_state().model_parameters)
-
-            core.eager._add_backward_final_hook(master_grad_hook)
 
         return var * self._scale
 
