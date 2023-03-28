@@ -12,7 +12,7 @@
     func : conv_xpu
     data_type : Input
   optional : Bias, Branch, InputMax
-  
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
   output: Tensor
