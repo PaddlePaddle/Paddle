@@ -16,15 +16,15 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
-    pool2d_backward_navie as pool2d_backward_naive,
-)
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
+)
+from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
+    pool2d_backward_navie as pool2d_backward_naive,
 )
 from paddle.fluid.tests.unittests.test_pool2d_op import (
     TestPool2D_Op_Mixin,
@@ -79,7 +79,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         )
         x_grad = x_grad / np.prod(self.outputs['Out'].shape)
         self.check_grad_with_place(
-            core.CPUPlace(), set(['X']), 'Out', user_defined_grads=[x_grad]
+            core.CPUPlace(), {'X'}, 'Out', user_defined_grads=[x_grad]
         )
 
 

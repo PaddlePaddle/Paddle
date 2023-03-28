@@ -18,7 +18,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 import sys
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def generate_spec(filename):

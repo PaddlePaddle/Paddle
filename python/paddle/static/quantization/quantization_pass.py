@@ -1438,12 +1438,7 @@ class QuantizationFreezePass:
         return "%s.dequantized" % (var_name)
 
     def _is_float(self, v):
-        return (
-            isinstance(v, float)
-            or isinstance(v, np.float16)
-            or isinstance(v, np.float32)
-            or isinstance(v, np.float64)
-        )
+        return isinstance(v, (float, np.float16, np.float32, np.float64))
 
 
 class ConvertToInt8Pass:

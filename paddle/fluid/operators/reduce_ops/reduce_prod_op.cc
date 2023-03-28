@@ -68,7 +68,7 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
 namespace ops = paddle::operators;
 
-class ReduceProdOpMaker : public ops::ReduceOpMaker {
+class ReduceProdOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_prod"; }
   virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
@@ -81,7 +81,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(
 
 REGISTER_OPERATOR(
     reduce_prod,
-    ops::ReduceOp,
+    ops::ReduceBaseOp,
     ReduceProdOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,

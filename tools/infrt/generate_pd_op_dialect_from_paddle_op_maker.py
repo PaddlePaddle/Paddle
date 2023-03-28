@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
-from paddle.fluid import core
+from paddle.fluid import core, framework
 
 
 # collect original ops: op which has both inference and grad definition

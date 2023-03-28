@@ -18,16 +18,16 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static.amp as amp
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from paddle.static import amp
 
 
 @unittest.skipIf(

@@ -16,7 +16,7 @@ from nets import mlp
 from utils import gen_data
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
