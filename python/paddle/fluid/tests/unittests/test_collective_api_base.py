@@ -400,7 +400,6 @@ class TestDistBase(unittest.TestCase):
             # check values
             np.testing.assert_allclose(input1, tr0_out[0], 1e-05)
             np.testing.assert_allclose(input2, tr0_out[1], 1e-05)
-
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
