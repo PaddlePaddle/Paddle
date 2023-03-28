@@ -27,13 +27,13 @@ class TestShapeOp(OpTest):
         self.op_type = "shape"
         self.python_api = paddle.shape
         self.config()
-        self.shape = [2, 3]
-        input = np.zeros(self.shape)
+        input = np.zeros(self.shape, dtype=self.dtype)
         self.inputs = {'Input': input}
         self.outputs = {'Out': np.array(self.shape)}
 
     def config(self):
         self.shape = [2, 3]
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -42,11 +42,31 @@ class TestShapeOp(OpTest):
 class case1(TestShapeOp):
     def config(self):
         self.shape = [2]
+        self.dtype = np.float32
 
 
 class case2(TestShapeOp):
     def config(self):
         self.shape = [1, 2, 3]
+        self.dtype = np.float32
+
+
+class TestShapeOpFp16(TestShapeOp):
+    def config(self):
+        self.shape = [2, 3]
+        self.dtype = np.float16
+
+
+class case1Fp16(TestShapeOp):
+    def config(self):
+        self.shape = [2]
+        self.dtype = np.float16
+
+
+class case2Fp16(TestShapeOp):
+    def config(self):
+        self.shape = [1, 2, 3]
+        self.dtype = np.float16
 
 
 class TestShapeWithSelectedRows(unittest.TestCase):
@@ -95,7 +115,6 @@ class TestShapeOpBf16(OpTest):
         self.dtype = 'bfloat16'
         self.python_api = paddle.shape
         self.config()
-        self.shape = [2, 3]
         input = np.zeros(self.shape)
         input = convert_float_to_uint16(input.astype('float32'))
         self.inputs = {'Input': input}
@@ -107,6 +126,16 @@ class TestShapeOpBf16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
+
+
+class case1Bf16(TestShapeOpBf16):
+    def config(self):
+        self.shape = [2]
+
+
+class case2Bf16(TestShapeOpBf16):
+    def config(self):
+        self.shape = [1, 2, 3]
 
 
 if __name__ == '__main__':
