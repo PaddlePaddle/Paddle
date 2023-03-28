@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import to_variable
+
 import paddle
+from paddle import fluid
+from paddle.fluid.dygraph.base import to_variable
 
 paddle.enable_static()
 

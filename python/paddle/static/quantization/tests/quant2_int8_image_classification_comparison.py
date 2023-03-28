@@ -387,7 +387,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 test_case_args.ops_to_quantize
             )
 
-        self._op_ids_to_skip = set([-1])
+        self._op_ids_to_skip = {-1}
         if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = self._ints_from_csv(
                 test_case_args.op_ids_to_skip

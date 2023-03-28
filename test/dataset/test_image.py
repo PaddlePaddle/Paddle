@@ -17,8 +17,7 @@ Fliename:
 Description:
     This scipt test image resize,flip and chw.
 """
-
-import sys
+import os
 import unittest
 
 import numpy as np
@@ -35,7 +34,9 @@ class Image(unittest.TestCase):
 
     def test_resize_flip_chw(self):
         """resize"""
-        imgdir = sys.argv[0].replace('test_image.py', 'cat.jpg')
+        imgdir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'cat.jpg'
+        )
         images = image.load_image(imgdir)
         images = image.resize_short(images, 256)
         self.assertEqual(256, min(images.shape[:2]))

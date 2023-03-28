@@ -1860,7 +1860,7 @@ class Layer:
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
-            if isinstance(state, dict) or isinstance(state, list):
+            if isinstance(state, (dict, list)):
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
