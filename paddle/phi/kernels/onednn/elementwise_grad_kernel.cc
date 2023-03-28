@@ -134,9 +134,9 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
     swap_x_y = true;
   }
 
-  std::vector<float> scales{1.0};
+  float scale{1.0};
   if (swap_x_y) {
-    scales[0] = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
+    scale = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
   }
 
   auto tz = phi::vectorize<int64_t>(dout.dims());
@@ -151,6 +151,13 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;
 
   auto& astream = OneDNNContext::tls().get_stream();
+  auto scales_md =
+      dnnl::memory::desc({1},
+                         dnnl::memory::data_type::f32,
+                         dnnl::memory::format_tag::x);
+  auto scales_mem = dnnl::memory(scales_md, onednn_engine);
+  auto scale_memory_buf = static_cast<float*>(scales_mem.get_data_handle());
+  *scale_memory_buf = scale;
   if (dx) {
     // elementwise_add & elementwise_sub
     if (BINARY_OP == dnnl::algorithm::binary_add ||
@@ -158,11 +165,6 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
       if (dout.dims() == dx->dims()) {
         dst_memory = reorder_handler.AcquireDstMemory(
             dx, dout.mem_desc(), dev_ctx.GetPlace());
-        auto scales_md =
-            dnnl::memory::desc({static_cast<int64_t>(scales.size())},
-                               dnnl::memory::data_type::f32,
-                               dnnl::memory::format_tag::x);
-        auto scales_mem = dnnl::memory(scales_md, onednn_engine);
         AddSubNonBroadcast(
             &reorder_handler, dx, reorder_src_memory, dst_memory, scales_mem);
       }
@@ -189,7 +191,9 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
       const std::unordered_map<int, dnnl::memory> args = {
           {DNNL_ARG_SRC_0, *src_dout_memory},
           {DNNL_ARG_SRC_1, *src_y_memory},
-          {DNNL_ARG_DST, *dst_memory}};
+          {DNNL_ARG_DST, *dst_memory},
+          {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
+          {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
 
       binary_prim->execute(astream, args);
     }
@@ -202,7 +206,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                    &dout,
                                    broadcast_src_memory,
                                    dst_memory,
-                                   scales,
+                                   {scale},
                                    BINARY_OP == dnnl::algorithm::binary_sub);
     } else {
       dx->set_mem_desc(dst_memory->get_desc());
@@ -216,11 +220,6 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
       if (dout.dims() == dy->dims()) {
         dst_memory = reorder_handler.AcquireDstMemory(
             dy, dout.mem_desc(), dev_ctx.GetPlace());
-        auto scales_md =
-            dnnl::memory::desc({static_cast<int64_t>(scales.size())},
-                               dnnl::memory::data_type::f32,
-                               dnnl::memory::format_tag::x);
-        auto scales_mem = dnnl::memory(scales_md, onednn_engine);
         AddSubNonBroadcast(
             &reorder_handler, dy, reorder_src_memory, dst_memory, scales_mem);
       }
@@ -291,7 +290,9 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
       binary_prim = binary_handler.AcquireForwardPrimitive();
       args = {{DNNL_ARG_SRC_0, *src_0_memory},
               {DNNL_ARG_SRC_1, *src_1_memory},
-              {DNNL_ARG_DST, *dst_dy_memory}};
+              {DNNL_ARG_DST, *dst_dy_memory},
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
 
       if (BINARY_OP == dnnl::algorithm::binary_div)
         args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
@@ -310,7 +311,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                    &dout,
                                    broadcast_src_memory,
                                    dst_memory,
-                                   scales,
+                                   {scale},
                                    BINARY_OP == dnnl::algorithm::binary_sub);
     } else {
       dy->set_mem_desc(dst_memory->get_desc());

@@ -1048,22 +1048,24 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                                             to_void_cast<T>(input_data));
   }
 
-  // TODO(jczaja): make single function
   dnnl::memory Get_SRC_0_Scale_Memory() {
-    std::vector<float> scales(1, scale_0_);
-    auto scale_md = dnnl::memory::desc(
-        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-    return dnnl::memory(scale_md, this->engine_, scales.data());
+    return Get_SRC_Scale_Memory(scale_0_);
   }
 
   dnnl::memory Get_SRC_1_Scale_Memory() {
-    std::vector<float> scales(1, scale_1_);
-    auto scale_md = dnnl::memory::desc(
-        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-    return dnnl::memory(scale_md, this->engine_, scales.data());
+    return Get_SRC_Scale_Memory(scale_1_);
   }
 
  private:
+  dnnl::memory Get_SRC_Scale_Memory(float scale) {
+    auto scale_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scale_memory = dnnl::memory(scale_md, this->engine_);
+    auto scale_memory_buf = static_cast<float*>(scale_memory.get_data_handle());
+    *scale_memory_buf = scale;
+    return scale_memory;
+  }
+
   static inline std::tuple<dnnl::primitive_attr, float, float> CreateAttributes(
       dnnl::algorithm op,
       float scale_x,
