@@ -112,7 +112,7 @@ class TestFillBF16OP(OpTest):
         self.attrs = {
             'value': val.flatten().tolist(),
             'shape': [100, 200],
-            'dtype': int(core.VarDesc.VarType.FP64),
+            'dtype': int(core.VarDesc.VarType.BF16),
             'force_cpu': False,
         }
         self.outputs = {'Out': convert_float_to_uint16(val)}

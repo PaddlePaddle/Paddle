@@ -208,7 +208,7 @@ class TestDiagonalBF16OP(OpTest):
         self.inputs = {'Input': convert_float_to_uint16(self.case)}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
         self.target = np.diagonal(
-            self.inputs['Input'],
+            self.case,
             offset=self.attrs['offset'],
             axis1=self.attrs['axis1'],
             axis2=self.attrs['axis2'],
