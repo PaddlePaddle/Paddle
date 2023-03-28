@@ -20,8 +20,8 @@ from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 @skip_check_grad_ci(

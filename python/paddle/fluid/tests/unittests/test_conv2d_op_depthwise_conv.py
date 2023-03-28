@@ -29,7 +29,9 @@ from test_conv2d_op import (
     create_test_padding_VALID_class,
 )
 
-import paddle.fluid.core as core
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.op_test import get_numeric_gradient
+from paddle.fluid.tests.unittests.testsuite import create_op
 
 # ----------------TestDepthwiseConv -----
 
@@ -349,6 +351,160 @@ class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
+def create_test_fp16_class(parent, grad_check=True):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestDepthwiseConvFP16(parent):
+        def init_kernel_type(self):
+            self.use_cuda = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                )
+
+    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    TestDepthwiseConvFP16.__name__ = cls_name
+    globals()[cls_name] = TestDepthwiseConvFP16
+
+
+def create_test_bf16_class(parent, atol=1e-2):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestDepthwiseConvBF16(parent):
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(
+                scope, self.op_type, self.inputs, self.outputs, self.attrs
+            )
+            return get_numeric_gradient(
+                place, scope, op, self.inputs_fp32, check_name, ['Output']
+            )
+
+        def init_kernel_type(self):
+            self.use_cuda = True
+            self.no_need_check_grad = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Input')
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                no_grad_set=set(['Filter']),
+                user_defined_grads=[numeric_grads],
+            )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Filter')
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                user_defined_grads=[numeric_grads],
+            )
+
+    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    TestDepthwiseConvBF16.__name__ = cls_name
+    globals()[cls_name] = TestDepthwiseConvBF16
+
+
+def create_test_channel_last_fp16_class(parent, grad_check=True):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestChannelLastFP16(parent):
+        def init_kernel_type(self):
+            self.use_cuda = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                )
+
+        def init_data_format(self):
+            self.data_format = "NHWC"
+
+        def init_test_case_2(self):
+            N, C, H, W = self.input_size
+            self.input_size = [N, H, W, C]
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLastFP16")
+    TestChannelLastFP16.__name__ = cls_name
+    globals()[cls_name] = TestChannelLastFP16
+
+
+# depthwise conv2d fp16
+
+create_test_fp16_class(TestDepthwiseConv)
+create_test_fp16_class(TestDepthwiseConv2)
+create_test_fp16_class(TestDepthwiseConv3)
+create_test_fp16_class(TestDepthwiseConvWithDilation)
+create_test_fp16_class(TestDepthwiseConvWithDilation2)
+create_test_fp16_class(TestDepthwiseConvandFuse)
+create_test_fp16_class(TestDepthwiseConv2andFuse)
+create_test_fp16_class(TestDepthwiseConv3andFuse)
+create_test_fp16_class(TestDepthwiseConvWithDilationandFuse)
+create_test_fp16_class(TestDepthwiseConvWithDilation2andFuse)
+
+# depthwise conv2d bf16
+
+create_test_bf16_class(TestDepthwiseConv)
+create_test_bf16_class(TestDepthwiseConv2)
+create_test_bf16_class(TestDepthwiseConv3, atol=4e-2)
+create_test_bf16_class(TestDepthwiseConvWithDilation)
+create_test_bf16_class(TestDepthwiseConvWithDilation2)
+create_test_bf16_class(TestDepthwiseConvandFuse)
+create_test_bf16_class(TestDepthwiseConv2andFuse)
+create_test_bf16_class(TestDepthwiseConv3andFuse)
+create_test_bf16_class(TestDepthwiseConvWithDilationandFuse)
+create_test_bf16_class(TestDepthwiseConvWithDilation2andFuse)
+
 # depthwise conv2d
 
 create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
@@ -367,6 +523,15 @@ create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvandFuse_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
+
+# channel last fp16
+create_test_channel_last_fp16_class(TestDepthwiseConv_AsyPadding)
+create_test_channel_last_fp16_class(TestDepthwiseConvWithDilation2_AsyPadding)
+create_test_channel_last_fp16_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_channel_last_fp16_class(
+    TestDepthwiseConvWithDilationandFuse_AsyPadding
+)
+
 
 # ------------ depthwise conv2d in MIOPEN ---------
 if core.is_compiled_with_rocm():

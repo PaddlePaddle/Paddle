@@ -16,7 +16,7 @@ __all__ = []
 
 import os
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,

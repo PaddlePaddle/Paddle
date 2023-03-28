@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.optimizer as optimizer
+from paddle import fluid
+from paddle.fluid import core, optimizer
 from paddle.fluid.framework import Program, program_guard
 
 BATCH_SIZE = 1

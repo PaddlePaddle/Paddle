@@ -406,7 +406,9 @@ PD_DECLARE_API(from_blob);
 """
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path):
+def generate_api(
+    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+):
     apis = []
 
     for each_api_yaml in api_yaml_path:
@@ -424,7 +426,21 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/include/api.h"
+    include_header_file = (
+        "paddle/phi/api/include/fused_api.h"
+        if is_fused_ops_yaml is True
+        else "paddle/phi/api/include/api.h"
+    )
+    # not all fused ops supoort dygraph
+    if is_fused_ops_yaml is True:
+        new_apis = [
+            api
+            for api in apis
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        apis = new_apis
+
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -457,6 +473,12 @@ def main():
     )
 
     parser.add_argument(
+        '--is_fused_ops_yaml',
+        help='flag of fused ops yaml',
+        action='store_true',
+    )
+
+    parser.add_argument(
         '--api_header_path',
         help='output of generated api header code file',
         default='paddle/phi/api/include/api.h',
@@ -471,10 +493,13 @@ def main():
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
+    is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(
+        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    )
 
 
 if __name__ == '__main__':

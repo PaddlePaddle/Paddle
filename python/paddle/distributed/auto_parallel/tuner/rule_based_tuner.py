@@ -16,17 +16,31 @@ import copy
 import logging
 import math
 import os
+import pickle
+import sys
+import time
 from abc import abstractmethod
 from collections import OrderedDict
+from functools import reduce
+
+import numpy as np
 
 import paddle
+from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
 from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.cost import CostEstimator
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.utils import (
+    is_gradient_clip_op,
+    print_program_with_dist_attr,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Parameter, unique_name
@@ -750,7 +764,7 @@ class OperatorClusteringUtil:
     @staticmethod
     def get_ranks(seq):
         """Get rank array of the given seq by doubled algorithm."""
-        ordered_seq = sorted(list(set(seq)))
+        ordered_seq = sorted(set(seq))
         item_to_rank = {item: idx for idx, item in enumerate(ordered_seq)}
         inter_ranks = [item_to_rank[item] for item in seq]
 
@@ -1610,3 +1624,603 @@ class RuleBasedTuner:
                         idx
                     ][parallelism][key]
                     self._complete_sub_bwd_program(sub_program_dist_context)
+
+    def _complete_sub_update_program(self, sub_program_dist_context):
+        """
+        Complete the opt OP according to the tensor.
+        Most of the logic is the same as the update completion in the completer.
+        """
+        world_ranks = ProcessMesh(
+            [
+                i
+                for i in range(
+                    self._cluster.get_num_machines()
+                    * self._cluster._num_devices_per_machine
+                )
+            ]
+        )
+        dist_tensors = sub_program_dist_context._dist_tensors_for_program
+
+        vars = self.full_main_program.global_block().vars
+        ops = self.full_main_program.global_block().ops
+        learning_rate_completed = False
+        for idx in range(len(ops)):
+            op = ops[idx]
+            if int(op.attr('op_role')) == int(OpRole.Optimize):
+                if is_gradient_clip_op(op):
+                    if op.type in [
+                        "sum",
+                        "sqrt",
+                        "fill_constant",
+                        "elementwise_max",
+                        "elementwise_div",
+                    ]:
+                        op_dist_attr = OperatorDistAttr()
+                        op_dist_attr.process_mesh = world_ranks
+                        for in_name in op.input_arg_names:
+                            in_var = vars[in_name]
+                            if in_var.desc.original_id() in dist_tensors:
+                                in_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                    in_var
+                                )
+                                op_dist_attr.set_input_dist_attr(
+                                    in_name, in_dist_attr
+                                )
+                            else:
+                                in_dist_attr = TensorDistAttr()
+                                in_dist_attr.process_mesh = world_ranks
+                                in_dist_attr.dims_mapping = [
+                                    -1 for _ in range(len(in_var.shape))
+                                ]
+                                op_dist_attr.set_input_dist_attr(
+                                    in_name, in_dist_attr
+                                )
+                                sub_program_dist_context.set_tensor_dist_attr_for_program(
+                                    in_var, in_dist_attr
+                                )
+                        for out_name in op.output_arg_names:
+                            out_var = vars[out_name]
+                            if out_var.desc.original_id() in dist_tensors:
+                                out_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                    out_var
+                                )
+                                op_dist_attr.set_output_dist_attr(
+                                    out_name, out_dist_attr
+                                )
+                            else:
+                                out_dist_attr = TensorDistAttr()
+                                out_dist_attr.process_mesh = world_ranks
+                                out_dist_attr.dims_mapping = [
+                                    -1 for _ in range(len(out_var.shape))
+                                ]
+                                sub_program_dist_context.set_tensor_dist_attr_for_program(
+                                    out_var, out_dist_attr
+                                )
+                                op_dist_attr.set_output_dist_attr(
+                                    out_name, out_dist_attr
+                                )
+                        sub_program_dist_context.set_op_dist_attr_for_program(
+                            op, op_dist_attr
+                        )
+                    else:
+                        in_var = vars[op.input("X")[0]]
+                        if in_var.desc.original_id() in dist_tensors:
+                            in_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                in_var
+                            )
+                            assert in_dist_attr is not None
+                            ref_process_mesh = in_dist_attr.process_mesh
+                            ref_dims_mapping = in_dist_attr.dims_mapping
+
+                            if (
+                                op.type == "cast"
+                                and ops[idx + 1].type == "elementwise_mul"
+                            ):
+                                ref_var = vars[ops[idx + 1].input("X")[0]]
+                                ref_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                    ref_var
+                                )
+                                assert ref_dist_attr is not None
+                                ref_process_mesh = ref_dist_attr.process_mesh
+
+                            out_var = vars[op.output("Out")[0]]
+                            out_dist_attr = TensorDistAttr()
+                            out_dist_attr.process_mesh = ref_process_mesh
+                            if out_var.shape == in_var.shape:
+                                out_dist_attr.dims_mapping = ref_dims_mapping
+                            else:
+                                assert (
+                                    len(out_var.shape) == 1
+                                    and out_var.shape[0] == 1
+                                )
+                                out_dist_attr.dims_mapping = [-1]
+                            sub_program_dist_context.set_tensor_dist_attr_for_program(
+                                out_var, out_dist_attr
+                            )
+
+                            op_dist_attr = OperatorDistAttr()
+                            op_dist_attr.process_mesh = ref_process_mesh
+                            for in_name in op.input_arg_names:
+                                in_var = vars[in_name]
+                                in_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                    in_var
+                                )
+                                op_dist_attr.set_input_dims_mapping(
+                                    in_name, in_dist_attr.dims_mapping
+                                )
+                            for out_name in op.output_arg_names:
+                                out_var = vars[out_name]
+                                out_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                                    out_var
+                                )
+                                op_dist_attr.set_output_dims_mapping(
+                                    out_name, out_dist_attr.dims_mapping
+                                )
+                            op_dist_attr.set_input_dist_attr(
+                                in_var.name, in_dist_attr
+                            )
+                            op_dist_attr.set_output_dist_attr(
+                                out_var.name, out_dist_attr
+                            )
+
+                            sub_program_dist_context.set_op_dist_attr_for_program(
+                                op, op_dist_attr
+                            )
+                        else:
+                            continue
+
+                if "Grad" in op.input_names and "Param" in ops[idx].input_names:
+                    assert (
+                        len(op.input("Param")) == 1
+                    ), "Only support one-to-one now."
+                    assert (
+                        len(op.input("Grad")) == 1
+                    ), "Only support one-to-one now."
+                    param = vars[op.input("Param")[0]]
+                    grad_var = vars[op.input("Grad")[0]]
+                    if param.desc.original_id() in dist_tensors:
+                        param_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                            param
+                        )
+                        assert param_dist_attr is not None
+                        ref_process_mesh = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                            param
+                        ).process_mesh
+                        assert ref_process_mesh is not None
+                        ref_dims_mapping = sub_program_dist_context.get_tensor_dist_attr_for_program(
+                            param
+                        ).dims_mapping
+                        assert ref_dims_mapping is not None
+                        op_dist_attr = OperatorDistAttr()
+                        op_dist_attr.process_mesh = ref_process_mesh
+                        op_dist_attr.set_input_dims_mapping(
+                            grad_var.name, ref_dims_mapping
+                        )
+                        op_dist_attr.set_input_dims_mapping(
+                            param.name, ref_dims_mapping
+                        )
+                        op_dist_attr.set_output_dims_mapping(
+                            param.name, ref_dims_mapping
+                        )
+                        learning_var = vars[op.input("LearningRate")[0]]
+                        op_dist_attr.set_input_dims_mapping(
+                            learning_var.name, [-1]
+                        )
+                        op_dist_attr.set_output_dims_mapping(
+                            learning_var.name, [-1]
+                        )
+
+                        if not learning_rate_completed:
+                            learning_rate_completed = True
+                            var_dist_attr = TensorDistAttr()
+                            var_dist_attr.process_mesh = world_ranks
+                            var_dist_attr.dims_mapping = [-1]
+                            sub_program_dist_context.set_tensor_dist_attr_for_program(
+                                learning_var, var_dist_attr
+                            )
+
+                        for input_name in op.desc.input_names():
+
+                            if input_name in [
+                                'Param',
+                                'Grad',
+                                'LearningRate',
+                                "SkipUpdate",
+                                "Beta1Tensor",
+                                "Beta2Tensor",
+                                "EpsilonTensor",
+                            ]:
+                                continue
+                            if len(op.desc.input(input_name)) == 0:
+                                continue
+
+                            assert len(op.desc.input(input_name)) == 1
+                            input_var = vars[op.desc.input(input_name)[0]]
+                            input_var_attr = TensorDistAttr()
+
+                            if (
+                                "Beta1Pow" in input_name
+                                or "Beta2Pow" in input_name
+                            ):
+                                input_var_attr.dims_mapping = [-1]
+                                op_dist_attr.set_input_dims_mapping(
+                                    input_var.name, [-1]
+                                )
+                                op_dist_attr.set_output_dims_mapping(
+                                    input_var.name, [-1]
+                                )
+                            else:
+                                input_var_attr.dims_mapping = ref_dims_mapping
+                                op_dist_attr.set_input_dims_mapping(
+                                    input_var.name, ref_dims_mapping
+                                )
+                                op_dist_attr.set_output_dims_mapping(
+                                    input_var.name, ref_dims_mapping
+                                )
+
+                            input_var_attr.process_mesh = ref_process_mesh
+                            sub_program_dist_context.set_tensor_dist_attr_for_program(
+                                input_var, input_var_attr
+                            )
+
+                        sub_program_dist_context.set_op_dist_attr_for_program(
+                            op, op_dist_attr
+                        )
+                        continue
+                    else:
+                        continue
+
+    def complete_sub_update_programs(self):
+        for idx in self.sub_programs_dist_context:
+            for parallelism in self.sub_programs_dist_context[idx]:
+                for key in self.sub_programs_dist_context[idx][parallelism]:
+                    sub_program_dist_context = self.sub_programs_dist_context[
+                        idx
+                    ][parallelism][key]
+                    self._complete_sub_update_program(sub_program_dist_context)
+
+    def convert_device_mesh_to_key(self, device_mesh):
+        """Convert device mesh object to str."""
+        processes = ",".join([str(x) for x in device_mesh.device_ids])
+        topology = ",".join([str(x) for x in device_mesh.shape])
+        key = processes + ";" + topology
+        return key
+
+    def _get_sub_program_cost(self, dist_context):
+        """Estimate the cost of dist context."""
+        cost_estimator = CostEstimator(self.full_main_program, self._cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context
+        )
+        return global_cost.time, max_memory
+
+    def combine_dist_contexts(self, dist_contexts):
+        """Combine the dist attr in dist contexts to one dist context."""
+        combined_dist_context = DistributedContext()
+        # set dist tensor, pay attention to shared param or var as input for multi op
+        for dist_context in dist_contexts:
+            for tensor_id in dist_context._dist_tensors_for_program:
+                dist_tensor = dist_context._dist_tensors_for_program[tensor_id]
+                if (
+                    tensor_id
+                    not in combined_dist_context._dist_tensors_for_program
+                ):
+                    combined_dist_context.add_dist_tensor_for_program(
+                        dist_tensor
+                    )
+
+            # set dist op
+            for op_id in dist_context._dist_ops_for_program:
+                dist_op = dist_context._dist_ops_for_program[op_id]
+                combined_dist_context.add_dist_op_for_program(dist_op)
+
+            for process_mesh in dist_context.process_meshes:
+                combined_dist_context.add_process_mesh(process_mesh)
+
+        return combined_dist_context
+
+    def prepare(self):
+        """Prepare the sub program, tensor dist attr setting, device meshes and so on that tuner need."""
+
+        # step1: cluster operators to layers
+        begin = time.time()
+        self.layers = self.cluster_operators()
+        end = time.time()
+        self._logger.info(
+            "Cluster operators to {} layers in {}s.".format(
+                len(self.layers), end - begin
+            )
+        )
+
+        # step2: generate sub program of each layer
+        begin = time.time()
+        self.gen_fwd_sub_programs_by_clone()
+        end = time.time()
+        self._logger.info(
+            "Generate programs of every layer in {}s.".format(end - begin)
+        )
+
+        # step3: partition devices to device meshes
+        begin = time.time()
+        n, m = (
+            self._cluster.get_num_machines(),
+            self._cluster._num_devices_per_machine,
+        )
+        device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
+        end = time.time()
+        self._logger.info("Partition cluster in {}s.".format(end - begin))
+
+        # step4: transform device mesh to process meshes
+        dm_idx = 0
+        for device_meshes in device_meshes_list:
+            has_used_devices = 0
+            self.device_meshes_list.append([])
+            for device_mesh in device_meshes:
+                devices = reduce(lambda x, y: x * y, device_mesh)
+                processes = [
+                    i
+                    for i in range(has_used_devices, has_used_devices + devices)
+                ]
+                device_mesh_shape = (
+                    device_mesh
+                    if device_mesh[0] != 1
+                    else [device_mesh[i] for i in range(1, len(device_mesh))]
+                )
+                self.device_meshes_list[-1].append(
+                    DeviceMesh(
+                        mesh=np.array(processes)
+                        .reshape(device_mesh_shape)
+                        .tolist(),
+                        name="device_mesh_" + str(dm_idx),
+                    )
+                )
+                dm_idx += 1
+                has_used_devices += devices
+                process_mesh_shapes = convert_to_process_meshes(device_mesh)
+                for process_mesh_shape in process_mesh_shapes:
+                    process_mesh = ProcessMesh(
+                        np.array(processes).reshape(process_mesh_shape).tolist()
+                    )
+                    if process_mesh not in self.process_meshes:
+                        self.process_meshes.append(process_mesh)
+
+        # step5: generate full program
+        begin = time.time()
+        self.gen_full_program()
+        end = time.time()
+        self._logger.info("Generate full program in {}s.".format(end - begin))
+
+        # step6: complete forward sub programs
+        begin = time.time()
+        for process_mesh in self.process_meshes:
+            self.complete_sub_fwd_programs(process_mesh)
+        end = time.time()
+        self._logger.info(
+            "Complete all sub forward programs in {}s.".format(end - begin)
+        )
+
+        if self.mode == "train":
+            # step7: complete backward sub programs
+            begin = time.time()
+            self.complete_sub_bwd_programs()
+            end = time.time()
+            self._logger.info(
+                "Complete all sub backward programs in {}s.".format(end - begin)
+            )
+
+            # step8: complete update sub programs
+            begin = time.time()
+            self.complete_sub_update_programs()
+            end = time.time()
+            self._logger.info(
+                "Complete all sub update programs in {}s.".format(end - begin)
+            )
+
+    def tune_o1(self):
+        """The o1 level tuning."""
+        best_cost = sys.maxsize
+        best_dist_context = None
+
+        for device_meshes in self.device_meshes_list:
+            pp_stages = len(device_meshes)
+            average_layers = len(self.layers) // pp_stages
+            device_mesh_shape = device_meshes[0].shape
+            if len(device_mesh_shape) == 1:
+                device_mesh_shape.insert(0, 1)
+            process_mesh_shapes = convert_to_process_meshes(device_mesh_shape)
+
+            # For example, device_mesh is [1, 8] and process_mesh is [8].
+            # The selective parallelism is dp or mp
+            # Get dp8 or mp8 cost and compare them to get best sreategy.
+            for parallelism in ["dp", "mp", "dp_mp", "mp_dp"]:
+                for process_mesh_shape in process_mesh_shapes:
+                    dist_context_of_device_meshes = None
+                    for idx, device_mesh in enumerate(device_meshes):
+                        device_mesh_shape = device_mesh.shape
+                        process_mesh = ProcessMesh(
+                            np.array(device_mesh.device_ids)
+                            .reshape(process_mesh_shape)
+                            .tolist()
+                        )
+
+                        selective_parallelisms = (
+                            ["dp", "mp"]
+                            if len(process_mesh.shape) == 1
+                            else ["dp_mp", "mp_dp"]
+                        )
+                        if parallelism not in selective_parallelisms:
+                            total_cost_of_device_meshes = sys.maxsize
+                            continue
+
+                        key = self.convert_process_mesh_to_key(process_mesh)
+
+                        if idx == len(device_meshes) - 1:
+                            start = idx * average_layers
+                            end = len(self.layers)
+                        else:
+                            start = idx * average_layers
+                            end = (idx + 1) * average_layers
+
+                        dist_context = self.combine_dist_contexts(
+                            [
+                                self.sub_programs_dist_context[j][parallelism][
+                                    key
+                                ]
+                                for j in range(start, end)
+                            ]
+                        )
+
+                        dist_context_of_device_meshes = (
+                            dist_context
+                            if dist_context_of_device_meshes is None
+                            else self.combine_dist_contexts(
+                                [dist_context_of_device_meshes, dist_context]
+                            )
+                        )
+                    if dist_context_of_device_meshes is not None:
+                        cost, memory = self._get_sub_program_cost(
+                            dist_context_of_device_meshes
+                        )
+
+                        self._logger.info(
+                            "Cost Model: The max memory is {}GB and cost is {} when {} parallelism under process mesh shape {} on {} stages.".format(
+                                memory / (1024**3),
+                                cost,
+                                parallelism,
+                                process_mesh_shape,
+                                len(device_meshes),
+                            )
+                        )
+                        # 15% buffer is reserved for memory cost
+                        if memory > 0.85 * self.cluster.machines[0].devices[
+                            0
+                        ].memory * (1024**3):
+                            cost = sys.maxsize
+
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_dist_context = dist_context_of_device_meshes
+                            self._logger.info(
+                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {}GB.".format(
+                                    parallelism,
+                                    process_mesh_shape,
+                                    len(device_meshes),
+                                    memory / (1024**3),
+                                )
+                            )
+
+        return best_dist_context
+
+    def tune_o2(self):
+        return None
+
+    def save_strategy(self, best_dist_context, path):
+        dist_attrs = {"tensor": {}, "op": {}, "process_meshes": []}
+        for key in best_dist_context._dist_tensors_for_program:
+            if key in self._dist_context._dist_tensors_for_program:
+                dist_tensor = best_dist_context._dist_tensors_for_program[key]
+                dist_attrs["tensor"][
+                    key
+                ] = dist_tensor.dist_attr.serialize_to_string()
+        assert dist_attrs["tensor"], "Tensor dist attrs must not be None."
+
+        for key in best_dist_context._dist_ops_for_program:
+            if key in self._dist_context._dist_ops_for_program:
+                dist_op = best_dist_context._dist_ops_for_program[key]
+                dist_attrs["op"][key] = dist_op.dist_attr.serialize_to_string()
+        assert dist_attrs["op"], "Op dist attrs must not be None."
+
+        for process_mesh in best_dist_context._process_meshes:
+            process_ids = process_mesh.process_ids
+            process_shape = process_mesh.shape
+            dist_attrs["process_meshes"].append([process_ids, process_shape])
+
+        dist_attrs["cluster"] = self._cluster
+        with open(path, 'wb') as f:
+            pickle.dump(dist_attrs, f)
+        self._logger.info("The strategy has been saved at {}".format(path))
+
+    def run_or_quit(self):
+        # Quit if just tune
+        if not self._is_run:
+            self._logger.info(
+                "The process will be quitted when just tune not run."
+            )
+            quit()
+
+    def tune(self):
+        begin = time.time()
+        self.match_program(self._dist_context.serial_main_program)
+        end = time.time()
+        self._logger.info("Pattern match in {}s.".format(end - begin))
+
+        if self._use_dp:
+            completer = Completer(self._dist_context)
+            completer.complete_forward_annotation()
+            print_program_with_dist_attr(
+                self._dist_context.serial_main_program, self._dist_context
+            )
+            # Save strategy if need
+            path = self._strategy_path
+            if path:
+                self.save_strategy(self._dist_context, path)
+                self.run_or_quit()
+            return
+
+        # prepare
+        self.prepare()
+
+        best_dist_context = None
+        if self.level == "o2":
+            best_dist_context = self.tune_o2()
+
+        elif self.level == "o1":
+            # If level is o1, it means all layers within same parallelism.
+            # When in pipeline parallism, it means that place layers evenly.
+            use_o2_level = False
+            for device_meshes in self.device_meshes_list:
+                if len(device_meshes) > 1:
+                    shape = None
+                    for device_mesh in device_meshes:
+                        if shape is None:
+                            shape = device_mesh.shape
+                            continue
+                        else:
+                            if shape != device_mesh.shape:
+                                self._logger.info(
+                                    "Warning: The o1 level is not be supported when the number of machines is prime numer which greaters than 1. We will use o2 level to tune."
+                                )
+                                use_o2_level = True
+                                break
+            if use_o2_level:
+                best_dist_context = self.tune_o2()
+            else:
+                best_dist_context = self.tune_o1()
+
+        assert (
+            best_dist_context is not None
+        ), "can not find a parallel strategy to run, please use passes such as recompute, amp or sharding."
+
+        for key in best_dist_context._dist_tensors_for_program:
+            if key in self._dist_context._dist_tensors_for_program:
+                self._dist_context._dist_tensors_for_program[
+                    key
+                ] = best_dist_context._dist_tensors_for_program[key]
+        for key in best_dist_context._dist_ops_for_program:
+            if key in self._dist_context._dist_ops_for_program:
+                self._dist_context._dist_ops_for_program[
+                    key
+                ] = best_dist_context._dist_ops_for_program[key]
+        self._dist_context._process_meshes = best_dist_context._process_meshes
+
+        end = time.time()
+        self._logger.info("Rule-based tuner end in {}s.".format(end - begin))
+        self._logger.info("The best strategy found is as follows: ")
+        print_program_with_dist_attr(self.full_main_program, best_dist_context)
+
+        # Save strategy if need
+        path = self._strategy_path
+        if path:
+            self.save_strategy(best_dist_context, path)
+            self.run_or_quit()

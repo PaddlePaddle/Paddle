@@ -18,8 +18,8 @@ import numpy as np
 from utils import SUB_TOLERANCE
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
@@ -158,6 +158,15 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
             'x4', shape=weight.shape, dtype=str(weight.dtype)
         )
         x5 = paddle.static.data('x5', shape=bias.shape, dtype=str(bias.dtype))
+        if attrs.use_global_stats is None:
+            attrs.use_global_stats = not attrs.training
+            trainable_statistics = False
+        else:
+            trainable_statistics = not attrs.use_global_stats
+
+        use_run_stat = (
+            (not attrs.training) and (not trainable_statistics)
+        ) or attrs.use_global_stats
         y = fn(
             x1,
             x2,
@@ -177,16 +186,27 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
                 blocks[0].ops[0].output_names, blocks[0].ops[0].output_arg_names
             )
         )
-        vars_list = [
-            names[key]
-            for key in [
-                "Y",
-                "MeanOut",
-                "VarianceOut",
-                "SavedMean",
-                "SavedVariance",
+
+        if not use_run_stat:
+            vars_list = [
+                names[key]
+                for key in [
+                    "Y",
+                    "MeanOut",
+                    "VarianceOut",
+                    "SavedMean",
+                    "SavedVariance",
+                ]
             ]
-        ]
+        else:
+            vars_list = [
+                names[key]
+                for key in [
+                    "Y",
+                    "MeanOut",
+                    "VarianceOut",
+                ]
+            ]
 
         fwd_ops = [op.type for op in blocks[0].ops]
         # Ensure that batch_norm in original block
@@ -202,21 +222,36 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
     exe.run(startup_program)
 
     # indeed SavedVariance is 1/sqrt(batch_var+eps)
-    Y, MeanOut, VarianceOut, SavedMean, SavedVariance = exe.run(
-        main_program,
-        feed={
-            'x1': inputs,
-            'x2': running_mean,
-            'x3': running_variance,
-            'x4': weight,
-            'x5': bias,
-        },
-        fetch_list=vars_list,
-    )
+    if not use_run_stat:
+        Y, MeanOut, VarianceOut, SavedMean, SavedVariance = exe.run(
+            main_program,
+            feed={
+                'x1': inputs,
+                'x2': running_mean,
+                'x3': running_variance,
+                'x4': weight,
+                'x5': bias,
+            },
+            fetch_list=vars_list,
+        )
+    else:
+        Y, MeanOut, VarianceOut = exe.run(
+            main_program,
+            feed={
+                'x1': inputs,
+                'x2': running_mean,
+                'x3': running_variance,
+                'x4': weight,
+                'x5': bias,
+            },
+            fetch_list=vars_list,
+        )
     paddle.disable_static()
     core._set_prim_all_enabled(False)
-
-    return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
+    if not use_run_stat:
+        return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
+    else:
+        return Y, MeanOut, VarianceOut
 
 
 class TestCompositeBatchNorm(unittest.TestCase):
@@ -411,6 +446,36 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 rtol=1e-3,
                 atol=1e-3,
             )
+
+
+class TestPrimEvalBranch(unittest.TestCase):
+    """
+    Test eval branch or composite rule of batch_norm.
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_prim):
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = BatchNorm(2, is_test=True)
+        net = apply_to_static(net, False)
+        out = net(self.x)
+        loss = paddle.mean(out)
+        return loss
+
+    def test_eval_branch(self):
+        expected = self.train(False)
+        actual = self.train(True)
+        np.testing.assert_allclose(
+            expected,
+            actual,
+            rtol=1e-6,
+            atol=1e-6,
+        )
 
 
 if __name__ == '__main__':

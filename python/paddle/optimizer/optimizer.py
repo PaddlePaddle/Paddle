@@ -1460,7 +1460,7 @@ class Optimizer:
         assert not isinstance(
             self._parameter_list[0], dict
         ), "Only list of parameters is supported while using optimizer in @paddle.jit.static."
-        selected_params = set([param.name for param in self._parameter_list])
+        selected_params = {param.name for param in self._parameter_list}
         parameters = [param for param in params if param.trainable]
         parameters = list(
             filter(

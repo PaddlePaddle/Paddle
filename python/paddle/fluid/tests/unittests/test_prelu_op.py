@@ -18,10 +18,9 @@ import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program
+from paddle import fluid
+from paddle.fluid import Program, core
 
 
 def ref_prelu(x, weight):

@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -32,6 +32,29 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
+        self.init_attrs()
+        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (3, 40)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 40)
+
+    def init_attrs(self):
+        self.attrs = {"axes": self.axes}
+
+
+class TestUnsqueezeFP16Op(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "unsqueeze"
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
