@@ -51,7 +51,6 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    # TODO(jczaja): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -92,7 +91,6 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
     def init_axis(self):
         self.axis = 2
 
-    # TODO(jczaja): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 

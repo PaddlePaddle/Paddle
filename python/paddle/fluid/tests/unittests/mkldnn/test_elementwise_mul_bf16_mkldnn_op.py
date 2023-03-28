@@ -99,8 +99,6 @@ class TestElementwiseMulBroadcastingBf16MklDNNOp(
         part_sum = np.add.reduceat(part_sum, [0], axis=2)
         return part_sum.flatten()
 
-    # TODO(jczaja): elementwise_mul bf16 grad got some potential
-    # accuracy problems that need to be explained
     def test_check_grad_normal(self):
         pass
         # self.check_grad_with_place(

@@ -242,8 +242,6 @@ class ConvOneDNNHandlerT
                      int groups,
                      const std::string& data_format,
                      bool is_test,
-                     phi::DenseTensor* filter_grad,
-                     phi::DenseTensor* in_x_grad,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,

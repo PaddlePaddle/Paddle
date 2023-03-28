@@ -69,7 +69,6 @@ void ConvGradKernel(const Context& dev_ctx,
 
   PD_VISIT_FLOAT_AND_BF16_TYPES(
       filter.dtype(), "ConvOneDNNHandlerT", ([&] {
-        // TODO(jczaja): Are all tensors really needed?
         onednn::ConvOneDNNHandlerT<T, data_t, T> handler(dev_ctx,
                                                          dev_ctx.GetPlace(),
                                                          &input,
@@ -83,8 +82,6 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          groups,
                                                          data_format,
                                                          is_test,
-                                                         filter_grad,
-                                                         input_grad,
                                                          unique_name);
 
         // create mkldnn memory from input tensors (data/weights)

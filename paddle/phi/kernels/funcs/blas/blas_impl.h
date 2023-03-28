@@ -1328,7 +1328,6 @@ T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
 #ifdef PADDLE_WITH_MKLML
   sum = CBlas<T>::ASUM(n, x, inc);
 #else
-  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
   for (int c = 0; c < n; ++c) {
     sum += x[c];
   }

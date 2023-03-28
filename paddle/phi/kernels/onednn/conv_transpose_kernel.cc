@@ -279,8 +279,9 @@ class ConvTransposeOneDNNHandlerT
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
-      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
-      // need to change this to get rid of keys
+      // Here we detect if reorder is cached. If positive than
+      // it means it is USER data is of diffrent arrangement
+      // than TARGET data.
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {

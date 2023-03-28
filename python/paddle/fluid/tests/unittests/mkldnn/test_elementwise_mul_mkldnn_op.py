@@ -51,7 +51,6 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    # TODO(jczaja): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -65,7 +64,6 @@ class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    # TODO(jczaja): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 

@@ -477,8 +477,8 @@ class OneDNNHandlerT {
           std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
-      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
-      // need to change this to get rid of keys
+      // if reorder is cached it means it is needed
+      // (USER and TARGET weights are of diffrent memory arrangement)
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
