@@ -251,7 +251,7 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         None - skipped  # trick
     """
     global SAMPLE_CODE_TEST_CAPACITY, RUN_ON_DEVICE  # readonly
-    requires = set(['cpu'])
+    requires = {'cpu'}
     if requirestr:
         for r in requirestr.split(','):
             rr = r.strip().lower()

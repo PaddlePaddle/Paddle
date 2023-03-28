@@ -605,16 +605,6 @@
   kernel :
     func : frame_grad
 
-- backward_op : fused_dropout_add_grad
-  forward : fused_dropout_add (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(seed_offset)
-  args : (Tensor seed_offset, Tensor out_grad, Scalar p, bool is_test, str mode, bool fix_seed)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [out_grad, out_grad]
-  kernel :
-    func : fused_dropout_add_grad
-
 - backward_op : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -689,6 +679,16 @@
   kernel :
     func : hardtanh_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : huber_loss_grad
+  forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
+  args : (Tensor residual, Tensor out_grad, float delta)
+  output : Tensor(input_grad), Tensor(label_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [residual, residual]
+  kernel :
+    func : huber_loss_grad
 
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
@@ -901,6 +901,17 @@
   kernel :
     func : log_loss_grad
 
+- backward_op : log_softmax_grad
+  forward : log_softmax(Tensor x,  int axis = -1) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out]
+  kernel :
+    func : log_softmax_grad
+    data_type : out_grad
+
 - backward_op : logit_grad
   forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float eps)
@@ -930,6 +941,17 @@
     func : LUUnpackGradInferMeta
   kernel :
     func : lu_unpack_grad
+
+- backward_op : margin_cross_entropy_grad
+  forward : margin_cross_entropy (Tensor logits, Tensor label, bool return_softmax=false, int ring_id=0, int rank=0, int nranks=1, float margin1=1.0f, float margin2=0.5f, float margin3=0.0f, float scale=64.0f) -> Tensor(softmax), Tensor(loss)
+  args : (Tensor logits, Tensor label, Tensor softmax, Tensor loss_grad, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
+  output : Tensor(logits_grad)
+  infer_meta :
+    func : MarginCrossEntropyGradInferMeta
+  kernel :
+    func : margin_cross_entropy_grad
+    data_type : softmax
+  inplace : (softmax -> logits_grad)
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
