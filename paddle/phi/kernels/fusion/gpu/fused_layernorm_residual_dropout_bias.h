@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 
 namespace phi {
@@ -775,12 +776,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
                                    static_cast<U>(beta[it][jt]));
 
         if (std::is_same<OutType, int8_t>::value)
-          x_output[it][jt] =
-              paddle::operators::quant_helper(x[it][jt],
-                                              quant_next_in_scale,
-                                              quant_round_type,
-                                              quant_max_bound,
-                                              quant_min_bound);
+          x_output[it][jt] = phi::funcs::quant_helper(x[it][jt],
+                                                      quant_next_in_scale,
+                                                      quant_round_type,
+                                                      quant_max_bound,
+                                                      quant_min_bound);
       }
     }
 
