@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -57,7 +57,7 @@ class TestLogSoftmaxOneDNNOp(OpTest):
         self.axis = -1
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
 class TestLogSoftmax0DOneDNNOp(TestLogSoftmaxOneDNNOp):

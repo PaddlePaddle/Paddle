@@ -164,11 +164,13 @@ class OpTestUtils:
         if api_params == []:
             results.append(input_arguments)
             return results
-        api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+        api_ignore_param_list = {'name', 'dtype', 'out', 'output'}
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
                 results.append(get_default(idx, api_defaults))
+                if idx_of_op_proto_arguments < len(input_arguments):
+                    idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
                     tmp = input_arguments[idx_of_op_proto_arguments]
