@@ -26,7 +26,7 @@ from imperative_test_utils import (
 )
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
 from paddle.quantization import (

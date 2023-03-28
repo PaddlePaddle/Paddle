@@ -19,7 +19,7 @@ import numpy as np
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.

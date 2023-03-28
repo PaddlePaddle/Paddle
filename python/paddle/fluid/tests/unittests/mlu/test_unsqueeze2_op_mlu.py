@@ -20,7 +20,7 @@ sys.path.append("..")
 import numpy as np
 
 import paddle
-from op_test import OpTest
+from eager_op_test import OpTest
 
 paddle.enable_static()
 

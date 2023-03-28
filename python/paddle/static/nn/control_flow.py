@@ -16,7 +16,6 @@ import warnings
 from functools import partial, reduce
 
 import paddle
-import paddle.fluid.core as core
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
@@ -24,6 +23,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
+from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later

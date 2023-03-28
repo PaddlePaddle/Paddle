@@ -22,7 +22,7 @@ import ctr_dataset_reader
 from test_dist_fleet_heter_base import FleetDistHeterRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 

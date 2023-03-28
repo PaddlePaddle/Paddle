@@ -27,8 +27,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid import Executor, Program, default_main_program, program_guard
 
 paddle.enable_static()
@@ -94,10 +94,10 @@ class XPUTestPad3dOp(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', check_eager=True)
+            self.check_grad(['X'], 'Out', check_dygraph=True)
 
         def initTestCase(self):
             self.shape = (2, 3, 4, 5, 6)
