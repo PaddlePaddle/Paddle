@@ -18,10 +18,9 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import dygraph
+from paddle import fluid
+from paddle.fluid import core, dygraph
 
 paddle.seed(102)
 np.random.seed(102)

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,

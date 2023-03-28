@@ -17,7 +17,7 @@ import os
 import time
 from multiprocessing import Manager, Process
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 __all__ = []
 

@@ -25,8 +25,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 

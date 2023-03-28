@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.op import Operator
 
 

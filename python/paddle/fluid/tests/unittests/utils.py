@@ -14,7 +14,7 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import _dygraph_guard
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
