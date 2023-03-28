@@ -15,6 +15,7 @@
 import contextlib
 
 import paddle
+from paddle.fluid.framework import dygraph_only
 
 __all__ = [
     "enable_operator_stats_collection",
@@ -24,17 +25,19 @@ __all__ = [
 
 
 def _get_operator_stats_flag():
-    return paddle.get_flags(["FLAGS_low_precision_op_list"])
+    flags = paddle.get_flags(["FLAGS_low_precision_op_list"])
+    return flags["FLAGS_low_precision_op_list"]
 
 
-def _print_operator_stats():
-    if not _get_operator_stats_flag():
-        return
+def _print_operator_stats(op_count_dict):
+    """
+    Parse and print the stats of operators, mainly including the calls of dtypes such as different fp32, fp16, bf16 and others.
 
-    # Print the stats of operators, mainly including the calls of dtypes such as different fp32, fp16, bf16 and others.
+    Args:
+        op_count_dict(dict): a dict to record the number of calls for different operator and dtype. An example is {'conv2d': '1,0,0,0', 'elementwise_add': '1,0,0,0'}.
+    """
     print("<{:-^120}>".format(" op list "))
-    op_list = paddle.fluid.core.get_low_precision_op_list()
-    op_count = 0
+    total_ops = 0
     print(
         "<{:-^40}".format(" Op Name "),
         "|",
@@ -46,17 +49,29 @@ def _print_operator_stats():
         "|",
         "{:-^17}>".format(" Other Calls "),
     )
-    for x in op_list:
-        # fp16, bf16, fp32, other
-        called = op_list[x].split(",")
-        print(
-            "  %-40s|  %-17s|  %-17s|  %-17s|  %-17s"
-            % (x, called[0], called[1], called[2], called[3])
-        )
-        op_count += 1
-    print("<{:-^120}>".format(" op count: " + str(op_count) + " "))
+    if op_count_dict is not None and isinstance(op_count_dict, dict):
+        for op_type in op_count_dict:
+            # fp16, bf16, fp32, other
+            value = op_count_dict[op_type]
+            if isinstance(value, list):
+                called = value
+            elif isinstance(value, str):
+                called = value.split(",")
+            else:
+                raise ValueError(
+                    "Input {} is expected to be a list of str, but recieved {}.".format(
+                        value, type(value)
+                    )
+                )
+            print(
+                "  %-40s|  %-17s|  %-17s|  %-17s|  %-17s"
+                % (op_type, called[0], called[1], called[2], called[3])
+            )
+            total_ops += 1
+    print("<{:-^120}>\n".format(" op count: " + str(total_ops) + " "))
 
 
+@dygraph_only
 def enable_operator_stats_collection():
     if _get_operator_stats_flag():
         # Clear the previous stats.
@@ -65,11 +80,17 @@ def enable_operator_stats_collection():
         paddle.set_flags({'FLAGS_low_precision_op_list': 1})
 
 
+@dygraph_only
 def disable_operator_stats_collection():
-    _print_operator_stats()
+    if not _get_operator_stats_flag():
+        return
+
+    op_count_dict = paddle.fluid.core.get_low_precision_op_list()
+    _print_operator_stats(op_count_dict)
     paddle.set_flags({'FLAGS_low_precision_op_list': 0})
 
 
+@dygraph_only
 @contextlib.contextmanager
 def collect_operator_stats():
     enable_operator_stats_collection()

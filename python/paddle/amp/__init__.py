@@ -26,4 +26,6 @@ from .grad_scaler import GradScaler  # noqa: F401
 from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
 
+from . import debugging  # noqa: F401
+
 __all__ = ['auto_cast', 'GradScaler', 'decorate']
