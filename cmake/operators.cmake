@@ -219,6 +219,18 @@ function(op_library TARGET)
         list(APPEND mlu_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
         list(APPEND cc_srcs ${src})
+      elseif(WITH_GPU AND ${src} MATCHES ".*\\.kps$")
+        string(REPLACE ".kps" ".cu" src_cu ${src})
+        file(COPY ${src} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${src}
+             ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+      elseif(WITH_ROCM AND ${src} MATCHES ".*\\.kps$")
+        string(REPLACE ".kps" ".cu" src_cu ${src})
+        file(COPY ${src} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${src}
+             ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
       else()
         message(
           FATAL_ERROR
