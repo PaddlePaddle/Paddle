@@ -101,6 +101,24 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetAssignExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  const framework::Variable* var = ctx.InputVar("X");
+  if (var->IsType<framework::LoDTensorArray>()) {
+    auto t_arr = var->Get<framework::LoDTensorArray>();
+    // NOTE(liym27): Support an empty tensor array as Input.
+    // And set the kernel type is float.
+    if (t_arr.size() == 0) {
+      return phi::KernelKey(framework::proto::VarType::FP32,
+                            ctx.device_context().GetPlace());
+    }
+  }
+  return phi::KernelKey(
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.device_context().GetPlace());
+}
+
 phi::KernelKey GetSgdExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {

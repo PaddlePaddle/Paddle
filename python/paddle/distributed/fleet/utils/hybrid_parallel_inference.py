@@ -16,10 +16,10 @@ from collections import defaultdict
 
 import numpy as np
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import Block, Program
 

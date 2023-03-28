@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.sparse as sparse
+from paddle import fluid, sparse
 from paddle.sparse import nn
 
 

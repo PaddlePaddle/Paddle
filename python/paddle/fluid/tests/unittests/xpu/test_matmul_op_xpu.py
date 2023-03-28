@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def add_fn(x):
