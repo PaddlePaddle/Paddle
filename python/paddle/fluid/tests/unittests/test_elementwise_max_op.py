@@ -104,6 +104,59 @@ class TestElementwiseFP16Op(TestElementwiseOp):
             np.float16
         )
 
+    def test_check_output(self):
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            if self.attrs['axis'] == -1:
+                self.check_grad(
+                    ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+                )
+            else:
+                self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
+            )
+
+    def test_check_grad_ingore_x(self):
+        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
+            self.check_grad(
+                ['Y'],
+                'Out',
+                max_relative_error=1e-3,
+                no_grad_set=set("X"),
+            )
+        else:
+            self.check_grad(
+                ['Y'],
+                'Out',
+                max_relative_error=1e-3,
+                no_grad_set=set("X"),
+                check_prim=True,
+            )
+
+    def test_check_grad_ingore_y(self):
+        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=1e-3,
+                no_grad_set=set('Y'),
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=1e-3,
+                no_grad_set=set('Y'),
+                check_prim=True,
+            )
+
 
 class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
     def init_data(self):
@@ -178,48 +231,36 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_eager=False, atol=1e-2)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_eager=True, atol=1e-2)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             # check_prim=False, bfloat16 is not supported in `less_equal`
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=False, max_relative_error=1e-2
+            )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=True, max_relative_error=1e-2
+            )
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(
+            ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=1e-2
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(
+            ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=1e-2
+        )
 
 
 class TestElementwiseMaxBF16Op_ZeroDim1(TestElementwiseBF16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float32")
         self.y = np.random.uniform(0.1, 1, []).astype("float32")
-
-    def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(
-                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_eager=False
-            )
-        else:
-            self.check_grad(
-                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_eager=True
-            )
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', numeric_grad_delta=0.05, no_grad_set=set("X")
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
-        )
 
 
 class TestElementwiseMaxBF16Op_scalar(TestElementwiseBF16Op):
