@@ -1485,7 +1485,7 @@ def main():
     else:
         env_dict_path = TOP_DIR + "/build/python/"
     sys.path.insert(1, env_dict_path)
-    from env_dict import env_dict as env_dict
+    from env_dict import env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir

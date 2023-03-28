@@ -42,7 +42,7 @@ from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401
-from .framework.dtype import dtype as dtype  # noqa: F401
+from .framework.dtype import dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
 from .framework.dtype import int16  # noqa: F401
