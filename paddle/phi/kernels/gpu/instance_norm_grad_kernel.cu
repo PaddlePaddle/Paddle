@@ -22,6 +22,11 @@
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
 
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/device_context.h"
+
 namespace phi {
 template <typename T, int BlockDim>
 static __global__ void GradComputeDX(const T *dy,
@@ -626,11 +631,15 @@ PD_REGISTER_KERNEL(instance_norm_grad,
                    ALL_LAYOUT,
                    phi::InstanceNormGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::InstanceNormDoubleGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 #endif

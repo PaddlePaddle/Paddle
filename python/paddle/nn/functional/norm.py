@@ -427,7 +427,7 @@ def instance_norm(
         return out
     else:
         check_variable_and_dtype(
-            x, 'input', ['float32', 'float64'], "InstanceNorm"
+            x, 'input', ['float32', 'float64', 'float16'], "InstanceNorm"
         )
 
         attrs = {

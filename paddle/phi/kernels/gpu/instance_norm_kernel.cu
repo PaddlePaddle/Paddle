@@ -22,6 +22,11 @@
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
 
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/device_context.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -228,6 +233,12 @@ void InstanceNormKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(
     instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
 #else
-PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

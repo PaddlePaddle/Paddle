@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -120,6 +121,67 @@ class TestInstanceNorm(unittest.TestCase):
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
+
+
+class TestInstanceNormFP32OP(OpTest):
+    def setUp(self):
+        '''Test instance_norm op with default value'''
+        self.op_type = "instance_norm"
+        self.python_api = paddle.nn.functional.instance_norm
+        self.eps = 1e-5
+        self.init_dtype()
+        self.init_shape()
+        self.init_value()
+        self.atol = 1e-3
+        self.max_relative_error = 5e-3
+        self.inputs = {'X': self.value}
+        self.attrs = {
+            'epsilon': self.eps,
+            'momentum': 0.9,
+            'data_format': "NCHW",
+        }
+        self.outputs = {'Out': self.compute_output(self.value)}
+
+    def compute_output(self, x):
+        mean = np.mean(x, axis=(2, 3), keepdims=True)
+        var = np.var(x, axis=(2, 3), keepdims=True)
+        x_norm = (x - mean) / np.sqrt(var + self.eps)
+        gamma = np.ones((1, x.shape[1], 1, 1))
+        beta = np.zeros((1, x.shape[1], 1, 1))
+        x_norm = gamma * x_norm + beta
+        return x_norm
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=self.atol)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=self.max_relative_error
+        )
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.shape = [4, 10, 4, 4]
+
+    def init_value(self):
+        self.value = np.random.random(self.shape).asytpe(self.dtype)
+
+
+class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
+    def setUp(self):
+        self.atol = 1e-2
+        self.max_relative_error = 1e-2
+        self.inputs = {'X': convert_float_to_uint16(self.value)}
+        self.outputs = {
+            'Out': convert_float_to_uint16(self.compute_output(self.value))
+        }
 
 
 if __name__ == '__main__':
