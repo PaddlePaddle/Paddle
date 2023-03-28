@@ -30,6 +30,7 @@ from paddle.fluid.dygraph.base import (
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
+from ...incubate.autograd.primapi import to_prim
 from ...static.input import InputSpec
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
@@ -1694,7 +1695,4 @@ def enable_to_static(enable_to_static_bool):
 @switch_to_static_graph
 def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
     """Swith to static graph and call to_prim."""
-    # TODO(Aurelius84): Fix this cycle import problem
-    from ...incubate.autograd.primapi import to_prim
-
     to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
