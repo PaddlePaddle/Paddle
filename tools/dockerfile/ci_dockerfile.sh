@@ -82,9 +82,9 @@ function make_centos_dockerfile(){
   sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile ninja-build" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip3.7 install distro" ${dockerfile_name}
-  sed -i "${dockerfile_line}i ENV LD_LIBRARY_PATH /opt/_internal/cpython-3.7.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 " ${dockerfile_name}
-  sed -i "${dockerfile_line}i ENV PATH /opt/_internal/cpython-3.7.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip3.8 install distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i ENV LD_LIBRARY_PATH /opt/_internal/cpython-3.8.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 " ${dockerfile_name}
+  sed -i "${dockerfile_line}i ENV PATH /opt/_internal/cpython-3.8.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN rm -f /usr/bin/cc && ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN rm -f /usr/bin/g++ && ln -s /usr/local/gcc-12.2/bin/g++ /usr/bin/g++" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN rm -f /usr/bin/c++ && ln -s /usr/local/gcc-12.2/bin/c++ /usr/bin/c++" ${dockerfile_name}
