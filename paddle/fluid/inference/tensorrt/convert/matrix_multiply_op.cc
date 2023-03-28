@@ -76,9 +76,6 @@ class MatrixMultiplyOpConverter : public OpConverter {
     }
 
     if (x_num_col_dims != x_rank - 1) {
-      int32_t x_num_col_dims =
-          PADDLE_GET_CONST(int32_t, op_desc.GetAttr("x_num_col_dims"));
-
       std::vector<nvinfer1::ITensor*> before_shape_tensors;
       nvinfer1::ITensor* input_shape_tensor = Shape(input1);
       for (int i = 0; i < x_num_col_dims; ++i) {
