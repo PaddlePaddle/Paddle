@@ -31,7 +31,7 @@ np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
 
-def rnn_warpper(
+def rnn_wrapper(
     Input,
     PreState,
     WeightList=None,
@@ -76,7 +76,7 @@ class TestRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.python_api = rnn_warpper
+        self.python_api = rnn_wrapper
         self.python_out_sig = ["Out", "DropoutState", "State"]
         self.python_out_sig_sub_name = {"State": ["last_hidden", "last_cell"]}
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
