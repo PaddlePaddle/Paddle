@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import fluid
@@ -74,26 +74,37 @@ class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
 
 class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
     def _set_dtype(self):
-        self.dtype = "float16"
+        self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
 
 class TestLinspaceOpReverseCaseFP16(TestLinspaceOpReverseCase):
     def _set_dtype(self):
-        self.dtype = "float16"
+        self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
 
 class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
     def _set_dtype(self):
-        self.dtype = "float16"
+        self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
 
-# class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCase):
-#     def _set_dtype(self):
-#         self.dtype="bfloat16"
-#         self.attr_dtype = int(core.VarDesc.VarType.BF16)
+class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCase):
+    def _set_dtype(self):
+        self.dtype = np.uint16
+        self.attr_dtype = int(core.VarDesc.VarType.BF16)
+
+    def _set_data(self):
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.arange(0, 11).astype("float32"))
+        }
+        self.inputs = {
+            'Start': convert_float_to_uint16(np.array([0]).astype("float32")),
+            'Stop': convert_float_to_uint16(np.array([10]).astype("float32")),
+            'Num': np.array([11]).astype('int32'),
+        }
+
 
 # class TestLinspaceOpReverseCaseBF16(TestLinspaceOpReverseCase):
 #     def _set_dtype(self):
