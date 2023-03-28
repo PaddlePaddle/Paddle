@@ -172,16 +172,16 @@ void ElementWiseAddCsrGradCPUKernel(const Context& dev_ctx,
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, x, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, y, dy);
   } else {
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, x, dx);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, y, dy);
   }
 }
 
@@ -194,12 +194,12 @@ void ElementWiseSubtractCsrGradCPUKernel(const Context& dev_ctx,
                                          SparseCsrTensor* dy) {
   if (dx) {
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, x, dx);
   }
 
   if (dy) {
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, dout, y, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), dy->mutable_values());
   }
@@ -215,13 +215,19 @@ void ElementWiseMultiplyCsrGradCPUKernel(const Context& dev_ctx,
   if (dx) {
     //    dout*y
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, y, dx);
+    SparseCsrTensor tmp_dx;
+    AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
+    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
     //    dout*x
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, x, dy);
+    SparseCsrTensor tmp_dy;
+    AllocCsrPtr<T, IntT>(dev_ctx, y, &tmp_dy);
+    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, x, &tmp_dy);
+    CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
 
