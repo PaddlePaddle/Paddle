@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -219,7 +221,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
@@ -244,7 +246,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -691,7 +693,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
@@ -713,7 +715,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
@@ -738,7 +740,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -764,7 +766,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
@@ -1070,6 +1072,32 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    float,
                    float16) {}
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d_transpose_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv2dTransposeGradGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(conv2d_transpose_grad_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv2dTransposeDoubleGradGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(conv3d_transpose_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3dTransposeGradGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+#else
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -1091,4 +1119,6 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    float,
                    double,
                    float16) {}
+#endif
+
 #endif

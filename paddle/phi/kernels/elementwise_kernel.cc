@@ -101,20 +101,9 @@ void SubtractKernel(const Context& dev_ctx,
   SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
-template <typename T, typename Context>
-void FMaxKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y,
-                DenseTensor* out) {
-  FMaxRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-}
-
 }  // namespace phi
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
-
-PD_REGISTER_KERNEL(
-    fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(maximum,
                    CPU,
@@ -151,7 +140,8 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(subtract,
                    CPU,
@@ -204,16 +194,6 @@ PD_REGISTER_KERNEL(divide,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-PD_REGISTER_KERNEL(fmax,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::FMaxKernel,
-                   float,
-                   double,
-                   int,
-                   phi::dtype::float16,
-                   int64_t) {}
-
 PD_REGISTER_KERNEL(maximum,
                    KPS,
                    ALL_LAYOUT,
@@ -253,7 +233,8 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 #endif
 
@@ -323,8 +304,14 @@ PD_REGISTER_KERNEL(divide,
 PD_REGISTER_KERNEL(
     divide, XPU, ALL_LAYOUT, phi::DivideKernel, phi::dtype::float16, float) {}
 
-PD_REGISTER_KERNEL(
-    add, XPU, ALL_LAYOUT, phi::AddKernel, phi::dtype::float16, float) {}
+PD_REGISTER_KERNEL(add,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddKernel,
+                   phi::dtype::float16,
+                   float,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(multiply,
                    XPU,

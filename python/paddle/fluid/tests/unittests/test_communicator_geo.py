@@ -21,9 +21,9 @@ import unittest
 import numpy
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
@@ -140,7 +140,7 @@ import paddle.fluid as fluid
 
 from paddle.distributed.communicator import Communicator
 import paddle.incubate.distributed.fleet.role_maker as role_maker
-from paddle.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
 import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End

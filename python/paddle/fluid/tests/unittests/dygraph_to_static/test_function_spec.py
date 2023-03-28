@@ -70,8 +70,8 @@ class TestFunctionSpec(unittest.TestCase):
             foo_spec.unified_args_and_kwargs([10], {'c': 4})
 
     def test_args_to_input_spec(self):
-        a_spec = InputSpec([None, 10], name='a')
-        b_spec = InputSpec([10], name='b')
+        a_spec = InputSpec([None, 10], name='a', stop_gradient=True)
+        b_spec = InputSpec([10], name='b', stop_gradient=True)
 
         a_tensor = paddle.static.data(name='a_var', shape=[4, 10])
         b_tensor = paddle.static.data(name='b_var', shape=[4, 10])
@@ -85,7 +85,8 @@ class TestFunctionSpec(unittest.TestCase):
 
         self.assertTrue(len(input_with_spec) == 4)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
-        self.assertTrue(input_with_spec[1] == b_spec)  # b
+        ans_b_spec = InputSpec([4, 10], name='b', stop_gradient=True)
+        self.assertTrue(input_with_spec[1] == ans_b_spec)  # b
         self.assertTrue(input_with_spec[2] == 1)  # c
         self.assertTrue(input_with_spec[3] == 2)  # d
 

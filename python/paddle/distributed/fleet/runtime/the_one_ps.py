@@ -15,7 +15,7 @@
 import os
 import warnings
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
@@ -36,7 +36,7 @@ PSERVER_SAVE_SUFFIX = ".shard"
 
 
 def parse_table_class(varname, o_main_program):
-    from paddle.incubate.fleet.parameter_server.ir.public import (
+    from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
         is_distributed_sparse_op,
         is_sparse_op,
     )
@@ -247,7 +247,7 @@ class CommonAccessor:
         self.opt_init_map = opt_init_map
 
     def parse_entry(self, varname, o_main_program):
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             is_distributed_sparse_op,
             is_sparse_op,
         )
@@ -304,7 +304,7 @@ class CommonAccessor:
         compiled_strategy,
         adam_d2sum,
     ):
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             _get_optimize_ops,
         )
 
@@ -692,7 +692,7 @@ class TheOnePSRuntime(RuntimeBase):
     def _get_distributed_strategy(self):
         strategy = None
 
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -716,7 +716,7 @@ class TheOnePSRuntime(RuntimeBase):
         return strategy
 
     def build_compiled_startegy(self):
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
 
@@ -731,7 +731,7 @@ class TheOnePSRuntime(RuntimeBase):
         return compiled_config
 
     def _init_worker(self):
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             SyncStrategy,
         )
 
@@ -820,7 +820,7 @@ class TheOnePSRuntime(RuntimeBase):
             send_ctx, dense_map, proto_txt, string_hosts, fluid.global_scope()
         )
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         info = self._communicator.get_client_info()
@@ -1191,7 +1191,7 @@ class TheOnePSRuntime(RuntimeBase):
             proto_txt, string_hosts, role_id, trainers, self._server_sub_program
         )
 
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             get_sparse_tablenames,
         )
 
@@ -1252,7 +1252,7 @@ class TheOnePSRuntime(RuntimeBase):
             if var.name in exclude_var_names:
                 return False
 
-            from paddle.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _get_varname_parts,
             )
 
@@ -1283,7 +1283,7 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_sparse_params(
         self, executor, dirname, context, main_program, mode
     ):
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             get_sparse_tablenames,
         )
 
@@ -1479,7 +1479,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._ps_inference_save_persistables(*args, **kwargs)
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
-        from paddle.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             get_sparse_tablenames,
         )
 
@@ -1566,7 +1566,7 @@ class TheOnePSRuntime(RuntimeBase):
             )
         else:
             threshold = 0
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         if self.role_maker._is_first_worker():

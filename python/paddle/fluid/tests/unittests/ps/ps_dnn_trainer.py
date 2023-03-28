@@ -23,8 +23,8 @@ import numpy as np
 import yaml
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.ps.utils.ps_program_builder import (
     debug_program,
     logger,
@@ -233,7 +233,7 @@ def get_user_defined_strategy(config):
 
 
 def get_distributed_strategy(user_defined_strategy):  # pslib
-    from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
         StrategyFactory,
     )
 
@@ -444,8 +444,8 @@ class DnnTrainer:
             print(
                 "entering run {} - old".format(str(config["applied_pass_name"]))
             )
-            from paddle.incubate.fleet.parameter_server.ir import (
-                public as public,
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
+                public,
             )
 
             dist_strategy = get_distributed_strategy(user_defined_strategy)
@@ -458,7 +458,7 @@ class DnnTrainer:
 
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
-            from paddle.incubate.fleet.parameter_server.ir import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
                 trainer_pass as worker,
             )
 

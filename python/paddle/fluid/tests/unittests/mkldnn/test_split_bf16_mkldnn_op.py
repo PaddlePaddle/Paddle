@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 @unittest.skipIf(
@@ -65,16 +65,6 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
-
-
-# TODO jakpiase enable grad check(concat op)
-#    def test_check_grad(self):
-#        self.check_grad_with_place(
-#            core.CPUPlace(), ["X"],
-#            "Out",
-#            chck_dgrph=
-#            user_defined_grads=[self.inputs['X']],
-#            user_defined_grad_outputs=self.out[0])
 
 
 class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):

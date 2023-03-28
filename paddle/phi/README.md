@@ -34,7 +34,7 @@ The root cause of poor reusability is the inflexibility of the original Op archi
 
 After the release of Paddle 2.0, it has received many feedbacks from internal and external users that the performance of the dynamic graph is several times lower than that of competing products in the execution scenario of small model on CPU.
 
-The main reason for this problem is: the execution path of the C++ side of the Padddle dynamic graph is relatively long and the scheduling overhead is relatively heavy, which is related to the early design of the dynamic graph which is compatible with the static graph and inherits many object construction processes of the static graph Op.
+The main reason for this problem is: the execution path of the C++ side of the Paddle dynamic graph is relatively long and the scheduling overhead is relatively heavy, which is related to the early design of the dynamic graph which is compatible with the static graph and inherits many object construction processes of the static graph Op.
 
 Therefore, the dynamic graph needs to be upgraded to a function-based scheduling architecture, and this problem can be solved by abandoning the original complex Op architecture, which depends on the OpKernel being changed to a functional writing method.
 
@@ -213,7 +213,7 @@ void ScaleKernel(const Context& dev_ctx,
 
 ##### 2.3.1.3 IntArray
 
-IntArray is an integer type array that can be constructed from `vector<int>`, `Tensor` and `vector<Tensor>`. Currently, it is mainly used to represent dimension index variables such as `shape`, `index` and `aixs`.
+IntArray is an integer type array that can be constructed from `vector<int>`, `Tensor` and `vector<Tensor>`. Currently, it is mainly used to represent dimension index variables such as `shape`, `index` and `axis`.
 
 Taking `FullKernel` as an example, the shape parameter is used to indicate the dimension information of the returned Tensor (e.g. [2, 8, 8]). When calling `FullKernel`, the parameters of `vector<int>`, `Tensor` and `vector<Tensor>` type variables can be used to complete the call. Using `IntArray` avoids the problem of writing a separate overloaded function for each shape type.
 
@@ -548,15 +548,15 @@ Meanwhile, we need to simplify the writing method of Kernel registration. The ex
 
     ```c++
     REGISTER_OP_CPU_KERNEL(
-        scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);
+        scale, ops::ScaleKernel<phi::CPUContext, float>,
+        ops::ScaleKernel<phi::CPUContext, double>,
+        ops::ScaleKernel<phi::CPUContext,
+                         phi::dtype::bfloat16>,
+        ops::ScaleKernel<phi::CPUContext, uint8_t>,
+        ops::ScaleKernel<phi::CPUContext, int8_t>,
+        ops::ScaleKernel<phi::CPUContext, int16_t>,
+        ops::ScaleKernel<phi::CPUContext, int>,
+        ops::ScaleKernel<phi::CPUContext, int64_t>);
     ```
 
 2. Paddle-Lite's kernel registration method declares input and output information for each Kernel, but since the kernel of each data type is different, it will also cause redundancy in the writing method. As you can see in the following code, except for the data type, other information is basically redundant.
@@ -701,7 +701,7 @@ PD_DECLARE_KERNEL(as_real, CPU, ALL_LAYOUT);
 ...
 ```
 
-For the specific implementation of `kernel_declare`, please refer to the function implementation in `camke/phi.cmake`, which will not be introduced here.
+For the specific implementation of `kernel_declare`, please refer to the function implementation in `cmake/phi.cmake`, which will not be introduced here.
 
 ##### 2.3.5.2 Kernel dependencies
 

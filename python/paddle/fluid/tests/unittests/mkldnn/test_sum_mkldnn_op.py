@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 import paddle.fluid.op as fluid_op
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 

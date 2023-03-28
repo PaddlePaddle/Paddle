@@ -530,7 +530,7 @@ class ElasticManager:
         #   10.10.10.0 is removed
         #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
         #   In this case, the rank of 10.10.10.1 and 10.10.10.2 remains unchanged, while the rank of 10.10.10.3 is set to rank0
-        endpoints_dict = dict()
+        endpoints_dict = {}
         unsorted_endpoints = []
         for id, host_port in enumerate(self.hosts):
             idx = host_endpoints.index(host_port)
