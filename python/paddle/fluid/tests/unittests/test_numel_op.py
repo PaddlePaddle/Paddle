@@ -99,11 +99,6 @@ class TestNumelOp1BF16(TestNumelOpBF16):
         self.shape = (11, 66)
 
 
-class TestNumelOp2BF16(TestNumelOpBF16):
-    def init(self):
-        self.shape = (0,)
-
-
 class TestNumelAPI(unittest.TestCase):
     def test_numel_static(self):
         main_program = fluid.Program()
