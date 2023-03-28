@@ -892,15 +892,6 @@
     data_type : dtype
     backend : place
 
-- op : log_softmax
-  args : (Tensor x,  int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMetaCheckAxis
-  kernel :
-    func : log_softmax
-  backward : log_softmax_grad
-
 - op : logcumsumexp
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
