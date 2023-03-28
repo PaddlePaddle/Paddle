@@ -29,9 +29,10 @@ __global__ void LinspaceKernelInner(
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(start + step * index);
+      out[index] = static_cast<T>(static_cast<double>(start) + step * index);
     } else {
-      out[index] = static_cast<T>(stop - step * (size - index - 1));
+      out[index] =
+          static_cast<T>(static_cast<double>(stop) - step * (size - index - 1));
     }
   }
 }
