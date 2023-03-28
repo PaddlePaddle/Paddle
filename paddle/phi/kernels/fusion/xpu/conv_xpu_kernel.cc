@@ -38,7 +38,6 @@ void ConvXPUKernel(const Context& ctx,
                    float act_param,
                    DenseTensor* Output,
                    DenseTensor* OutputMax) {
-  LOG(INFO) << "-----------start running conv_xpu kernel.";
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = Input.dims();
   auto filter_dims = Filter.dims();
@@ -83,28 +82,29 @@ void ConvXPUKernel(const Context& ctx,
   LOG(INFO) << "-------------start running xpu::conv2d_fusion";
   int r =
       xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX/TW/TY/TGEMM
-          ctx.x_context(),                                     // ctx
-          input_data,                                          // input
-          Filter.data<int16_t>(),                              // filter
-          out_data,                                            // output
-          batch,                                               // batch
-          in_c,                                                // in_c
-          in_h,                                                // in_h
-          in_w,                                                // in_w
-          out_c,                                               // out_c
-          std::vector<int>{win_h, win_w},                      // k_size
-          strides,                                             // strides
-          paddings_vec,                                        // paddings
-          dilations_vec,                                       // dilations
-          groups,                                              // group
-          input_max_data,                                      // in_maxptr
-          FilterMax.data<float>(),                             // filter_maxptr
-          ctx.template Alloc<float>(OutputMax),                // out_maxptr
-          true,                                                // ?
-          bias_data,                                           // bias
-          branch_data,                                         // branch
-          act,                                                 // act
-          nullptr);                                            // branch_maxptr
+          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+          /* const TX* input */ input_data,
+          /* const TW* filter */ Filter.data<int16_t>(),
+          /* TY* output */ out_data,
+          /* int64_t */ batch,
+          /* int64_t */ in_c,
+          /* int64_t */ in_h,
+          /* int64_t */ in_w,
+          /* int64_t */ out_c,
+          /* const std::vector<int>& ksize */ std::vector<int>{win_h, win_w},
+          /* const std::vector<int>& strides */ strides,
+          /* const std::vector<int>& paddings */ paddings_vec,
+          /* const std::vector<int>& dilations */ dilations_vec,
+          /* int64_t groups */ groups,
+          /* const float* in_maxptr */ input_max_data,
+          /* const float* filter_maxptr */ FilterMax.data<float>(),
+          /* float* out_maxptr */ ctx.template Alloc<float>(OutputMax),
+          /* bool ? */ true,
+          /* const float* bias */ bias_data,
+          /* const TY* branch */ branch_data,
+          /* const baidu::xpu::api::Activation_t& act */ act,
+          /* const float* branch_maxptr */ nullptr,
+          /* const float* ? */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv_xpu");
 }
 

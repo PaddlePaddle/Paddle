@@ -65,6 +65,9 @@ class TestConvXPUFusePass(PassAutoScanTest):
         var_shape = [out_channel]
         mean_shape = [out_channel]
 
+        # Random choose if add a relu operator
+        has_relu = True
+
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -115,6 +118,15 @@ class TestConvXPUFusePass(PassAutoScanTest):
         )
         ops = [conv2d_op, ew_bias_op, bn_op]
 
+        # 3. activation
+        if has_relu:
+            relu_op = OpConfig(
+                "relu",
+                inputs={"X": ["batch_norm_Y"]},
+                outputs={"Out": ["relu_out"]},
+            )
+            ops.append(relu_op)
+
         program_config = ProgramConfig(
             ops=ops,
             inputs={
@@ -142,7 +154,7 @@ class TestConvXPUFusePass(PassAutoScanTest):
                     data_gen=partial(generate_data, var_shape)
                 ),
             },
-            outputs=["batch_norm_Y"],
+            outputs=ops[-1].outputs["Out"],
         )
 
         return program_config
