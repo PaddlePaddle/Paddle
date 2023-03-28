@@ -99,7 +99,7 @@ class RecomputeState(ProgramStats):
             segments.append([segment_idx[0], segment_idx[-1] + 1])
             self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
 
-        for i in reversed(sorted(no_recompute_segments)):
+        for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
             ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
