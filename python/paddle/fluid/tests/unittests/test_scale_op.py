@@ -37,13 +37,12 @@ class TestScaleOp(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
         }
-        self.check_cinn = True
 
     def init_dtype_type(self):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
@@ -62,13 +61,12 @@ class TestScaleOpScaleVariable(OpTest):
         }
         self.attrs = {}
         self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
-        self.check_cinn = True
 
     def init_dtype_type(self):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
@@ -166,7 +164,6 @@ class TestScaleBF16Op(OpTest):
         out = x * np.float32(self.attrs['scale'])
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.check_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)

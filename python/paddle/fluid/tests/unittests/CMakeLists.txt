@@ -1212,6 +1212,8 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scale_op
+    test_clip_op
     test_gather_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})

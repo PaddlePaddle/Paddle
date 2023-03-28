@@ -506,6 +506,28 @@ class OpTest(unittest.TestCase):
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
 
+    def _enable_check_cinn_test(self, place, inputs, outputs):
+        # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
+        if (
+            core.is_compiled_with_cinn()
+            and core.is_compiled_with_cuda()
+            and isinstance(place, fluid.CUDAPlace)
+        ):
+            return False
+        # CINN not support bfloat16 now, skip cinn test
+        if self.is_bfloat16_op():
+            return False
+        # CINN not support 0D-tensor now, skip cinn test
+        for var in inputs.values():
+            if len(var.shape) == 0:
+                return False
+        for var in outputs.values():
+            if len(var.shape) == 0:
+                return False
+        # CINN not support dynamic shape now, skip cinn test
+        # TODO(thisjiang): cannot check dynamic shape op automatic, should do manually now
+        return True
+
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -1023,6 +1045,7 @@ class OpTest(unittest.TestCase):
         loss=None,
         enable_inplace=None,
         for_inplace_test=None,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             program = Program()
@@ -1067,17 +1090,15 @@ class OpTest(unittest.TestCase):
                     fetch_list.append(str(out_name))
 
             enable_cinn_test = (
-                core.is_compiled_with_cinn()
-                and core.is_compiled_with_cuda()
-                and isinstance(place, fluid.CUDAPlace)
-                and hasattr(self, "check_cinn")
+                self._enable_check_cinn_test(place, inputs, outputs)
+                and check_cinn
             )
             if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
                 if enable_inplace is not None:
                     build_strategy.enable_inplace = enable_inplace
                 if enable_cinn_test:
-                    build_strategy.build_cinn_pass = self.check_cinn
+                    build_strategy.build_cinn_pass = check_cinn
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
@@ -1505,6 +1526,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
         check_prim=False,
+        check_cinn=False,
     ):
         core._set_prim_all_enabled(False)
         if check_prim:
@@ -1701,7 +1723,7 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
-                    place, no_check_set=no_check_set
+                    place, no_check_set=no_check_set, check_cinn=check_cinn
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
@@ -2095,6 +2117,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
         check_prim=False,
+        check_cinn=False,
     ):
 
         # disable legacy dygraph check when check_eager is True
@@ -2119,6 +2142,7 @@ class OpTest(unittest.TestCase):
                 inplace_atol,
                 check_eager=check_eager,
                 check_prim=check_prim,
+                check_cinn=check_cinn,
             )
             if check_eager:
                 assert not check_dygraph
@@ -2272,6 +2296,7 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         atol=1e-5,
+        check_cinn=False,
     ):
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2295,6 +2320,7 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
                 atol=atol,
+                check_cinn=check_cinn,
             )
 
     def check_grad_with_place(
@@ -2314,6 +2340,7 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         atol=1e-5,
+        check_cinn=False,
     ):
         core._set_prim_all_enabled(False)
         if check_prim:
@@ -2446,6 +2473,7 @@ class OpTest(unittest.TestCase):
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
+            check_cinn=check_cinn,
         )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
@@ -2750,6 +2778,7 @@ class OpTest(unittest.TestCase):
         no_grad_set,
         user_defined_grad_outputs=None,
         parallel=False,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             prog = Program()
@@ -2816,11 +2845,21 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = grad_inputs
 
-            if parallel:
+            enable_cinn_test = (
+                self._enable_check_cinn_test(place, inputs, outputs)
+                and check_cinn
+            )
+            if parallel or enable_cinn_test:
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog)
+
+                build_strategy = None
+                if enable_cinn_test:
+                    build_strategy = fluid.BuildStrategy()
+                    build_strategy.build_cinn_pass = check_cinn
+
+                compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(
