@@ -27,7 +27,6 @@ from xpu.get_test_cover_info import (
 import paddle
 from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -74,8 +73,7 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
                 np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
         def test_unbind_dygraph_final_state(self):
-            with _test_eager_guard():
-                self.test_unbind_dygraph()
+            self.test_unbind_dygraph()
 
     class TestLayersUnbind(unittest.TestCase):
         def test_layers_unbind(self):

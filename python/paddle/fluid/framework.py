@@ -234,16 +234,6 @@ def _switch_tensor_bind_type(is_eager):
     paddle.Tensor.__qualname__ = 'Tensor'
 
 
-def _enable_legacy_dygraph():
-    global_var._in_eager_mode_ = False
-    _update_monkey_methods(is_eager=False)
-
-
-def _disable_legacy_dygraph():
-    global_var._in_eager_mode_ = True
-    _update_monkey_methods(is_eager=True)
-
-
 def _in_eager_without_dygraph_check():
     return global_var._in_eager_mode_
 
@@ -251,36 +241,6 @@ def _in_eager_without_dygraph_check():
 # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
-
-
-def _fallback_legacy_dygraph():
-    global _is_first_import_
-    need_fallback = False
-    # Only enable eager on CPU/GPU/XPU
-    is_not_support = (
-        core.is_compiled_with_npu()
-        or core.is_compiled_with_ipu()
-        or core.is_compiled_with_mlu()
-    )
-
-    if global_var._in_eager_mode_ and is_not_support:
-        # switch into legacy dygraph mode
-        warnings.warn(
-            "We will fallback into legacy dygraph on NPU/XPU/MLU/IPU/ROCM devices. Because we only support new eager dygraph mode on CPU/GPU currently. "
-        )
-        global_var._in_eager_mode_ = False
-        if not _is_first_import_:
-            _enable_legacy_dygraph()
-        need_fallback = True
-
-    need_fallback = False
-    _is_first_import_ = False
-
-    return need_fallback
-
-
-# switch into legacy mode if need while import paddle
-_fallback_legacy_dygraph()
 
 
 def in_dygraph_mode():
@@ -317,19 +277,6 @@ def in_dygraph_mode():
 
 def _non_static_mode():
     return global_var._dygraph_tracer_ is not None
-
-
-@signature_safe_contextmanager
-def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
-    # only GPU/CPU/XPU. Remove this after we improve this feature.
-    already_fallback = _fallback_legacy_dygraph()
-    if not already_fallback:
-        _disable_legacy_dygraph()
-    try:
-        yield
-    finally:
-        pass
 
 
 global_ipu_index = -1
