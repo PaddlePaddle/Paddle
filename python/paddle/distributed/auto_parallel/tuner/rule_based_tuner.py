@@ -35,6 +35,9 @@ from paddle.distributed.auto_parallel.dist_attribute import (
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.process_group import (
+    get_world_process_group,
+)
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.utils import (
     is_gradient_clip_op,
@@ -2405,6 +2408,11 @@ class RuleBasedTuner:
         self._logger.info("Pattern match in {:.2f}s.".format(end - begin))
 
         if self._use_dp:
+            total_rank = (
+                self._cluster.get_num_machines()
+                * self._cluster._num_devices_per_machine
+            )
+            get_world_process_group().add_ranks([i for i in range(total_rank)])
             completer = Completer(self._dist_context)
             completer.complete_forward_annotation()
             print_program_with_dist_attr(
