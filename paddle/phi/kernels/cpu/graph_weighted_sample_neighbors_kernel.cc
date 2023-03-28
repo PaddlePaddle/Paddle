@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/graph_weighted_sample_neighbors_kernel.h"
 
+#include <cmath>
+#include <queue>
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -21,50 +23,79 @@
 
 namespace phi {
 
-template <class bidiiter>
-void SampleUniqueNeighbors(
-    bidiiter begin,
-    bidiiter end,
-    int num_samples,
-    std::mt19937& rng,                                        // NOLINT
-    std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
-  int left_num = std::distance(begin, end);
-  for (int i = 0; i < num_samples; i++) {
-    bidiiter r = begin;
-    int random_step = dice_distribution(rng) % left_num;
-    std::advance(r, random_step);
-    std::swap(*begin, *r);
-    ++begin;
-    --left_num;
+template <typename T>
+struct Node {
+  T node_id;
+  float weight_key;
+  T eid;
+  Node() {
+    node_id = 0;
+    weight_key = 0;
+    eid = 0;
   }
-}
+  Node(T node_id, float weight_key, T eid = 0)
+      : node_id(node_id), weight_key(weight_key), eid(eid) {}
+  Node(const Node& other) {
+    node_id = other.node_id;
+    weight_key = other.weight_key;
+    eid = other.eid;
+  }
+  friend inline bool operator>(const struct Node& n1, const struct Node& n2) {
+    return n1.weight_key > n2.weight_key;
+  }
+};
 
-template <class bidiiter>
-void SampleUniqueNeighborsWithEids(
-    bidiiter src_begin,
-    bidiiter src_end,
-    bidiiter eid_begin,
-    bidiiter eid_end,
-    int num_samples,
-    std::mt19937& rng,                                        // NOLINT
-    std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
-  int left_num = std::distance(src_begin, src_end);
-  for (int i = 0; i < num_samples; i++) {
-    bidiiter r1 = src_begin, r2 = eid_begin;
-    int random_step = dice_distribution(rng) % left_num;
-    std::advance(r1, random_step);
-    std::advance(r2, random_step);
-    std::swap(*src_begin, *r1);
-    std::swap(*eid_begin, *r2);
-    ++src_begin;
-    ++eid_begin;
-    --left_num;
+template <typename T>
+void SampleWeightedNeighbors(
+    std::vector<T>& out_src,  // NOLINT
+    const std::vector<float>& out_weight,
+    std::vector<T>& out_eids,  // NOLINT
+    int sample_size,
+    std::mt19937& rng,                                         // NOLINT
+    std::uniform_real_distribution<float>& dice_distribution,  // NOLINT
+    bool return_eids) {
+  std::priority_queue<Node<T>, std::vector<Node<T>>, std::greater<Node<T>>>
+      min_heap;
+  for (size_t i = 0; i < out_src.size(); i++) {
+    float weight_key = log2(dice_distribution(rng)) * (1 / out_weight[i]);
+    if (static_cast<int>(i) < sample_size) {
+      if (!return_eids) {
+        min_heap.push(Node<T>(out_src[i], weight_key));
+      } else {
+        min_heap.push(Node<T>(out_src[i], weight_key, out_eids[i]));
+      }
+    } else {
+      const Node<T>& small = min_heap.top();
+      Node<T> cmp;
+      if (!return_eids) {
+        cmp = Node<T>(out_src[i], weight_key);
+      } else {
+        cmp = Node<T>(out_src[i], weight_key, out_eids[i]);
+      }
+      bool flag = cmp > small;
+      if (flag) {
+        min_heap.pop();
+        min_heap.push(cmp);
+      }
+    }
+  }
+
+  int cnt = 0;
+  while (!min_heap.empty()) {
+    const Node<T>& tmp = min_heap.top();
+    out_src[cnt] = tmp.node_id;
+    if (return_eids) {
+      out_eids[cnt] = tmp.eid;
+    }
+    cnt++;
+    min_heap.pop();
   }
 }
 
 template <typename T>
 void SampleNeighbors(const T* row,
                      const T* col_ptr,
+                     const float* edge_weight,
                      const T* eids,
                      const T* input,
                      std::vector<T>* output,
@@ -74,6 +105,7 @@ void SampleNeighbors(const T* row,
                      int bs,
                      bool return_eids) {
   std::vector<std::vector<T>> out_src_vec;
+  std::vector<std::vector<float>> out_weight_vec;
   std::vector<std::vector<T>> out_eids_vec;
   // `sample_cumsum_sizes` record the start position and end position
   // after sampling.
@@ -90,6 +122,9 @@ void SampleNeighbors(const T* row,
     std::vector<T> out_src;
     out_src.resize(cap);
     out_src_vec.emplace_back(out_src);
+    std::vector<float> out_weight;
+    out_weight.resize(cap);
+    out_weight_vec.emplace_back(out_weight);
     if (return_eids) {
       std::vector<T> out_eids;
       out_eids.resize(cap);
@@ -105,8 +140,7 @@ void SampleNeighbors(const T* row,
 
   std::random_device rd;
   std::mt19937 rng{rd()};
-  std::uniform_int_distribution<int> dice_distribution(
-      0, std::numeric_limits<int>::max());
+  std::uniform_real_distribution<float> dice_distribution(0, 1);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -116,26 +150,22 @@ void SampleNeighbors(const T* row,
     T node = input[i];
     T begin = col_ptr[node], end = col_ptr[node + 1];
     int cap = end - begin;
-    if (sample_size < cap) {
+    if (sample_size < cap) {  // sample_size < neighbor_len
       std::copy(row + begin, row + end, out_src_vec[i].begin());
+      std::copy(
+          edge_weight + begin, edge_weight + end, out_weight_vec[i].begin());
       if (return_eids) {
         std::copy(eids + begin, eids + end, out_eids_vec[i].begin());
-        SampleUniqueNeighborsWithEids(out_src_vec[i].begin(),
-                                      out_src_vec[i].end(),
-                                      out_eids_vec[i].begin(),
-                                      out_eids_vec[i].end(),
-                                      sample_size,
-                                      rng,
-                                      dice_distribution);
-      } else {
-        SampleUniqueNeighbors(out_src_vec[i].begin(),
-                              out_src_vec[i].end(),
+      }
+      SampleWeightedNeighbors(out_src_vec[i],
+                              out_weight_vec[i],
+                              out_eids_vec[i],
                               sample_size,
                               rng,
-                              dice_distribution);
-      }
+                              dice_distribution,
+                              return_eids);
       *(output_count->data() + i) = sample_size;
-    } else {
+    } else {  // sample_size >= neighbor_len, directly copy
       std::copy(row + begin, row + end, out_src_vec[i].begin());
       if (return_eids) {
         std::copy(eids + begin, eids + end, out_eids_vec[i].begin());
@@ -176,40 +206,34 @@ void GraphWeightedSampleNeighborsKernel(
     DenseTensor* out_eids) {
   const T* row_data = row.data<T>();
   const T* col_ptr_data = col_ptr.data<T>();
+  const float* weights_data = edge_weights.data<float>();
   const T* x_data = x.data<T>();
+  const T* eids_data =
+      (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
   int bs = x.dims()[0];
 
   std::vector<T> output;
   std::vector<int> output_count;
+  std::vector<T> output_eids;
+
+  SampleNeighbors<T>(row_data,
+                     col_ptr_data,
+                     weights_data,
+                     eids_data,
+                     x_data,
+                     &output,
+                     &output_count,
+                     &output_eids,
+                     sample_size,
+                     bs,
+                     return_eids);
 
   if (return_eids) {
-    const T* eids_data = eids.get_ptr()->data<T>();
-    std::vector<T> output_eids;
-    SampleNeighbors<T>(row_data,
-                       col_ptr_data,
-                       eids_data,
-                       x_data,
-                       &output,
-                       &output_count,
-                       &output_eids,
-                       sample_size,
-                       bs,
-                       return_eids);
     out_eids->Resize({static_cast<int>(output_eids.size())});
     T* out_eids_data = dev_ctx.template Alloc<T>(out_eids);
     std::copy(output_eids.begin(), output_eids.end(), out_eids_data);
-  } else {
-    SampleNeighbors<T>(row_data,
-                       col_ptr_data,
-                       nullptr,
-                       x_data,
-                       &output,
-                       &output_count,
-                       nullptr,
-                       sample_size,
-                       bs,
-                       return_eids);
   }
+
   out->Resize({static_cast<int>(output.size())});
   T* out_data = dev_ctx.template Alloc<T>(out);
   std::copy(output.begin(), output.end(), out_data);
