@@ -41,34 +41,28 @@ class TestAMPList(unittest.TestCase):
             self.assertTrue(int(add_called[0]) == 1)
 
     def test_enable_disable(self):
-        conv = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-
+        conv = paddle.nn.Conv2D(3, 2, 3)
         x = paddle.rand([10, 3, 32, 32])
-        b = paddle.rand([32])
 
         paddle.amp.debugging.enable_operator_stats_collection()
         # amp list conv2d, elementwise_add, cast (transfer_dtype)
         with paddle.amp.auto_cast(enable=True, level='O2'):
-            conv_out = conv(x)
-            out = conv_out + b
+            out = conv(x)
         # Print to the standard output.
         paddle.amp.debugging.disable_operator_stats_collection()
 
-        self._check_result(dtype=conv_out.dtype)
+        self._check_result(dtype=out.dtype)
 
     def test_context(self):
-        conv = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-
+        conv = paddle.nn.Conv2D(3, 2, 3)
         x = paddle.rand([10, 3, 32, 32])
-        b = paddle.rand([32])
 
         with paddle.amp.debugging.collect_operator_stats():
             # amp list conv2d, elementwise_add, cast (transfer_dtype)
             with paddle.amp.auto_cast(enable=True, level='O2'):
-                conv_out = conv(x)
-                out = conv_out + b
+                out = conv(x)
 
-        self._check_result(dtype=conv_out.dtype)
+        self._check_result(dtype=out.dtype)
 
 
 if __name__ == "__main__":

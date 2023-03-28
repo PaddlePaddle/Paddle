@@ -77,6 +77,36 @@ def _print_operator_stats(op_count_dict):
 
 @dygraph_only
 def enable_operator_stats_collection():
+    """
+    Enable to collect the number of operators for different data types.
+    The statistical data are categorized according to four data types, namely
+    float32, float16, bfloat16 and others. This funciton is used in pair with
+    the corresponding disable function.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        conv = paddle.nn.Conv2D(3, 2, 3)
+        x = paddle.rand([10, 3, 32, 32])
+
+        paddle.amp.debugging.enable_operator_stats_collection()
+        # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+        with paddle.amp.auto_cast(enable=True, level='O2'):
+            out = conv(x)
+        # Print to the standard output.
+        paddle.amp.debugging.disable_operator_stats_collection()
+        # <------------------------------------------------------- op list -------------------------------------------------------->
+        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+        #   conv2d                                  |  1                |  0                |  0                |  0
+        #   elementwise_add                         |  1                |  0                |  0                |  0
+        #   reshape2                                |  1                |  0                |  0                |  0
+        #   transfer_dtype                          |  0                |  0                |  3                |  0
+        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+
+    """
     # Clear the previous stats.
     paddle.fluid.core.clear_low_precision_op_list()
     paddle.set_flags({'FLAGS_low_precision_op_list': 1})
@@ -84,6 +114,37 @@ def enable_operator_stats_collection():
 
 @dygraph_only
 def disable_operator_stats_collection():
+    """
+    Disable the collection the number of operators for different data types.
+    This funciton is used in pair with the corresponding enable function.
+    The statistical data are categorized according to four data types, namely
+    float32, float16, bfloat16 and others, and will be printed after the
+    function call.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        conv = paddle.nn.Conv2D(3, 2, 3)
+        x = paddle.rand([10, 3, 32, 32])
+
+        paddle.amp.debugging.enable_operator_stats_collection()
+        # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+        with paddle.amp.auto_cast(enable=True, level='O2'):
+            out = conv(x)
+        # Print to the standard output.
+        paddle.amp.debugging.disable_operator_stats_collection()
+        # <------------------------------------------------------- op list -------------------------------------------------------->
+        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+        #   conv2d                                  |  1                |  0                |  0                |  0
+        #   elementwise_add                         |  1                |  0                |  0                |  0
+        #   reshape2                                |  1                |  0                |  0                |  0
+        #   transfer_dtype                          |  0                |  0                |  3                |  0
+        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+
+    """
     if not _get_operator_stats_flag():
         return
 
@@ -95,6 +156,35 @@ def disable_operator_stats_collection():
 @dygraph_only
 @contextlib.contextmanager
 def collect_operator_stats():
+    """
+    The context switcher to enable to collect the number of operators for
+    different data types. The statistical data are categorized according
+    to four data types, namely float32, float16, bfloat16 and others, and
+    will be printed when exiting the context.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        conv = paddle.nn.Conv2D(3, 2, 3)
+        x = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.debugging.collect_operator_stats():
+            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            with paddle.amp.auto_cast(enable=True, level='O2'):
+                out = conv(x)
+        # Print to the standard output.
+        # <------------------------------------------------------- op list -------------------------------------------------------->
+        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+        #   conv2d                                  |  1                |  0                |  0                |  0
+        #   elementwise_add                         |  1                |  0                |  0                |  0
+        #   reshape2                                |  1                |  0                |  0                |  0
+        #   transfer_dtype                          |  0                |  0                |  3                |  0
+        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+
+    """
     enable_operator_stats_collection()
     yield
     disable_operator_stats_collection()
