@@ -1731,6 +1731,99 @@ void InvokeRebuildPadding(const phi::GPUContext &dev_ctx,
       output_data, input_data, padding_offset, dim_embed);
 }
 
+template <typename T, typename Functor, int VecSize>
+__global__ void ActFFNGlu(const T *input,
+                          T *output,
+                          Functor act_functor,
+                          const int token_num,
+                          const int hid_dim) {
+  int bi = blockIdx.x;
+  const T *input_this_thread = input + bi * hid_dim * 2;
+  T *output_this_thread = output + bi * hid_dim;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec1;
+  LoadT src_vec2;
+  for (int i = threadIdx.x * VecSize; i < hid_dim; i += blockDim.x * VecSize) {
+    phi::Load<T, VecSize>(&input_this_thread[i], &src_vec1);
+    phi::Load<T, VecSize>(&input_this_thread[i + hid_dim], &src_vec2);
+#pragma unroll
+    for (int j = 0; j < VecSize; j++) {
+      src_vec1[j] = act_functor(src_vec1[j]);
+      src_vec1[j] *= src_vec2[j];
+    }
+    phi::Store<T, VecSize>(src_vec1, &output_this_thread[i]);
+  }
+}
+
+template <typename T>
+class FFNGluHelper {
+ public:
+  FFNGluHelper(const phi::GPUContext &dev_ctx,
+               const std::string &act_method,
+               int token_num,
+               int hid_dim,
+               int dim_ffn,
+               int dim_embed)
+      : dev_ctx_(dev_ctx),
+        act_method_(act_method),
+        token_num_(token_num),
+        hid_dim_(hid_dim),
+        dim_ffn_(dim_ffn),
+        dim_embed_(dim_embed) {}
+
+  // dst = act(fc(src[0]) + bias) * src[1]
+  void Compute(const phi::DenseTensor *input,
+               const phi::DenseTensor *weight,
+               const phi::DenseTensor *bias,
+               phi::DenseTensor *bias_out,
+               phi::DenseTensor *output) {
+    // input's shape [token_num, dim_ffn], bias' shape [dim_ffn]
+    // output's shape [token_num, hid_dim], bias_out's shape [token_num,
+    // dim_ffn]
+    auto ffn_linear_compute = AttnMatMul<T>(
+        dev_ctx_, false, false, token_num_, dim_ffn_, dim_embed_, true);
+    ffn_linear_compute.ComputeForward(weight, input, bias, bias_out, bias_out);
+
+    using Functor = GeluFunctor<T>;
+
+    Functor functor;
+    constexpr int VecSize = 16;
+    constexpr int PackSize = VecSize / sizeof(T);
+    int grid_size = token_num_;
+    int block_size = 256;
+    switch (hid_dim_ % PackSize) {
+      case 0:
+        block_size = min(hid_dim_ / PackSize, 256);
+        ActFFNGlu<T, Functor, PackSize>
+            <<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
+                bias_out->data<T>(),
+                output->data<T>(),
+                functor,
+                token_num_,
+                hid_dim_);
+        break;
+      default:
+        block_size = min(hid_dim_, 256);
+        ActFFNGlu<T, Functor, 1>
+            <<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
+                bias_out->data<T>(),
+                output->data<T>(),
+                functor,
+                token_num_,
+                hid_dim_);
+        break;
+    }
+  }
+
+ private:
+  const phi::GPUContext &dev_ctx_;
+  std::string act_method_;
+  int token_num_;
+  int hid_dim_;
+  int dim_ffn_;
+  int dim_embed_;
+};
+
 #if CUDA_VERSION >= 11060
 // Only Used in Inference
 template <typename T>
