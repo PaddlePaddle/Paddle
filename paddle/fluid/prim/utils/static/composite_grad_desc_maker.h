@@ -355,7 +355,7 @@ class CompositeGradOpMakerBase {
           "please use GetOptionalSingleOutputGrad replaced. ",
           name));
     }
-    auto var_name = this->SingleForwardOutputVarName(name);
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
@@ -564,14 +564,6 @@ class CompositeGradOpMakerBase {
           static_cast<prim::DescTensor*>(outputs[i].impl().get())->Name(),
           origin_names[i]);
     }
-  }
-
-  std::string SingleForwardInputVarName(const std::string& name) const {
-    return fwd_op_.Input(name).at(0);
-  }
-
-  std::string SingleForwardOutputVarName(const std::string& name) const {
-    return fwd_op_.Output(name).at(0);
   }
 
   std::vector<std::string> MultiForwardOutputVarName(

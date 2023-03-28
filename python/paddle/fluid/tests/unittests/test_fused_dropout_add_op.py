@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle import fluid
+from paddle.fluid import core
 from paddle.incubate.nn.functional import fused_dropout_add
 from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
 

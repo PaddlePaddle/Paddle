@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -66,10 +66,10 @@ class TestClipOneDNNOp(OpTest):
         self.attrs = {'min': 7.2, 'max': 9.6, 'use_mkldnn': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestClipOneDNNOp_ZeroDim(TestClipOneDNNOp):
@@ -118,7 +118,7 @@ def create_bf16_test_class(parent):
                         self.dx[j][i] = self.dout[j][i]
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -128,6 +128,7 @@ def create_bf16_test_class(parent):
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                check_dygraph=False,
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")

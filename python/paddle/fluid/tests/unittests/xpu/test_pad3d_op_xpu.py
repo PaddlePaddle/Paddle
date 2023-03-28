@@ -27,8 +27,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid import Executor, Program, default_main_program, program_guard
 
 paddle.enable_static()

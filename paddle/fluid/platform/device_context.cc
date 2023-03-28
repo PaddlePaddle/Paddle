@@ -38,8 +38,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
 
-#include "paddle/phi/backends/context_pool_utils.h"
-
 namespace paddle {
 namespace platform {
 
@@ -64,73 +62,219 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   }
 }
 
-void EmplaceExternalContext(
-    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-        place_to_device_context,
-    const platform::Place& place,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DevCtx>
+typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
+                        DevCtx*>::type
+ConstructDevCtx(const phi::Place& p, /*unused*/ int stream_priority = 0) {
+  return new DevCtx(p);
+}
+
+template <typename DevCtx>
+typename std::enable_if<std::is_same<DevCtx, phi::GPUContext>::value,
+                        DevCtx*>::type
+ConstructDevCtx(const phi::Place& p, int stream_priority) {
+  return new DevCtx(p, /*init=*/true, stream_priority);
+}
+#else
+template <typename DevCtx>
+DevCtx* ConstructDevCtx(const phi::Place& p,
+                        /*unused*/ int stream_priority) {
+  return new DevCtx(p);
+}
+#endif
+
+template <typename DevCtx>
+inline std::unique_ptr<DeviceContext> CreateDeviceContext(
+    const phi::Place& p,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority) {
-  if (platform::is_cuda_pinned_place(place)) {
+  using PtrType = std::unique_ptr<DeviceContext>;
+
+  DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
+  auto& instance = paddle::memory::allocation::AllocatorFacade::Instance();
+  if (p.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    phi::EmplaceDeviceContext<CUDAPinnedDeviceContext>(
-        place_to_device_context,
-        place,
-        disable_setting_default_stream_for_allocator,
-        /*unused*/ stream_priority);
-#else
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "CUDAPlace is not supported. Please re-compile with WITH_GPU "
-        "option."));
+    auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+    PADDLE_ENFORCE_NOT_NULL(
+        cuda_ctx,
+        phi::errors::InvalidArgument(
+            "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
+
+    if (!disable_setting_default_stream_for_allocator) {
+      instance.SetDefaultStream(GPUPlace(p.GetDeviceId()), cuda_ctx->stream());
+    }
+    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
+    dev_ctx->SetPinnedAllocator(
+        instance.GetAllocator(phi::GPUPinnedPlace()).get());
+
+    cuda_ctx->PartialInitWithAllocator();
+    dev_ctx->SetGenerator(phi::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
-  } else if (platform::is_mlu_place(place)) {
+  } else if (p.GetType() == phi::AllocationType::XPU) {
+#if defined(PADDLE_WITH_XPU)
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
+#endif
+  } else {
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
+  }
+  dev_ctx->SetHostGenerator(phi::DefaultCPUGenerator().get());
+  dev_ctx->SetHostAllocator(instance.GetAllocator(phi::CPUPlace()).get());
+  dev_ctx->SetZeroAllocator(instance.GetZeroAllocator(p).get());
+  dev_ctx->SetHostZeroAllocator(
+      instance.GetZeroAllocator(phi::CPUPlace()).get());
+  return PtrType(dev_ctx);
+}
+
+template <typename DevCtx>
+inline void EmplaceDeviceContext(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const phi::Place& place,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  // lazy evaluation. i.e., only create device context at first `Get`
+  place_to_device_context->emplace(
+      place,
+      std::async(std::launch::deferred,
+                 CreateDeviceContext<DevCtx>,
+                 place,
+                 disable_setting_default_stream_for_allocator,
+                 stream_priority));
+}
+
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  PADDLE_ENFORCE_GT(
+      places.size(),
+      0,
+      phi::errors::InvalidArgument("The number of platform places should "
+                                   "be larger than 0. But received %d.",
+                                   places.size()));
+  std::set<Place> set;
+  for (auto& p : places) {
+    set.insert(p);
+  }
+  for (auto& place : set) {
+    if (place.GetType() == phi::AllocationType::CPU) {
+#ifdef PADDLE_WITH_MKLDNN
+      EmplaceDeviceContext<phi::OneDNNContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      EmplaceDeviceContext<phi::CPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#endif
+    } else if (place.GetType() == phi::AllocationType::GPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      EmplaceDeviceContext<phi::GPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          stream_priority);
+#else
+      PADDLE_THROW(
+          phi::errors::Unimplemented("GPUPlace is not supported. Please "
+                                     "re-compile with WITH_GPU option."));
+#endif
+    } else if (place.GetType() == phi::AllocationType::XPU) {
+#ifdef PADDLE_WITH_XPU
+      EmplaceDeviceContext<phi::XPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(
+          phi::errors::Unimplemented("XPUPlace is not supported. Please "
+                                     "re-compile with WITH_XPU option."));
+#endif
+    } else if (place.GetType() == phi::AllocationType::CUSTOM) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      EmplaceDeviceContext<phi::CustomContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "CustomPlace is not supported. Please re-compile with "
+          "WITH_CUSTOM_DEVICE "
+          "option."));
+#endif
+    } else if (platform::is_cuda_pinned_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "option."));
+#endif
+    } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    phi::EmplaceDeviceContext<MLUDeviceContext>(
-        place_to_device_context,
-        place,
-        disable_setting_default_stream_for_allocator,
-        /*unused*/ stream_priority);
+      EmplaceDeviceContext<MLUDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #else
-    PADDLE_THROW(
-        platform::errors::Unimplemented("MLUPlace is not supported. Please "
-                                        "re-compile with WITH_MLU option."));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("MLUPlace is not supported. Please "
+                                          "re-compile with WITH_MLU option."));
 #endif
-  } else if (platform::is_ipu_place(place)) {
+    } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
-    phi::EmplaceDeviceContext<IPUDeviceContext>(
-        place_to_device_context,
-        place,
-        disable_setting_default_stream_for_allocator,
-        /*unused*/ stream_priority);
+      EmplaceDeviceContext<IPUDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #else
-    PADDLE_THROW(
-        platform::errors::Unimplemented("IPUPlace is not supported. Please "
-                                        "re-compile with WITH_IPU option."));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("IPUPlace is not supported. Please "
+                                          "re-compile with WITH_IPU option."));
 #endif
-  } else if (platform::is_npu_place(place)) {
+    } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    phi::EmplaceDeviceContext<NPUDeviceContext>(
-        place_to_device_context,
-        place,
-        disable_setting_default_stream_for_allocator,
-        /*unused*/ stream_priority);
+      EmplaceDeviceContext<NPUDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #else
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "NPUPlace is not supported. Please "
-        "re-compile with WITH_ASCEND_CL option."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPlace is not supported. Please "
+          "re-compile with WITH_ASCEND_CL option."));
 #endif
-  } else if (platform::is_npu_pinned_place(place)) {
+    } else if (platform::is_npu_pinned_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    phi::EmplaceDeviceContext<NPUPinnedDeviceContext>(
-        place_to_device_context,
-        place,
-        disable_setting_default_stream_for_allocator,
-        /*unused*/ stream_priority);
+      EmplaceDeviceContext<NPUPinnedDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #else
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "NPUPinnedPlace is not supported. Please re-compile with "
-        "WITH_ASCEND_CL "
-        "option."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPinnedPlace is not supported. Please re-compile with "
+          "WITH_ASCEND_CL "
+          "option."));
 #endif
+    }
   }
 }
 

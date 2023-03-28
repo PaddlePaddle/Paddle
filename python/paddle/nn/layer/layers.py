@@ -22,8 +22,7 @@ import weakref
 import numpy as np
 
 import paddle
-import paddle.profiler as profiler
-import paddle.utils.deprecated as deprecated
+from paddle import profiler
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -45,6 +44,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -206,8 +206,7 @@ class LayerObjectHelper(LayerHelperBase):
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, inputs_in):
         """Get input data type
@@ -1861,7 +1860,7 @@ class Layer:
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
-            if isinstance(state, dict) or isinstance(state, list):
+            if isinstance(state, (dict, list)):
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(

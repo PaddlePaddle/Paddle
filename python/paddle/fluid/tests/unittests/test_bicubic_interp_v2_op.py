@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
 
@@ -37,17 +37,15 @@ def bicubic_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
-        if not isinstance(SizeTensor, list) and not isinstance(
-            SizeTensor, tuple
-        ):
+        if not isinstance(SizeTensor, (list, tuple)):
             SizeTensor = [SizeTensor]
     return paddle._C_ops.bicubic_interp(
         x,
@@ -197,7 +195,7 @@ class TestBicubicInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -236,7 +234,7 @@ class TestBicubicInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:

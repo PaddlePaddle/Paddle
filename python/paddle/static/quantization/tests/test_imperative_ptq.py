@@ -26,7 +26,7 @@ from imperative_test_utils import (
 )
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
 from paddle.quantization import (
@@ -60,10 +60,7 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (
-                    isinstance(layer, nn.BatchNorm1D)
-                    or isinstance(layer, nn.BatchNorm2D)
-                )
+                assert not (isinstance(layer, (nn.BatchNorm1D, nn.BatchNorm2D)))
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
@@ -294,10 +291,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (
-                    isinstance(layer, nn.BatchNorm1D)
-                    or isinstance(layer, nn.BatchNorm2D)
-                )
+                assert not (isinstance(layer, (nn.BatchNorm1D, nn.BatchNorm2D)))
         before_acc_top1 = self.model_test(
             quant_model, self.batch_num, self.batch_size
         )

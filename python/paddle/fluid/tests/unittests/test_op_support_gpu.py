@@ -14,7 +14,7 @@
 
 import unittest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestOpSupportGPU(unittest.TestCase):
