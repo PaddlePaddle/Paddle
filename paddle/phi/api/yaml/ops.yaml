@@ -1367,6 +1367,15 @@
   inplace : (x -> out)
   backward : sigmoid_grad
 
+- op : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithLogitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+  backward : sigmoid_cross_entropy_with_logits_grad
+
 - op : sign
   args : (Tensor x)
   output : Tensor(out)

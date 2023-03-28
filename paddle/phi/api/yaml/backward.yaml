@@ -1344,6 +1344,17 @@
     func : send_uv_grad
     data_type : x
 
+- backward_op : sigmoid_cross_entropy_with_logits_grad
+  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ignore_index)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sigmoid_cross_entropy_with_logits_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor fwd_grad_out, Tensor grad_x_grad)
