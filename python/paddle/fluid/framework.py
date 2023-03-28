@@ -442,7 +442,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
         return wrapper
 
-    from .dygraph.layers import Layer
+    from paddle.nn import Layer
 
     if not isinstance(call_func, Layer):
         if callable(call_func):
@@ -773,7 +773,7 @@ def _var_base_to_np(var_base):
         "paddle.fluid.framework._var_base_to_np is deprecated, please use var_base.numpy() instead of _var_base_to_np(var_base)."
     )
 
-    return var_base.numpy()
+    return var_base.numpy(False)
 
 
 def _cpu_num():
@@ -2072,9 +2072,9 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
 
-          x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
+          x = paddle.static.data(name="x", shape=[-1, 23, 48], dtype='float32')
           print(x.grad_name) # output is ``x@GRAD``
 
         """
@@ -3751,7 +3751,6 @@ class Block:
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self._to_readable_code()
@@ -6081,8 +6080,8 @@ class Program:
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
-            if hasattr(self, 'lr_sheduler'):
-                p.lr_sheduler = self.lr_sheduler
+            if hasattr(self, 'lr_scheduler'):
+                p.lr_scheduler = self.lr_scheduler
 
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.

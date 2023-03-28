@@ -15,10 +15,8 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,

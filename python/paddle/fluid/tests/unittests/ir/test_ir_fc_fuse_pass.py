@@ -18,14 +18,14 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class FCFusePassTest(PassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 128], dtype="float32", lod_level=0
             )
             tmp_0 = paddle.static.nn.fc(

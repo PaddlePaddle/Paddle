@@ -191,7 +191,9 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {
     // Memcpy in xpu is synchronous
-    new_op_func_node.type_ = OpFuncType::kGpuSync;
+    new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
+                                 ? OpFuncType::kGpuSync
+                                 : OpFuncType::kGpuAsync;
   } else {
     // Memcpy in npu and custom devices is asynchronous
     new_op_func_node.type_ = OpFuncType::kGpuAsync;
@@ -585,7 +587,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                      tensor_backend == phi::Backend::XPU) &&
                    !(def_backend == phi::Backend::ONEDNN &&
                      tensor_backend == phi::Backend::CPU)) ||
-                  tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+                  tensor_in->place().GetType() == AllocationType::GPUPINNED ||
+                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                   def_backend == tensor_backend)) {
                 expected_kernel_key_for_argument_def =
                     std::make_unique<phi::KernelKey>(
                         def_backend,

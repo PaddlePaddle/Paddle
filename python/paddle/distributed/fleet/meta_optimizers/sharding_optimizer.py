@@ -73,15 +73,13 @@ class ShardingOptimizer(MetaOptimizerBase):
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self._main_program = None
         self._startup_program = None
         self._segments = []
         # params and fp16 params is for broadcast
-        self._params = set([])
-        self._broadcast_vars = set([])
+        self._params = set()
+        self._broadcast_vars = set()
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         self._shard = Shard()
@@ -232,7 +230,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         gm_acc_step = int(sharding_configs["gradient_merge_acc_step"])
         if self.pp_degree <= 1:
             gm_mode = "sharding_gm"
-            self._grad2merged_grad = dict()
+            self._grad2merged_grad = {}
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
@@ -909,7 +907,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _build_shard(self, params_grads, shard_rank, shard_size):
         # step 2: split params
-        self._params = set([x[0].name for x in params_grads])
+        self._params = {x[0].name for x in params_grads}
         self._shard.setup(params_grads, shard_rank, shard_size)
 
         # step 3: get broadcast vars
@@ -939,7 +937,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 last_backward_op_idx = op_idx + 1
                 break
 
-        var2broadcast_time = dict()
+        var2broadcast_time = {}
         segment = ProgramSegment(block)
         segment._end_idx = last_backward_op_idx
         for op_idx in reversed(range(last_backward_op_idx)):

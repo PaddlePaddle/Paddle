@@ -20,7 +20,7 @@ import numpy as np
 from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 SEED = 102
 random.seed(SEED)

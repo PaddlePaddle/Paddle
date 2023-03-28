@@ -14,7 +14,8 @@
 import typing
 
 import paddle
-from paddle.fluid import framework as framework
+import paddle.framework.dtype as dtypes
+from paddle.fluid import framework
 
 from .phi_ops_map import op_info, op_map
 
@@ -159,15 +160,52 @@ def _solve_arg(item):
     return arg_type.strip(), arg_name.strip()
 
 
+def _get_attr_value(op, arg_type, arg_name):
+    op_content = op_map[op.type]
+    if "attrs" in op_content.keys() and arg_name in op_content["attrs"].keys():
+        arg_name = op_content["attrs"][arg_name]
+
+    # Note: in some cases, attrs may be optional , thus assign None. Such case must be recorded.
+
+    if arg_name not in op.attr_names:
+        return None
+    else:
+        if arg_type == "DataType":
+            return dtypes.dtype(op.attr(arg_name))
+        return op.attr(arg_name)
+
+
 def _get_args_values(op, phi_name):
     "get attrs' values for api args' values"
     args = op_info[phi_name]
     args_list = args["args"].split(",")
     inputs = []
     attrs = []
+
     for item in args_list:
         arg_type, arg_name = _solve_arg(item)
         op_content = op_map[op.type]
+        # IntArray and Scalar are special cases which may cause dynamic shape. In these case, tensor-relative types are removed in composite op.
+        if arg_type in ("IntArray", "Scalar"):
+            tensor_key = "int_array" if arg_type == "IntArray" else "scalar"
+            if op_content.get(tensor_key):
+                tensor_content = op_content[tensor_key].get(arg_name)
+                if not tensor_content:
+                    raise ValueError(
+                        f'No value found for {arg_name} of {arg_type} type for operator {op.type}.'
+                    )
+                for item in ("tensor_name", "tensors_name"):
+                    # name of intarray may differ from operator arg_name
+                    arg_name_new = tensor_content.get(item)
+                    if (
+                        arg_name_new is not None
+                        and arg_name_new in op.input_names
+                        and get_var_block(op.block, op.input(arg_name_new))
+                    ):
+                        raise ValueError(
+                            f"Tensor type of {arg_type} is not supported in composite op. Please set other type value of input arg {arg_name_new} for operator {op.type}."
+                        )
+
         if arg_type in ("Tensor", "Tensor[]"):
             # assume Tensor type must belong to inputs
             if (
@@ -178,19 +216,8 @@ def _get_args_values(op, phi_name):
             else:
                 inputs.append(arg_name)
         else:
-            op_content = op_map[op.type]
-            if (
-                "attrs" in op_content.keys()
-                and arg_name in op_content["attrs"].keys()
-            ):
-                arg_name = op_content["attrs"][arg_name]
-
-            # Note: in some cases, attrs may be optional , thus assign None. Such case must be recorded.
-
-            if arg_name not in op.attr_names:
-                attrs.append(None)
-            else:
-                attrs.append(op.attr(arg_name))
+            attr_value = _get_attr_value(op, arg_type, arg_name)
+            attrs.append(attr_value)
 
     return inputs, attrs
 

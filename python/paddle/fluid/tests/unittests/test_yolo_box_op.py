@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -93,11 +93,37 @@ def YoloBox(x, img_size, attrs):
     return (pred_box, pred_score.reshape((n, (-1), class_num)))
 
 
+def yolo_box_wrapper(
+    X,
+    ImgSize,
+    anchors=[],
+    class_num=0,
+    conf_thresh=0.01,
+    downsample_ratio=32,
+    clip_bbox=True,
+    scale_x_y=1.0,
+    iou_aware=False,
+    iou_aware_factor=0.5,
+):
+    return paddle._C_ops.yolo_box(
+        X,
+        ImgSize,
+        anchors,
+        class_num,
+        conf_thresh,
+        downsample_ratio,
+        clip_bbox,
+        scale_x_y,
+        iou_aware,
+        iou_aware_factor,
+    )
+
+
 class TestYoloBoxOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolo_box'
-        self.python_api = paddle.vision.ops.yolo_box
+        self.python_api = yolo_box_wrapper
         x = np.random.random(self.x_shape).astype('float32')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
         self.attrs = {
@@ -115,7 +141,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
