@@ -16,8 +16,8 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/utils.h"
+#include "test/cpp/eager/data_structure_tests/grad_node_test.h"
 
 TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";

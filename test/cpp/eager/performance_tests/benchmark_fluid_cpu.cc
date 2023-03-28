@@ -23,11 +23,11 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "test/cpp/eager/performance_tests/benchmark_utils.h"
+#include "test/cpp/eager/test_utils.h"
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
@@ -35,25 +35,23 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace imperative {
 
-TEST(Benchmark, FluidScaleCUDA) {
+TEST(Benchmark, FluidScaleCPU) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
@@ -63,29 +61,20 @@ TEST(Benchmark, FluidScaleCUDA) {
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
-
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
-    auto stream = dev_ctx->stream();
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         place,
                          src_data.data(),
-                         sizeof(float) * src_data.size(),
-                         stream);
+                         sizeof(float) * src_data.size());
 
     if (mode == "Accuracy") {
       benchmark_fluid_scale(
           X, platform::Place(place), true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_fluid_scale(X, platform::Place(place));
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("fluid_scale_cuda.out");
+      ProfilerStart("fluid_scale_cpu.out");
 #endif
       benchmark_fluid_scale(X, platform::Place(place));
 
@@ -103,12 +92,12 @@ TEST(Benchmark, FluidScaleCUDA) {
   }
 }
 
-TEST(Benchmark, FluidMatmulCUDA) {
+TEST(Benchmark, FluidMatmulCPU) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
     std::shared_ptr<imperative::VarBase> Y(new imperative::VarBase(true, "Y"));
@@ -118,42 +107,32 @@ TEST(Benchmark, FluidMatmulCUDA) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
-    auto stream = dev_ctx->stream();
-
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         place,
                          x_src_data.data(),
-                         sizeof(float) * x_src_data.size(),
-                         stream);
+                         sizeof(float) * x_src_data.size());
 
     auto* y_tensor = Y->MutableVar()->GetMutable<phi::DenseTensor>();
     y_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_y,
-                         platform::CPUPlace(),
+                         place,
                          y_src_data.data(),
-                         sizeof(float) * y_src_data.size(),
-                         stream);
+                         sizeof(float) * y_src_data.size());
 
     if (mode == "Accuracy") {
       benchmark_fluid_matmul(
           X, Y, platform::Place(place), true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("fluid_matmul_cuda.out");
+      ProfilerStart("fluid_matmul_cpu.out");
 #endif
       benchmark_fluid_matmul(X, Y, platform::Place(place));
 
@@ -163,6 +142,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
@@ -171,17 +151,12 @@ TEST(Benchmark, FluidMatmulCUDA) {
   }
 }
 
-TEST(Benchmark, FluidMLPCUDA) {
+TEST(Benchmark, FluidMLPCPU) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
-    auto stream = dev_ctx->stream();
-
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::vector<float> x_src_data(MLP_M * MLP_N, MLP_X_VAL);
     std::vector<float> w_src_data(MLP_N * MLP_K, MLP_W_VAL);
     std::vector<float> b_src_data(MLP_K, MLP_B_VAL);
@@ -198,10 +173,9 @@ TEST(Benchmark, FluidMLPCUDA) {
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         place,
                          x_src_data.data(),
-                         sizeof(float) * x_src_data.size(),
-                         stream);
+                         sizeof(float) * x_src_data.size());
 
     std::vector<std::shared_ptr<imperative::VarBase>> Ws;
     std::vector<std::shared_ptr<imperative::VarBase>> Bs;
@@ -218,20 +192,18 @@ TEST(Benchmark, FluidMLPCUDA) {
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
                            mutable_w,
-                           platform::CPUPlace(),
+                           place,
                            w_src_data.data(),
-                           sizeof(float) * w_src_data.size(),
-                           stream);
+                           sizeof(float) * w_src_data.size());
 
       auto* b_tensor = B->MutableVar()->GetMutable<phi::DenseTensor>();
       b_tensor->Resize(phi::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
                            mutable_b,
-                           platform::CPUPlace(),
+                           place,
                            b_src_data.data(),
-                           sizeof(float) * b_src_data.size(),
-                           stream);
+                           sizeof(float) * b_src_data.size());
 
       Ws.emplace_back(std::move(W));
       Bs.emplace_back(std::move(B));
@@ -241,13 +213,10 @@ TEST(Benchmark, FluidMLPCUDA) {
       benchmark_fluid_mlp(
           X, Ws, Bs, platform::Place(place), true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("fluid_mlp_cuda.out");
+      ProfilerStart("fluid_mlp_cpu.out");
 #endif
       benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
 
@@ -270,9 +239,6 @@ TEST(Benchmark, FluidMLPCUDA) {
 }  // namespace paddle
 
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
 USE_OP_ITSELF(reduce_sum);
-USE_OP_ITSELF(reduce_sum_grad);
-USE_OP_ITSELF(elementwise_add);
-
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

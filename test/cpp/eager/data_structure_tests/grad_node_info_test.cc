@@ -19,8 +19,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
-#include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "test/cpp/eager/data_structure_tests/grad_node_test.h"
 
 TEST(GradNodeInfo, GradSlotMeta) {
   auto grad_slot = egr::GradSlotMeta();

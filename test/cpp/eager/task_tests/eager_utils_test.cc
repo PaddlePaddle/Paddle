@@ -18,11 +18,11 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "test/cpp/eager/data_structure_tests/grad_node_test.h"
+#include "test/cpp/eager/test_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
