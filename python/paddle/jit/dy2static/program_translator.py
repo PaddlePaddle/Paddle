@@ -1266,7 +1266,8 @@ class PrimHooker(PartialProgramLayerHook):
         if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
             _to_prim(whole_program.blocks, backward_length=backward_length)
         new_start_index = len(whole_program.block(0).ops) - backward_length
-        _to_prim(whole_program.blocks, start_idx=new_start_index)
+        if backward_length > 0:
+            _to_prim(whole_program.blocks, start_idx=new_start_index)
         return whole_program, new_start_index
 
     def after_infer(self, infer_program):
