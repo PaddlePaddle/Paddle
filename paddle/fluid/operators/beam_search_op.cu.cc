@@ -26,10 +26,3 @@ PD_REGISTER_STRUCT_KERNEL(beam_search,
                           double,
                           int,
                           int64_t) {}
-
-#define DECLARE_GPU_FUNCTOR(functor_name)                             \
-  extern int TouchGPUFunctorSymbolFor_##functor_name();               \
-  UNUSED static int __declare_gpu_functor_symbol_for_##functor_name = \
-      TouchGPUFunctorSymbolFor_##functor_name()
-
-DECLARE_GPU_FUNCTOR(beam_search);
