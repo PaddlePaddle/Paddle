@@ -51,6 +51,8 @@ void IRPassManager::CreatePasses(Argument *argument,
 
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+    if (!argument->use_gpu() && pass_name != "graph_viz_pass")
+      pass->Set<bool>("apply_to_subgraph", new bool(true));
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
     pass->Set("use_cutlass", new bool(argument->use_cutlass()));
     pass->Set("with_interleaved",
