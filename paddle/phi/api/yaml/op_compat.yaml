@@ -1241,6 +1241,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : merge_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : meshgrid
   backward : meshgrid_grad
   inputs :
