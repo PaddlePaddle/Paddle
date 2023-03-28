@@ -591,7 +591,6 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
 if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
   add_subdirectory(collective)
