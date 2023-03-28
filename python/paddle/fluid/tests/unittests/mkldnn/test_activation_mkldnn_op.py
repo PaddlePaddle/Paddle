@@ -21,7 +21,10 @@ from scipy.special import expit
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
 from paddle.fluid.tests.unittests.test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,
@@ -220,7 +223,6 @@ class TestMKLDNNSwishDim2(TestSwish):
         super().setUp()
 
         self.attrs["use_mkldnn"] = True
-        self.check_eager = False
 
     def init_dtype(self):
         self.dtype = np.float32
