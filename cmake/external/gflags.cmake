@@ -91,7 +91,7 @@ else()
     BUILD_BYPRODUCTS ${GFLAGS_LIBRARIES})
 endif()
 
-add_library(gflags STATIC IMPORTED GLOBAL)
+add_library(gflags SHARED IMPORTED GLOBAL)
 set_property(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 add_dependencies(gflags extern_gflags)
 
