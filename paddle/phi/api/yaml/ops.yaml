@@ -320,6 +320,15 @@
     data_type : x
   backward : cross_grad
 
+- op : cumprod
+  args : (Tensor x,  int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMetaCheckAxis
+  kernel :
+    func : cumprod
+  backward : cumprod_grad
+
 - op : det
   args : (Tensor x)
   output : Tensor

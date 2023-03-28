@@ -273,16 +273,6 @@
     data_type : softmax
   inplace : (softmax -> input_grad)
 
-- backward_op : cumprod_grad
-  forward : cumprod (Tensor x, int dim) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int dim)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : cumprod_grad
-
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
