@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from xml.dom import NotSupportedErr
+
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
@@ -200,7 +202,10 @@ class HybridParallelClipGrad:
             + paddle.to_tensor([1.0e-6], dtype=paddle.float32),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
-        clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
+
+        # bf16 is not supported on XPU now
+        if not paddle.is_compiled_with_xpu():
+            clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
                 continue
@@ -209,6 +214,8 @@ class HybridParallelClipGrad:
             if g.dtype == paddle.float16:
                 g.scale_(clip_var_fp16)
             elif g.dtype == paddle.bfloat16:
+                if paddle.is_compiled_with_xpu():
+                    raise NotSupportedErr("BF16 is not supported on XPU now")
                 g.scale_(clip_var_bf16)
             else:
                 g.scale_(clip_var)
