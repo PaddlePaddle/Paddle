@@ -230,7 +230,7 @@ class TestSearchSortedFP16OP(TestSearchSorted):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestSearchSortedBF16(OpTest):
+class TestSearchSortedBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.searchsorted
         self.op_type = "searchsorted"
