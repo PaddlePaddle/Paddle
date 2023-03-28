@@ -750,7 +750,7 @@ class OperatorClusteringUtil:
     @staticmethod
     def get_ranks(seq):
         """Get rank array of the given seq by doubled algorithm."""
-        ordered_seq = sorted(list(set(seq)))
+        ordered_seq = sorted(set(seq))
         item_to_rank = {item: idx for idx, item in enumerate(ordered_seq)}
         inter_ranks = [item_to_rank[item] for item in seq]
 
