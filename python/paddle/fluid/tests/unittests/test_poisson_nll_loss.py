@@ -200,12 +200,6 @@ class TestPoissonNLLLossErrCase(TestPoissonNLLLossBasicCase):
         self.test_err_epsilon()
 
 
-class TestPoissonNLLLossFloat16Case(TestPoissonNLLLossBasicCase):
-    def test_api(self):
-        self.test_static_case(dtype="float16")
-        self.test_dynamic_case(dtype="float16")
-
-
 class TestPoissonNLLLossFloat32Case(TestPoissonNLLLossBasicCase):
     def test_api(self):
         self.test_static_case(dtype="float32")

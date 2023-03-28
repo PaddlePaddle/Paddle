@@ -1478,7 +1478,7 @@ def poisson_nll_loss(
     full=False,
     epsilon=1e-8,
     reduction="mean",
-    name: str = None,
+    name=None,
 ):
     r"""Poisson negative log likelihood loss.
     See more detail in :ref:`PoissonNLLLoss <api_paddle_nn_PoissonNLLLoss>` .
@@ -1487,11 +1487,11 @@ def poisson_nll_loss(
          input (Tensor):
             Input tensor, expectation of underlying Poisson distribution.
             The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
-            It's data type should be float16, float32, float64.
+            It's data type should be float32, float64.
          label (Tensor):
             Label tensor, random sampled from Poisson distribution :math:`target \sim \text{Poisson}(input)`.
             The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
-            It's data type should be float16, float32, float64.
+            It's data type should be float32, float64.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
             If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{target} * \text{input}`.
@@ -1541,13 +1541,13 @@ def poisson_nll_loss(
     check_variable_and_dtype(
         input,
         'input',
-        ['float16', 'float32', 'float64'],
+        ['float32', 'float64'],
         'poisson_nll_loss',
     )
     check_variable_and_dtype(
         label,
         'label',
-        ['float16', 'float32', 'float64'],
+        ['float32', 'float64'],
         'poisson_nll_loss',
     )
 
