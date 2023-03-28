@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import _non_static_mode
