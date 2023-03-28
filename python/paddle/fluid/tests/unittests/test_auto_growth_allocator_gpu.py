@@ -20,12 +20,13 @@ import paddle
 from paddle import fluid
 
 # it should be set at the beginning
-paddle.set_flags(
-    {
-        'FLAGS_allocator_strategy': 'auto_growth',
-        'FLAGS_auto_growth_chunk_size_in_mb': 10,
-    }
-)
+if fluid.is_compiled_with_cuda():
+    paddle.set_flags(
+        {
+            'FLAGS_allocator_strategy': 'auto_growth',
+            'FLAGS_auto_growth_chunk_size_in_mb': 10,
+        }
+    )
 
 
 class TestMemoryLimit(unittest.TestCase):
