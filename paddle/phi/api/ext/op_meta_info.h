@@ -196,6 +196,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... RemainingArgs>
   struct ComputeCallHelper;
 
+  // Handle args for general Tensor input case
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -209,6 +210,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Handle args for optional Tensor input case
   template <typename... Tail>
   struct ComputeCallHelper<const paddle::optional<paddle::Tensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -228,6 +230,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Handle args for general vector<Tensor> input case
   template <typename... Tail>
   struct ComputeCallHelper<const std::vector<Tensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -241,6 +244,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Handle args for optional vector<Tensor> input case
   template <typename... Tail>
   struct ComputeCallHelper<const paddle::optional<std::vector<paddle::Tensor>>&,
                            Tail...> {
@@ -293,6 +297,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
 
   // Used to be compatible with 2.3 released internal inplace interface, not
   // recommended
+  // Handle args for compatible inplace case
   template <typename... Tail>
   struct ComputeCallHelper<Tensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -310,6 +315,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   // recommended
   // TODO(chenweihang): What is the appropriate output form?
   // std::vector<Tensor>*? or std::vector<Tensor*>? or std::vector<Tensor*>*
+  // Handle args for compatible inplace case
   template <typename... Tail>
   struct ComputeCallHelper<std::vector<Tensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -323,13 +329,27 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // Handle Tensor& for inplace case
+  // Handle args for inplace Tensor case
   template <typename... Tail>
   struct ComputeCallHelper<Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto& arg = ctx->MutableInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for inplace vector<Tensor> case
+  template <typename... Tail>
+  struct ComputeCallHelper<std::vector<Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->InputsBetween(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
@@ -739,6 +759,7 @@ class PADDLE_API OpMetaInfo {
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
   std::unordered_map<std::string, std::string> inplace_map_;
+  std::unordered_map<std::string, std::string> inplace_reverse_map_;
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
@@ -766,6 +787,10 @@ class OpMetaInfoHelper {
   static const std::unordered_map<std::string, std::string>& GetInplaceMap(
       const paddle::OpMetaInfo& info) {
     return info.inplace_map_;
+  }
+  static const std::unordered_map<std::string, std::string>&
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
+    return info.inplace_reverse_map_;
   }
   static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
     return info.kernel_fn_;
