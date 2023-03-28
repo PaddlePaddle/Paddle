@@ -91,6 +91,8 @@ class Carrier final {
 
   bool HasInterceptor(int64_t interceptor_id) const;
 
+  int32_t carrier_id() const { return carrier_id_; }
+
  private:
   DISABLE_COPY_AND_ASSIGN(Carrier);
   Carrier() = delete;

@@ -2562,8 +2562,16 @@ class Executor(object):
         inference_root_scope_vars = (
             fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
         )
+        source_program = (
+            fleet_opt["source_program"]
+            if "source_program" in fleet_opt
+            else None
+        )
+        num_of_carrier = (
+            fleet_opt["num_of_carrier"] if "num_of_carrier" in fleet_opt else 1
+        )
         self._fleet_executor.init(
-            1,
+            num_of_carrier,
             program.desc,
             scope,
             place,
@@ -2572,6 +2580,7 @@ class Executor(object):
             task_id_to_rank,
             inference_root_scope_vars,
             micro_scope_list,
+            source_program.desc,
         )
 
     def _run_using_fleet_executor(

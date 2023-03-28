@@ -47,7 +47,8 @@ class FleetExecutor final {
             const std::vector<TaskNode*>& task_nodes,
             const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
             const std::vector<std::string>& inference_root_scope_vars = {},
-            const std::vector<framework::Scope*>& micro_scope_list = {});
+            const std::vector<framework::Scope*>& micro_scope_list = {},
+            paddle::framework::ProgramDesc* source_program = nullptr);
   void Run();
 
  private:
@@ -65,7 +66,8 @@ class FleetExecutor final {
       const std::vector<std::string>& inference_root_scope_vars);
   void CreateSourceAndSink(int64_t max_run_times,
                            const std::vector<TaskNode*>& task_nodes,
-                           const platform::Place& place);
+                           const platform::Place& place,
+                           paddle::framework::ProgramDesc* source_program);
 
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;

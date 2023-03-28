@@ -32,14 +32,12 @@ class SourceInterceptor final : public ComputeInterceptor {
  private:
   void Compute(const InterceptorMessage& msg) override;
   void SendDataReadyToDownStream() override;
-  void PrepareDeps();
+  bool AllDownsFinished();
   void Run();
   int64_t max_run_times_;
-  // cur_step
+  // downstream_id->received_useless
+  std::map<int64_t, bool> downstream_flag_;
   int64_t step_{0};
-  // carrier_id-->(scope_id, is_ready)
-  // std::map<int32_t, std::vector<std::pair<int32_t, bool>>>
-  // carriers_scopes_ready_;
 };
 
 }  // namespace distributed

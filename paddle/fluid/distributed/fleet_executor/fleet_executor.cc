@@ -205,7 +205,8 @@ void FleetExecutor::Init(
     const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
     const std::vector<std::string>& inference_root_scope_vars,
-    const std::vector<framework::Scope*>& micro_scope_list) {
+    const std::vector<framework::Scope*>& micro_scope_list,
+    paddle::framework::ProgramDesc* source_program) {
   PADDLE_ENFORCE_GT(task_nodes.size(),
                     0,
                     platform::errors::InvalidArgument(
@@ -284,7 +285,8 @@ void FleetExecutor::Init(
   thread_pool_->SetThreadNum(num_of_carriers + 1);
   thread_pool_->Start();
 
-  CreateSourceAndSink(microbatch_scopes_.size(), task_nodes, place);
+  CreateSourceAndSink(
+      microbatch_scopes_.size(), task_nodes, place, source_program);
 
   runtime_graph_ = std::make_shared<RuntimeGraph>();
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
@@ -305,12 +307,18 @@ void FleetExecutor::Init(
 
   std::vector<std::vector<framework::Scope*>> sub_micro_scope_list(
       num_of_carriers);
-  std::vector<std::vector<std::pair<int32_t, bool>>> carrier_scope_ids_(
-      num_of_carriers);
+  bool divided = microbatch_scopes_.size() % num_of_carriers == 0;
+  PADDLE_ENFORCE_EQ(
+      divided,
+      true,
+      platform::errors::InvalidArgument(
+          "The number of microbatch scopes should be divided by the number of "
+          "carriers, but got %d microbatch scopes and %d carriers",
+          microbatch_scopes_.size(),
+          num_of_carriers));
   for (size_t i = 0; i < microbatch_scopes_.size(); ++i) {
     int carrier_id = (i % num_of_carriers);
     sub_micro_scope_list[carrier_id].emplace_back(microbatch_scopes_[i]);
-    carrier_scope_ids_[carrier_id].emplace_back(std::make_pair(i, false));
   }
   for (auto id = 0; id < num_of_carriers; ++id) {
     carriers_.emplace_back(std::make_unique<Carrier>(id));
@@ -327,7 +335,6 @@ void FleetExecutor::Init(
   source_interceptor_->SetMiniBatchScope(minibatch_scope_);
   source_interceptor_->SetMicroBatchScope(microbatch_scopes_);
   source_interceptor_->SetRootScope(root_scope_);
-  source_interceptor_->SetCarrierScopeIds(carrier_scope_ids_);
   std::vector<Carrier*> multi_carriers;
   for (const auto& carrier : carriers_) {
     multi_carriers.emplace_back(carrier.get());
@@ -411,9 +418,13 @@ void FleetExecutor::WaitCondVarToExit() {
 void FleetExecutor::CreateSourceAndSink(
     int64_t max_run_times,
     const std::vector<TaskNode*>& task_nodes,
-    const platform::Place& place) {
+    const platform::Place& place,
+    paddle::framework::ProgramDesc* source_program) {
   auto cur_rank = exe_desc_.cur_rank();
-  TaskNode* source = new TaskNode(cur_rank, SOURCE_ID, max_run_times);
+  TaskNode* source =
+      source_program
+          ? new TaskNode(source_program, SOURCE_ID, cur_rank, max_run_times)
+          : new TaskNode(cur_rank, SOURCE_ID, max_run_times);
   TaskNode* sink = new TaskNode(cur_rank, SINK_ID, max_run_times);
 
   // find nodes without upstreams or without downstreams

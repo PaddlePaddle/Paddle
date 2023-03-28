@@ -69,6 +69,7 @@ class TestFleetExecutor(unittest.TestCase):
 
         program_a = paddle.static.Program()
         program_b = paddle.static.Program()
+        source_program = paddle.static.Program()
 
         for var_name in main_program.block(0).vars:
             if var_name != "_generated_var_0":
@@ -80,6 +81,9 @@ class TestFleetExecutor(unittest.TestCase):
                     program_a.block(0).create_var(
                         name=var_name,
                         persistable=var.persistable,
+                    )
+                    source_program.block(0).create_var(
+                        name=var_name, persistable=var.persistable
                     )
                 else:
                     program_a.block(0).create_var(
@@ -94,10 +98,34 @@ class TestFleetExecutor(unittest.TestCase):
                         dtype=var.dtype,
                         stop_gradient=var.stop_gradient,
                     )
+                    source_program.block(0).create_var(
+                        name=var_name,
+                        shape=var.shape,
+                        dtype=var.dtype,
+                        stop_gradient=var.stop_gradient,
+                    )
 
         for op in main_program.block(0).ops:
-            if op.type != "while":
+            if (
+                op.type != "while"
+                and op.type != "create_py_reader"
+                and op.type != "read"
+                and op.type != "create_double_buffer_reader"
+            ):
                 program_a.block(0).append_op(
+                    type=op.type,
+                    inputs=op.desc.inputs(),
+                    outputs=op.desc.outputs(),
+                    attrs=op.all_attrs(),
+                )
+
+        for op in main_program.block(0).ops:
+            if (
+                op.type == "create_py_reader"
+                or op.type == "read"
+                or op.type == "create_double_buffer_reader"
+            ):
+                source_program.block(0).append_op(
                     type=op.type,
                     inputs=op.desc.inputs(),
                     outputs=op.desc.outputs(),
@@ -200,6 +228,7 @@ class TestFleetExecutor(unittest.TestCase):
                 'num_micro_batches': num_micro_batches,
                 'inference_generation': True,
                 'fetch_var': ['x'],
+                "source_program": source_program,
             },
         }
 
