@@ -21,50 +21,78 @@ namespace paddle {
 namespace distributed {
 
 SourceInterceptor::SourceInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node), max_run_times_(node->max_run_times()) {
-  // prepare the downstream running status
-  for (const auto& down : node->downstream()) {
-    downstream_step_.emplace(down.first, 0);
-  }
-  RegisterMsgHandle([this](const InterceptorMessage& msg) { Run(msg); });
+    : ComputeInterceptor(interceptor_id, node) {
+  RegisterMsgHandle([this](const InterceptorMessage& msg) { Compute(msg); });
 }
 
-void SourceInterceptor::SendDataReadyToDownStream(int64_t downstream_id) {
-  int64_t micro_step = downstream_step_.at(downstream_id);
-  if (micro_step >= max_run_times_) {
-    return;
-  }
-  int64_t scope_idx = micro_step % max_run_times_;
-  InterceptorMessage ready_msg;
-  ready_msg.set_message_type(DATA_IS_READY);
-  ready_msg.set_scope_idx(scope_idx);
-  ready_msg.set_src_id(interceptor_id_);
-  ready_msg.set_dst_id(downstream_id);
-  // Get interceptor from carrier and send.
-  VLOG(3) << "Carrier size " << multi_carriers_.size();
-  for (auto& carrier : multi_carriers_) {
-    if (carrier->HasInterceptor(downstream_id)) {
-      VLOG(3) << "Carrier send data ready to " << downstream_id;
-      carrier->Send(ready_msg);
-      break;
+void SourceInterceptor::SendDataReadyToDownStream() {
+  for (size_t carrier_id = 0; multi_carriers_.size(); ++carrier_id) {
+    auto carrier = multi_carriers_[carrier_id];
+    for (const auto& down : node_->downstream()) {
+      if (carrier->HasInterceptor(down.first)) {
+        auto scopes_ready_ = carrier_scope_ids_[carrier_id];
+        auto cur_scope_ready_ = scopes_ready_[step_];
+        InterceptorMessage ready_msg;
+        ready_msg.set_message_type(DATA_IS_READY);
+        ready_msg.set_scope_idx(cur_scope_ready_.first);
+        ready_msg.set_src_id(interceptor_id_);
+        ready_msg.set_dst_id(down.first);
+        carrier->Send(ready_msg);
+      }
     }
   }
-  downstream_step_.at(downstream_id) = micro_step + 1;
 }
 
-void SourceInterceptor::Run(const InterceptorMessage& msg) {
+void SourceInterceptor::Run() {
+  bool flag = true;
+  for (const auto scopes_ : carrier_scope_ids_) {
+    flag = flag && scopes_[step_].second;
+  }
+
+  if (flag) {
+    for (const auto scopes_ : carrier_scope_ids_) {
+      cur_scope_id_ = scopes_[step_].first;
+      VLOG(0) << "cur_scope_id_:" << cur_scope_id_;
+      RunOps();
+    }
+    SendDataReadyToDownStream();
+    step_++;
+  } else {
+    VLOG(3) << "Interceptor " << GetInterceptorId() << " in step " << step_
+            << " aren't all ready.";
+  }
+}
+
+void SourceInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == START) {
     // start run in a new step, reset the previous running status
     VLOG(3) << "SourceInterceptor " << interceptor_id_
             << " receiving start message";
-    for (const auto& down : downstream_step_) {
-      downstream_step_.at(down.first) = 0;
-      SendDataReadyToDownStream(down.first);
+    step_ = 0;
+    for (auto& scopes_ : carrier_scope_ids_) {
+      scopes_[step_].second = true;
     }
+    Run();
   } else if (msg.message_type() == DATA_IS_USELESS) {
-    VLOG(3) << "SourceInterceptor " << interceptor_id_
-            << " receiving data is useless";
-    SendDataReadyToDownStream(msg.src_id());
+    VLOG(3) << "Reader interceptor " << interceptor_id_
+            << " receive data_is_useless " << msg.src_id() << " "
+            << msg.scope_idx() << " ";
+    for (size_t carrier_id = 0; multi_carriers_.size(); ++carrier_id) {
+      auto carrier = multi_carriers_[carrier_id];
+      if (carrier->HasInterceptor(msg.src_id())) {
+        auto src_scopes_ready_ = carrier_scope_ids_[carrier_id];
+        auto src_scope_ready_ = src_scopes_ready_[step_];
+        PADDLE_ENFORCE_EQ(src_scope_ready_.first,
+                          msg.scope_idx(),
+                          platform::errors::PreconditionNotMet("src_scope"));
+        PADDLE_ENFORCE_EQ(src_scope_ready_.second,
+                          false,
+                          platform::errors::PreconditionNotMet(
+                              "Interceptor must destruct with messages empty"));
+        src_scope_ready_.second = true;
+      }
+    }
+    Run();
   }
 }
 

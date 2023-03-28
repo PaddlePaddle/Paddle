@@ -305,9 +305,12 @@ void FleetExecutor::Init(
 
   std::vector<std::vector<framework::Scope*>> sub_micro_scope_list(
       num_of_carriers);
+  std::vector<std::vector<std::pair<int32_t, bool>>> carrier_scope_ids_(
+      num_of_carriers);
   for (size_t i = 0; i < microbatch_scopes_.size(); ++i) {
     int carrier_id = (i % num_of_carriers);
     sub_micro_scope_list[carrier_id].emplace_back(microbatch_scopes_[i]);
+    carrier_scope_ids_[carrier_id].emplace_back(std::make_pair(i, false));
   }
   for (auto id = 0; id < num_of_carriers; ++id) {
     carriers_.emplace_back(std::make_unique<Carrier>(id));
@@ -324,6 +327,7 @@ void FleetExecutor::Init(
   source_interceptor_->SetMiniBatchScope(minibatch_scope_);
   source_interceptor_->SetMicroBatchScope(microbatch_scopes_);
   source_interceptor_->SetRootScope(root_scope_);
+  source_interceptor_->SetCarrierScopeIds(carrier_scope_ids_);
   std::vector<Carrier*> multi_carriers;
   for (const auto& carrier : carriers_) {
     multi_carriers.emplace_back(carrier.get());

@@ -75,6 +75,11 @@ class Interceptor {
   void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
     microbatch_scopes_ = scopes;
   }
+  void SetCarrierScopeIds(
+      const std::vector<std::vector<std::pair<int32_t, bool>>>&
+          carrier_scope_ids) {
+    carrier_scope_ids_ = carrier_scope_ids;
+  }
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
@@ -104,6 +109,8 @@ class Interceptor {
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
+  // [carrier_idx, (scope_idx, is_ready)]
+  std::vector<std::vector<std::pair<int32_t, bool>>> carrier_scope_ids_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;
