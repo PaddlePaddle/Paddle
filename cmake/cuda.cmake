@@ -106,7 +106,8 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       "Turing"
       "Ampere"
       "All"
-      "Manual")
+      "Manual"
+      "Hopper")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
@@ -175,6 +176,8 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
         set(cuda_arch_bin "80 86")
       endif()
     endif()
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Hopper")
+    set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
