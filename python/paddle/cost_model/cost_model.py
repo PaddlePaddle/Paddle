@@ -18,7 +18,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.fluid import core
 
 

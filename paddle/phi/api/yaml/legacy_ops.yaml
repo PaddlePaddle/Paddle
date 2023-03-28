@@ -448,14 +448,6 @@
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
 
-- op : dirichlet
-  args: (Tensor alpha)
-  output: Tensor(out)
-  infer_meta:
-    func: DirichletInferMeta
-  kernel:
-    func: dirichlet
-
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
@@ -821,15 +813,6 @@
     data_type : x
   backward : hsigmoid_loss_grad
 
-- op : huber_loss
-  args : (Tensor input, Tensor label, float delta)
-  output : Tensor(out), Tensor(residual)
-  infer_meta :
-    func : HuberLossInferMeta
-  kernel :
-    func : huber_loss
-  backward : huber_loss_grad
-
 - op : increment
   args : (Tensor x, float value = 1.0)
   output : Tensor(out)
@@ -838,17 +821,6 @@
   kernel :
     func : increment
   inplace : (x -> out)
-
-- op : index_add
-  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : IndexAddInferMeta
-  kernel :
-    func : index_add
-    data_type : x
-  inplace : (x -> out)
-  backward : index_add_grad
 
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
@@ -871,18 +843,6 @@
     func : kldiv_loss
     data_type : x
   backward : kldiv_loss_grad
-
-- op : lamb_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
-  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
-  infer_meta :
-    func : LambInferMeta
-  kernel :
-    func : lamb {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
-           lamb_sr {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
-    data_type : param
-  optional : master_param, skip_update
-  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
@@ -922,15 +882,6 @@
     param: [start, stop, number, dtype]
     data_type : dtype
     backend : place
-
-- op : log_softmax
-  args : (Tensor x,  int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMetaCheckAxis
-  kernel :
-    func : log_softmax
-  backward : log_softmax_grad
 
 - op : logcumsumexp
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
@@ -1011,16 +962,6 @@
   kernel :
     func : lu
   backward : lu_grad
-
-- op : margin_cross_entropy
-  args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
-  output : Tensor(softmax), Tensor(loss)
-  infer_meta :
-    func : MarginCrossEntropyInferMeta
-  kernel :
-    func : margin_cross_entropy
-    data_type : logits
-  backward : margin_cross_entropy_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -1196,24 +1137,8 @@
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
+  inplace : (x -> out)
   backward : multiply_grad
-
-- op : nms
-  args : (Tensor x, float threshold)
-  output : Tensor(out)
-  infer_meta :
-    func : NMSInferMeta
-  kernel :
-    func : nms
-    data_type : x
-
-- op : nonzero
-  args : (Tensor condition)
-  output : Tensor(out)
-  infer_meta :
-    func : NonZeroInferMeta
-  kernel :
-    func : nonzero
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -1249,15 +1174,6 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
   output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
-
-- op : p_norm
-  args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
-  output : Tensor(out)
-  infer_meta :
-    func : PNormInferMeta
-  kernel :
-    func : p_norm
-  backward : p_norm_grad
 
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
@@ -1489,21 +1405,6 @@
     func : segment_pool
     data_type : x
   backward : segment_pool_grad
-
-- op : sgd_
-  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
-  output : Tensor(param_out), Tensor(master_param_out)
-  infer_meta :
-    func : SgdInferMeta
-  kernel :
-    func : sgd {dense, dense, dense, dense -> dense, dense},
-           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
-           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
-    data_type : param
-  data_transform :
-    support_trans_dtype : learning_rate
-  optional : master_param
-  inplace : (param -> param_out), (master_param -> master_param_out)
 
 - op : shape
   args : (Tensor input)

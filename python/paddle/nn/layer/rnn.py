@@ -30,12 +30,12 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.layers import control_flow
 from paddle.framework import core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
+from .layers import Layer
 
 __all__ = []
 
@@ -593,7 +593,7 @@ class RNNCellBase(Layer):
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if isinstance(seq, list) or isinstance(seq, tuple):
+            if isinstance(seq, (list, tuple)):
                 if reduce(
                     lambda flag, x: isinstance(x, int) and flag, seq, True
                 ):
@@ -1164,7 +1164,7 @@ class RNN(Layer):
         - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
     Notes:
-        This class is a low level API for wrapping rnn cell into a RNN network.
+        This class is a low-level API for wrapping rnn cell into a RNN network.
         Users should take care of the state of the cell. If `initial_states` is
         passed to the `forward` method, make sure that it satisfies the
         requirements of the cell.
@@ -1224,7 +1224,7 @@ class BiRNN(Layer):
     Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
 
     Inputs:

@@ -16,9 +16,9 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-import paddle.fluid as fluid
-import paddle.fluid.io as io
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
+from paddle.fluid import io
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
@@ -301,7 +301,9 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _check_condition(self, name, **kwargs):
         for k, v in kwargs.items():
             if v is True:
-                assert False, "you can't use %s and %s together" % (name, k)
+                raise AssertionError(
+                    "you can't use %s and %s together" % (name, k)
+                )
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """

@@ -94,7 +94,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils backward_infermeta sparse_backward_infermeta static_prim_api)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils backward_infermeta sparse_backward_infermeta static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op eye_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -169,7 +169,7 @@ if (WITH_ASCEND)
 endif()
 
 if (WITH_ASCEND_CL)
-  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
+  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS generated_static_op)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
 
@@ -185,7 +185,7 @@ set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
+cc_test(assign_op_test SRCS assign_op_test.cc DEPS generated_static_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)

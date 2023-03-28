@@ -27,6 +27,7 @@ limitations under the License. */
 // new phi apis
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/include/tensor.h"
 

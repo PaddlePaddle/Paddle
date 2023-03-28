@@ -4,6 +4,12 @@
 - subtract
 - multiply
 - divide
+- less_equal
+- less_than
+- equal
+- not_equal
+- greater_equal
+- greater_than
 - bitwise_and
 - bitwise_not
 - bitwise_or

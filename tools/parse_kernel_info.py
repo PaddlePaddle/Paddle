@@ -15,7 +15,7 @@
 import paddle
 
 
-class KernelInfo(object):
+class KernelInfo:
     def __init__(self, op_type):
         self.op_type = op_type
         self.supported_dtypes = set()
@@ -53,7 +53,7 @@ class KernelInfo(object):
                 self.supported_dtypes.add(dtype_str)
 
 
-class KernelRegistryStatistics(object):
+class KernelRegistryStatistics:
     def __init__(self):
         self.num_ops_for_dtypes = {
             "all": 0,
@@ -63,11 +63,11 @@ class KernelRegistryStatistics(object):
         }
 
     def update(self, supported_dtypes):
-        for dtype in self.num_ops_for_dtypes.keys():
-            if dtype in ["float", "float32"]:
-                self.num_ops_for_dtypes["float32"] += 1
-            elif dtype in supported_dtypes:
+        for dtype in supported_dtypes:
+            if dtype in self.num_ops_for_dtypes.keys():
                 self.num_ops_for_dtypes[dtype] += 1
+            elif dtype == "float":
+                self.num_ops_for_dtypes["float32"] += 1
         self.num_ops_for_dtypes["all"] += 1
 
     def __str__(self):

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -87,7 +87,7 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -95,7 +95,6 @@ class TestLogsumexp(OpTest):
             ['Out'],
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
-            check_eager=True,
         )
 
     def calc_grad(self):
@@ -189,7 +188,7 @@ class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.fluid.data(name='x1', shape=[120], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[120], dtype="int32")
             self.assertRaises(TypeError, paddle.logsumexp, x1)
 
 
@@ -206,7 +205,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])

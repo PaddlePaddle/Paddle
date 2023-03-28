@@ -48,7 +48,7 @@ from codegen_utils import (
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
-inplace_check_blacklist = set(["assign_out_"])
+inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
@@ -61,8 +61,16 @@ black_ops_list = [
 
 
 # white ops list whose kernel can be deleted after performance analysis
-# original kernel can be deleted when composite_grad kernel performs same to it
+# original kernel and its derivative kernel can be deleted when composite_grad
+# kernel performs same to it.
 prim_white_list = ["matmul_double_grad"]
+
+# dict of special api that forward api's output will affect bacward api's output
+# bacward api's output usually affected by backward api's input
+special_prune_dict = {
+    "matmul_grad": {"x": "grad_y", "y": "grad_x"},
+    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
+}
 
 
 #########
@@ -328,6 +336,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "glog/logging.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/fused_backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -834,9 +843,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                         backward_input_pos,
                     ]
                 else:
-                    assert (
-                        False
-                    ), f"Cannot find {backward_input_name} in forward position map"
+                    raise AssertionError(
+                        f"Cannot find {backward_input_name} in forward position map"
+                    )
 
         for backward_output in backward_returns_list:
             backward_output_name = backward_output[0]
@@ -982,12 +991,25 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             grad_node_out_list.append(name)
             is_optional = name in self.optional_inputs
+            is_special_forward_api = (
+                True if forward_api_name in special_prune_dict else False
+            )
+
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
             else:
-                set_grad_out_meta = (
-                    f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                )
+                if (
+                    is_special_forward_api
+                    and name in special_prune_dict[forward_api_name]
+                ):
+                    meta_name = GetAutoGradMetaName(
+                        special_prune_dict[forward_api_name][name]
+                    )
+                    set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
+                else:
+                    set_grad_out_meta = (
+                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                    )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -2262,27 +2284,28 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         elif is_composite_grad_api:
             if composite_grad_api_name in prim_white_list:
                 grad_function_call_str = f"""
-{indent}bool tmp_grad = egr::Controller::Instance().HasGrad();
+
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(false);
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
     }}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
 {indent}if(!create_graph){{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(tmp_grad);
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
     }}
   """
             else:
                 grad_function_call_str = f"""
   if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
-{indent}bool tmp_grad = egr::Controller::Instance().HasGrad();
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(false);
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
     }}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
 {indent}if(!create_graph){{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(tmp_grad);
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
     }}
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
