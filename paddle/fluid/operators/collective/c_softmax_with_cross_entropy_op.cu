@@ -66,15 +66,16 @@ __global__ void CaculateLoss(T* loss,
                              const T* predict_logits,
                              const T* sum_exp_logits,
                              const IndexT* label,
-                             const int ignore_index,
+                             const int64_t ignore_index,
                              const int N) {
   CUDA_KERNEL_LOOP(i, N) {
-    auto real_label = label[i];
+    auto real_label = static_cast<int64_t>(label[i]);
     loss[i] = ignore_index == real_label
                   ? static_cast<T>(0)
                   : phi::funcs::TolerableValue<T>()(
-                        phi::funcs::real_log(sum_exp_logits[i])) -
-                        phi::funcs::TolerableValue<T>()(predict_logits[i]);
+                        phi::funcs::TolerableValue<T>()(
+                            phi::funcs::real_log(sum_exp_logits[i])) -
+                        predict_logits[i]);
   }
 }
 
@@ -86,11 +87,11 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad,
                                      const int end_index,
                                      const int64_t N,
                                      const int64_t D,
-                                     const int ignore_index) {
+                                     const int64_t ignore_index) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
     auto col = i % D;
-    auto lbl = static_cast<int>(labels[row]);
+    auto lbl = static_cast<int64_t>(labels[row]);
     if (lbl == ignore_index) {
       logits_grad[i] = static_cast<T>(0.0);
     } else if ((col + start_index) == labels[row]) {
@@ -125,7 +126,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
-    const int ignore_index = ctx.Attr<int>("ignore_index");
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
@@ -290,7 +291,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
-    const int ignore_index = ctx.Attr<int>("ignore_index");
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
@@ -441,7 +442,7 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
 
-    const int ignore_index = context.Attr<int>("ignore_index");
+    const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
