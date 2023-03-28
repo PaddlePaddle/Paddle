@@ -45,7 +45,7 @@ def gen_indices_np(x_shape, indices_shapes, index_type):
                 low=0, high=x_shape[i], size=indices_shapes[i], dtype=index_type
             )
             indices.append(index_np)
-    return indices
+    return tuple(indices)
 
 
 class TestIndexPutOp(unittest.TestCase):
