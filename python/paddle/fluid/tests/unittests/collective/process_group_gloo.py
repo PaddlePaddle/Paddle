@@ -100,6 +100,22 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(broadcast_result, tensor_y)
         print("test broadcast api ok")
 
+        # test send_recv
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
+
+        send_recv_result = paddle.assign(tensor_x)
+        if rank == 0:
+            task = pg.send(tensor_x, 0)
+        else:
+            task = pg.recv(tensor_y, 1)
+            assert np.array_equal(send_recv_result, tensor_y)
+        print("test send_recv api ok")
+
         # test barrier
         # rank 0
         if pg.rank() == 0:

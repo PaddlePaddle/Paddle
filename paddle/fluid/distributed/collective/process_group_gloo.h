@@ -132,18 +132,6 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       const BroadcastOptions& opts,
       bool sync_op) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
-                                           int dst_rank,
-                                           int64_t offset,
-                                           int64_t numel,
-                                           bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
-                                           int src_rank,
-                                           int64_t offset,
-                                           int64_t numel,
-                                           bool sync_op) override;
-
   std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,
                                              const ReduceOptions& opts,

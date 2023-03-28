@@ -289,18 +289,13 @@ class SendGlooTask : public ProcessGroupGloo::GlooTask {
     GENERATE_FUNC(dtype, set_input, opts, in[0]);
 
     opts.setSrc(_context.get()->rank);
-    opts.setDst(_dst);
     opts.setTag(_tag);
     send_recv(&opts);
   }
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
-    const phi::DenseTensor& tensor,
-    int dst_rank,
-    int64_t offset,
-    int64_t numel,
-    bool sync_op) {
+    const phi::DenseTensor& tensor, int dst_rank, bool sync_op) {
   std::unique_ptr<SendGlooTask> task;
   std::vector<phi::DenseTensor> in_wrapper{tensor};
   auto tag = next_tag();
@@ -310,11 +305,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
   task->Run();
 
   return task;
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
-    const phi::DenseTensor& tensor, int dst_rank, bool sync_op) {
-  return Send(tensor, dst_rank, 0, -1, sync_op);
 }
 
 class RecvGlooTask : public ProcessGroupGloo::GlooTask {
@@ -344,18 +334,13 @@ class RecvGlooTask : public ProcessGroupGloo::GlooTask {
     GENERATE_FUNC(dtype, set_output, opts, in[0]);
 
     opts.setSrc(_src);
-    opts.setDst(_context.get()->rank);
     opts.setTag(_tag);
     send_recv(&opts);
   }
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
-    phi::DenseTensor* tensor,
-    int src_rank,
-    int64_t offset,
-    int64_t numel,
-    bool sync_op) {
+    phi::DenseTensor* tensor, int src_rank, bool sync_op) {
   std::unique_ptr<RecvGlooTask> task;
   std::vector<phi::DenseTensor> in_wrapper{*tensor};
   auto tag = next_tag();
@@ -365,11 +350,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
       context, &in_wrapper, rank_, src_rank, tag);
   task->Run();
   return task;
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
-    phi::DenseTensor* tensor, int src_rank, bool sync_op) {
-  return Recv(tensor, src_rank, 0, -1, sync_op);
 }
 
 class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
