@@ -584,16 +584,6 @@
     func : frame
   backward : frame_grad
 
-- op : fused_dropout_add
-  args : (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
-  output : Tensor(out), Tensor(seed_offset)
-  infer_meta :
-    func : FusedDropoutAddInferMeta
-  kernel :
-    func : fused_dropout_add
-    data_type : x
-  backward : fused_dropout_add_grad
-
 - op : gather_nd
   args : (Tensor x, Tensor index)
   output : Tensor

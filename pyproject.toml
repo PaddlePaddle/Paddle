@@ -119,7 +119,7 @@ select = [
     # Pylint
     # "PLC0414",
     # "PLC1901",
-    # "PLC3002",
+    "PLC3002",
     "PLE0100",
     "PLE0101",
     # "PLE0116",
@@ -128,7 +128,7 @@ select = [
     "PLE0604",
     "PLE0605",
     "PLE1142",
-    # "PLE1205",
+    "PLE1205",
     "PLE1206",
     "PLE1307",
     # "PLE1310",
@@ -166,3 +166,4 @@ unfixable = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "setup.py" = ["UP036"]
+"python/paddle/fluid/tests/unittests/dygraph_to_static/test_lambda.py" = ["PLC3002"]
