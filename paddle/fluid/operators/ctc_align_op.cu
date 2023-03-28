@@ -165,5 +165,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 PD_REGISTER_STRUCT_KERNEL(
     ctc_align, GPU, ALL_LAYOUT, ops::CTCAlignOpCUDAKernel, int, int64_t) {}
