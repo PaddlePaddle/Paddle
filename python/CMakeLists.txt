@@ -149,9 +149,7 @@ add_custom_target(paddle_python ALL
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if(WITH_TESTING)
-  add_subdirectory(paddle/dataset/tests)
   add_subdirectory(paddle/fluid/tests)
-  add_subdirectory(paddle/fluid/contrib/tests)
 endif()
 
 if(NOT WITH_SETUP_INSTALL)
