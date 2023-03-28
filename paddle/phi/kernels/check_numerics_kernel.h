@@ -22,6 +22,7 @@ template <typename T, typename Context>
 void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
-                         const std::string& var_name);
+                         const std::string& var_name,
+                         const std::string& output_filepath);
 
 }  // namespace phi

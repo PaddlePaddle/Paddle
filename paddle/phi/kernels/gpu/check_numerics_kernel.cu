@@ -413,10 +413,26 @@ template <typename T, typename Context>
 void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
-                         const std::string& var_name) {
+                         const std::string& var_name,
+                         const std::string& output_filepath) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
   int dev_id = tensor.place().device;
+  // Write log to output_filepath.
+  if (output_filepath.size() > 0) {
+    phi::DenseTensor cpu_tensor;
+    cpu_tensor.Resize(tensor.dims());
+    // Copy tensor from GPU to CPU.
+    phi::Copy(ctx, tensor, CPUPlace(), true, &cpu_tensor);
+    const std::string debug_info =
+        GetHintString<T>(op_type, var_name, tensor.place(), dev_id);
+    phi::funcs::CheckNumericsCpuImpl(cpu_tensor.data<T>(),
+                                     tensor.numel(),
+                                     debug_info,
+                                     "gpu",
+                                     output_filepath);
+    return;
+  }
 
   // Print to the standard output.
   char* gpu_str_ptr = GetGpuHintStringPtr<T>(ctx, op_type, var_name, dev_id);

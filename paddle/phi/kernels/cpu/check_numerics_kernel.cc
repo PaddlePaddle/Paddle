@@ -12,14 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/phi/kernels/check_numerics_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/backends/gpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void CheckNumericsKernel(const Context& ctx, const DenseTensor& x);
+void CheckNumericsKernel(const Context& ctx,
+                         const DenseTensor& tensor,
+                         const std::string& op_type,
+                         const std::string& var_name,
+                         const std::string& output_filepath) {
+  std::string cpu_hint_str =
+      phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
+  phi::funcs::CheckNumericsCpuImpl(
+      tensor.data<T>(), tensor.numel(), cpu_hint_str, "cpu", output_filepath);
+}
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(check_numerics,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CheckNumericsKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
