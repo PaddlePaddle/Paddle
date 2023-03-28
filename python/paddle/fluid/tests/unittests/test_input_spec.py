@@ -334,6 +334,12 @@ class NegSpecNet(paddle.nn.Layer):
 
 
 class TestNegSpecWithPrim(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
     def test_run(self):
         net = NegSpecNet()
         net = paddle.jit.to_static(
