@@ -212,7 +212,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(soft_relu,
-                          KPS,
+                          GPU,
                           ALL_LAYOUT,
                           ops::SoftReluCudaKernel,
                           float,
@@ -220,7 +220,7 @@ PD_REGISTER_STRUCT_KERNEL(soft_relu,
                           plat::float16,
                           plat::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
-                          KPS,
+                          GPU,
                           ALL_LAYOUT,
                           ops::SoftReluGradCudaKernel,
                           float,
