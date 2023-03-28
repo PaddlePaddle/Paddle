@@ -15,7 +15,6 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -103,31 +102,6 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     } else {
       VLOG(10) << "Only DenseTensor or SelectedRows need to check, "
                << tensor_name << " is no need.";
-      return;
-    }
-
-    // dump data
-    if (FLAGS_check_nan_inf_level == 4) {
-      auto dir_path = paddle::framework::details::GetNanPath();
-      std::string adr_name = paddle::string::Sprintf("%d", tensor.impl());
-      std::string folder_path = dir_path + "tensor_dump/";
-      std::string mkdir_cmd = "mkdir -p " + folder_path;
-      PADDLE_ENFORCE_EQ(system(mkdir_cmd.c_str()),
-                        0,
-                        paddle::platform::errors::NotFound(
-                            "Cannot create folder %s", folder_path));
-
-      std::string str_file_name = folder_path + api_name + "_" + adr_name;
-      std::ofstream fout(str_file_name, std::ios::out | std::ios::binary);
-
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
-                        true,
-                        paddle::platform::errors::Unavailable(
-                            "Cannot open %s to save tensor.", str_file_name));
-
-      VLOG(4) << "The dump file's path is " << str_file_name;
-      paddle::framework::SerializeToStream(fout, *dense_tensor);
-      fout.close();
       return;
     }
 
