@@ -180,6 +180,14 @@
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
+- op : bce_loss
+  backward : bce_loss_grad
+  inputs :
+    input : X
+    label : Label
+  outputs :
+    out : Out
+
 - op : bernoulli
   inputs :
     x : X

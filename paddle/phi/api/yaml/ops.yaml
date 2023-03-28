@@ -124,6 +124,15 @@
     func : atanh
   backward : atanh_grad
 
+- op : bce_loss
+  args : (Tensor input, Tensor label)
+  output : Tensor
+  infer_meta :
+    func : BCELossInferMeta
+  kernel :
+    func : bce_loss
+  backward : bce_loss_grad
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
