@@ -129,9 +129,19 @@ class GpuPsGraphTable
                        int shard_len,
                        bool need_neighbor_count,
                        unsigned long long random_seed,
-                       int default_value,
                        float* weight_array,
                        bool return_weight);
+  void unweighted_sample(GpuPsCommGraph& graph,
+                         GpuPsNodeInfo* node_info_list,
+                         int* actual_size_array,
+                         uint64_t* sample_array,
+                         int cur_gpu_id,
+                         int remote_gpu_id,
+                         int sample_size,
+                         int shard_len,
+                         unsigned long long random_seed,
+                         float* weight_array,
+                         bool return_weight);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
   void get_node_degree(int gpu_id,
