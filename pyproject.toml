@@ -39,7 +39,7 @@ select = [
     "C408",
     "C409",
     "C410",
-    # "C411",
+    "C411",
     "C413",
     "C414",
     # "C415",
@@ -123,3 +123,4 @@ unfixable = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "setup.py" = ["UP036"]
+"test_loop.py" = ["C416"]
