@@ -15,9 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import fluid, nn
 from paddle.fluid import core
 
 

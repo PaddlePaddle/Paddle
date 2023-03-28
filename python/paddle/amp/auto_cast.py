@@ -17,7 +17,7 @@ import os
 import warnings
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import (
     _current_expected_place,
