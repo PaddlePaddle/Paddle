@@ -1591,6 +1591,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'flatten',
         )
@@ -3866,7 +3867,10 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         def check_list_elements_dtype(list_input, input_name):
             if isinstance(list_input, Variable):
                 check_dtype(
-                    list_input.dtype, input_name, ['int32'], 'strided_slice'
+                    list_input.dtype,
+                    input_name,
+                    ['int32', 'int64'],
+                    'strided_slice',
                 )
             else:
                 for i, var in enumerate(list_input):

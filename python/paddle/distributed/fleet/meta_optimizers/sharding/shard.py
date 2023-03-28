@@ -27,7 +27,7 @@ class Shard:
     def __init__(
         self,
     ):
-        self.global_params = set([])
+        self.global_params = set()
         self.worker_idx = -1
         self.worker_num = -1
         self.global_param2device = {}
@@ -96,8 +96,8 @@ class Shard:
         return -1
 
     def find_broadcast_params(self, block):
-        broadcast_vars = set([])
-        fp16_params = set([])
+        broadcast_vars = set()
+        fp16_params = set()
         fp16_to_fp32 = {}
 
         param_usage = {x: 0 for x in self.global_params}

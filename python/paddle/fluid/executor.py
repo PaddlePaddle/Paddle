@@ -871,8 +871,8 @@ class _ExecutorCache:
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
 
-            if hasattr(inner_program, 'lr_sheduler'):
-                converted_program.lr_sheduler = inner_program.lr_sheduler
+            if hasattr(inner_program, 'lr_scheduler'):
+                converted_program.lr_scheduler = inner_program.lr_scheduler
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
@@ -1657,17 +1657,17 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-            if hasattr(program, 'lr_sheduler'):
+            if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
                 assert isinstance(
-                    program.lr_sheduler, LRScheduler
+                    program.lr_scheduler, LRScheduler
                 ), "must be LRScheduler"
-                lr_sheduler = program.lr_sheduler
-                lr_value = lr_sheduler()
-                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                lr_scheduler = program.lr_scheduler
+                lr_value = lr_scheduler()
+                lr_var = program.global_block().vars[lr_scheduler._var_name]
                 data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
                 # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
                 cpu_tensor = _as_lodtensor(data, core.CPUPlace())
                 if core.is_cuda_graph_capturing():
@@ -1810,15 +1810,15 @@ class Executor:
             )
 
         self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_sheduler'):
+        if hasattr(program, 'lr_schedulerr'):
             assert isinstance(
-                program.lr_sheduler, LRScheduler
+                program.lr_scheduler, LRScheduler
             ), "must be LRScheduler"
-            lr_sheduler = program.lr_sheduler
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
             tensor.set(data, self.place)
 
         if not use_program_cache:
@@ -2588,14 +2588,14 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(
-                cached_scope, lr_sheduler._var_name
+                cached_scope, lr_scheduler._var_name
             )
             tensor.set(data, self.place)
 
@@ -2732,13 +2732,13 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
             tensor.set(data, self.place)
 
         self._default_executor.run_from_dataset(trainer_instance)

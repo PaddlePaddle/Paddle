@@ -123,21 +123,21 @@ class TestDistPNormDP(TestDistPNorm):
                 assert op_dist_attr.impl_type == "p_norm"
             if op.type in ["p_norm", "p_norm_grad"]:
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
-                    assert set(input_attr.dims_mapping) == set([-1])
+                    assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
-                    assert set(output_attr.dims_mapping) == set([-1])
+                    assert set(output_attr.dims_mapping) == {-1}
             if op.type == 'c_allgather':
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
                     assert input_attr.dims_mapping[0] == 0
-                    assert set(input_attr.dims_mapping[1:]) == set([-1])
+                    assert set(input_attr.dims_mapping[1:]) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
-                    assert set(output_attr.dims_mapping) == set([-1])
+                    assert set(output_attr.dims_mapping) == {-1}
             if op.type == 'slice':
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
-                    assert set(input_attr.dims_mapping) == set([-1])
+                    assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
                     assert output_attr.dims_mapping[0] == 0
-                    assert set(output_attr.dims_mapping[1:]) == set([-1])
+                    assert set(output_attr.dims_mapping[1:]) == {-1}
         assert op_types == [
             "c_allgather",
             "p_norm",
