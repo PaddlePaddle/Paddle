@@ -651,17 +651,6 @@
   kernel :
     func : lu_grad
 
-- backward_op : margin_cross_entropy_grad
-  forward : margin_cross_entropy (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale) -> Tensor(softmax), Tensor(loss)
-  args : (Tensor logits, Tensor label, Tensor softmax, Tensor loss_grad, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
-  output : Tensor(logits_grad)
-  infer_meta :
-    func : MarginCrossEntropyGradInferMeta
-  kernel :
-    func : margin_cross_entropy_grad
-    data_type : softmax
-  inplace : (softmax -> logits_grad)
-
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, bool transpose_x=false, bool transpose_y=false)
