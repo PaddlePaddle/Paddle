@@ -93,7 +93,7 @@ def delete_optimizer_pass(program, config):
     optimizer_ops.extend(lr_ops)
     _delete_optimizer_op_and_vars(program, optimizer_ops)
 
-    if hasattr(config.origin_main_program, 'lr_sheduler'):
+    if hasattr(config.origin_main_program, 'lr_scheduler'):
         _add_lr_var(program, config)
 
     return program
