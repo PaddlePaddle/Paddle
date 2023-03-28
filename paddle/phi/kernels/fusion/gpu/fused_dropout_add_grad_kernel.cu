@@ -170,12 +170,6 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
   auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto* y_grad_data = dev_ctx.template Alloc<T>(y_grad);
 
-  auto& place = *dev_ctx.eigen_device();
-  auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  dxt.device(place) = dxt.constant(static_cast<T>(0));
-  auto dyt = phi::EigenVector<T>::Flatten(*y_grad);
-  dyt.device(place) = dyt.constant(static_cast<T>(0));
-
   const auto* out_grad_data = out_grad.data<T>();
   using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
   int blocks = NumBlocks(numel);
