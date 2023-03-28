@@ -970,7 +970,8 @@ class PsDescBuilder:
                 else:
                     tables.append(globals()['SparseTable'](self.context, ctx))
             else:
-                tables.append(globals()['DenseTable'](self.context, ctx))
+                if not self.use_ps_gpu:
+                    tables.append(globals()['DenseTable'](self.context, ctx))
         self.tensor_tables = self._get_tensor_tables()
         tables.extend(self.tensor_tables)
         tables.append(globals()['BarrierTable'](self.context, len(tables)))
