@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
+import paddle
+from paddle import fluid
 from paddle.fluid import core
 from paddle.static.amp import fp16_utils
-import paddle
 
 paddle.enable_static()
 

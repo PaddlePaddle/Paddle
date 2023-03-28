@@ -191,7 +191,9 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {
     // Memcpy in xpu is synchronous
-    new_op_func_node.type_ = OpFuncType::kGpuSync;
+    new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
+                                 ? OpFuncType::kGpuSync
+                                 : OpFuncType::kGpuAsync;
   } else {
     // Memcpy in npu and custom devices is asynchronous
     new_op_func_node.type_ = OpFuncType::kGpuAsync;
