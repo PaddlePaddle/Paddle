@@ -37,6 +37,10 @@ cc_library(
   SRCS analyzer.cc
   DEPS ${analysis_deps} analysis_helper analysis_pass ${INFER_IR_PASSES})
 
+if(WITH_TESTING)
+  include(test.cmake) # some generic cmake function for inference
+endif()
+
 function(inference_analysis_test_build TARGET)
   if(WITH_TESTING)
     set(options "")
