@@ -41,7 +41,7 @@ custom_inplace = load(
 )
 
 # Temporarily assemble custom python API
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.core import CustomOpKernelContext
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
