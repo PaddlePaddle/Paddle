@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 
-#include "paddle/phi/backends/gpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 
