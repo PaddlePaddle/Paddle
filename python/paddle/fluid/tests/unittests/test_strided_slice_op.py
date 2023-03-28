@@ -1008,12 +1008,13 @@ class TestStrideSliceFP16Op(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'strided_slice'
+        self.dtype = np.float16
         self.python_api = paddle.strided_slice
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides
         )
 
-        self.inputs = {'Input': self.input.astype(np.float16)}
+        self.inputs = {'Input': self.input.astype(self.dtype)}
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
@@ -1042,6 +1043,7 @@ class TestStrideSliceBF16Op(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'strided_slice'
+        self.dtype = np.uint16
         self.python_api = paddle.strided_slice
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides
