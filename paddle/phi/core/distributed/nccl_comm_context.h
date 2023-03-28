@@ -40,6 +40,17 @@ class NCCLCommContext final : public CommContext {
                  const phi::DenseTensor& in_tensor,
                  gpuStream_t stream);
 
+  void AllReduce(phi::DenseTensor* out_tensor,
+                 const phi::DenseTensor& in_tensor,
+                 ncclRedOp_t reduce_type,
+                 gpuStream_t stream);
+
+  void Reduce(phi::DenseTensor* out_tensor,
+              const phi::DenseTensor& in_tensor,
+              ncclRedOp_t reduce_type,
+              int root,
+              gpuStream_t stream);
+
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 

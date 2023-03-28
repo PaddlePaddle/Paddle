@@ -21,7 +21,7 @@ import paddle
 paddle.enable_static()
 from eager_op_test import OpTest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -206,13 +206,13 @@ class TestConv3DTransposeOp(OpTest):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
-                set(['Input', 'Filter']),
+                {'Input', 'Filter'},
                 'Output',
                 max_relative_error=0.03,
             )
         else:
             self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.03
+                {'Input', 'Filter'}, 'Output', max_relative_error=0.03
             )
 
     def test_check_grad_no_filter(self):
@@ -223,14 +223,14 @@ class TestConv3DTransposeOp(OpTest):
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
         elif self.check_no_filter:
             self.check_grad(
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
     def test_check_grad_no_input(self):
@@ -241,14 +241,14 @@ class TestConv3DTransposeOp(OpTest):
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
         elif self.check_no_input:
             self.check_grad(
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
 
     def init_test_case(self):

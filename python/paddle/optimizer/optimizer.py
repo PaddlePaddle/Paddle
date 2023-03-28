@@ -444,7 +444,7 @@ class Optimizer:
                     dtype=_lr_dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
 
                 self._learning_rate_map[

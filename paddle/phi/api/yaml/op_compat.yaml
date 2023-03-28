@@ -131,6 +131,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assign
+  backward : assign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  manual_signature : [assign, assign_grad]
+  get_expected_kernel_type :
+    assign : GetAssignExpectedKernelType
+
 - op : atan
   inputs :
     x : X
@@ -879,6 +889,13 @@
   outputs :
     out : Out
 
+- op : huber_loss
+  backward : huber_loss_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -1093,6 +1110,10 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1122,6 +1143,13 @@
     {x : X, y : Pivots}
   outputs :
     {pmat : Pmat, l : L, u : U}
+
+- op : margin_cross_entropy
+  backward : margin_cross_entropy_grad
+  inputs:
+    {logits : Logits, label : Label}
+  outputs:
+    {softmax : Softmax, loss : Loss}
 
 - op : masked_select
   inputs :
@@ -1306,6 +1334,16 @@
     x : Input
   outputs :
     size : Out
+
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
 
 - op : overlap_add
   backward : overlap_add_grad

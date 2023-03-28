@@ -1651,7 +1651,7 @@ def add_n(inputs, name=None):
     else:
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             if len(inputs) > 0:
                 for input in inputs:
                     check_variable_and_dtype(
@@ -4611,7 +4611,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x (Tensor): The input tensor to compute the forward difference on, the data type is float16(GPU), float32, float64, bool, int32, int64.
+        x (Tensor): The input tensor to compute the forward difference on, the data type is float16, float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
@@ -5147,3 +5147,186 @@ def frexp(x, name=None):
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
+
+
+def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.
+
+    Args:
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
+        axis (int, optional): The axis along which to integrate. The default is -1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        sum_mode (str): use a different summation. The default is `sum`.
+
+    Returns:
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
+    """
+    if mode == 'sum':
+        sum_mode = paddle.sum
+    elif mode == 'cumsum':
+        sum_mode = paddle.cumsum
+
+    if not (x is None or dx is None):
+        raise ValueError("Not permitted to specify both x and dx input args.")
+    if y.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
+                y.dtype
+            )
+        )
+
+    y_shape = y.shape
+    length = y_shape[axis]
+    if axis < 0:
+        axis += y.dim()
+    if x is None:
+        if dx is None:
+            dx = 1.0
+        dx = paddle.to_tensor(dx)
+        if dx.dim() > 1:
+            raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
+    else:
+        if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
+            raise TypeError(
+                "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
+                    x.dtype
+                )
+            )
+        # Reshape to correct shape
+        if x.dim() == 1:
+            dx = paddle.diff(x)
+            shape = [1] * y.dim()
+            shape[axis] = dx.shape[0]
+            dx = dx.reshape(shape)
+        else:
+            dx = paddle.diff(x, axis=axis)
+    return 0.5 * sum_mode(
+        (
+            paddle.gather(y, paddle.arange(1, length), axis=axis)
+            + paddle.gather(y, paddle.arange(0, length - 1), axis=axis)
+        )
+        * dx,
+        axis=axis,
+    )
+
+
+def trapezoid(y, x=None, dx=None, axis=-1, name=None):
+    """
+    Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
+
+    Args:
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
+        axis (int, optional): The axis along which to integrate. The default is -1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
+        If :attr:`y` is a 1D tensor, then the result is a float. If N is greater than 1, then the result is an (N-1)-D tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            y = paddle.to_tensor([4, 5, 6], dtype='float32')
+
+            print(paddle.trapezoid(y))
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [10.])
+
+            print(paddle.trapezoid(y, dx=2.))
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [20.])
+
+            y = paddle.to_tensor([4, 5, 6], dtype='float32')
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            print(paddle.trapezoid(y, x))
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [10.])
+
+
+            y = paddle.to_tensor([1, 2, 3], dtype='float64')
+            x = paddle.to_tensor([8, 6, 4], dtype='float64')
+
+            print(paddle.trapezoid(y, x))
+            # Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [-8.])
+            y = paddle.arange(6).reshape((2, 3)).astype('float32')
+
+            print(paddle.trapezoid(y, axis=0))
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1.50000000, 2.50000000, 3.50000000])
+            print(paddle.trapezoid(y, axis=1))
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2., 8.])
+    """
+    return _trapezoid(y, x, dx, axis, mode='sum')
+
+
+def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
+    """
+    Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
+
+    Args:
+        y (Tensor): Input tensor to integrate. It's data type should be float16, float32, float64.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and :math:`axis=k`, then the size of :attr:`x` can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
+        axis (int, optional): The axis along which to integrate. The default is -1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
+        The result is an N-D tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            y = paddle.to_tensor([4, 5, 6], dtype='float32')
+
+            print(paddle.cumulative_trapezoid(y))
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [4.50000000, 10.       ])
+
+            print(paddle.cumulative_trapezoid(y, dx=2.))
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [9. , 20.])
+
+            y = paddle.to_tensor([4, 5, 6], dtype='float32')
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            print(paddle.cumulative_trapezoid(y, x))
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [4.50000000, 10.       ])
+
+            y = paddle.to_tensor([1, 2, 3], dtype='float64')
+            x = paddle.to_tensor([8, 6, 4], dtype='float64')
+
+            print(paddle.cumulative_trapezoid(y, x))
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [-3., -8.])
+
+            y = paddle.arange(6).reshape((2, 3)).astype('float32')
+
+            print(paddle.cumulative_trapezoid(y, axis=0))
+            # Tensor(shape=[1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1.50000000, 2.50000000, 3.50000000]])
+            print(paddle.cumulative_trapezoid(y, axis=1))
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0.50000000, 2.        ],
+            #         [3.50000000, 8.        ]])
+    """
+    return _trapezoid(y, x, dx, axis, mode='cumsum')

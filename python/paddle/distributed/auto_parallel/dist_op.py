@@ -323,7 +323,7 @@ class DistributedOperatorHelper:
         output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
-        if isinstance(output, tuple) or isinstance(output, list):
+        if isinstance(output, (tuple, list)):
             new_output = list(output)
         elif isinstance(output, Variable):
             new_output = [output]
