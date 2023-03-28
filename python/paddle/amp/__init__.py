@@ -21,10 +21,18 @@ from .auto_cast import WHITE_LIST  # noqa: F401
 from .auto_cast import BLACK_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
+from .auto_cast import is_float16_supported
+from .auto_cast import is_bfloat16_supported
 
 from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
 from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
 
-__all__ = ['auto_cast', 'GradScaler', 'decorate']
+__all__ = [
+    'auto_cast',
+    'GradScaler',
+    'decorate',
+    'is_float16_supported',
+    'is_bfloat16_supported',
+]

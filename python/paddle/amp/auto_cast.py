@@ -17,8 +17,14 @@ import os
 import warnings
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _dygraph_tracer, dygraph_only
+from paddle.fluid.framework import (
+    _current_expected_place,
+    _dygraph_tracer,
+    _get_paddle_place,
+    dygraph_only,
+)
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 AMP_LEVEL = core.AmpLevel
@@ -801,3 +807,56 @@ def decorate(
     return amp_decorate(
         models, optimizers, level, dtype, master_weight, save_dtype
     )
+
+
+def is_float16_supported(place=None):
+    """
+    Determine whether the current place supports float16 in the auto-mixed-precision scenario
+
+    Args:
+         place (fluid.CPUPlace|fluid.CUDAPlace|None, optional): the device. Default:None.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_float16_supported() # True or False
+
+    """
+    place_ = (
+        _current_expected_place() if place is None else _get_paddle_place(place)
+    )
+    if isinstance(place_, (fluid.XPUPlace, fluid.CUDAPlace)):
+        return core.is_float16_supported(place_)
+    elif isinstance(place_, (fluid.NPUPlace, fluid.MLUPlace)):
+        return True
+    else:  # CPU branch
+        return False
+
+
+def is_bfloat16_supported(place=None):
+    """
+    Determine whether the current place supports bfloat16 in the auto-mixed-precision scenario
+
+    Args:
+         place (fluid.CPUPlace|fluid.CUDAPlace|None, optional): the device. Default:None.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_bfloat16_supported() # True or False
+
+    """
+
+    place_ = (
+        _current_expected_place() if place is None else _get_paddle_place(place)
+    )
+    if isinstance(place_, fluid.CUDAPlace):
+        return core.is_bfloat16_supported(place_)
+    elif isinstance(place_, (fluid.NPUPlace, fluid.MLUPlace, fluid.XPUPlace)):
+        return False
+    else:  # CPU branch
+        return True

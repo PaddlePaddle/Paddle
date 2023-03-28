@@ -22,6 +22,7 @@ import weakref
 import numpy as np
 
 import paddle
+import paddle.nn as nn
 import paddle.profiler as profiler
 import paddle.utils.deprecated as deprecated
 from paddle.fluid import core, framework, unique_name
@@ -126,26 +127,10 @@ def _addindent(string, indent):
 
 
 def _layer_trans_dtype(layer, dtype, excluded_layers):
-    assert isinstance(excluded_layers, (list, type)) or excluded_layers is None
-    # excluded_layers is list
-    if isinstance(excluded_layers, list) and type(layer) in excluded_layers:
-        return
-    # excluded_layers is class, type(class) == type in python
-    if (
-        isinstance(excluded_layers, type)
-        and issubclass(excluded_layers, Layer)
-        and type(layer) == excluded_layers
-    ):
+    if type(layer) in excluded_layers:
         return
 
-    def para_trans(t, device, dtype, blocking):
-        if not paddle.is_floating_point(t):
-            return t
-        return layer._transform(t, device, dtype, blocking)
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=UserWarning)
-        layer._apply(para_trans, None, dtype, True, False)
+    layer._to_impl(dtype=dtype, floating_only=True, include_sublayers=False)
 
 
 class LayerObjectHelper(LayerHelperBase):
@@ -2183,74 +2168,94 @@ class Layer:
 
     def float(self, excluded_layers=None):
         '''
-        For all floating point parameters and buffers, cast it to ``float`` datatype.
+        Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
+            excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
-            self
+            Layer: self
 
         Examples:
             .. code-block:: python
 
                 import paddle
 
-                class MyLayer(paddle.nn.Layer):
+                class Model(paddle.nn.Layer):
                     def __init__(self):
                         super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
 
                     def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
 
                 x = paddle.randn([10, 1], 'float32')
-                mylayer = MyLayer()
-                mylayer.float()
-                out = mylayer(x)
+                model = Model()
+                model.float()
+                out = model(x)
 
         '''
+
+        assert (
+            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        )
+        if excluded_layers is None:
+            excluded_layers = [nn.BatchNorm]
+        elif isinstance(excluded_layers, list):
+            excluded_layers.append(nn.BatchNorm)
+        else:
+            excluded_layers = [excluded_layers, nn.BatchNorm]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float32, excluded_layers)
 
         return self.apply(layer_trans)
 
-    def half(self, excluded_layers=None):
+    def float16(self, excluded_layers=None):
         '''
-        For all floating point parameters and buffers, cast it to ``half`` datatype.
+        Casts all floating point parameters and buffers to ``float16`` data type.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
+           excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
-            self
+            Layer: self
 
         Examples:
             .. code-block:: python
 
                 import paddle
 
-                class MyLayer(paddle.nn.Layer):
+                class Model(paddle.nn.Layer):
                     def __init__(self):
                         super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
 
                     def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
 
-                x = paddle.randn([10, 1], 'float16')
-                mylayer = MyLayer()
-                mylayer.half()
-                out = mylayer(x)
+                x = paddle.randn([10, 1], 'float32')
+                model = Model()
+                model.float16()
+                out = model(x)
 
         '''
+
+        assert (
+            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        )
+        if excluded_layers is None:
+            excluded_layers = [nn.BatchNorm]
+        elif isinstance(excluded_layers, list):
+            excluded_layers.append(nn.BatchNorm)
+        else:
+            excluded_layers = [excluded_layers, nn.BatchNorm]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float16, excluded_layers)
@@ -2259,36 +2264,46 @@ class Layer:
 
     def bfloat16(self, excluded_layers=None):
         '''
-        For all floating point parameters and buffers, cast it to ``bfloat16`` datatype.
+        Casts all floating point parameters and buffers to ``bfloat16`` data type.
 
         Parameters:
-            excluded_layers(list|nn.Layer|None, optional): Some layers need to keep the original data type, being stored in excluded_layers.
+            excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
-            self
+            Layer: self
 
         Examples:
             .. code-block:: python
 
                 import paddle
 
-                class MyLayer(paddle.nn.Layer):
+                class Model(paddle.nn.Layer):
                     def __init__(self):
                         super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
 
                     def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
 
-                x = paddle.randn([10, 1], 'bfloat16')
-                mylayer = MyLayer()
-                mylayer.bfloat16()
-                out = mylayer(x)
+                x = paddle.randn([10, 1], 'float32')
+                model = Model()
+                model.bfloat16()
+                out = model(x)
 
         '''
+
+        assert (
+            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        )
+        if excluded_layers is None:
+            excluded_layers = [nn.BatchNorm]
+        elif isinstance(excluded_layers, list):
+            excluded_layers.append(nn.BatchNorm)
+        else:
+            excluded_layers = [excluded_layers, nn.BatchNorm]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)
