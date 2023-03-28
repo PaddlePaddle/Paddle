@@ -72,16 +72,16 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
-  LOG(INFO) << "create fc op";
+  LOG(INFO) << "create matrix_multiply op";
   auto* fc0 = block_desc.AppendOp();
-  fc0->SetType("fc");
+  fc0->SetType("matrix_multiply");
   fc0->SetInput("X", std::vector<std::string>({"x"}));     // 4 x 1 x 1
   fc0->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
   fc0->SetOutput("Out", std::vector<std::string>({"z"}));  // 6 x 1 x 1
 
-  LOG(INFO) << "create fc op";
+  LOG(INFO) << "create matrix_multiply op";
   auto* fc1 = block_desc.AppendOp();
-  fc1->SetType("fc");
+  fc1->SetType("matrix_multiply");
   fc1->SetInput("X", std::vector<std::string>({"z"}));
   fc1->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
   fc1->SetOutput("Out", std::vector<std::string>({"z0"}));  // 8 x 1 x 1
@@ -162,7 +162,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   // Execute them.
   LOG(INFO) << "engine_op run";
   inference::tensorrt::OpTeller::Global().SetOpConverterType(
-      "fc", inference::tensorrt::OpConverterType::Default);
+      "matrix_multiply", inference::tensorrt::OpConverterType::Default);
   engine_op->Run(scope, place);
 }
 
@@ -197,12 +197,12 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
                         const shape_t& x_shape,
                         const shape_t& y_shape,
                         const shape_t& z_shape) {
-    LOG(INFO) << "create fc op";
-    auto* fc = block_desc.AppendOp();
-    fc->SetType("mul");
-    fc->SetInput("X", std::vector<std::string>({x_name}));
-    fc->SetInput("Y", std::vector<std::string>({y_name}));
-    fc->SetOutput("Out", std::vector<std::string>({z_name}));
+    LOG(INFO) << "create matrix_multiply op";
+    auto* matrix_multiply = block_desc.AppendOp();
+    matrix_multiply->SetType("matrix_multiply");
+    matrix_multiply->SetInput("X", std::vector<std::string>({x_name}));
+    matrix_multiply->SetInput("Y", std::vector<std::string>({y_name}));
+    matrix_multiply->SetOutput("Out", std::vector<std::string>({z_name}));
 
     // Set inputs' variable shape in BlockDesc
     if (!x_created) {
@@ -222,7 +222,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
     CreateCUDATensor(&scope, z_name, std::vector<int64_t>(z_shape));
 
     // It is wired, need to copy manually.
-    *block_->add_ops() = *fc->Proto();
+    *block_->add_ops() = *matrix_multiply->Proto();
   };
 
   // Test with 4 layer FC
@@ -293,9 +293,9 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 }
 
 // Test with a larger FC layer.
-// TEST(TensorRTEngineOp, fc) { Execute(40, 28, 28); }
+// TEST(TensorRTEngineOp, matrix_multiply) { Execute(40, 28, 28); }
 
 }  // namespace operators
 }  // namespace paddle
 
-USE_TRT_CONVERTER(fc)
+USE_TRT_CONVERTER(matrix_multiply)
