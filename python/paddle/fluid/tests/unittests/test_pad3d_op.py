@@ -211,7 +211,7 @@ def create_test_fp16(parent):
         def test_check_output(self):
             self.check_output(atol=1e-3)
 
-        def test_check_grad(self):
+        def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
@@ -248,7 +248,7 @@ def create_test_bf16(parent):
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-2)
 
-        def test_check_grad(self):
+        def test_check_grad_normal(self):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=1e-2
