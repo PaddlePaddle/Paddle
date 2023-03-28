@@ -129,7 +129,7 @@ pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
-  pass_library(trt_map_matmul_to_mul_pass inference)
+  pass_library(trt_map_ops_to_matrix_multiply_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_flash_multihead_matmul_fuse_pass inference)
   pass_library(trt_cross_multihead_matmul_fuse_pass inference)

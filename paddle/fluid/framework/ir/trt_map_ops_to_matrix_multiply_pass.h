@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,33 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-///
-/// Fuse quant + conv2d/depthwise_conv2d/matrix_multiply + dequant
-///
-class QuantDequantFusePass : public FusePassBase {
+class Graph;
+
+class TrtMapOpsToMatrixMultiplyPass : public FusePassBase {
  public:
-  QuantDequantFusePass();
-  virtual ~QuantDequantFusePass() {}
+  TrtMapOpsToMatrixMultiplyPass();
+  virtual ~TrtMapOpsToMatrixMultiplyPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void DeleteQuant(ir::Graph* graph,
-                   Scope* scope,
-                   const std::string& quant_type) const;
-  void FuseDequant(ir::Graph* graph,
-                   Scope* scope,
-                   const std::string& quantized_op_type,
-                   const std::string& dequant_type) const;
+  void ApplyImpl(Graph* graph) const override;
 };
 
 }  // namespace ir

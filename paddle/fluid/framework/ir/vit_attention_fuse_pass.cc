@@ -79,7 +79,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
 
   // pattern
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   PDNode* x = gpd.mutable_pattern()
                   ->NewNode("x")
                   ->assert_is_ops_input(matmul_ops, "X")
@@ -173,5 +173,4 @@ REGISTER_PASS_CAPABILITY(vit_attention_fuse_pass)
             .EQ("transpose2", 0)
             .EQ("slice", 0)
             .EQ("scale", 0)
-            .EQ("softmax", 0)
-            .EQ("matmul_v2", 0));
+            .EQ("softmax", 0));

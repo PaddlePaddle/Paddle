@@ -71,14 +71,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     int hidden_out = weight_dims[2];  // channels_out
     int m = hidden_in;
     int n = three * hidden_out;
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
-      for (int i = 0; i < m; i++) {
-        for (int j = 0; j < n; j++) {
-          dst[j * m + i] = src[i * n + j];
-        }
-      }
-    };
-    tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
 
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
 
@@ -261,22 +253,41 @@ class MultiheadMatMulOpConverter : public OpConverter {
           RreplenishLayerAndOutput(
               plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
+          auto* reshape_before_matrix =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *new_input);
+
+          std::vector<nvinfer1::ITensor*> reshape_before_tensor_matrix;
+          reshape_before_tensor_matrix.push_back(
+              GetEleTensorOfShape(Shape(new_input), 0));
+          reshape_before_tensor_matrix.push_back(
+              GetEleTensorOfShape(Shape(new_input), 1));
+
+          reshape_before_matrix->setInput(
+              1, *Concat(reshape_before_tensor_matrix));
+          reshape_before_matrix->setName(
+              ("reshape_before_matrix(Output: " + output_name + ")").c_str());
+          auto* new_input = reshape_before_matrix->getOutput(0);
+
+          // engine_->SetTensorDynamicRange(new_input, 1.0);
+
           int head_size = hidden_out / head_number;
-          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
-          // head_size,
-          // hidden_in]
+          // [hidden_in, 3, head_number, head_size] -> [hidden_in, head_number,
+          // 3, head_size]
           auto transpose_weight_v2 = [](const float* src,
                                         float* dst,
                                         int three,
                                         int head_number,
                                         int head_size,
                                         int hidden_in) {
-            const int HH = head_size * hidden_in;
-            for (int i = 0; i < three; ++i) {
-              for (int n = 0; n < head_number; ++n) {
-                for (int hh = 0; hh < HH; ++hh) {
-                  dst[n * three * HH + i * HH + hh] =
-                      src[i * head_number * HH + n * HH + hh];
+            for (int i = 0; i < hidden_in; ++i) {
+              for (int j = 0; j < three; ++j) {
+                for (int n = 0; n < head_number; ++n) {
+                  for (int m = 0; m < head_size; ++m) {
+                    dst[i * head_number * three * head_size +
+                        n * three * head_size + j * head_size + m] =
+                        src[i * three * head_number * head_size +
+                            j * head_number * head_size + n * head_size + m];
+                  }
                 }
               }
             }
@@ -309,16 +320,49 @@ class MultiheadMatMulOpConverter : public OpConverter {
           transpose_bias_v2(
               bias_data_tmp.data(), bias_data, head_number, head_size);
 
-          nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
-          if (op_desc.HasAttr("Input_scale")) {
-            nvinfer1::DimsHW nv_ksize(1, 1);
-            fc_layer = TRT_ENGINE_ADD_LAYER(
-                engine_, Convolution, *new_input, n, nv_ksize, weight, bias);
-          } else {
-            fc_layer = TRT_ENGINE_ADD_LAYER(
-                engine_, FullyConnected, *new_input, n, weight, bias);
-          }
+
+          nvinfer1::Dims trt_dims_weight;
+          trt_dims_weight.nbDims = 2;
+          trt_dims_weight.d[0] = m;
+          trt_dims_weight.d[1] = n;
+          auto* weight_tensor =
+              TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_weight, weight)
+                  ->getOutput(0);
+
+          bool transpose_x = false;
+          bool transpose_y = false;
+
+          nvinfer1::MatrixOperation matrix_operation_x =
+              transpose_x ? nvinfer1::MatrixOperation::kTRANSPOSE
+                          : nvinfer1::MatrixOperation::kNONE;
+          nvinfer1::MatrixOperation matrix_operation_y =
+              transpose_y ? nvinfer1::MatrixOperation::kTRANSPOSE
+                          : nvinfer1::MatrixOperation::kNONE;
+
+          auto* matrix_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                    MatrixMultiply,
+                                                    *new_input,
+                                                    matrix_operation_x,
+                                                    *weight_tensor,
+                                                    matrix_operation_y);
+
+          nvinfer1::Dims trt_dims_bias;
+          trt_dims_bias.nbDims = 2;
+          trt_dims_bias.d[0] = 1;
+          trt_dims_bias.d[1] = n;
+          auto* bias_tensor =
+              TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_bias, bias)
+                  ->getOutput(0);
+          auto* add_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *matrix_layer->getOutput(0),
+                                   *bias_tensor,
+                                   nvinfer1::ElementWiseOperation::kSUM);
+
+          // engine_->SetTensorDynamicRange(weight_tensor, 1.0);
+          // engine_->SetTensorDynamicRange(bias_tensor, 1.0);
 
           if (op_desc.HasAttr("fc_out_threshold")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
@@ -328,12 +372,34 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                   "in int8 mode"));
             float out_scale =
                 PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
-            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+
+            engine_->SetTensorDynamicRange(matrix_layer->getOutput(0),
+                                           out_scale);
+            engine_->SetTensorDynamicRange(add_layer->getOutput(0), out_scale);
+
             if (qkv2context_plugin_int8) {
               dp_probs =
                   PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
             }
           }
+
+          auto* reshape_before_multihead =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *add_layer->getOutput(0));
+
+          std::vector<nvinfer1::ITensor*> reshape_tensor;
+          reshape_tensor.push_back(
+              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 0));
+          reshape_tensor.push_back(
+              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 1));
+          reshape_tensor.push_back(Add1DConstantLayer(1));
+          reshape_tensor.push_back(Add1DConstantLayer(1));
+
+          reshape_before_multihead->setInput(1, *Concat(reshape_tensor));
+          reshape_before_multihead->setName(
+              ("reshape_before_multihead_mamul(Output: " + output_name + ")")
+                  .c_str());
+          // new_input = reshape_before_multihead->getOutput(0);
+
           auto creator = GetPluginRegistry()->getPluginCreator(
               "CustomQKVToContextPluginDynamic", "2");
           assert(creator != nullptr);
@@ -375,7 +441,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           free(plugin_collection);
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(fc_layer->getOutput(0));
+          plugin_inputs.emplace_back(reshape_before_multihead->getOutput(0));
           plugin_inputs.emplace_back(mask_tensor);
           plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
@@ -400,7 +466,19 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->SetITensor(output_name,
                                 transformer_output_layer->getOutput(0));
           } else {
+            if (op_desc.HasAttr("out_threshold")) {
+              float out_scale =
+                  PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+              engine_->SetTensorDynamicRange(plugin_layer->getOutput(0),
+                                             out_scale);
+            }
             engine_->SetITensor(output_name, plugin_layer->getOutput(0));
+            if (op_desc.HasAttr("out_threshold")) {
+              float out_scale =
+                  PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+              engine_->SetTensorDynamicRange(plugin_layer->getOutput(0),
+                                             out_scale);
+            }
           }
         }
       } else {

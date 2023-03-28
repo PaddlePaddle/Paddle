@@ -64,8 +64,8 @@ namespace patterns {
 //     output
 
 PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
-  std::unordered_set<std::string> mul_ops{"mul", "matmul_v2"};
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> mul_ops{"matrix_multiply"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   auto* input0 = pattern->NewNode(input0_repr());
   auto* input1 = pattern->NewNode(input1_repr());
 
@@ -210,23 +210,6 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
 }  // namespace patterns
 
 TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
-      .IsTensor()
-      .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -269,43 +252,6 @@ TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
 
   // QK (B, H, S, N)*(B, H, S, N) -> (B, H, S, S)
   // QKV (B, H, S, S)*(B, H, S, N) -> (B, H, S, N)
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()  // QK(anyvalue, will copy to new op) QKV(1.0)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -584,11 +530,8 @@ REGISTER_PASS(trt_cross_multihead_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(trt_cross_multihead_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("mul", 0)
             .LE("elementwise_add", 1)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
-            .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
