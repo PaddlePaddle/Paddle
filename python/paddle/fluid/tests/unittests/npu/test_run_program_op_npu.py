@@ -134,15 +134,9 @@ class RunProgramNPUOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if global_var._in_eager_mode_:
-                var = core.eager.Tensor(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
-            else:
-                var = core.VarBase(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
-                var.stop_gradient = stop_gradient
+            var = core.eager.Tensor(
+                value=np_value, name=name, place=place, zero_copy=True
+            )
             return var
 
         # build inputs

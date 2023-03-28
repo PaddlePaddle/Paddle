@@ -1051,7 +1051,7 @@ def _custom_api_content(op_name):
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.core import VarBase, CustomOpKernelContext
+        from paddle.fluid.core import Tensor, CustomOpKernelContext
         from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 

@@ -383,7 +383,7 @@ class Optimizer:
 
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
+                elif isinstance(load_para, core.eager.Tensor):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
