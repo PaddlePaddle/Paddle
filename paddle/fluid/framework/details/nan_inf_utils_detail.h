@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #ifdef _WIN32
@@ -32,6 +33,7 @@
 #endif
 
 DECLARE_int32(check_nan_inf_level);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -39,81 +41,6 @@ namespace details {
 void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
-
-template <typename T,
-          typename MT,
-          std::enable_if_t<std::is_same<T, float>::value, bool> = true>
-HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  } else if (check_nan_inf_level >= 2) {
-    MT fp16_max =
-        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
-    return max_value > fp16_max || min_value < -fp16_max;
-  }
-  return false;
-}
-
-template <typename T,
-          typename MT,
-          std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
-HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  }
-  return false;
-}
-
-template <typename T, typename MT>
-HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
-                                       int64_t numel,
-                                       int64_t num_nan,
-                                       int64_t num_inf,
-                                       int64_t num_zero,
-                                       MT max_value,
-                                       MT min_value,
-                                       MT mean_value,
-                                       int check_nan_inf_level) {
-  if (num_nan > 0 || num_inf > 0) {
-    printf(
-        "[PRECISION] [ERROR] in %s, numel=%lld, num_nan=%lld, "
-        "num_inf=%lld, num_zero=%lld, max=%e, min=%e, mean=%e\n",
-        debug_info,
-        static_cast<long long>(numel),     // NOLINT
-        static_cast<long long>(num_nan),   // NOLINT
-        static_cast<long long>(num_inf),   // NOLINT
-        static_cast<long long>(num_zero),  // NOLINT
-        static_cast<float>(max_value),
-        static_cast<float>(min_value),
-        static_cast<float>(mean_value));
-    if (check_nan_inf_level == 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-      PADDLE_ENFORCE(false,
-                     "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
-                     "num_zero=%lld) in %s.",
-                     static_cast<long long>(num_nan),   // NOLINT
-                     static_cast<long long>(num_inf),   // NOLINT
-                     static_cast<long long>(num_zero),  // NOLINT
-                     debug_info);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
-          "%s.",
-          static_cast<long long>(num_nan),   // NOLINT
-          static_cast<long long>(num_inf),   // NOLINT
-          static_cast<long long>(num_zero),  // NOLINT
-          debug_info));
-#endif
-    }
-  } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
-    printf("[PRECISION] in %s, numel=%lld, max=%e, min=%e, mean=%e\n",
-           debug_info,
-           static_cast<long long>(numel),  // NOLINT
-           static_cast<float>(max_value),
-           static_cast<float>(min_value),
-           static_cast<float>(mean_value));
-  }
-}
 
 template <typename T, typename MT>
 void PrintForDifferentLevelFile(const char* debug_info,
@@ -150,7 +77,8 @@ void PrintForDifferentLevelFile(const char* debug_info,
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
-  } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
+  } else if (phi::funcs::NeedPrint<T, MT>(
+                 max_value, min_value, check_nan_inf_level)) {
     outfile << "[PRECISION] in " << debug_info
             << ", numel=" << static_cast<long long>(numel)  // NOLINT
             << ", max=" << static_cast<float>(max_value)
@@ -158,33 +86,6 @@ void PrintForDifferentLevelFile(const char* debug_info,
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
   }
   outfile.close();
-}
-
-template <typename T>
-inline std::string GetCpuHintString(const std::string& op_type,
-                                    const std::string& var_name,
-                                    const phi::Place& place,
-                                    int device_id = -1) {
-  std::string dtype_str = DataTypeToString(DataTypeTrait<T>::DataType());
-  if (dtype_str == "float") {
-    dtype_str = "fp32";
-  } else if (dtype_str == "double") {
-    dtype_str = "fp64";
-  } else if (dtype_str == "::paddle::platform::float16") {
-    dtype_str = "fp16";
-  } else if (dtype_str == "::paddle::platform::bfloat16") {
-    dtype_str = "bf16";
-  }
-
-  std::stringstream ss;
-  if (platform::is_gpu_place(place)) {
-    ss << "[device=gpu:" << device_id << ", ";
-  } else {
-    ss << "[device=cpu, ";
-  }
-  ss << "op=" << op_type << ", tensor=" << var_name << ", dtype=" << dtype_str
-     << "]";
-  return ss.str();
 }
 
 template <
@@ -277,15 +178,15 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
     return;
   }
 
-  PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
-                                numel,
-                                num_nan,
-                                num_inf,
-                                num_zero,
-                                max_value,
-                                min_value,
-                                mean_value,
-                                FLAGS_check_nan_inf_level);
+  phi::funcs::PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
+                                            numel,
+                                            num_nan,
+                                            num_inf,
+                                            num_zero,
+                                            max_value,
+                                            min_value,
+                                            mean_value,
+                                            FLAGS_check_nan_inf_level);
 }
 
 template <

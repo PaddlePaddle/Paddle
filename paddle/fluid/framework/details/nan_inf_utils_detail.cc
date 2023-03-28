@@ -160,7 +160,7 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
   std::string cpu_hint_str =
-      GetCpuHintString<T>(op_type, var_name, tensor.place());
+      phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
   CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
 }
 
