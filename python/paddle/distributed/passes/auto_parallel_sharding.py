@@ -1831,8 +1831,8 @@ class ShardingInfo:
     # and sharding should only broadcast the casted fp16 param
     # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
-        broadcast_vars = set([])
-        fp16_params = set([])
+        broadcast_vars = set()
+        fp16_params = set()
         fp16_to_fp32 = {}
 
         param_usage = {x: 0 for x in self.param_names}

@@ -887,7 +887,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 def is_cuda_file(path):
 
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
