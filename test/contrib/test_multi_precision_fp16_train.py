@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import contextlib
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
 from paddle.io import Dataset
 from paddle.static.amp.fp16_utils import cast_model_to_fp16
 

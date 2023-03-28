@@ -19,7 +19,7 @@ import numpy as np
 from scipy.special import erf
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
