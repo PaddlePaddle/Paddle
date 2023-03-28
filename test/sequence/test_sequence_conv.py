@@ -176,7 +176,7 @@ class TestSeqProject(OpTest):
             self.check_grad(
                 ['PaddingData'],
                 'Out',
-                no_grad_set=set(['X', 'Filter']),
+                no_grad_set={'X', 'Filter'},
                 check_dygraph=False,
             )
 
@@ -195,7 +195,7 @@ class TestSeqProject(OpTest):
                 ['X', 'Filter'],
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['PaddingData']),
+                no_grad_set={'PaddingData'},
                 check_dygraph=False,
             )
 
@@ -205,7 +205,7 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_f,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 check_dygraph=False,
             )
 
@@ -215,7 +215,7 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_x,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
                 check_dygraph=False,
             )
 
