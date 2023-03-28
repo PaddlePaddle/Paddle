@@ -152,8 +152,7 @@ def _yield_value(iterable):
         for key in _sorted(iterable):
             yield iterable[key]
     else:
-        for value in iterable:
-            yield value
+        yield from iterable
 
 
 def _yield_flat_nest(nest):

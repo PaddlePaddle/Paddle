@@ -1,4 +1,3 @@
-# -*-coding:utf-8-*-
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def create_tdm_travel():

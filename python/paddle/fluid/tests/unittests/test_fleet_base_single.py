@@ -24,9 +24,8 @@ else:
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.distributed import fleet
 
 
 class LinearNet(nn.Layer):

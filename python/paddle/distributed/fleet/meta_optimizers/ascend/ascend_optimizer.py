@@ -16,8 +16,8 @@ from collections import namedtuple
 
 import hccl.manage.api as hccl
 
-import paddle.framework.core as core
 from paddle.distributed import fleet
+from paddle.framework import core
 from paddle.optimizer import Optimizer
 
 from . import ascend_parser

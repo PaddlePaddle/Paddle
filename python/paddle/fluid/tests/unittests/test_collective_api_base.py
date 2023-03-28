@@ -26,7 +26,7 @@ from paddle_bfloat import bfloat16
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
