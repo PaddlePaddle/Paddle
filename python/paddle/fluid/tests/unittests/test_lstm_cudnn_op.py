@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import core
@@ -524,7 +524,7 @@ class TestCUDNNLstmOp(OpTest):
         else:
             paddle.enable_static()
             self.check_output_with_place(
-                place, no_check_set=['Reserve', 'StateOut']
+                place, no_check_set=['Reserve', 'StateOut'], check_dygraph=False
             )
             paddle.disable_static()
 
@@ -534,8 +534,9 @@ class TestCUDNNLstmOp(OpTest):
         for var_name in var_name_list:
             self.check_grad_with_place(
                 place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                {'Input', var_name, 'InitH', 'InitC'},
                 ['Out', 'LastH', 'LastC'],
+                check_dygraph=False,
             )
 
 
