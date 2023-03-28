@@ -20,8 +20,6 @@ sys.path.append("..")
 from eager_op_test import OpTest
 import paddle
 
-# from paddle.fluid import core
-# from paddle.fluid.op import Operator
 
 paddle.enable_static()
 SEED = 2022

@@ -17,12 +17,11 @@ import unittest
 import numpy
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
-
 
 def calculate_momentum_by_numpy(
     param,
@@ -54,38 +53,9 @@ def calculate_momentum_by_numpy(
     return param_out, velocity_out
 
 
-def momentum_wrapper(
-    param,
-    grad,
-    velocity,
-    learning_rate=1.0,
-    master_param=None,
-    mu=0.0,
-    use_nesterov=False,
-    regularization_method="",
-    regularization_coeff=0.0,
-    multi_precision=False,
-    rescale_grad=1.0,
-):
-    return paddle._C_ops.momentum_(
-        param,
-        grad,
-        velocity,
-        learning_rate,
-        master_param,
-        mu,
-        use_nesterov,
-        regularization_method,
-        regularization_coeff,
-        multi_precision,
-        rescale_grad,
-    )
-
-
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
-        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.init_dtype()
 
@@ -136,7 +106,6 @@ class TestMomentumOp2(OpTest):
 
     def setUp(self):
         self.op_type = "momentum"
-        self.python_api = momentum_wrapper
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
@@ -251,7 +220,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, check_dygraph=False)
+                self.check_output_with_place(place)
 
     def config(self):
         self.params_num = 1
@@ -591,7 +560,6 @@ class TestMomentumV2(unittest.TestCase):
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
         self.op_type = "momentum"
-        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.use_nesterov = True
         self.regularization_method = 'l2_decay'

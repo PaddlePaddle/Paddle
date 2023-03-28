@@ -16,8 +16,7 @@ import time
 
 import numpy as np
 from eager_op_test import OpTest
-
-from paddle.fluid.op import Operator
+from op import Operator
 
 
 class BenchmarkSuite(OpTest):

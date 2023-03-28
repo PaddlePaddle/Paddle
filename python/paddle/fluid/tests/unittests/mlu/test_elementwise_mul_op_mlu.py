@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, compiler, program_guard
-from paddle.fluid.op import Operator
 
 import sys
 

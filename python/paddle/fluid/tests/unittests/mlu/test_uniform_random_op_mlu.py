@@ -22,7 +22,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from test_uniform_random_op import (

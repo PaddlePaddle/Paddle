@@ -21,7 +21,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 from paddle.static import Program, program_guard
 
 paddle.enable_static()

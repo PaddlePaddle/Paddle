@@ -23,6 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+from op import Operator
 
 import paddle
 from paddle import fluid
@@ -35,7 +36,6 @@ from paddle.fluid.framework import (
     _current_expected_place,
     canonicalize_attrs,
 )
-from paddle.fluid.op import Operator
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
