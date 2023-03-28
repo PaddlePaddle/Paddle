@@ -85,7 +85,7 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
     prim::cast_grad<prim::DescTensor>(x, out_grad, x_grad);
 
-    this->RecoverOutputName(x_grad, dx_name);
+    this->RecoverOutputName(x_grad_t, x_grad_name);
   }
 };
 
