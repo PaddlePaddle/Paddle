@@ -564,16 +564,6 @@
   kernel :
     func : hsigmoid_loss_grad
 
-- backward_op : huber_loss_grad
-  forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
-  args : (Tensor residual, Tensor out_grad, float delta)
-  output : Tensor(input_grad), Tensor(label_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [residual, residual]
-  kernel :
-    func : huber_loss_grad
-
 - backward_op : instance_norm_double_grad
   forward : instance_norm_grad(Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)
@@ -622,16 +612,6 @@
   no_need_buffer : bias
   optional : scale, bias
 
-- backward_op : log_softmax_grad
-  forward : log_softmax(Tensor x,  int axis) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad,  int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [out]
-  kernel :
-    func : log_softmax_grad
-
 - backward_op : logcumsumexp_grad
   forward : logcumsumexp(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
   infer_meta :
@@ -660,17 +640,6 @@
     func : LUGradInferMeta
   kernel :
     func : lu_grad
-
-- backward_op : margin_cross_entropy_grad
-  forward : margin_cross_entropy (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale) -> Tensor(softmax), Tensor(loss)
-  args : (Tensor logits, Tensor label, Tensor softmax, Tensor loss_grad, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
-  output : Tensor(logits_grad)
-  infer_meta :
-    func : MarginCrossEntropyGradInferMeta
-  kernel :
-    func : margin_cross_entropy_grad
-    data_type : softmax
-  inplace : (softmax -> logits_grad)
 
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)

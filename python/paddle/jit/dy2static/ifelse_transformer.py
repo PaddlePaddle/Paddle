@@ -288,7 +288,7 @@ class NameVisitor(gast.NodeVisitor):
         return new_name_ids
 
     def _is_call_func_name_node(self, node):
-        white_func_names = set(['append', 'extend'])
+        white_func_names = {'append', 'extend'}
         if len(self.ancestor_nodes) > 1:
             assert self.ancestor_nodes[-1] == node
             parent_node = self.ancestor_nodes[-2]
