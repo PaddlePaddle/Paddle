@@ -269,6 +269,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::init_path() {
   }
   start_time_ = tick_usec();
 }
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -284,9 +285,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
       device_num_,
       paddle::platform::errors::InvalidArgument(
           "dev id %d more than device num %d", dev_id, device_num_));
-#if defined(PADDLE_WITH_CUDA)
   platform::CUDADeviceGuard guard(resource_->dev_id(dev_id));
-#endif
   size_t need_capacity = capacity / load_factor_;
   if (!multi_mf_dim_) {
     auto table = tables_[dev_id];
@@ -315,6 +314,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
     table->set_mode(infer_mode);
   }
 }
+#endif
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -828,6 +828,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::show_one_table(
   }
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -847,6 +848,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
     }
   }
 }
+#endif
 
 template <typename KeyType,
           typename ValType,
@@ -880,7 +882,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_sparse_sgd(
     if (!multi_mf_dim_) {
       tables_[i]->set_sparse_sgd(optimizer_config);
     } else {
+#if defined(PADDLE_WITH_CUDA)
       ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+#endif
     }
   }
 }
@@ -896,7 +900,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_embedx_sgd(
     if (!multi_mf_dim_) {
       tables_[i]->set_embedx_sgd(optimizer_config);
     } else {
+#if defined(PADDLE_WITH_CUDA)
       ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+#endif
     }
   }
 }
@@ -1020,9 +1026,6 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
   while (cur_len < len) {
     cur_stream = cur_stream % stream_num;
     auto cur_use_stream = streams[cur_stream];
-#if defined(PADDLE_WITH_XPU_KP)
-    cur_use_stream = 0;
-#endif
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;

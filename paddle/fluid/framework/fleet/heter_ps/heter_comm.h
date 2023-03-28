@@ -138,7 +138,9 @@ class HeterComm {
                 int stream_num);
   void dump();
   void show_one_table(int gpu_num);
+#if defined(PADDLE_WITH_CUDA)
   void show_table_collisions();
+#endif
   int get_index_by_devid(int devid);
 
 #if defined(PADDLE_WITH_CUDA)

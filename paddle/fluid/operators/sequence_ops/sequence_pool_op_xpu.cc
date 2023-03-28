@@ -2,7 +2,8 @@
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
 namespace paddle {
     namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SequencePoolGradXPUKernel : public framework::OpKernel<T> {

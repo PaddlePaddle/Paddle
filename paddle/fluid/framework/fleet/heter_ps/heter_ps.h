@@ -119,7 +119,6 @@ class HeterPs : public HeterPsBase {
   void end_pass() override;
   int get_index_by_devid(int devid) override;
   void show_one_table(int gpu_num) override;
-  void show_table_collisions() override;
 
   void push_sparse(int num, FidKey* d_keys, FeaturePushValue* d_grads,
                    size_t len) override;

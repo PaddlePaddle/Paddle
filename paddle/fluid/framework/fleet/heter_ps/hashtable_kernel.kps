@@ -15,7 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-#include "xpu/refactor/table.h"
+#include "xpu/table.h"
 
 namespace paddle {
 namespace framework {
@@ -113,7 +113,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
 
   ctx_xpu->xpu_stream = stream;
 
-  int r = xpu::get_pairs<KeyType, ValType>(
+  int r = xpu::get<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_idx, xpu_num
      );
@@ -145,7 +145,7 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
 
   ctx_xpu->xpu_stream = stream;
 
-  int r = xpu::get_pairs<uint32_t, xpu::FeatureValue>(
+  int r = xpu::get<uint32_t, xpu::FeatureValue>(
       ctx_xpu,
       d_keys,
       reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
@@ -170,7 +170,7 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
 
     ctx_xpu->xpu_stream = stream;
 
-    int r = xpu::get_pairs<uint32_t, xpu::FeatureValue>(
+    int r = xpu::get<uint32_t, xpu::FeatureValue>(
           ctx_xpu, k_vals_in,
           reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
           xpu_size,

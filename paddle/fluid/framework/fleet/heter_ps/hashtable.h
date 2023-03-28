@@ -295,9 +295,8 @@ class HashTable {
 
 #if defined(PADDLE_WITH_CUDA)
   void clear(cudaStream_t stream = 0) { container_->clear_async(stream); }
-#endif
-
   void show_collision(int id) { return container_->print_collision(id); }
+#endif
   // infer mode
   void set_mode(bool infer_mode) { infer_mode_ = infer_mode; }
 

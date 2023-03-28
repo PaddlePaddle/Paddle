@@ -22,7 +22,7 @@ limitations under the License. */
 #include "xpu/kernel/cluster_header.h"
 // #include "xpu/kernel/debug.h"  // NOLINT
 #include "xpu/runtime.h"
-#include "xpu/refactor/table.h"
+#include "xpu/table.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #include "xpu/kernel/simd_header.h"
