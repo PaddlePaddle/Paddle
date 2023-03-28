@@ -220,20 +220,5 @@ class TestLerpAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestLerpAPIFp16(unittest.TestCase):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def setUp(self):
-        self.init_dtype()
-        self.x = np.arange(1.0, 5.0).astype(self.dtype)
-        self.y = np.full(4, 10.0).astype(self.dtype)
-        self.w = np.asarray([0.75]).astype(self.dtype)
-        self.res_ref = self.x + self.w * (self.y - self.x)
-        self.place = []
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
-
-
 if __name__ == "__main__":
     unittest.main()
