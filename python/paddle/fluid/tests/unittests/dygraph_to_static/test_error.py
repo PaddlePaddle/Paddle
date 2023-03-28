@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
 

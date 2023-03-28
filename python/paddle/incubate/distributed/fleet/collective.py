@@ -16,9 +16,9 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-import paddle.fluid as fluid
-import paddle.fluid.io as io
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
+from paddle.fluid import io
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program

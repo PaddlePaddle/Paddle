@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()

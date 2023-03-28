@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 
 from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number

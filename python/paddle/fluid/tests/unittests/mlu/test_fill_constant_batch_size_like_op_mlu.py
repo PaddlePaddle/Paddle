@@ -20,7 +20,7 @@ import paddle.fluid.core as core
 from paddle.static import program_guard, Program
 import unittest
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()
