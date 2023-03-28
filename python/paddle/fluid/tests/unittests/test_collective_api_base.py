@@ -392,6 +392,15 @@ class TestDistBase(unittest.TestCase):
             need_result2 = [need_result[len(need_result) // 2 :]]
             self.assertEqual(need_result1, tr0_out)
             self.assertEqual(need_result2, tr1_out)
+        elif col_type == "gather":
+            # rank 0 gather all tensor
+            self.assertEqual(len(tr0_out), 2)
+            # rank 1 get nothing
+            self.assertEqual(len(tr1_out), 0)
+            # check values
+            np.testing.assert_allclose(input1, tr0_out[0], 1e-05)
+            np.testing.assert_allclose(input2, tr0_out[1], 1e-05)
+
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
