@@ -33,6 +33,7 @@ ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
 ENV LIBRARY_PATH=/usr/local/ssl/lib:$LIBRARY_PATH
 
+
 # for paddle
 RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
