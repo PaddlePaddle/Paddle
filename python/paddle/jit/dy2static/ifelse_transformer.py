@@ -288,7 +288,7 @@ class NameVisitor(gast.NodeVisitor):
         return new_name_ids
 
     def _is_call_func_name_node(self, node):
-        white_func_names = set(['append', 'extend'])
+        white_func_names = {'append', 'extend'}
         if len(self.ancestor_nodes) > 1:
             assert self.ancestor_nodes[-1] == node
             parent_node = self.ancestor_nodes[-2]
@@ -339,8 +339,8 @@ def transform_if_else(node, root):
     """
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
-    return_name_ids = sorted(list(node.pd_scope.modified_vars()))
-    push_pop_ids = sorted(list(node.pd_scope.variadic_length_vars()))
+    return_name_ids = sorted(node.pd_scope.modified_vars())
+    push_pop_ids = sorted(node.pd_scope.variadic_length_vars())
     nonlocal_names = list(return_name_ids)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.

@@ -414,7 +414,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['X'],
                 'Out',
-                no_grad_set=set(['Y']),
+                no_grad_set={'Y'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -425,7 +425,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['Y'],
                 'Out',
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
                 user_defined_grads=[numeric_grads],
             )
 
