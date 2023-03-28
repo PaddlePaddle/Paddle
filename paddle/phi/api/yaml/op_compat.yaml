@@ -990,6 +990,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
