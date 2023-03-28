@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-if(WITH_TESTING)
-  include(tests/test.cmake) # some generic cmake function for inference
-endif()
-
 cc_library(
   paddle_inference_io
   SRCS io.cc
