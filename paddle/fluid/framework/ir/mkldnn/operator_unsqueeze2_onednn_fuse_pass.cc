@@ -58,7 +58,6 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     GET_IR_NODE_FROM_SUBGRAPH(
         unsqueeze2_out, unsqueeze2_out, op_unsqueeze2_pattern);
 
-    ConvertToFusedOp(operator_op->Op());
     if (!operator_op->Op()->HasAttr("use_mkldnn") ||
         (operator_op->Op()->HasAttr("use_mkldnn") &&
          !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))))) {

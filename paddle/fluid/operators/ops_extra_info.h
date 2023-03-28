@@ -107,7 +107,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_y", ExtraAttrProperty::ONEDNN},
         {"Scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
-        {"fused_unsqueeze2_axes", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
         {"fused_reshape2_shape", ExtraAttrProperty::ONEDNN},
