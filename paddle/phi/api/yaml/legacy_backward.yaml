@@ -95,7 +95,6 @@
   args : (Tensor out_grad)
   output : Tensor(x_grad)
   composite: assign_grad(out_grad, x_grad)
-  invoke : assign(out_grad)
 
 - backward_op : assign_out__grad
   forward : assign_out_ (Tensor x, Tensor output) -> Tensor(out)
@@ -158,7 +157,6 @@
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
-  invoke : cast (out_grad, x.dtype())
   composite: cast_grad(x, out_grad, x_grad)
   no_need_buffer : x
 
@@ -1100,14 +1098,12 @@
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
-  invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : split_with_num_grad
   forward : split_with_num (Tensor x, int num, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
-  invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : squared_l2_norm_grad

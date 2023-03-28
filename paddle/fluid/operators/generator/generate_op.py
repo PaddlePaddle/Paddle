@@ -248,6 +248,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
+        elif 'composite' in op_item and 'kernel' not in op_item:
+            return
+
         op_item['infer_meta']['param'] = get_param_list_alias(
             op_item['infer_meta']['param'], args_name_map
         )

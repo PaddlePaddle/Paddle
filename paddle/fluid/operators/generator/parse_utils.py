@@ -494,7 +494,13 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     }
 
     # invokes another op ?
-    is_base_op = "invoke" not in op_entry
+    is_base_op = True
+    is_invoke_composite_op = False
+    if "invoke" in op_entry:
+        is_base_op = False
+    if "composite" in op_entry and "kernel" not in op_entry:
+        is_base_op = False
+        is_invoke_composite_op = True
 
     if is_base_op:
         # kernel
@@ -520,9 +526,12 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
             }
         )
     else:
-        # invoke
-        invoke = parse_invoke(op_name, op_entry["invoke"])
-        op["invoke"] = invoke
+        if is_invoke_composite_op:
+            pass
+        else:
+            # invoke
+            invoke = parse_invoke(op_name, op_entry["invoke"])
+            op["invoke"] = invoke
 
     # has composite ?
     if "composite" in op_entry:
