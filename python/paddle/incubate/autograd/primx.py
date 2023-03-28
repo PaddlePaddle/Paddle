@@ -613,8 +613,8 @@ def _lower_composite(
             0 <= backward_length <= length
         ), f'expect 0 <= backward_length <= {length}, but got backward_length: {backward_length}'
         assert (
-            0 <= start_idx < length
-        ), f'expect 0 <= start_idx < {length}, but got start_idx: {start_idx}'
+            0 <= start_idx <= length
+        ), f'expect 0 <= start_idx <= {length}, but got start_idx: {start_idx}'
         assert not (
             backward_length > 0 and start_idx > 0
         ), f'got start_idx: {start_idx} and backward_length: {backward_length}'
