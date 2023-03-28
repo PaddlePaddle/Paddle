@@ -189,16 +189,14 @@ class TestClipBF16Op(OpTest):
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
-            self.check_output_with_place(place, atol=1e-2)
+            self.check_output_with_place(place)
             paddle.disable_static()
 
     def test_check_grad_normal(self):
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
-            self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=1e-2
-            )
+            self.check_grad_with_place(place, ['X'], 'Out')
             paddle.disable_static()
 
     def initTestCase(self):
