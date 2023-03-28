@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import contextlib
-import unittest
-import numpy as np
 import struct
-import paddle.fluid.layers as layers
-import paddle.static.amp as amp
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 from paddle.fluid import core
+from paddle.static import amp
 
 paddle.enable_static()
 

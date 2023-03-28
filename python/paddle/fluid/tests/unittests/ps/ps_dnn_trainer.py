@@ -445,7 +445,7 @@ class DnnTrainer:
                 "entering run {} - old".format(str(config["applied_pass_name"]))
             )
             from paddle.incubate.distributed.fleet.parameter_server.ir import (
-                public as public,
+                public,
             )
 
             dist_strategy = get_distributed_strategy(user_defined_strategy)
