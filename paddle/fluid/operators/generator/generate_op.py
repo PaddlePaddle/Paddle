@@ -41,6 +41,7 @@ from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
+    is_invoke_composite_op,
     is_scalar,
     is_vec,
     supports_inplace,
@@ -72,6 +73,7 @@ env.filters["assert_dense_or_sr"] = assert_dense_or_sr
 env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
+env.tests["invoke_composite_op"] = is_invoke_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
