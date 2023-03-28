@@ -94,7 +94,7 @@ def create_test_class(parent, dtype, mode, training, p, seed):
     )
     class TestFusedDropoutAddCase(parent):
         def setUp(self):
-            self.shape = (2, 10, 10, 2)
+            self.shape = (2, 1024, 1, 1)
             self.dtype = dtype
             self.dropout_rate = p
             self.training = training
