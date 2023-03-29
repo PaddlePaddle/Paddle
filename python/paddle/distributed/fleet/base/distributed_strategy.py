@@ -151,8 +151,8 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
-        self.__lock_attr = True
         self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key, value):
