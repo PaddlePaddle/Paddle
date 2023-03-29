@@ -16,15 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 /*
@@ -35,7 +26,7 @@ class RollOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid Roll op to tensorrt Slice layer";
+    VLOG(4) << "convert roll op to tensorrt Slice layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
