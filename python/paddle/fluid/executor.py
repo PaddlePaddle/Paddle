@@ -1606,28 +1606,6 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 2: async mode
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.async_mode
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for async mode",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 3: CUDA Graph
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.allow_cuda_graph_capture
-                    and not _is_cuda_graph_enable_standalone_executor()
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
-                        UserWarning,
-                    )
-                    return False
             return True
 
         if self._enable_interpreter_core and _can_use_interpreter_core(
