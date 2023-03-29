@@ -77,26 +77,17 @@ class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
-    def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
-
 
 class TestLinspaceOpReverseCaseFP16(TestLinspaceOpReverseCase):
     def _set_dtype(self):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
-    def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
-
 
 class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
     def _set_dtype(self):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
 
 
 @unittest.skipIf(
