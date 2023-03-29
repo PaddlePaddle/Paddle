@@ -5285,6 +5285,7 @@ class PipelineOptimizer(object):
                 if not core.grad_var_suffix() in name: continue
                 param_name = name.strip(core.grad_var_suffix())
                 new_grad_name = name + "@MERGED"
+                # print(f"_rename_gradient_var_name op={op}")
                 self._rename_arg(op, name, new_grad_name)
 
     def _accumulate_gradients(self,
@@ -5314,7 +5315,7 @@ class PipelineOptimizer(object):
                 in_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]
                 if out_name.strip('@GRAD') in self._param_device_map:
-                    assert in_name.replace('.cast_fp16', '') == out_name
+                    #assert in_name.replace('.cast_fp16', '') == out_name
                     block._remove_op(index)
                     continue
 
@@ -5338,7 +5339,7 @@ class PipelineOptimizer(object):
                     merged_param_grad_name = param_grad_name + merged_suffix
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
-                                         merged_param_grad_name, dtype)
+                                         merged_param_grad_name, paddle.float32) #dtype)
                     assert block.has_var(merged_param_grad_name)
 
                     param_grad_var = block.var(param_grad_name)
@@ -5364,8 +5365,10 @@ class PipelineOptimizer(object):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
 
-                    is_fp16_grad = 'cast_fp16' in grad_name
+                    is_fp16_grad = (grad_var.dtype == paddle.bfloat16) or (grad_var.dtype == paddle.float16)  #'cast_fp16' in grad_name
                     need_cast = (is_fp16_grad is not fp16_allreduce)
+
+                    #print(f"dtype={dtype}, grad_name={grad_name}, fp16_allreduce={fp16_allreduce}, need_cast={need_cast}, param_grad_name={param_grad_name}")
 
                     if need_cast:
                         # if fp16_allreduce:
@@ -5374,7 +5377,7 @@ class PipelineOptimizer(object):
                         #     cast grad to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
                         cast_grad_var = self._create_var(
-                            block, param_grad_var, cast_grad_var_name, dtype)
+                            block, param_grad_var, cast_grad_var_name, paddle.float32) #dtype)
                         cast_grad_var.persistable = False
                         block._insert_op(index=first_opt_op_idx + offset,
                                          type='cast',

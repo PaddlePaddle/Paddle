@@ -72,8 +72,8 @@ def _squared_l2_norm(x):
     x = _cast_to_mp_type_if_enabled(x)
     if (
         core.is_compiled_with_xpu()
-        or x.dtype == core.VarDesc.VarType.FP16
-        or x.dtype == core.VarDesc.VarType.BF16
+        #or x.dtype == core.VarDesc.VarType.FP16
+        #or x.dtype == core.VarDesc.VarType.BF16
     ):
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
@@ -91,6 +91,7 @@ def _squared_l2_norm(x):
 
     inputs = {"X": x}
     outputs = {'Out': out}
+    # print(f"squared l2 norm X={x}, out={out}")
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
 
@@ -691,11 +692,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (
-                        scale_var.astype(g.dtype)
-                        if scale_var.dtype != g.dtype
-                        else scale_var
-                    )
+                    #scale_input = (
+                    #    scale_var.astype(new_g.dtype)
+                    #    if scale_var.dtype != new_g.dtype
+                    #    else scale_var
+                    #)
+                    scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
