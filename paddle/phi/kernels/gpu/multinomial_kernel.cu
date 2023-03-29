@@ -183,20 +183,23 @@ void MultinomialKernel(const Context& dev_ctx,
   DenseTensor sum_rows_tensor;
   sum_rows_tensor.Resize({num_distributions});
   auto* sum_rows_data = dev_ctx.template Alloc<MT>(&sum_rows_tensor);
-
   auto& place = *dev_ctx.eigen_device();
 
   if (num_distributions == 1) {
     auto eigen_input = EigenVector<T>::Flatten(x);
-    auto eigen_sum_rows = EigenVector<T>::Flatten(sum_rows_tensor);
+    auto eigen_sum_rows = EigenVector<MT>::Flatten(sum_rows_tensor);
     eigen_sum_rows.device(place) =
         eigen_input.sum(Eigen::DSizes<int, 1>(1))
+            .template cast<MT>()
             .eval()
-            .reshape(Eigen::DSizes<int, 1>(sum_rows_tensor.dims()[0]));
+            .template cast<MT>()
+            .reshape(Eigen::DSizes<int, 1>(sum_rows_tensor.dims()[0]))
+            .template cast<MT>();
   } else {
     auto eigen_input = EigenMatrix<T>::From(x);
-    auto eigen_sum_rows = EigenVector<T>::Flatten(sum_rows_tensor);
-    eigen_sum_rows.device(place) = eigen_input.sum(Eigen::DSizes<int, 1>(1));
+    auto eigen_sum_rows = EigenVector<MT>::Flatten(sum_rows_tensor);
+    eigen_sum_rows.device(place) =
+        eigen_input.sum(Eigen::DSizes<int, 1>(1)).template cast<MT>();
   }
   // Normalize row of each distribution to get the probability in range [0,
   // 1].
@@ -204,7 +207,8 @@ void MultinomialKernel(const Context& dev_ctx,
   DenseTensor norm_probs_tensor;
   norm_probs_tensor.Resize({num_distributions, num_categories});
   auto* norm_probs_data = dev_ctx.template Alloc<MT>(&norm_probs_tensor);
-
+  std::cout << "XYY Debug == line 211, norm_probs_tensor.dtype() is : "
+            << norm_probs_tensor.dtype() << std::endl;
   // number of threads in a block is min(num_categories, 512)
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
@@ -222,7 +226,6 @@ void MultinomialKernel(const Context& dev_ctx,
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
   auto* cumulative_probs_data =
       dev_ctx.template Alloc<MT>(&cumulative_probs_tensor);
-
   // 'phi::funcs::InclusiveScan' has higher accuracy than
   // 'thrust::inclusive_scan'
   funcs::InclusiveScan<MT, std::plus<MT>>(
