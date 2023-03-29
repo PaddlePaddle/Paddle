@@ -31,13 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/utils/pybind.h"
 
-// see https://bugs.python.org/issue35886
-#if PY_VERSION_HEX >= 0x03080000
-#define Py_BUILD_CORE
-#include "internal/pycore_pystate.h"
-#undef Py_BUILD_CORE
-#endif
-
 namespace py = pybind11;
 
 namespace paddle {
