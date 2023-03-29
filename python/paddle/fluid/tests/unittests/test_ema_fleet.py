@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
-import paddle.utils as utils
+from paddle import static, utils
 
 
 def gen_data():

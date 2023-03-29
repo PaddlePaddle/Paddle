@@ -16,8 +16,9 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+import paddle
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -285,6 +286,67 @@ def pool2D_forward_naive(
     return out
 
 
+def pool2d_wrapper_not_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    tmp = X._use_gpudnn(False)
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        tmp,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
+def pool2d_wrapper_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        X,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
 class TestPool2D_Op_Mixin:
     def setUp(self):
         self.op_type = "pool2d"
@@ -337,6 +399,11 @@ class TestPool2D_Op_Mixin:
 
         self.outputs = {'Out': output}
 
+        if self.use_cudnn:
+            self.python_api = pool2d_wrapper_use_cudnn
+        else:
+            self.python_api = pool2d_wrapper_not_use_cudnn
+
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
@@ -358,14 +425,14 @@ class TestPool2D_Op_Mixin:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
             )
         elif self.pool_type != "max":
             self.check_grad(
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
@@ -524,7 +591,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
@@ -565,7 +632,7 @@ def create_test_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
@@ -864,10 +931,10 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00
             )
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):

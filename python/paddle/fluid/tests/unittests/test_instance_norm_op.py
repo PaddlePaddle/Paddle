@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.dygraph import to_variable
 
 
@@ -222,14 +221,14 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
 
 
 class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
     def init_test_case(self):
         self.shape = [20, 50, 4, 5]
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
 
 

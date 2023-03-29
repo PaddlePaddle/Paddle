@@ -114,6 +114,16 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
+
+    PADDLE_ENFORCE_LT(0,
+                      N,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+    PADDLE_ENFORCE_LT(0,
+                      C,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+
     const T *batch_size_in =
         ctx.Input<phi::DenseTensor>("BatchSize")->data<T>();
     const T *batch_sum_in = ctx.Input<phi::DenseTensor>("BatchSum")->data<T>();

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 

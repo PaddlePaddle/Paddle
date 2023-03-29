@@ -357,7 +357,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         assert quant_acc1 - int8_acc1 <= threshold
 
     def _strings_from_csv(self, string):
-        return set(s.strip() for s in string.split(','))
+        return {s.strip() for s in string.split(',')}
 
     def _ints_from_csv(self, string):
         return set(map(int, string.split(',')))
@@ -387,7 +387,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 test_case_args.ops_to_quantize
             )
 
-        self._op_ids_to_skip = set([-1])
+        self._op_ids_to_skip = {-1}
         if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = self._ints_from_csv(
                 test_case_args.op_ids_to_skip

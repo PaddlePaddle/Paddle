@@ -108,25 +108,28 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
+      "layernorm_shift_partition_fuse_pass",          //
+      "merge_layernorm_fuse_pass",                    //
+#if !defined _WIN32
+      "split_layernorm_to_math_ops_pass",  //
+#endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "layernorm_shift_partition_fuse_pass",  //
-      "merge_layernorm_fuse_pass",            //
-      "preln_residual_bias_fuse_pass",        //
-      "preln_layernorm_x_fuse_pass",          //
-      "reverse_roll_fuse_pass",               //
-      "conv_bn_fuse_pass",                    //
-      "unsqueeze2_eltwise_fuse_pass",         //
-      "trt_squeeze2_matmul_fuse_pass",        //
-      "trt_flatten2_matmul_fuse_pass",        //
-      "trt_map_matmul_v2_to_mul_pass",        //
-      "trt_map_matmul_v2_to_matmul_pass",     //
-      "trt_map_matmul_to_mul_pass",           //
-      "fc_fuse_pass",                         //
-      "conv_elementwise_add_fuse_pass",       //
+      "preln_residual_bias_fuse_pass",     //
+      "preln_layernorm_x_fuse_pass",       //
+      "reverse_roll_fuse_pass",            //
+      "conv_bn_fuse_pass",                 //
+      "unsqueeze2_eltwise_fuse_pass",      //
+      "trt_squeeze2_matmul_fuse_pass",     //
+      "trt_flatten2_matmul_fuse_pass",     //
+      "trt_map_matmul_v2_to_mul_pass",     //
+      "trt_map_matmul_v2_to_matmul_pass",  //
+      "trt_map_matmul_to_mul_pass",        //
+      "fc_fuse_pass",                      //
+      "conv_elementwise_add_fuse_pass",    //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trans_layernorm_fuse_pass",             //
@@ -427,7 +430,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("constant_folding_pass");
     passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
@@ -482,6 +484,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
+    passes_.push_back("constant_folding_pass");
   }
   use_mkldnn_int8_ = true;
 #else
@@ -517,13 +520,18 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
       "identity_scale_op_clean_pass",
+      "delete_op_device_pass",
+      "constant_folding_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
+      "one_beam_size_fuse_pass",
+      "stack_fuse_pass",
+      "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_op_device_pass",
+      "inplace_op_var_pass",
       "delete_isolated_node_pass",
   });
   use_xpu_ = true;

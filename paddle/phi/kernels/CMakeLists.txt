@@ -29,6 +29,8 @@ set(COMMON_KERNEL_DEPS
     sparse_coo_tensor
     sparse_csr_tensor
     tensor_array
+    int_array
+    scalar
     kernel_context
     kernel_factory
     arg_map_context
@@ -47,7 +49,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
@@ -79,11 +81,12 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
+
 if(WITH_FLASHATTN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
 endif()
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
                          nccl_comm_context)
@@ -101,6 +104,7 @@ file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
+# fusion ops would be included here
 file(
   GLOB
   kernel_cu
@@ -121,8 +125,24 @@ if(WITH_CUTLASS)
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}"
+    RESULT_VARIABLE memory_efficient_attention_gen_res)
+
+  if(NOT memory_efficient_attention_gen_res EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The memory efficient attention kernel generation errors with NVCC_ARCH_BIN=${NVCC_ARCH_BIN}"
+    )
+  endif()
+
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
-       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu"
+       "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
+  add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
@@ -174,6 +194,9 @@ set(ADD_PHI_KERNELS phi_cpu)
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
     add_library(phi_gpu ${kernel_cu})
+    if(WITH_CUTLASS)
+      add_dependencies(phi_gpu cutlass_codegen)
+    endif()
   elseif(WITH_ROCM)
     hip_add_library(phi_gpu STATIC ${kernel_cu})
   endif()

@@ -1172,7 +1172,7 @@ def _get_split_indices(
             split_indices_list = partition_index
     split_indices_list = list(
         map(
-            lambda x, y: list(set(x) - set([y]) - set([0])),
+            lambda x, y: list(set(x) - {y} - {0}),
             split_indices_list,
             complete_shape,
         )
@@ -1790,7 +1790,9 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
         return
     # Third, print error infomation if we cannot find the original id
     else:
-        assert False, "Cannot find the original id in the distributed context"
+        raise AssertionError(
+            "Cannot find the original id in the distributed context"
+        )
 
 
 def to_list(value):

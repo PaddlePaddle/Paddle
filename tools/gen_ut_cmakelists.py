@@ -15,6 +15,7 @@
 import argparse
 import os
 import re
+import sys
 
 # port range (21200, 23000) is reserved for dist-ops
 
@@ -207,7 +208,7 @@ def _process_run_type(run_type):
 class DistUTPortManager:
     def __init__(self, ignore_dirs=[]):
         self.dist_ut_port = 21200
-        self.assigned_ports = dict()
+        self.assigned_ports = {}
         self.last_test_name = ""
         self.last_test_cmake_file = ""
         self.no_cmake_dirs = []
@@ -556,7 +557,7 @@ class CMakeGenerator:
                     print(e)
                     print(f"[ERROR FILE]: {current_work_dir}/testslist.csv")
                     print(f"[ERROR LINE {i+1}]: {line.strip()}")
-                    exit(1)
+                    sys.exit(1)
 
         for sub in sub_dirs:
             cmds += f"add_subdirectory({sub})\n"

@@ -91,8 +91,9 @@ class TransferLayoutFunctor {
           phi::funcs::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(in_layout);
         }
-
-        auto out_tz = phi::vectorize<int64_t>(out_tensor.dims());
+        auto out_tz = out_tensor.dims().size() == 0
+                          ? std::vector<int64_t>{1}
+                          : phi::vectorize(out_tensor.dims());
         dnnl::memory::data_type in_type =
             phi::funcs::ToOneDNNDataType(in_tensor.dtype());
 

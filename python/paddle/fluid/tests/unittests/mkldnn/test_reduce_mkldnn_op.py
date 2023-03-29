@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     skip_check_grad_ci,
@@ -33,12 +33,12 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
@@ -108,7 +108,7 @@ class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-        self.attrs = {'dim': tuple(), 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'dim': (), 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.copy(self.inputs['X'])}
 
 

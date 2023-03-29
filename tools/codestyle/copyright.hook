@@ -116,7 +116,7 @@ def main(argv=None):
     for path in args.filenames:
         comment_mark = _get_comment_mark(path)
         if comment_mark is None:
-            print("warning:Unsupported file", path, file=sys.stderr)
+            #print("warning:Unsupported file", path, file=sys.stderr)
             continue
 
         if _check_copyright(path):

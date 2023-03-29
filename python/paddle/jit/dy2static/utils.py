@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
 import atexit
 import builtins
 import copy
@@ -32,18 +31,29 @@ import astor
 import numpy as np
 
 import paddle
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.utils import gast
 
+from .ast_utils import ast_to_source_code
+from .static_analysis import StaticAnalysisVisitor
+from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
+from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
+from .utils_helper import PADDLE_MODULE_PREFIX  # noqa: F401
+from .utils_helper import NodeVarType  # noqa: F401
+from .utils_helper import _is_api_in_module_helper  # noqa: F401
+from .utils_helper import index_in_list  # noqa: F401
+from .utils_helper import is_api_in_module  # noqa: F401
+from .utils_helper import is_dygraph_api  # noqa: F401
+from .utils_helper import is_numpy_api  # noqa: F401;
+from .utils_helper import is_paddle_api  # noqa: F401
+
 __all__ = []
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
-PADDLE_MODULE_PREFIX = 'paddle.'
-DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
-DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.jit.dy2static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
 ALREADY_D2S = '__already_d2s'
@@ -250,56 +260,10 @@ def make_hashable(x, error_msg=None):
     return x
 
 
-def _is_api_in_module_helper(obj, module_prefix):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith(module_prefix)
-
-
-def is_api_in_module(node, module_prefix):
-    assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-
-    # Python can have gast.Call as function, for example: covert_call(func)(x)
-    # We only check the most outside function
-    func_node = node.func
-    while isinstance(func_node, gast.Call):
-        func_node = func_node.func
-
-    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
-    try:
-        import paddle  # noqa: F401
-        import paddle.fluid as fluid  # noqa: F401
-        import paddle.fluid.dygraph as dygraph  # noqa: F401
-        import paddle.fluid.layers as layers  # noqa: F401
-        import paddle.jit.dy2static as _jst  # noqa: F401
-        from paddle import to_tensor  # noqa: F401
-        from paddle.fluid.dygraph import to_variable  # noqa: F401
-
-        return eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
-        )
-    except Exception:
-        return False
-
-
-def is_dygraph_api(node):
-
-    # Note: A api in module dygraph_to_static is not a real dygraph api.
-    if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
-        return False
-
-    # TODO(liym27): A better way to determine whether it is a dygraph api.
-    #  Consider the decorator @dygraph_only
-    return is_api_in_module(node, DYGRAPH_MODULE_PREFIX)
-
-
-def is_paddle_api(node):
-    return is_api_in_module(node, PADDLE_MODULE_PREFIX)
-
-
 # NOTE(Aurelius84): Consider the following paddle inner API as common case to
 # apply @to_static code transformation as usual. Because they contains
 # user-defined layer, like paddle.distributed.auto_parallel.helper.ProxyLayer.
-AS_NOT_INNER_FUNC_LIST = set()
+AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
 
 
 def as_not_paddle_func(path):
@@ -327,39 +291,18 @@ def is_paddle_func(func, ignore_white_list=True):
             func = func.func
 
         func_name = getattr(func, '__name__', None)
-        # In case of dynamically monkey patch customised function
-        # into paddle class obj, so we consider its class module
-        # path as prefix.
-        if hasattr(func, "__self__"):
-            func = func.__self__
-            func_name = func.__class__.__name__
-        elif inspect.ismethod(func):
+        if inspect.ismethod(func):
+            func_name = func.__self__.__class__.__name__
             func = func.__func__
+        elif hasattr(func, '__class__'):  # for nn.Sequential
+            func_name = func.__class__.__name__
 
         m = inspect.getmodule(func)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
         if ignore_white_list:
             flag = flag and not in_white_list(m, func_name)
+
         return flag
-    except Exception:
-        return False
-
-
-# Is numpy_api cannot reuse is_api_in_module because of numpy module problem
-def is_numpy_api(node):
-    assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
-    try:
-        import numpy as np  # noqa: F401
-
-        module_result = eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
-        )
-        # BUG: np.random.uniform doesn't have module and cannot be analyzed
-        # TODO: find a better way
-        return module_result or (
-            func_str.startswith("numpy.") or func_str.startswith("np.")
-        )
     except Exception:
         return False
 
@@ -367,7 +310,6 @@ def is_numpy_api(node):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -448,10 +390,9 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+        "issubclass({}, paddle.nn.Layer)".format(class_src)
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -562,14 +503,6 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     return func_def_node
 
 
-def index_in_list(array_list, item):
-    try:
-        return array_list.index(item)
-    except ValueError:
-        # Item not in array_list
-        return -1
-
-
 def create_assign_node(name, node):
     """
     Creates a `gast.Assign` node by given name_id as target and node as value.
@@ -644,7 +577,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
-        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func = module.__i_m_p_l__
         callable_func.__name__ = func_name
     elif hasattr(module, func_name):
         callable_func = getattr(module, func_name)
@@ -709,26 +642,6 @@ def func_to_source_code(function, dedent=True):
     if dedent:
         source_code = textwrap.dedent(source_code)
 
-    return source_code
-
-
-def ast_to_source_code(ast_node):
-    """
-    Transforms ast node into source code.
-    """
-    if not isinstance(ast_node, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s."
-            % type(ast_node)
-        )
-    if isinstance(ast_node, gast.AST):
-        ast_node = gast.gast_to_ast(ast_node)
-
-    # Do not wrap lines even if they are too long
-    def pretty_source(source):
-        return ''.join(source)
-
-    source_code = astor.to_source(ast_node, pretty_source=pretty_source)
     return source_code
 
 
@@ -809,8 +722,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         )
         self.ast_root = ast_node
         if static_analysis_visitor is None:
-            from .static_analysis import StaticAnalysisVisitor
-
             static_analysis_visitor = StaticAnalysisVisitor(ast_node)
         self.static_analysis_visitor = static_analysis_visitor
         self.node_to_wrapper_map = (
@@ -945,8 +856,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def _is_node_with_tensor(self, node, name_id):
-        from paddle.jit.dy2static.static_analysis import NodeVarType
-
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
             if name_id and isinstance(name_id, str):
@@ -1212,11 +1121,11 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _reset_name_scope(self, node):
         # always reset the node as empty namescope.
-        setattr(node, "pd_scope", NameScope())
+        node.pd_scope = NameScope()
 
     def _get_name_scope(self, node):
         if not hasattr(node, "pd_scope"):
-            setattr(node, "pd_scope", NameScope())
+            node.pd_scope = NameScope()
         return node.pd_scope
 
     def _current_name_scope(self):
@@ -1316,11 +1225,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             )
 
         def pre_func():
-            setattr(
-                node,
-                "before_created",
-                self._nearest_function_scope().existed_vars(),
-            )
+            node.before_created = self._nearest_function_scope().existed_vars()
 
         self._visit_scope_node(node, pre_func, post_func)
 
@@ -1500,7 +1405,7 @@ class GetterSetterHelper:
             names = []
         vars = self.getter()
         if vars is None:
-            return tuple()
+            return ()
         for n in names:
             assert (
                 n in self.name2id

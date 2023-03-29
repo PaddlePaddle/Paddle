@@ -18,12 +18,12 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 
 
-class RecurrentTest(fluid.Layer):
+class RecurrentTest(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

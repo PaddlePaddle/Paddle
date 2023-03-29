@@ -18,11 +18,12 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
+from paddle.nn.layer import layers
 
 from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
@@ -107,15 +108,6 @@ class LazyInitialized:
         return val
 
 
-def _change_is_test_status(program, is_test):
-    # change all `is_test` attributes
-    for block in program.blocks:
-        for op in block.ops:
-            if op.has_attr('is_test'):
-                op._set_attr('is_test', is_test)
-    return program
-
-
 class ProgramInfo:
     """
     A helper class to recoder Program information
@@ -141,6 +133,17 @@ class ProgramInfo:
             self.op_size[key] = infer_prog.desc.block(0).op_size()
 
         return self.programs[key], self.op_size[key]
+
+
+class PartialProgramLayerHook:
+    def before_append_backward(self, forward_program):
+        ...
+
+    def after_append_backward(self, whole_program, backward_start_idx):
+        ...
+
+    def after_infer(self, infer_program):
+        ...
 
 
 class PartialProgramLayer:
@@ -182,6 +185,7 @@ class PartialProgramLayer:
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
+        self._forward_end_index_map = {}
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
@@ -195,6 +199,7 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
+        self._hooker = None
 
     def __call__(self, inputs):
         """
@@ -217,6 +222,9 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def set_hooker(self, hooker):
+        self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if use_scope_cache:
@@ -242,7 +250,12 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
-            return self._origin_main_program.clone(for_test=is_infer_mode)
+            infer_program = self._origin_main_program.clone(
+                for_test=is_infer_mode
+            )
+            if self._hooker:
+                infer_program = self._hooker.after_infer(infer_program)
+            return infer_program
         else:
             train_program = self._append_backward_desc(
                 self._origin_main_program
@@ -275,11 +288,9 @@ class PartialProgramLayer:
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
 
-        core.check_and_set_prim_all_enabled()
-        from paddle.incubate.autograd.primapi import to_prim
-
-        to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
+            if self._hooker:
+                pure_fp16_program = self._hooker.after_infer(pure_fp16_program)
             return pure_fp16_program
         else:
             train_pure_fp16_program = self._append_backward_desc(
@@ -291,7 +302,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        _, forward_end_op_index = self._infer_info('fp32', self._create_program)
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -301,9 +312,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
         whole_program = self._train_amp_program
-        _, forward_end_op_index = self._infer_info(
-            'amp', self._create_amp_program
-        )
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -313,9 +322,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
         whole_program = self._train_pure_fp16_program
-        _, forward_end_op_index = self._infer_info(
-            'fp16', self._create_pure_fp16_program
-        )
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -412,11 +419,16 @@ class PartialProgramLayer:
     def _param_grad_names(self):
         return _param_grad_names(self._train_program.desc, self._params)
 
+    def get_forward_end_op_idx(self, program):
+        return self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ]
+
     @LazyInitialized
     def _out_grad_names(self):
         return _out_grad_names(
             self._train_program.desc,
-            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
+            self.get_forward_end_op_idx(self._train_program),
             len(self._outputs.var_ids),
         )
 
@@ -435,8 +447,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -454,8 +464,6 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._train_amp_program
         elif _in_pure_fp16_guard():
@@ -465,8 +473,6 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -476,8 +482,6 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -491,8 +495,6 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -607,22 +609,32 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        # make sure all status of is_test are False in train mode.
-        program = _change_is_test_status(main_program.clone(), is_test=False)
+        program = main_program.clone(for_test=False)
+        if self._hooker:
+            program = self._hooker.before_append_backward(program)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
+        start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
+            start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
+            if self._hooker:
+                program, start_idx = self._hooker.after_append_backward(
+                    program, start_idx
+                )
+            self.prepare_gradient_aggregation(
+                start_idx + 1, main_program, program
+            )
 
-        self.prepare_gradient_aggregation(start_idx, main_program, program)
-
+        self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ] = start_idx - len(self._outputs.tolist())
         return program
 
     def _prune_unused_params(self, program):
@@ -677,8 +689,6 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
-        from paddle.amp.auto_cast import _in_pure_fp16_guard
-
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name
@@ -701,6 +711,7 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+
         if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
@@ -1116,8 +1127,13 @@ def add_build_strategy_for(
         )
         ir_graph = framework.IrGraph(compiled_program._graph)
         builded_program = ir_graph.to_program()
-        if hasattr(compiled_program._program, 'lr_sheduler'):
-            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+        if hasattr(compiled_program._program, 'lr_scheduler'):
+            builded_program.lr_scheduler = (
+                compiled_program._program.lr_scheduler
+            )
     else:
-        builded_program = program
+        # can't just create a new program, we need copy the vardesc.
+        builded_program = paddle.static.Program()
+        for var in program.block(0).vars.values():
+            builded_program.block(0)._clone_variable(var, False)
     return builded_program
