@@ -520,15 +520,18 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
       "identity_scale_op_clean_pass",
+      "delete_op_device_pass",
+      "constant_folding_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "one_beam_size_fuse_pass",
+      "stack_fuse_pass",
       "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_op_device_pass",
+      "inplace_op_var_pass",
       "delete_isolated_node_pass",
   });
   use_xpu_ = true;
