@@ -334,7 +334,7 @@ def slice(input, axes, starts, ends):
                 for item in starts
             ]
         elif isinstance(starts, tmp_tensor_type):
-            tensor_t = starts.numpy()
+            tensor_t = starts.numpy(False)
             starts = [ele for ele in tensor_t]
             infer_flags = [-1 for i in range(len(axes))]
 
@@ -344,7 +344,7 @@ def slice(input, axes, starts, ends):
                 for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
-            tensor_t = ends.numpy()
+            tensor_t = ends.numpy(False)
             ends = [ele for ele in tensor_t]
             infer_flags = [-1 for i in range(len(axes))]
 

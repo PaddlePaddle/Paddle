@@ -38,7 +38,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-1, 1))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -632,7 +632,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
 
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random((10000)).astype(dtype)
+        np_array = numpy.random.random(10000).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,

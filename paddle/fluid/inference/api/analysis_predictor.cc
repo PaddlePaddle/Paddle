@@ -1201,6 +1201,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
+  argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1208,7 +1209,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetUseXpu(config_.use_xpu_);
     argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     argument_->SetXpuLocked(config_.xpu_locked_);
     argument_->SetXpuAutotune(config_.xpu_autotune_);
@@ -1316,7 +1316,7 @@ void AnalysisPredictor::PrepareArgument() {
   // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
-              << ", we will use a new PassStrategy. Note that only the GPU "
+              << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
