@@ -23,7 +23,9 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/where_index_kernel.h"
 
 #define CUDA_MEM_ALIGN 256
 
@@ -123,9 +125,9 @@ size_t detectionInferenceWorkspaceSize(bool shareLocation,
   size_t wss[6];
   wss[0] = detectionForwardBBoxDataSize<T>(N, C1);
   wss[1] = detectionForwardPreNMSSize<T>(N, C2);
-  wss[2] = detectionForwardPreNMSSize<T>(N, C2);
+  wss[2] = detectionForwardPreNMSSize<int>(N, C2);
   wss[3] = detectionForwardPostNMSSize<T>(N, numClasses, topK);
-  wss[4] = detectionForwardPostNMSSize<T>(N, numClasses, topK);
+  wss[4] = detectionForwardPostNMSSize<int>(N, numClasses, topK);
   wss[5] = std::max(
       sortScoresPerClassWorkspaceSize<T>(N, numClasses, numPredsPerClass),
       sortScoresPerImageWorkspaceSize<T>(N, numClasses * topK));
@@ -652,6 +654,7 @@ __launch_bounds__(nthds_per_cta) __global__
                                  T_BBOX* nmsedScores,
                                  T_BBOX* nmsedClasses,
                                  int* nmsedIndices,
+                                 int* nmsedValidMask,
                                  bool clipBoxes,
                                  const T_SCORE scoreShift) {
   if (keepTopK > topK) return;
@@ -671,6 +674,7 @@ __launch_bounds__(nthds_per_cta) __global__
       nmsedBoxes[i * 4 + 2] = 0;
       nmsedBoxes[i * 4 + 3] = 0;
       nmsedIndices[i] = -1;
+      nmsedValidMask[i] = 0;
     } else {
       const int bboxOffset =
           imgId *
@@ -697,6 +701,7 @@ __launch_bounds__(nthds_per_cta) __global__
       // clipped bbox ymax
       nmsedBoxes[i * 4 + 3] = clipBoxes ? saturate(yMax) : yMax;
       nmsedIndices[i] = bboxId >> 2;
+      nmsedValidMask[i] = 1;
       atomicAdd(&numDetections[i / keepTopK], 1);
     }
   }
@@ -718,6 +723,7 @@ void gatherNMSOutputs_gpu(cudaStream_t stream,
                           void* nmsedScores,
                           void* nmsedClasses,
                           void* nmsedIndices,
+                          void* nmsedValidMask,
                           bool clipBoxes,
                           const float scoreShift) {
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -739,6 +745,7 @@ void gatherNMSOutputs_gpu(cudaStream_t stream,
                               reinterpret_cast<T_BBOX*>(nmsedScores),
                               reinterpret_cast<T_BBOX*>(nmsedClasses),
                               reinterpret_cast<int*>(nmsedIndices),
+                              reinterpret_cast<int*>(nmsedValidMask),
                               clipBoxes,
                               T_SCORE(scoreShift));
 
@@ -810,6 +817,7 @@ void nmsInference(cudaStream_t stream,
                   void* nmsedScores,
                   void* nmsedClasses,
                   void* nmsedIndices,
+                  void* nmsedValidMask,
                   void* workspace,
                   bool isNormalized,
                   bool confSigmoid,
@@ -833,13 +841,13 @@ void nmsInference(cudaStream_t stream,
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
       scores, confData, totalScoresSize, cudaMemcpyDeviceToDevice, stream));
 
-  size_t indicesSize = detectionForwardPreNMSSize<T>(N, perBatchScoresSize);
+  size_t indicesSize = detectionForwardPreNMSSize<int>(N, perBatchScoresSize);
   void* indices =
       nextWorkspacePtr(reinterpret_cast<int8_t*>(scores), totalScoresSize);
 
   size_t postNMSScoresSize =
       detectionForwardPostNMSSize<T>(N, numClasses, topK);
-  size_t postNMSIndicesSize = detectionForwardPostNMSSize<T>(
+  size_t postNMSIndicesSize = detectionForwardPostNMSSize<int>(
       N, numClasses, topK);  // indices are full int32
   void* postNMSScores =
       nextWorkspacePtr(reinterpret_cast<int8_t*>(indices), indicesSize);
@@ -911,6 +919,7 @@ void nmsInference(cudaStream_t stream,
                              nmsedScores,
                              nmsedClasses,
                              nmsedIndices,
+                             nmsedValidMask,
                              clipBoxes,
                              scoreShift);
 }
@@ -930,7 +939,6 @@ void MultiClassNMSGPUKernel(const Context& ctx,
                             DenseTensor* out,
                             DenseTensor* index,
                             DenseTensor* nms_rois_num) {
-  VLOG(3) << "MultiClassNMSGPUKernel";
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
   auto score_dims = scores.dims();
@@ -1002,6 +1010,21 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   const bool share_location = true;
   auto stream = reinterpret_cast<const Context&>(ctx).stream();
 
+  PADDLE_ENFORCE_LE(nms_top_k,
+                    num_priors,
+                    paddle::platform::errors::InvalidArgument(
+                        "Expect nms_top_k (%d)"
+                        " <= num of boxes per batch (%d).",
+                        nms_top_k,
+                        num_priors));
+  PADDLE_ENFORCE_LE(
+      keep_top_k,
+      nms_top_k,
+      paddle::platform::errors::InvalidArgument("Expect keep_top_k (%d)"
+                                                " <= nms_top_k (%d).",
+                                                keep_top_k,
+                                                nms_top_k));
+
   // bboxes: [N,M,4] -> [N,1,M,4]
   DenseTensor transformed_bboxes(bboxes.type());
   transformed_bboxes.ShareDataWith(bboxes).Resize(
@@ -1023,13 +1046,11 @@ void MultiClassNMSGPUKernel(const Context& ctx,
 
   DenseTensor nmsed_indices(DataType::INT32);
   nmsed_indices.Resize({batch_size * keep_top_k, 1});
-  if (return_index) {
-    index->Resize({batch_size * keep_top_k, 1});
-    ctx.template Alloc<int>(index);
-    nmsed_indices.ShareDataWith(*index);
-  } else {
-    ctx.template Alloc<int>(&nmsed_indices);
-  }
+  ctx.template Alloc<int>(&nmsed_indices);
+
+  DenseTensor nmsed_valid_mask(DataType::INT32);
+  nmsed_valid_mask.Resize({batch_size * keep_top_k});
+  ctx.template Alloc<int>(&nmsed_valid_mask);
 
   DenseTensor nmsed_boxes(bboxes.dtype());
   DenseTensor nmsed_scores(scores.dtype());
@@ -1073,6 +1094,7 @@ void MultiClassNMSGPUKernel(const Context& ctx,
                   nmsed_scores.data<T>(),
                   nmsed_classes.data<T>(),
                   nmsed_indices.data<int>(),
+                  nmsed_valid_mask.data<int>(),
                   workspace_ptr,
                   normalized,
                   false,
@@ -1081,11 +1103,25 @@ void MultiClassNMSGPUKernel(const Context& ctx,
                   true);
 
   // concat
-  // out [N, M, 6]
-  out->Resize({batch_size * keep_top_k, 6});
-  ctx.template Alloc<T>(out);
+  // out [N * M, 6]
+  DenseTensor raw_out;
+  raw_out.Resize({batch_size * keep_top_k, 6});
+  ctx.template Alloc<T>(&raw_out);
   phi::funcs::ConcatFunctor<Context, T> concat;
-  concat(ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, out);
+  concat(ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
+
+  // get valid indices
+  DenseTensor valid_indices;
+  WhereIndexKernel<int, Context>(ctx, nmsed_valid_mask, &valid_indices);
+
+  const int64_t valid_samples = valid_indices.dims()[0];
+  out->Resize({valid_samples, 6});
+  ctx.template Alloc<T>(out);
+  phi::funcs::GPUGatherNd<T, int64_t>(ctx, raw_out, valid_indices, out);
+  index->Resize({valid_samples, 1});
+  ctx.template Alloc<int>(index);
+  phi::funcs::GPUGatherNd<int, int64_t>(
+      ctx, nmsed_indices, valid_indices, index);
 }
 
 }  // namespace phi

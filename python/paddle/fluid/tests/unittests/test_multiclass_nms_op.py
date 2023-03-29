@@ -870,6 +870,19 @@ class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
             )
 
 
+class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Here set 0.08 to make output box size less than keep_top_k
+        self.score_threshold = 0.08
+
+
+class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Here set 2.0 to test the case there is no outputs.
+        # In practical use, 0.0 < score_threshold < 1.0
+        self.score_threshold = 2.0
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
