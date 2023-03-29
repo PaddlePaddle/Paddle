@@ -2885,7 +2885,7 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     min.dtype,
                     'min',
-                    ['float16', 'float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
@@ -2895,13 +2895,16 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     max.dtype,
                     'max',
-                    ['float16', 'float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'clip',
         )
 
         inputs = {'X': x}

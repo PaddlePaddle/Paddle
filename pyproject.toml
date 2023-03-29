@@ -54,6 +54,7 @@ select = [
     "UP003",
     "UP004",
     "UP005",
+    "UP006",
     "UP007",
     "UP008",
     "UP009",
@@ -79,7 +80,7 @@ select = [
     # "UP031",
     # "UP032",
     "UP033",
-    # "UP034",
+    "UP034",
     "UP035",
     "UP036",
 
@@ -167,6 +168,11 @@ unfixable = [
 ]
 
 [tool.ruff.per-file-ignores]
+# Ignore unused imports in __init__.py
 "__init__.py" = ["F401"]
+# Temporarily ignore test_slice.py to avoid PR-CI-CINN failure, please fix!
+"python/paddle/fluid/tests/unittests/dygraph_to_static/test_slice.py" = ["UP034"]
+# Ignore version check in setup.py
 "setup.py" = ["UP036"]
+# Ignore unnecessary lambda in dy2st unittest test_lambda
 "python/paddle/fluid/tests/unittests/dygraph_to_static/test_lambda.py" = ["PLC3002"]
