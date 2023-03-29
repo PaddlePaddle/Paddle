@@ -388,15 +388,6 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
-- op : cumprod
-  args : (Tensor x,  int dim)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMetaCheckAxis
-  kernel :
-    func : cumprod
-  backward : cumprod_grad
-
 - op : cumsum
   args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
@@ -833,16 +824,6 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
-
-- op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction)
-  output : Tensor(out)
-  infer_meta :
-    func : KLDivInferMeta
-  kernel :
-    func : kldiv_loss
-    data_type : x
-  backward : kldiv_loss_grad
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)

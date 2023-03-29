@@ -2444,7 +2444,7 @@ class TestSoftRelu(TestActivation):
         t = np.copy(x)
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
-        out = np.log((np.exp(t) + 1))
+        out = np.log(np.exp(t) + 1)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {'threshold': threshold}

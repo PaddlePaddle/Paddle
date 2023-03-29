@@ -346,5 +346,5 @@ if __name__ == '__main__':
     # compile, install the custom op egg into site-packages under background
     # Currently custom XPU op does not support Windows
     if os.name == 'nt':
-        exit()
+        sys.exit()
     unittest.main()
