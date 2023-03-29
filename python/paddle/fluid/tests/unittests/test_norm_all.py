@@ -90,6 +90,7 @@ class TestFrobeniusNormOp(OpTest):
         self.python_api = frobenius_norm
         self.op_type = "frobenius_norm"
         self.init_test_case()
+        self.init_dtype()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
         norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
         self.reduce_all = len(self.axis) == len(self.shape)
@@ -111,6 +112,8 @@ class TestFrobeniusNormOp(OpTest):
         self.shape = [2, 3, 4, 5]
         self.axis = (1, 2)
         self.keepdim = False
+
+    def init_dtype(self):
         self.dtype = "float64"
 
 
@@ -119,6 +122,8 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.shape = [5, 5, 5]
         self.axis = (0, 1)
         self.keepdim = True
+
+    def init_dtype(self):
         self.dtype = "float32"
 
     def test_check_grad(self):
@@ -130,6 +135,7 @@ class TestPnormOp(OpTest):
         self.op_type = "p_norm"
         self.python_api = p_norm_python_api
         self.init_test_case()
+        self.init_dtype()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
         norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
         self.inputs = {'X': x}
@@ -155,8 +161,10 @@ class TestPnormOp(OpTest):
         self.epsilon = 1e-12
         self.porder = 2.0
         self.keepdim = False
-        self.dtype = "float64"
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float64"
 
     def calc_gradient(self):
         self.attrs = {
@@ -206,8 +214,10 @@ class TestPnormOp2(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = 2.0
         self.keepdim = True
-        self.dtype = "float32"
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -220,8 +230,10 @@ class TestPnormOp3(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = np.inf
         self.keepdim = True
-        self.dtype = "float32"
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
@@ -234,8 +246,10 @@ class TestPnormOp4(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = -np.inf
         self.keepdim = True
-        self.dtype = "float32"
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
@@ -248,8 +262,10 @@ class TestPnormOp5(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = 0
         self.keepdim = True
-        self.dtype = "float32"
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
@@ -262,51 +278,50 @@ class TestPnormOp6(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = 2
         self.keepdim = False
-        self.dtype = "float32"
         self.asvector = True
+
+    def init_dtype(self):
+        self.dtype = "float32"
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestPnormOpFP16(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = 1
-        self.epsilon = 1e-12
-        self.porder = 2.0
-        self.keepdim = False
-        self.dtype = "float16"
-        self.asvector = False
+def create_test_fp16_class(parent, max_relative_error=2e-3):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestPnormFP16Op(parent):
+        def init_dtype(self):
+            self.dtype = "float16"
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-3)
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
 
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', user_defined_grads=self.gradient
-            )
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    user_defined_grads=self.gradient,
+                    max_relative_error=max_relative_error,
+                )
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestPnormFP16Op.__name__ = cls_name
+    globals()[cls_name] = TestPnormFP16Op
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestPnormOpFP161(TestPnormOpFP16):
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = -1
-        self.epsilon = 1e-12
-        self.porder = 2.0
-        self.keepdim = False
-        self.dtype = "float16"
-        self.asvector = True
+create_test_fp16_class(TestPnormOp)
+create_test_fp16_class(TestPnormOp2)
+create_test_fp16_class(TestPnormOp3)
+create_test_fp16_class(TestPnormOp4)
+create_test_fp16_class(TestPnormOp5)
+create_test_fp16_class(TestPnormOp6)
 
 
 @unittest.skipIf(
@@ -353,8 +368,10 @@ class TestPnormBF16Op(OpTest):
         self.epsilon = 1e-12
         self.porder = 2.0
         self.keepdim = False
-        self.dtype = np.uint16
         self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = np.uint16
 
     def calc_gradient(self):
         self.attrs = {

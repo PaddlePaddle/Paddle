@@ -50,15 +50,15 @@ class TestWhileOp(unittest.TestCase):
         i = layers.zeros(shape=[1], dtype='int32')
         i = paddle.cast(i, 'int64')
         i.stop_gradient = True
-        array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
+        array_len = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=5)
         array_len = paddle.cast(array_len, 'int64')
         array_len.stop_gradient = True
         cond = paddle.ones(shape=[1], dtype='int32')
         cond = paddle.cast(cond, 'bool')
-        j = layers.fill_constant(shape=[1], dtype='int32', value=1)
+        j = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
         j = paddle.cast(j, 'int64')
         j.stop_gradient = True
-        array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
+        array_len2 = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=3)
         array_len2 = paddle.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
         cond2 = paddle.logical_or(x=j, y=array_len2)

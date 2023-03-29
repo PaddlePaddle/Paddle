@@ -87,8 +87,8 @@ class TestFleetBase(unittest.TestCase):
 
         meta_list = fleet._get_applied_meta_list()
         graph_list = fleet._get_applied_graph_list()
-        self.assertEqual(len(meta_list), 0)
-        self.assertEqual(len(graph_list), 1)
+        self.assertEqual(len(meta_list), 1)
+        self.assertEqual(len(graph_list), 0)
 
 
 if __name__ == "__main__":

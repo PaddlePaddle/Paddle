@@ -77,6 +77,57 @@ struct MemoryInterface {
    * @param[Allocation] allocation  the allocation to be freed
    */
   void (*allocation_deleter)(Allocation* allocation);
+
+  /**
+   * @brief   Copy memory from one place to another place.
+   *
+   * @param[Place]  DstPlace Destination allocation place (CPU or GPU or XPU or
+   * CustomDevice).
+   * @param[void*]  dst      Destination memory address.
+   * @param[Place]  SrcPlace Source allocation place (CPU or GPU or XPU or
+   * CustomDevice).
+   * @param[void*]  src      Source memory address.
+   * @param[size_t]  num      memory size in bytes to copy.
+   * @param[void*]  stream   stream for asynchronously memory copy.
+   *
+   * @note    For GPU/XPU/CustomDevice memory copy, stream need to be specified
+   *          for asynchronously memory copy, and type is restored in the
+   *          implementation.
+   *
+   */
+  void (*copy)(
+      Place dst_place, void* dst, Place src_place, const void* src, size_t num);
+  void (*copy_with_stream)(Place dst_place,
+                           void* dst,
+                           Place src_place,
+                           const void* src,
+                           size_t num,
+                           void* stream);
+
+  /**
+   * @brief get the device STAT value
+   *
+   * @param[std::string] stat_type  memory's stat type, can be 'Allocated' or
+   * 'Reserved'
+   * @param[int]stream   device id
+   */
+  int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
+                                              int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  /**
+   * @brief get the memory usage of current GPU device.
+   *
+   * @param[size_t] available  device available memory to alloc
+   * @param[size_t] total      device total memory
+   */
+  void (*gpu_memory_usage)(size_t* available, size_t* total);
+#endif
+
+  /**
+   * @brief init devices info and device context
+   */
+  void (*init_devices)();
 };
 
 class MemoryUtils {
@@ -156,6 +207,70 @@ class MemoryUtils {
     return memory_method_->allocation_deleter(allocation);
   }
 
+  void Copy(const Place& dst_place,
+            void* dst,
+            const Place& src_place,
+            const void* src,
+            size_t num,
+            void* stream) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(memory_method_->copy_with_stream,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "copy_with_stream method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
+    memory_method_->copy_with_stream(
+        dst_place, dst, src_place, src, num, stream);
+  }
+
+  void Copy(const Place& dst_place,
+            void* dst,
+            const Place& src_place,
+            const void* src,
+            size_t num) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->copy,
+        nullptr,
+        phi::errors::Unavailable("copy method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    memory_method_->copy(dst_place, dst, src_place, src, num);
+  }
+
+  int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type,
+                                       int dev_id) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->device_memory_stat_current_value,
+        nullptr,
+        phi::errors::Unavailable(
+            "device_memory_stat_current_value method in memory_method_ is not "
+            "initiazed yet. You need init it first."));
+    return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
+  }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void GpuMemoryUsage(size_t* available, size_t* total) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NOT_NULL(
+        memory_method_->gpu_memory_usage,
+        phi::errors::Unavailable(
+            "gpu_memory_usage method in memory_method_ is not initiazed "
+            "yet. You need init it first."));
+    return memory_method_->gpu_memory_usage(available, total);
+  }
+#endif
+
+  void InitDevices() {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->init_devices,
+        nullptr,
+        phi::errors::Unavailable("init_devices method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    memory_method_->init_devices();
+  }
+
   void CheckMemoryMethod() {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
@@ -198,6 +313,26 @@ bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                   const phi::Stream& stream);
 
 void AllocationDeleter(Allocation* allocation);
+
+void Copy(const Place& dst_place,
+          void* dst,
+          const Place& src_place,
+          const void* src,
+          size_t num,
+          void* stream);
+void Copy(const Place& dst_place,
+          void* dst,
+          const Place& src_place,
+          const void* src,
+          size_t num);
+
+int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void GpuMemoryUsage(size_t* available, size_t* total);
+#endif
+
+void InitDevices();
 
 }  // namespace memory_utils
 

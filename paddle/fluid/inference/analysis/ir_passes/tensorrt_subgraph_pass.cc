@@ -135,6 +135,16 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
+    for (const auto &out_var : node->Op()->OutputNames()) {
+      for (const auto &var_name : node->Op()->Output(out_var)) {
+        if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(), var_name) !=
+            trt_disabled_ops.end()) {
+          VLOG(3) << node->Op()->Type().c_str()
+                  << " is diabled by config in TensorRT";
+          return false;
+        }
+      }
+    }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
     if (!is_ok)

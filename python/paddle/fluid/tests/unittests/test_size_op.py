@@ -33,7 +33,7 @@ class TestSizeOp(OpTest):
         self.config()
         input = np.zeros(self.shape, dtype='bool')
         self.inputs = {'Input': input}
-        self.outputs = {'Out': np.array([np.size(input)], dtype='int64')}
+        self.outputs = {'Out': np.array(np.size(input), dtype='int64')}
 
     def config(self):
         pass
@@ -85,10 +85,10 @@ class TestSizeAPI(unittest.TestCase):
             )
             # TODO(zhouwei): will change shape [1] to [] to support zero-dim
             assert np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")
+                res_1, np.array(np.size(input_1)).astype("int64")
             )
             assert np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")
+                res_2, np.array(np.size(input_2)).astype("int64")
             )
 
     def test_size_imperative(self):
