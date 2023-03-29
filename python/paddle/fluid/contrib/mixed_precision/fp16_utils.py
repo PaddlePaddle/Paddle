@@ -600,15 +600,6 @@ def cast_model_to_fp16(
     return to_fp16_var_names
 
 
-def convert_float_to_uint16(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
-        otypes=[np.uint16],
-    )(in_list.flat)
-    return np.reshape(out, in_list.shape)
-
-
 def cast_parameters_to_fp16(
     place,
     program,
@@ -641,7 +632,7 @@ def cast_parameters_to_fp16(
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             if dst_type == core.VarDesc.VarType.BF16:
-                param_t.set(convert_float_to_uint16(data), place)
+                param_t.set(data.astype("uint16"), place)
             else:
                 param_t.set(np.float16(data), place)
 

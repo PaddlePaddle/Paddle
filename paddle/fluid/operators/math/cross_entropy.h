@@ -37,6 +37,20 @@ struct TolerableValue {
   }
 };
 
+template <>
+struct TolerableValue<phi::dtype::bfloat16> {
+  HOSTDEVICE phi::dtype::bfloat16 operator()(
+      const phi::dtype::bfloat16& x) const {
+    if (phi::dtype::isfinite(x)) {
+      return x;
+    } else if (x > static_cast<phi::dtype::bfloat16>(0)) {
+      return std::numeric_limits<phi::dtype::bfloat16>::max();
+    } else {
+      return std::numeric_limits<phi::dtype::bfloat16>::min();
+    }
+  }
+};
+
 // NOTE(dzh): float16 value clip behave different.
 // 1. Our ValueClipping has a  hardcore threshold 1e20
 // for float number. 1e20 will resulting in overflow in float16.
