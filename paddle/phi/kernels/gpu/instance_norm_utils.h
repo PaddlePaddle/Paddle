@@ -66,7 +66,7 @@ static __global__ void add_param(const T *input,
     __syncthreads();
 
     if (AVG) {
-      output[i] /= repeat_num;
+      output[i] = output[i] / repeat_num;
     }
   }
 }
