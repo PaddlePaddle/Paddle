@@ -46,8 +46,9 @@ class DDim;
 }  // namespace phi
 
 namespace paddle {
-
-namespace experimental {
+// TODO(chenweihang): Remove the experimental namespace for Scalar and IntArray
+using Scalar = experimental::Scalar;
+using IntArray = experimental::IntArray;
 
 class AbstractAutogradMeta {
  public:
@@ -533,22 +534,24 @@ class PADDLE_API Tensor final {
    * @return Tensor
    */
   Tensor operator+(const Tensor& other) const;
-
   Tensor operator-(const Tensor& other) const;
-
   Tensor operator*(const Tensor& other) const;
-
   Tensor operator/(const Tensor& other) const;
-
   Tensor operator+(const Scalar& other) const;
-
   Tensor operator-(const Scalar& other) const;
-
   Tensor operator*(const Scalar& other) const;
-
   Tensor operator/(const Scalar& other) const;
-
+  Tensor operator<(const Tensor& other) const;
+  Tensor operator<=(const Tensor& other) const;
+  Tensor operator==(const Tensor& other) const;
+  Tensor operator!=(const Tensor& other) const;
+  Tensor operator>(const Tensor& other) const;
+  Tensor operator>=(const Tensor& other) const;
   Tensor operator-() const;
+  Tensor operator~() const;
+  Tensor operator&(const Tensor& other) const;
+  Tensor operator|(const Tensor& other) const;
+  Tensor operator^(const Tensor& other) const;
 
   /* Part 8: Autograd methods */
 
@@ -669,6 +672,16 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor less_equal(const Tensor& y) const;
+  Tensor less_than(const Tensor& y) const;
+  Tensor equal(const Tensor& y) const;
+  Tensor not_equal(const Tensor& y) const;
+  Tensor greater_equal(const Tensor& y) const;
+  Tensor greater_than(const Tensor& y) const;
+  Tensor bitwise_and(const Tensor& y) const;
+  Tensor bitwise_or(const Tensor& y) const;
+  Tensor bitwise_xor(const Tensor& y) const;
+  Tensor bitwise_not() const;
   Tensor pow(const Tensor& y) const;
   Tensor pow(const Scalar& y) const;
 
@@ -709,5 +722,4 @@ PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
 
 PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
-}  // namespace experimental
 }  // namespace paddle

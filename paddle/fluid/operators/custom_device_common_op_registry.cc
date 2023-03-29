@@ -87,11 +87,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int8_t>,
       paddle::operators::
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
-  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
-      feed_dense_tensor,
-      device_type,
-      ALL_LAYOUT,
-      paddle::operators::FeedDenseTensorKernel<phi::CustomContext>);
 #endif
 }
 

@@ -130,9 +130,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    phi::DenseTensor beta1_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor beta2_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
@@ -284,9 +284,9 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
 
-      phi::DenseTensor one(experimental::DataType::FLOAT32);
-      phi::DenseTensor decay(experimental::DataType::FLOAT32);
-      phi::DenseTensor tmp(experimental::DataType::FLOAT32);
+      phi::DenseTensor one(phi::DataType::FLOAT32);
+      phi::DenseTensor decay(phi::DataType::FLOAT32);
+      phi::DenseTensor tmp(phi::DataType::FLOAT32);
 
       tmp.mutable_data<float>({1}, place);
       one.mutable_data<float>({1}, place);

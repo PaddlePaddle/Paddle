@@ -35,7 +35,7 @@ except ImportError:
 VOCAB_SIZE = 30522
 
 
-class Stack(object):
+class Stack:
     def __init__(self, axis=0, dtype=None):
         self._axis = axis
         self._dtype = dtype
@@ -87,7 +87,7 @@ class BertConfig:
 
 class BertLMPredictionHead(nn.Layer):
     def __init__(self, config: BertConfig, embedding_weights=None):
-        super(BertLMPredictionHead, self).__init__()
+        super().__init__()
 
         self.transform = nn.Linear(config.hidden_size, config.hidden_size)
         self.activation = getattr(nn.functional, config.hidden_act)
@@ -131,7 +131,7 @@ class BertLMPredictionHead(nn.Layer):
 
 class BertPretrainingHeads(nn.Layer):
     def __init__(self, config: BertConfig, embedding_weights=None):
-        super(BertPretrainingHeads, self).__init__()
+        super().__init__()
         self.predictions = BertLMPredictionHead(config, embedding_weights)
         self.seq_relationship = nn.Linear(config.hidden_size, 2)
 
@@ -143,7 +143,7 @@ class BertPretrainingHeads(nn.Layer):
 
 class BertEmbeddings(nn.Layer):
     def __init__(self, config: BertConfig):
-        super(BertEmbeddings, self).__init__()
+        super().__init__()
 
         self.word_embeddings = nn.Embedding(
             config.vocab_size, config.hidden_size
@@ -190,7 +190,7 @@ class BertEmbeddings(nn.Layer):
 
 class BertPooler(nn.Layer):
     def __init__(self, config: BertConfig):
-        super(BertPooler, self).__init__()
+        super().__init__()
 
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.activation = nn.Tanh()
@@ -207,8 +207,8 @@ class BertPooler(nn.Layer):
 
 
 class BertModel(nn.Layer):
-    def __init__(self, config: BertConfig):
-        super(BertModel, self).__init__()
+    def __init__(self, config: BertConfig, to_static, enable_cinn):
+        super().__init__()
         self.config = config
         self.pad_token_id = config.pad_token_id
         self.initializer_range = config.initializer_range
@@ -247,6 +247,13 @@ class BertModel(nn.Layer):
             self.encoder = nn.TransformerEncoder(
                 encoder_layer, config.num_hidden_layers
             )
+            if to_static:
+                build_strategy = paddle.static.BuildStrategy()
+                if enable_cinn:
+                    build_strategy.build_cinn_pass = True
+                self.encoder = paddle.jit.to_static(
+                    self.encoder, None, build_strategy
+                )
         self.pooler = BertPooler(config)
         # self.apply(self.init_weights)
 
@@ -364,10 +371,10 @@ class BertModel(nn.Layer):
 
 
 class Bert(nn.Layer):
-    def __init__(self):
-        super(Bert, self).__init__()
+    def __init__(self, to_static, enable_cinn):
+        super().__init__()
         config = BertConfig()
-        self.bert = BertModel(config)
+        self.bert = BertModel(config, to_static, enable_cinn)
         self.cls = BertPretrainingHeads(
             config,
             embedding_weights=self.bert.embeddings.word_embeddings.weight,
@@ -427,7 +434,7 @@ class Bert(nn.Layer):
 
 class BertPretrainingCriterion(paddle.nn.Layer):
     def __init__(self, vocab_size=VOCAB_SIZE):
-        super(BertPretrainingCriterion, self).__init__()
+        super().__init__()
         # CrossEntropyLoss is expensive since the inner reshape (copy)
         self.loss_fn = paddle.nn.loss.CrossEntropyLoss(ignore_index=-1)
         self.vocab_size = vocab_size

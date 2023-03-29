@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/multiplex_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -45,11 +45,11 @@ void MultiplexKernel(const Context& ctx,
                       ins.size(),
                       errors::PreconditionNotMet(
                           "index exceeds the number of candidate tensors."));
-    paddle::memory::Copy(ctx.GetPlace(),
-                         out->data<T>() + i * cols,
-                         ctx.GetPlace(),
-                         ins[k]->data<T>() + i * cols,
-                         cols * sizeof(T));
+    memory_utils::Copy(ctx.GetPlace(),
+                       out->data<T>() + i * cols,
+                       ctx.GetPlace(),
+                       ins[k]->data<T>() + i * cols,
+                       cols * sizeof(T));
   }
 }
 

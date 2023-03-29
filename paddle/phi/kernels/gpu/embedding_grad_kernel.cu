@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -182,12 +182,12 @@ struct EmbeddingSparseGradCUDAFunctor {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
     } else {
-      paddle::memory::Copy(gpu_place,
-                           mixv_new_rows.CUDAMutableData(gpu_place),
-                           gpu_place,
-                           ids_data,
-                           ids_num * sizeof(int64_t),
-                           stream);
+      memory_utils::Copy(gpu_place,
+                         mixv_new_rows.CUDAMutableData(gpu_place),
+                         gpu_place,
+                         ids_data,
+                         ids_num * sizeof(int64_t),
+                         stream);
     }
 
     mixv_new_rows.CopyToCPU();
@@ -211,12 +211,12 @@ struct EmbeddingSparseGradCUDAFunctor {
                           "output@Grad's shape = [%s].",
                           d_table_value->dims(),
                           d_output_dims_2d));
-    paddle::memory::Copy(gpu_place,
-                         d_table_data,
-                         gpu_place,
-                         d_output_data,
-                         d_output->numel() * sizeof(T),
-                         stream);
+    memory_utils::Copy(gpu_place,
+                       d_table_data,
+                       gpu_place,
+                       d_output_data,
+                       d_output->numel() * sizeof(T),
+                       stream);
   }
 
  private:

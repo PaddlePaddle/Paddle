@@ -121,14 +121,8 @@ using complex128 = ::phi::dtype::complex<double>;
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
 
-PD_REGISTER_KERNEL(fmax_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FMaxRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(
     fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
@@ -172,7 +166,8 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(heaviside,
                    CPU,

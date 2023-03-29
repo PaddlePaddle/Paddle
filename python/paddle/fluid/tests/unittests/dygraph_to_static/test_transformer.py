@@ -27,7 +27,7 @@ from transformer_dygraph_model import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 trainer_count = 1
 place = (
@@ -108,7 +108,7 @@ def train_static(args, batch_generator):
             # the best cross-entropy value with label smoothing
             loss_normalizer = -(
                 (1.0 - args.label_smooth_eps)
-                * np.log((1.0 - args.label_smooth_eps))
+                * np.log(1.0 - args.label_smooth_eps)
                 + args.label_smooth_eps
                 * np.log(
                     args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20
@@ -172,7 +172,7 @@ def train_static(args, batch_generator):
                     model_path = os.path.join(
                         args.save_static_model_path, "transformer"
                     )
-                    fluid.save(train_prog, model_path)
+                    paddle.static.save(train_prog, model_path)
                 break
     return np.array(avg_loss)
 
@@ -221,8 +221,7 @@ def train_dygraph(args, batch_generator):
         )
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
-            (1.0 - args.label_smooth_eps)
-            * np.log((1.0 - args.label_smooth_eps))
+            (1.0 - args.label_smooth_eps) * np.log(1.0 - args.label_smooth_eps)
             + args.label_smooth_eps
             * np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20)
         )

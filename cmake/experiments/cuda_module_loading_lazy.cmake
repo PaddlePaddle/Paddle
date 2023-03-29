@@ -45,6 +45,9 @@ if(LINUX)
       CACHE BOOL "" FORCE)
   set(CMAKE_CUDA_FLAGS "--cudart shared")
   enable_language(CUDA)
+  set(CMAKE_CUDA_COMPILER
+      "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
+      CACHE FILEPATH "" FORCE)
   execute_process(
     COMMAND "rm" "-rf" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
     COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
@@ -52,9 +55,6 @@ if(LINUX)
             "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy" "${CUDA_TOOLKIT_ROOT_DIR}")
   execute_process(COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy")
   set(CUDA_NVCC_EXECUTABLE
-      "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
-      CACHE FILEPATH "" FORCE)
-  set(CMAKE_CUDA_COMPILER
       "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
       CACHE FILEPATH "" FORCE)
 endif()

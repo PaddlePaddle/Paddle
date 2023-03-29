@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Sequential
 from paddle.optimizer import Adam

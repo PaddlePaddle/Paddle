@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -49,12 +49,10 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestGraphSendRecvMinOp(OpTest):
@@ -79,12 +77,10 @@ class TestGraphSendRecvMinOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestGraphSendRecvSumOp(OpTest):
@@ -107,10 +103,10 @@ class TestGraphSendRecvSumOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestGraphSendRecvMeanOp(OpTest):
@@ -135,10 +131,10 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):

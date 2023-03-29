@@ -21,10 +21,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.nn as nn
 import paddle.optimizer as opt
+from paddle import fluid, nn
+from paddle.fluid import framework
 from paddle.fluid.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 
@@ -235,7 +234,7 @@ class TestSaveLoadAny(unittest.TestCase):
             # paddle.save, legacy paddle.fluid.load
             self.replace_static_save(prog, path)
             self.set_zero(prog, place)
-            paddle.fluid.io.load(prog, path)
+            paddle.static.load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(
@@ -244,7 +243,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, np.array(base_t))
             # legacy paddle.fluid.save, paddle.load
-            paddle.fluid.io.save(prog, path)
+            paddle.static.save(prog, path)
             self.set_zero(prog, place)
             self.replace_static_load(prog, path)
             for var in prog.list_vars():
@@ -904,7 +903,7 @@ class TestSaveLoadToMemory(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(state_dict, '')
         with self.assertRaises(ValueError):
-            paddle.fluid.io._open_file_buffer('temp', 'b')
+            paddle.framework.io_utils._open_file_buffer('temp', 'b')
 
     def test_static_save_to_memory(self):
         paddle.enable_static()

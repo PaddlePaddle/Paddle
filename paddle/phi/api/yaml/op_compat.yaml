@@ -60,6 +60,21 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : all (reduce_all)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  manual_signature : [all]
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : allclose
   inputs :
     {x : Input, y : Other}
@@ -116,6 +131,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assign
+  backward : assign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  manual_signature : [assign, assign_grad]
+  get_expected_kernel_type :
+    assign : GetAssignExpectedKernelType
+
 - op : atan
   inputs :
     x : X
@@ -163,11 +188,19 @@
 
 - op : bicubic_interp (bicubic_interp_v2)
   backward : bicubic_interp_grad (bicubic_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear_interp (bilinear_interp_v2)
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -290,7 +323,7 @@
   backward : conv2d_grad
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
-             str mkldnn_data_type = "float32", bool force_fp32_output = false,
+             bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
@@ -365,6 +398,15 @@
   outputs :
     out : Out
 
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
+  outputs :
+    out : Out
+
 - op : cumsum
   backward: cumsum_grad
   inputs :
@@ -432,6 +474,12 @@
 - op : digamma
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op : dirichlet
+  inputs :
+    alpha : Alpha
   outputs :
     out : Out
 
@@ -697,6 +745,19 @@
 
 - op : frobenius_norm
   backward : frobenius_norm_grad
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    frobenius_norm : GetReduceExpectedKernelType
+    frobenius_norm_grad : GetReduceGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -716,6 +777,10 @@
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+
+- op : fused_transpose
+  extra :
+    attrs : [str data_format = "AnyLayout"]
 
 - op : gather
   backward : gather_grad
@@ -833,10 +898,23 @@
   outputs :
     out : Out
 
+- op : huber_loss
+  backward : huber_loss_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : imag
   backward : imag_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op : index_add
+  inputs :
+    {x : X, index : Index, add_value : AddValue}
   outputs :
     out : Out
 
@@ -912,6 +990,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
@@ -931,6 +1016,12 @@
     {label : X, prior_dist : PriorDist}
   outputs :
     out : Out
+
+- op : lamb_
+  inputs :
+    {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
+  outputs :
+    {param_out : ParamOut, moment1_out : Moment1Out, moment2_out : Moment2Out, beta1_pow_out : Beta1PowOut, beta2_pow_out : Beta2PowOut, master_param_outs : MasterParamOut}
 
 - op : layer_norm
   backward : layer_norm_grad
@@ -983,6 +1074,10 @@
 
 - op : linear_interp (linear_interp_v2)
   backward : linear_interp_grad (linear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1031,6 +1126,10 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1060,6 +1159,13 @@
     {x : X, y : Pivots}
   outputs :
     {pmat : Pmat, l : L, u : U}
+
+- op : margin_cross_entropy
+  backward : margin_cross_entropy_grad
+  inputs:
+    {logits : Logits, label : Label}
+  outputs:
+    {softmax : Softmax, loss : Loss}
 
 - op : masked_select
   inputs :
@@ -1205,6 +1311,10 @@
 
 - op : nearest_interp (nearest_interp_v2)
   backward : nearest_interp_grad (nearest_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1214,6 +1324,14 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : nms
+  inputs :
+    x : Boxes
+  outputs :
+    out : KeepBoxesIdxs
+  attrs :
+    threshold : iou_threshold
 
 - op : nonzero (where_index)
   inputs :
@@ -1233,8 +1351,25 @@
   outputs :
     size : Out
 
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
+
 - op : overlap_add
   backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : p_norm
+  backward: p_norm_grad
   inputs :
     x : X
   outputs :
@@ -1346,10 +1481,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_all
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_amax
   backward : reduce_amax_grad
@@ -1515,6 +1646,16 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : sgd_
+  inputs :
+    {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, master_param_out : MasterParamOut}
+  get_expected_kernel_type :
+    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+  extra :
+    attrs : [bool use_mkldnn=false]
+
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
@@ -1600,14 +1741,13 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
-  backward : softplus_grad
+  backward : softplus_grad, softplus_double_grad
   inputs :
     x : X
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
-             float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : softshrink
   backward : softshrink_grad
@@ -1795,11 +1935,14 @@
     perm : axis
   extra :
     outputs : [XShape]
-    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
-              str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

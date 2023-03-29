@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestDiffOp(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestDiffOp(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
                 has_pend = False
@@ -92,14 +92,14 @@ class TestDiffOp(unittest.TestCase):
                 append = None
                 if self.prepend is not None:
                     has_pend = True
-                    prepend = paddle.fluid.data(
+                    prepend = paddle.static.data(
                         name="prepend",
                         shape=self.prepend.shape,
                         dtype=self.prepend.dtype,
                     )
                 if self.append is not None:
                     has_pend = True
-                    append = paddle.fluid.data(
+                    append = paddle.static.data(
                         name="append",
                         shape=self.append.shape,
                         dtype=self.append.dtype,
@@ -226,6 +226,36 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
         self.axis = 0
         self.prepend = np.array([[0, 4, 5, 9], [5, 9, 2, 3]]).astype('float32')
         self.append = np.array([[2, 3, 4, 7], [1, 3, 5, 6]]).astype('float32')
+
+
+class TestDiffOpFp16(TestDiffOp):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([4, 4]).astype("float16")
+                x = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float16"
+                )
+                exe = paddle.static.Executor(place)
+                out = paddle.diff(
+                    x,
+                    n=self.n,
+                    axis=self.axis,
+                    prepend=self.prepend,
+                    append=self.append,
+                )
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "input": input,
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
