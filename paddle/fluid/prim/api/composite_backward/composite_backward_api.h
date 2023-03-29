@@ -1279,7 +1279,7 @@ void batch_norm_grad(const Tensor& x,
 
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
   auto dtype = x_data.dtype();
 
   switch (data_layout_) {
