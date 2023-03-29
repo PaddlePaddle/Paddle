@@ -541,11 +541,11 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "before prepare."));
+  // PADDLE_ENFORCE_EQ(
+  //     platform::IsCUDAGraphCapturing(),
+  //     false,
+  //     platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+  //                                        "before prepare."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(

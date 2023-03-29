@@ -32,13 +32,47 @@ static PyObject *eager_api_run_program(PyObject *self,
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
+    auto CUDAGraph = GetCUDAGraphPtrListFromArgs("run_program", "CUDAGraph", args, 5, true);
+    // std::vector<std::unique_ptr<paddle::operators::CUDAGraphWithInOuts>> CUDAGraph;
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     ConstructAttrMapFromPyArgs(
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    // VLOG(3) << "yoki: CUDAGraph.size0: " << CUDAGraph.size();
+    // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+    //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    // }
+    PyObject* pylist = PyTuple_GET_ITEM(args, 5);
+    /*auto callable = [&](PyObject* list) {
+      VLOG(4) << "yoki callable cuda graph";
+      VLOG(4) << "yoki args: " << args;
+      VLOG(4) << "yoki enter0";
+      // SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+      PyObject* list = PyTuple_GET_ITEM(args, 5);
+      VLOG(4) << "yoki list: " << list;
+      Py_ssize_t len = PyList_Size(list);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        VLOG(4) << "yoki: i: " << i;
+        if (CUDAGraph[i] != nullptr) {
+          VLOG(4) << "yoki to pyobject";
+          PyList_SET_ITEM(list, i, ToPyObject(CUDAGraph[i]));
+        }
+      }
+    };*/
+    run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, pylist, attrs);
+    SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+    // VLOG(3) << "yoki: CUDAGraph.size1: " << CUDAGraph.size();
+    // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+    //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    // }
+    // SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+    // VLOG(3) << "yoki: CUDAGraph.size2: " << CUDAGraph.size();
+    // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
+    //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
+    // }
+    // run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
