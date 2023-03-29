@@ -42,8 +42,8 @@ from ifelse_simple_func import (
 )
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import core
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)

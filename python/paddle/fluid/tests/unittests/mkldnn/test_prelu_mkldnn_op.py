@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -69,10 +69,10 @@ class TestPReluModeChannelOneDNNOp(OpTest):
         self.outputs = {'Out': ref_prelu(self.x, self.alpha, self.mode)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out')
+        self.check_grad(['X', 'Alpha'], 'Out', check_dygraph=False)
 
 
 class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
@@ -83,7 +83,7 @@ class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
     # Skip 'Alpha' input check because in mode = 'all' it has to be a single
     # 1D value so checking if it has at least 100 values will cause an error
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestPReluModeElementOneDNNOp(TestPReluModeChannelOneDNNOp):
@@ -158,7 +158,7 @@ def create_bf16_test_class(parent):
             self.dout = dout
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -168,6 +168,7 @@ def create_bf16_test_class(parent):
                 "Out",
                 user_defined_grads=[self.dx, self.dalpha],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                check_dygraph=False,
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")

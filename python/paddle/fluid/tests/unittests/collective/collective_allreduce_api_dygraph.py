@@ -16,7 +16,7 @@ import test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):

@@ -198,6 +198,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -1060,7 +1061,9 @@ PYBIND11_MODULE(libpaddle, m) {
              if (PyList_Check(obj) || PyTuple_Check(obj)) {
                self.EmplaceBackInputs(
                    std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else if (obj == Py_None) {  // check optional Tensor
+             } else if (obj == Py_None) {
+               // Check optional Tensor, use one un-initialized tensor to
+               // indicate both Tensor and vector<Tensor> inputs
                self.EmplaceBackInput(std::move(paddle::Tensor()));
              } else {
                self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
@@ -2856,6 +2859,12 @@ All parameter, weight, gradient are variables in Paddle.
   // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  m.def("check_numerics",
+        [](const std::string &op_name, const paddle::Tensor &tensor) {
+          VLOG(4) << "Check tensor whether has nan or inf.";
+          egr::CheckTensorHasNanOrInf(op_name, tensor);
+        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

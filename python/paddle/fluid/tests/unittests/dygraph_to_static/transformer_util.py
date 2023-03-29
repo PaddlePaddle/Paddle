@@ -19,7 +19,7 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.dataset.wmt16 as wmt16
+from paddle.dataset import wmt16
 
 
 def get_input_descs(args, mode="train"):

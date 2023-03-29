@@ -45,7 +45,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
     1. typename name
     2. typename name = default_value
     """
-    typename, rest = [item.strip() for item in s.split(" ", 1)]
+    typename, rest = (item.strip() for item in s.split(" ", 1))
     assert (
         len(typename) > 0
     ), f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
@@ -54,7 +54,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
         rest.count("=") <= 1
     ), f"There is more than 1 = in an arg in {op_name}"
     if rest.count("=") == 1:
-        name, default_value = [item.strip() for item in rest.split("=", 1)]
+        name, default_value = (item.strip() for item in rest.split("=", 1))
         assert (
             len(name) > 0
         ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
@@ -340,6 +340,7 @@ def check_op_config(op_entry, op_name):
         'no_need_buffer',
         'data_transform',
         'composite',
+        'support_dygraph_mode',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = (
