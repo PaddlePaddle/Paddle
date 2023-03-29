@@ -52,12 +52,12 @@ def linear_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, (float, int)):
+    if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, (list, tuple)):
+    elif isinstance(scale, list) or isinstance(scale, tuple):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -153,7 +153,7 @@ class TestLinearInterpOp(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -185,7 +185,7 @@ class TestLinearInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [float(self.scale)]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
@@ -267,7 +267,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -307,7 +307,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             'data_layout': self.data_layout,
         }
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
@@ -439,7 +439,7 @@ class TestResizeLinearOpUint8(OpTest):
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -467,7 +467,7 @@ class TestResizeLinearOpUint8(OpTest):
             'align_mode': self.align_mode,
         }
         if self.scale > 0:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
