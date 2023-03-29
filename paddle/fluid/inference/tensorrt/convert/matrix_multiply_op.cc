@@ -59,6 +59,8 @@ class MatrixMultiplyOpConverter : public OpConverter {
     // Temporarily solve the reformat problem of matrix multiplication, make
     // input.rank == 4. Possible solution in trt 8.7.
     if (x_rank == 2 && x_num_col_dims == 1) {
+      VLOG(3) << "Temporarily solve the reformat problem of matrix "
+                 "multiplication, make input.rank == 4. ";
       auto* reshape_before_matrix =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
       std::vector<nvinfer1::ITensor*> reshape_before_tensor;
