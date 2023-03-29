@@ -90,12 +90,12 @@ class TestAssignBFP16Op(eager_op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
