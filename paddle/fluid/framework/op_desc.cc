@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -688,10 +689,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INTS &&
       PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
-    auto attr_type =
-        is_runtime_attr
-            ? static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1)
-            : GetProtoAttr(name).type();
+    if (is_runtime_attr) {
+      attr_type =
+          static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1);
+    } else if (HasProtoAttr(name)) {
+      attr_type = GetProtoAttr(name).type();
+    }
     switch (attr_type) {
       case proto::AttrType::BOOLEANS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
@@ -761,6 +764,9 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   }
 
   attrs_ptr->operator[](name) = v;
+  VLOG(10) << "op_type: " << Type() << ", attr name: " << name
+           << " , type index: "
+           << TransToPhiDataType(this->attrs_[name].index());
   need_update_ = true;
 }
 
@@ -927,6 +933,11 @@ struct SetAttrDescVisitor {
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(double v) const { attr_->set_float64(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
+  void operator()(const paddle::experimental::Scalar &v) const {
+    auto *s = new proto::Scalar;
+    *s = make_scalar_proto(v);
+    attr_->set_allocated_scalar(s);
+  }
 
   // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
   template <class T,
@@ -978,6 +989,15 @@ struct SetAttrDescVisitor {
 
   void operator()(const std::vector<double> &v) const {
     VectorToRepeated(v, attr_->mutable_float64s());
+  }
+
+  void operator()(const std::vector<paddle::experimental::Scalar> &v) const {
+    std::vector<proto::Scalar> scalars;
+    scalars.reserve(v.size());
+    for (const auto &item : v) {
+      scalars.emplace_back(make_scalar_proto(item));
+    }
+    VectorToRepeated(scalars, attr_->mutable_scalars());
   }
 
   void operator()(paddle::blank) const {
