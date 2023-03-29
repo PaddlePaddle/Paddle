@@ -21,7 +21,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
 from paddle.jit import to_static
@@ -99,7 +99,7 @@ def _get_interp1d_bin_mask(
     return p_mask
 
 
-class Conv1D(fluid.dygraph.Layer):
+class Conv1D(paddle.nn.Layer):
     def __init__(
         self,
         prefix,
@@ -140,7 +140,7 @@ class Conv1D(fluid.dygraph.Layer):
         return x
 
 
-class BMN(fluid.dygraph.Layer):
+class BMN(paddle.nn.Layer):
     def __init__(self, cfg):
         super().__init__()
 

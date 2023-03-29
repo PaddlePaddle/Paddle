@@ -32,6 +32,7 @@ list(
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc
+  bitwise_not_op.cc
   one_hot_op.cc
   swish_op.cc
   silu_op.cc
@@ -140,7 +141,8 @@ nv_test(
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator)
+  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator
+       init_phi)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

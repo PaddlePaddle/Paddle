@@ -347,8 +347,8 @@ class DataFeeder:
             startup_program = fluid.Program()
 
             with fluid.program_guard(main_program, startup_program):
-                data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
-                data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
+                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
+                data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
                 # ...
             feeder = fluid.DataFeeder([data_1, data_2], place)
@@ -414,9 +414,9 @@ class DataFeeder:
                     for i in range(1, limit + 1):
                         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
 
-                data_1 = fluid.data(name='data_1', shape=[None, 2, 1, 3])
-                data_2 = fluid.data(name='data_2', shape=[None, 1], dtype='int64')
-                data_3 = fluid.data(name='data_3', shape=[None, 3, 3], dtype='float32')
+                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
+                data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
+                data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
                 feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
 
 
@@ -451,85 +451,6 @@ class DataFeeder:
             ret_dict[each_name] = each_converter.done()
         return ret_dict
 
-    def feed_parallel(self, iterable, num_places=None):
-        """
-        Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
-        Here :code:`iterable` is a list of python generators. The data return by each
-        generator in the list will be fed into a separate device.
-
-        Parameters:
-            iterable (list|tuple): list of user-defined python generators. The element
-                number should match the :code:`num_places`.
-            num_places (int, optional): the number of devices. If not provided (None),
-                all available devices on the machine will be used. Default None.
-
-        Returns:
-            :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs,
-            the total number of dicts will be generated matches with the :code:`num_places`
-
-        .. note::
-            The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
-
-        Example:
-            ..  code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-
-                def generate_reader(batch_size, base=0, factor=1):
-                    def _reader():
-                        for i in range(batch_size):
-                            yield np.ones([4]) * factor + base, np.ones([4]) * factor + base + 5
-                    return _reader()
-
-                x = fluid.data(name='x', shape=[None, 2, 2])
-                y = fluid.data(name='y', shape=[None, 2, 2], dtype='float32')
-
-                z = paddle.add(x, y)
-
-                feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
-                places = [fluid.CPUPlace() for x in range(place_num)]
-                data = []
-                exe = fluid.Executor(fluid.CPUPlace())
-                exe.run(fluid.default_startup_program())
-                program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
-
-                # print sample feed_parallel r result
-                # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
-                #     print(item['x'])
-                #     print(item['y'])
-
-                reader_list = [generate_reader(5, 0, 1), generate_reader(3, 10, 2)]
-                res = exe.run(program=program, feed=list(feeder.feed_parallel(reader_list, 2)), fetch_list=[z])
-                print(res)
-
-        """
-        if isinstance(self.place, core.CUDAPlace):
-            places = [
-                core.CUDAPlace(i)
-                for i in range(self._get_number_of_places_(num_places))
-            ]
-        else:
-            places = [
-                core.CPUPlace()
-                for _ in range(self._get_number_of_places_(num_places))
-            ]
-
-        if len(iterable) != len(places):
-            raise ValueError(
-                "feed_parallel takes multiple mini-batches. Each "
-                "mini-batch will be feed on each device. The "
-                "number of devices and number of mini-batches "
-                "must be same."
-            )
-
-        place = self.place
-        for p, batch in zip(places, iterable):
-            self.place = p
-            yield self.feed(batch)
-        self.place = place
-
     def _get_number_of_places_(self, num_places):
         if num_places is not None:
             return int(num_places)
@@ -537,88 +458,3 @@ class DataFeeder:
             return len(_cuda_ids())
         else:
             return _cpu_num()
-
-    def decorate_reader(
-        self, reader, multi_devices, num_places=None, drop_last=True
-    ):
-        """
-        Decorate the reader (generator) to fit multiple devices. The reader generate
-        multiple mini-batches. Each mini-batch will be fed into a single device.
-
-        Parameters:
-            reader(generator): a user defined python generator used to get :code:`mini-batch` of data.
-                A :code:`mini-batch` can be regarded as a python generator that returns batches of input
-                entities, just like the below :code:`_mini_batch` in the code example.
-            multi_devices(bool): indicate whether to use multiple devices or not.
-            num_places(int, optional): if :code:`multi_devices` is True, you can specify the number
-                of devices(CPU|GPU) to use, if multi_devices is None, the function will use all the
-                devices of the current machine. Default None.
-            drop_last(bool, optional): whether to drop the last round of data if it is not enough to
-                feed all devices. Default True.
-
-        Returns:
-            :code:`generator`: a new :code:`generator` which return converted dicts that can be fed into Executor
-
-        Raises:
-            :code:`ValueError`: If drop_last is False and the data cannot fit devices perfectly.
-
-        Example:
-            ..  code-block:: python
-
-                import numpy as np
-                import paddle
-                import paddle.fluid as fluid
-                import paddle.fluid.compiler as compiler
-
-                def reader():
-                    def _mini_batch(batch_size):
-                        for i in range(batch_size):
-                            yield np.random.random([16]).astype('float32'), np.random.randint(10, size=[1])
-
-                    for _ in range(10):
-                        yield _mini_batch(np.random.randint(1, 10))
-
-                place_num = 3
-                places = [fluid.CPUPlace() for _ in range(place_num)]
-
-                # a simple network sample
-                data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-                hidden = paddle.static.nn.fc(x=data, size=10)
-
-                feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)
-
-                exe = fluid.Executor(places[0])
-                exe.run(fluid.default_startup_program())
-                compiled_prog = compiler.CompiledProgram(
-                         fluid.default_main_program()).with_data_parallel(places=places)
-
-                for i,data in enumerate(reader()):
-                    # print data if you like
-                    # print(i, data)
-                    ret = exe.run(compiled_prog, feed=data, fetch_list=[hidden])
-                    print(ret)
-
-        """
-
-        def __reader_creator__():
-            if not multi_devices:
-                for item in reader():
-                    yield self.feed(item)
-            else:
-                num = self._get_number_of_places_(num_places)
-                item = []
-                for batch in reader():
-                    item.append(batch)
-                    if len(item) == num:
-                        yield list(self.feed_parallel(item, num))
-                        item = []
-                if not drop_last and len(item) != 0:
-                    raise ValueError(
-                        "The data batch which cannot fit for devices will be "
-                        "dropped is not implementation. Other strategies are "
-                        "not implemented"
-                    )
-
-        return __reader_creator__

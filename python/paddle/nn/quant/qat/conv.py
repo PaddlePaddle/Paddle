@@ -27,7 +27,7 @@ class QuantedConv2D(ConvertibleQuantedLayer):
     """
 
     def __init__(self, layer: Layer, q_config):
-        super(QuantedConv2D, self).__init__()
+        super().__init__()
 
         # For Conv2D
         self._groups = layer._groups

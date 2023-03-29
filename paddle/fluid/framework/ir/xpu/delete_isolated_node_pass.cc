@@ -60,10 +60,11 @@ class DeleteIsolatedNodePass : public Pass {
 void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  PADDLE_ENFORCE(graph->IsMainGraph(),
-                 platform::errors::PreconditionNotMet(
-                     "Pass(apply in main graph) will delete isolated nodes in "
-                     "all subgraphs. Do not apply pass in subgraph."));
+  if (!graph->IsMainGraph()) {
+    VLOG(3) << "Pass(apply in main graph) will delete isolated nodes in all "
+               "subgraphs.";
+    return;
+  }
 
   std::unordered_set<std::string> reserved_persistable_node_names;
   for (size_t i = 0; i < graph->SubGraphsSize(); i++) {

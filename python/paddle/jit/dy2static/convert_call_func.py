@@ -23,7 +23,7 @@ from typing import Any, List
 
 import numpy
 
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 from .convert_operators import (
     convert_enumerate,
@@ -290,7 +290,7 @@ def convert_call(func):
             # If func is not in __globals__, it does not need to be transformed
             # because it has been transformed before.
             converted_call = None
-        except (IOError, OSError):
+        except OSError:
             # NOTE:
             # If func has been decorated, its source code can not be get
             # so that it can not be transformed to static function.
@@ -299,11 +299,11 @@ def convert_call(func):
         try:
             converted_call = convert_to_static(func)
             func_self = getattr(func, '__self__', None)
-        except (IOError, OSError):
+        except OSError:
             # NOTE: func may have been decorated.
             converted_call = None
 
-    elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
+    elif hasattr(func, '__class__') and callable(func.__class__):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
@@ -313,7 +313,7 @@ def convert_call(func):
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)
-            except (IOError, OSError, TypeError):
+            except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
@@ -322,7 +322,7 @@ def convert_call(func):
                 call_func = func.__class__.__call__
                 converted_call = convert_to_static(call_func)
                 func_self = func
-            except (IOError, OSError, TypeError):
+            except (OSError, TypeError):
                 # NOTE:
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 
 class TestDistTraning(unittest.TestCase):

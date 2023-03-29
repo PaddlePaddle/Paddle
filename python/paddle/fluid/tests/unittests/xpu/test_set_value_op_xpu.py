@@ -1259,13 +1259,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 # test stop_gradient
                 value.stop_gradient = True
                 x.stop_gradient = False
-                start = paddle.tensor.layers.fill_constant(
+                start = paddle.tensor.fill_constant(
                     [1], "int32", 5, force_cpu=True
                 )
-                end = paddle.tensor.layers.fill_constant(
+                end = paddle.tensor.fill_constant(
                     [1], "int32", 0, force_cpu=True
                 )
-                step = paddle.tensor.layers.fill_constant(
+                step = paddle.tensor.fill_constant(
                     [1], "int32", -2, force_cpu=True
                 )
 
