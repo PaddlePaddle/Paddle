@@ -1340,15 +1340,13 @@ class Resharder:
         if op_input:
             op_input_dims_mapping = dist_attr[1]
             if all(
-                (
-                    x
-                    for x in [
-                        tensor_dims_mapping,
-                        tensor_process_mesh,
-                        op_input_dims_mapping,
-                        op_process_mesh,
-                    ]
-                )
+                x
+                for x in [
+                    tensor_dims_mapping,
+                    tensor_process_mesh,
+                    op_input_dims_mapping,
+                    op_process_mesh,
+                ]
             ):
                 # judge whether need reshard by dims_mapping
                 if tensor_dims_mapping != op_input_dims_mapping:
@@ -1379,15 +1377,13 @@ class Resharder:
         else:
             op_output_dims_mapping = dist_attr[1]
             if all(
-                (
-                    x
-                    for x in [
-                        tensor_dims_mapping,
-                        tensor_process_mesh,
-                        op_output_dims_mapping,
-                        op_process_mesh,
-                    ]
-                )
+                x
+                for x in [
+                    tensor_dims_mapping,
+                    tensor_process_mesh,
+                    op_output_dims_mapping,
+                    op_process_mesh,
+                ]
             ):
                 if tensor_dims_mapping != op_output_dims_mapping:
                     raise ValueError(
