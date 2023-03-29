@@ -43,6 +43,36 @@ class MatrixMultiplyOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+
+    bool enable_int8 =
+        (engine_->precision() == AnalysisConfig::Precision::kInt8);
+    float x_scale = 0;
+    float y_scale = 0;
+    float out_scale = 0;
+
+    if (enable_int8) {
+      if (op_desc.HasAttr("Input_scale")) {
+        x_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+        engine_->SetTensorDynamicRange(input1, x_scale);
+      }
+      if (op_desc.HasAttr("X")) {
+        x_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X"));
+        engine_->SetTensorDynamicRange(input1, x_scale);
+      }
+
+      if (op_desc.HasAttr("Y")) {
+        y_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Y"));
+        engine_->SetTensorDynamicRange(input2, y_scale);
+      }
+
+      if (op_desc.HasAttr("out_threshold")) {
+        out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      }
+      if (op_desc.HasAttr("Out")) {
+        out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
+      }
+    }
+
     auto output_name = op_desc.Output("Out")[0];
 
     nvinfer1::Dims dims_x = input1->getDimensions();
@@ -75,6 +105,12 @@ class MatrixMultiplyOpConverter : public OpConverter {
       input1 = reshape_before_matrix->getOutput(0);
       dims_x = input1->getDimensions();
       x_rank = dims_x.nbDims;
+
+      if (enable_int8) {
+        if (op_desc.HasAttr("Input_scale") || op_desc.HasAttr("X")) {
+          engine_->SetTensorDynamicRange(input1, x_scale);
+        }
+      }
     }
 
     if (x_num_col_dims != x_rank - 1) {
@@ -98,6 +134,13 @@ class MatrixMultiplyOpConverter : public OpConverter {
            ")")
               .c_str());
       input1 = reshape_before_layer->getOutput(0);
+
+      if (enable_int8) {
+        if (op_desc.HasAttr("Input_scale") || op_desc.HasAttr("X")) {
+          engine_->SetTensorDynamicRange(input1, x_scale);
+        }
+      }
+
       x_rank = x_num_col_dims + 1;
     }
 
@@ -135,6 +178,12 @@ class MatrixMultiplyOpConverter : public OpConverter {
              ")")
                 .c_str());
         input1 = reshape_before_layer->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("Input_scale") || op_desc.HasAttr("X")) {
+            engine_->SetTensorDynamicRange(input1, x_scale);
+          }
+        }
       } else {
         std::vector<nvinfer1::ITensor*> before_shape_tensors;
         nvinfer1::ITensor* input_shape_tensor = Shape(input2);
@@ -155,6 +204,12 @@ class MatrixMultiplyOpConverter : public OpConverter {
              ")")
                 .c_str());
         input2 = reshape_before_layer->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("Y")) {
+            engine_->SetTensorDynamicRange(input2, y_scale);
+          }
+        }
       }
     }
 
@@ -176,7 +231,11 @@ class MatrixMultiplyOpConverter : public OpConverter {
                                  *input2,
                                  matrix_operation_y);
 
-    engine_->SetTensorDynamicRange(input2, 1.0);
+    if (enable_int8) {
+      if (op_desc.HasAttr("out_threshold") || op_desc.HasAttr("Out")) {
+        engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+      }
+    }
 
     float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     if (alpha < 0.999 || alpha > 1.001) {

@@ -44,6 +44,22 @@ class SkipLayerNormOpConverter : public OpConverter {
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
 
+    bool enable_int8 =
+        (engine_->precision() == AnalysisConfig::Precision::kInt8);
+    float x_scale = 0;
+    float y_scale = 0;
+
+    if (enable_int8) {
+      if (op_desc.HasAttr("X")) {
+        x_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X"));
+        engine_->SetTensorDynamicRange(input1, x_scale);
+      }
+      if (op_desc.HasAttr("Y")) {
+        y_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Y"));
+        engine_->SetTensorDynamicRange(input2, y_scale);
+      }
+    }
+
     nvinfer1::Dims dims_x = input1->getDimensions();
     int32_t x_rank = dims_x.nbDims;
     nvinfer1::Dims dims_y = input2->getDimensions();
@@ -62,6 +78,12 @@ class SkipLayerNormOpConverter : public OpConverter {
         reshape_before_skiplayn->setName(
             ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
         input1 = reshape_before_skiplayn->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("X")) {
+            engine_->SetTensorDynamicRange(input1, x_scale);
+          }
+        }
       } else {
         auto* reshape_before_skiplayn =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input2);
@@ -74,6 +96,12 @@ class SkipLayerNormOpConverter : public OpConverter {
         reshape_before_skiplayn->setName(
             ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
         input2 = reshape_before_skiplayn->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("Y")) {
+            engine_->SetTensorDynamicRange(input2, y_scale);
+          }
+        }
       }
     }
 
@@ -81,10 +109,6 @@ class SkipLayerNormOpConverter : public OpConverter {
     inputs.push_back(input1);
     inputs.push_back(input2);
 
-    bool enable_int8 = false;
-    if (op_desc.HasAttr("enable_int8")) {
-      enable_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("enable_int8"));
-    }
     auto bias_weight = GetWeight("Bias").get();
     auto scale_weight = GetWeight("Scale").get();
     nvinfer1::ILayer* layer = nullptr;
