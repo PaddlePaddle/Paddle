@@ -503,7 +503,7 @@ class DistributedFusedLambInitOpKernel<phi::XPUContext, T>
     auto rank = ctx.Attr<int>("rank");
     auto nranks = ctx.Attr<int>("nranks");
     // auto alignment = ctx.Attr<int>("alignment");
-    auto alignment = 128;
+    auto alignment = 32768;
     VLOG(10) << "rank = " << rank << ", nranks = " << nranks
              << " , alignment = " << alignment;
     // if (alignment <= 0) {

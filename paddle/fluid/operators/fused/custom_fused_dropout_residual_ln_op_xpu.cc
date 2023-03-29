@@ -131,7 +131,7 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
         ln_scale_fp32_ptr,
         ln_bias_fp32_ptr,
         dropout_out_ptr,
-        dropout_mask_out_ptr,
+        (bit16_t *)dropout_mask_out_ptr,
         out_ptr,
         ln_mean_ptr,
         ln_var_ptr,
@@ -267,7 +267,7 @@ class CustomFusedDropoutResidualLnXPUGradKernel
     dropout_add_layernorm_grad(
         xpu_ctx,
         dropout_out_ptr,
-        dropout_mask_ptr,
+        (bit16_t *)dropout_mask_ptr,
         grad_out_ptr,
         dx_ptr,
         d_residual_ptr,
