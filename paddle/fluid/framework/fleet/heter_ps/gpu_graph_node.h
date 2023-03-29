@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <cuda_fp16.h>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
@@ -42,7 +43,7 @@ struct GpuPsCommGraph {
   GpuPsNodeInfo *node_info_list;  // only locate on host side
   uint64_t *neighbor_list;        // locate on both side
   int64_t neighbor_size;          // the size of neighbor_list
-  float *weight_list;             // locate on both side, which length is the same as neighbor_list
+  half *weight_list;             // locate on both side, which length is the same as neighbor_list
   bool is_weighted;
   GpuPsCommGraph()
       : node_list(nullptr),
@@ -57,7 +58,7 @@ struct GpuPsCommGraph {
                  GpuPsNodeInfo *node_info_list_,
                  uint64_t *neighbor_list_,
                  int64_t neighbor_size_,
-                 float *weight_list_,
+                 half *weight_list_,
                  bool is_weighted_)
       : node_list(node_list_),
         node_size(node_size_),
@@ -77,7 +78,7 @@ struct GpuPsCommGraph {
       this->neighbor_size = neighbor_size_;
       this->neighbor_list = new uint64_t[neighbor_size_];
       if (is_weighted_) {
-        this->weight_list = new float[neighbor_size_];
+        this->weight_list = new half[neighbor_size_];
       }
     }
   }
@@ -100,7 +101,7 @@ struct GpuPsCommGraph {
     for (int64_t i = 0; i < neighbor_size; i++) {
       VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
       if (weight_list != nullptr) {
-        VLOG(0) << "neighbor weight " << i << " " << weight_list[i];
+        VLOG(0) << "neighbor weight " << i << " " << (float)weight_list[i];
       }
     }
     for (int64_t i = 0; i < node_size; i++) {
