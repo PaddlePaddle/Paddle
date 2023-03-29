@@ -63,7 +63,7 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                save_dict[key] = value.numpy()
+                save_dict[key] = np.array(value)
             name_table[key] = value.name
         else:
             save_dict[key] = value
@@ -92,7 +92,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = persistable_var_dict[var_name].numpy()
+            load_param_dict[var_name] = np.array(persistable_var_dict[var_name])
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -146,7 +146,7 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
-        load_param_dict[var.name] = var.numpy()
+        load_param_dict[var.name] = np.array(var)
 
     return load_param_dict
 
@@ -291,7 +291,7 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = self.numpy()
+        data = np.array(self)
         name = self.name
 
         return (tuple, ((name, data),))

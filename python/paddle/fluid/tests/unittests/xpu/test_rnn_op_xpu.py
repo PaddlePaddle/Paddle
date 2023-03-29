@@ -97,7 +97,7 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                     self.hidden_size,
                 )
             ).astype(self.dtype)
-            state_out = np.ndarray((300)).astype("uint8")
+            state_out = np.ndarray(300).astype("uint8")
 
             self.inputs = {
                 'Input': input,
@@ -126,7 +126,7 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                     ('last_hidden', last_hidden),
                     ('last_cell', last_cell),
                 ],
-                'Reserve': np.ndarray((400)).astype("uint8"),
+                'Reserve': np.ndarray(400).astype("uint8"),
                 'DropoutState': state_out,
             }
 
