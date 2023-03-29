@@ -27,6 +27,33 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context, typename GradFunc>
+void AddXysGradImpl(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& out_grad,
+                    int axis,
+                    DenseTensor* x_grad,
+                    DenseTensor* y_grad,
+                    GradFunc grad_func) {
+  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  auto* out = &out_grad;
+  // Special case when y_grad is not needed and x_grad doesn't reduce
+  if (x_grad != nullptr && y_grad == nullptr &&
+      x_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
+               "reduce";
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  } else if (x_grad == nullptr && y_grad != nullptr &&
+             y_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
+               "reduce";
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
+  } else {
+    grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
+  }
+}
+
+template <typename T, typename Context, typename GradFunc>
 void AddGradImpl(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -50,6 +77,39 @@ void AddGradImpl(const Context& dev_ctx,
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
+  }
+}
+template <typename T, typename Context>
+void AddXysDoubleGradImpl(const Context& dev_ctx,
+                          const DenseTensor& y,
+                          const paddle::optional<DenseTensor>& ddx,
+                          const paddle::optional<DenseTensor>& ddy,
+                          const DenseTensor& dout,
+                          int axis,
+                          DenseTensor* ddout) {
+  // ddOut = ddx + ddy
+  if (ddout) {
+    DenseTensor ddx_safe, ddy_safe;
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+
+    dev_ctx.template Alloc<T>(ddout);
+    auto ddx_dims = ddx_safe.dims();
+    auto ddy_dims = ddy_safe.dims();
+    if (ddx_dims.size() >= ddy_dims.size()) {
+      funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+          dev_ctx, ddx_safe, ddy_safe, axis, funcs::AddFunctor<T>(), ddout);
+    } else {
+      funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          axis,
+          funcs::InverseAddFunctor<T>(),
+          ddout);
+    }
   }
 }
 

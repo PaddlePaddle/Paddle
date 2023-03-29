@@ -256,6 +256,7 @@ from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
 from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
+from .tensor.math import add_xys  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401

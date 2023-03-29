@@ -182,6 +182,11 @@ void GatherNdGradInferMeta(const MetaTensor& x,
 
 void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
 
+void GeneralBinaryXysGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& y,
+                                   MetaTensor* dx,
+                                   MetaTensor* dy);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,

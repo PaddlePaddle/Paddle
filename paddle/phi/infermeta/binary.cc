@@ -1166,6 +1166,12 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void ElementwiseXysInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+}
+
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {

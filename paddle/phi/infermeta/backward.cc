@@ -397,6 +397,18 @@ void GatherNdGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(dtype);
 }
 
+void GeneralBinaryXysGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& y,
+                                   MetaTensor* dx,
+                                   MetaTensor* dy) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+}
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,

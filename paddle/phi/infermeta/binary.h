@@ -196,6 +196,10 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* mask);
 
+void ElementwiseXysInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out);
+
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out);

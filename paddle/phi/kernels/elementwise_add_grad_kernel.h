@@ -20,6 +20,33 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
+void AddXysGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& dout,
+                      int axis,
+                      DenseTensor* dx,
+                      DenseTensor* dy);
+
+template <typename T, typename Context>
+void AddXysDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& y,
+                            const DenseTensor& dout,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
+                            int axis,
+                            DenseTensor* ddout);
+
+template <typename T, typename Context>
+void AddXysTripleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& ddx,
+                            const DenseTensor& ddy,
+                            const DenseTensor& d_ddout,
+                            int axis,
+                            DenseTensor* d_ddx,
+                            DenseTensor* d_ddy);
+
+template <typename T, typename Context>
 void AddGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,

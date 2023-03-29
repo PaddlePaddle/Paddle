@@ -92,6 +92,16 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
+- op : add_xys
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseXysInferMeta
+  kernel :
+    func : add_xys
+  inplace : (x -> out)
+  backward : add_xys_grad
+
 - op : affine_grid
   args : (Tensor input, IntArray outputShape, bool align_corners=true)
   output : Tensor

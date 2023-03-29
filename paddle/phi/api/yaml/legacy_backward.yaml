@@ -58,6 +58,44 @@
     func : add_triple_grad
   inplace : (grad_grad_out_grad -> grad_grad_x_grad)
 
+- backward_op : add_xys_double_grad
+  forward : add_xys_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
+  args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_out]
+  kernel :
+    func : add_xys_double_grad
+  optional : grad_x_grad, grad_y_grad
+  backward : add_xys_triple_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
+- backward_op : add_xys_grad
+  forward : add_xys (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryXysGradInferMeta
+    param : [x, y]
+  kernel :
+    func : add_xys_grad
+  no_need_buffer : x, y
+  composite : add_grad(x, y, out_grad, axis, x_grad, y_grad)
+  backward : add_xys_double_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : add_xys_triple_grad
+  forward : add_xys_double_grad (Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, int axis = -1) -> Tensor(grad_grad_out)
+  args : (Tensor grad_grad_x, Tensor grad_grad_y, Tensor grad_grad_out_grad, int axis = -1)
+  output : Tensor(grad_grad_x_grad), Tensor(grad_grad_y_grad)
+  infer_meta :
+    func : GeneralBinaryXysGradInferMeta
+    param : [grad_grad_x, grad_grad_y]
+  kernel :
+    func : add_xys_triple_grad
+  inplace : (grad_grad_out_grad -> grad_grad_x_grad)
+
 - backward_op : affine_grid_grad
   forward : affine_grid (Tensor input, IntArray outputShape, bool align_corners=true) -> Tensor(output)
   args : (Tensor input, Tensor output_grad, IntArray outputShape, bool align_corners=true)
