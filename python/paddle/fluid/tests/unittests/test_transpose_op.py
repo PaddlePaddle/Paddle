@@ -241,6 +241,42 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestTransposeFP16Op(OpTest):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.dtype = np.float16
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.python_api = paddle.transpose
+        self.public_python_api = paddle.transpose
+        x = np.random.random(self.shape).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype(self.dtype),
+            'Out': self.inputs['X'].transpose(self.axis),
+        }
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def initTestCase(self):
+        self.shape = (3, 40)
+        self.axis = (1, 0)
+
+
 class TestTransposeBF16Op(OpTest):
     def setUp(self):
         self.init_op_type()
