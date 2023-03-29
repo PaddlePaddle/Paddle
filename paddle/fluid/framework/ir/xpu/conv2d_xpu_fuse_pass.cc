@@ -36,15 +36,15 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct ConvXPUPattern : public PatternBase {
-  ConvXPUPattern(PDPattern* pattern,
-                 const std::string& name_scope,
-                 const std::string& conv_type,
-                 const std::string& act_type,
-                 bool with_conv_bias,
-                 bool with_bn,
-                 bool with_branch_x,
-                 bool with_branch_y);
+struct Conv2dXPUPattern : public PatternBase {
+  Conv2dXPUPattern(PDPattern* pattern,
+                   const std::string& name_scope,
+                   const std::string& conv_type,
+                   const std::string& act_type,
+                   bool with_conv_bias,
+                   bool with_bn,
+                   bool with_branch_x,
+                   bool with_branch_y);
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(ew_bias_add);
@@ -80,14 +80,14 @@ struct ConvXPUPattern : public PatternBase {
   bool with_branch_y_{false};
 };
 
-ConvXPUPattern::ConvXPUPattern(PDPattern* pattern,
-                               const std::string& name_scope,
-                               const std::string& conv_type,
-                               const std::string& act_type,
-                               bool with_conv_bias,
-                               bool with_bn,
-                               bool with_branch_x,
-                               bool with_branch_y)
+Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
+                                   const std::string& name_scope,
+                                   const std::string& conv_type,
+                                   const std::string& act_type,
+                                   bool with_conv_bias,
+                                   bool with_bn,
+                                   bool with_branch_x,
+                                   bool with_branch_y)
     : PatternBase(pattern, name_scope, name_scope),
       conv_type_(conv_type),
       act_type_(act_type),
@@ -291,7 +291,7 @@ After the pass is applied:
                        |      out_OutputMax
                     out_Output
 */
-class ConvXPUFusePass : public FusePassBase {
+class Conv2dXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -304,10 +304,10 @@ class ConvXPUFusePass : public FusePassBase {
                 bool with_branch_x,
                 bool with_branch_y) const;
 
-  const std::string name_scope_{"conv_xpu_fuse_pass"};
+  const std::string name_scope_{"conv2d_xpu_fuse_pass"};
 };
 
-void ConvXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -347,26 +347,26 @@ void ConvXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
-                               const std::string& conv_type,
-                               const std::string& act_type,
-                               bool with_conv_bias,
-                               bool with_bn,
-                               bool with_branch_x,
-                               bool with_branch_y) const {
+int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                 const std::string& conv_type,
+                                 const std::string& act_type,
+                                 bool with_conv_bias,
+                                 bool with_bn,
+                                 bool with_branch_x,
+                                 bool with_branch_y) const {
   GraphPatternDetector gpd;
-  patterns::ConvXPUPattern pattern(gpd.mutable_pattern(),
-                                   name_scope_,
-                                   conv_type,
-                                   act_type,
-                                   with_conv_bias,
-                                   with_bn,
-                                   with_branch_x,
-                                   with_branch_y);
+  patterns::Conv2dXPUPattern pattern(gpd.mutable_pattern(),
+                                     name_scope_,
+                                     conv_type,
+                                     act_type,
+                                     with_conv_bias,
+                                     with_bn,
+                                     with_branch_x,
+                                     with_branch_y);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle ConvXPUFusePass fuse";
+    VLOG(4) << "handle Conv2dXPUFusePass fuse";
     /* declare operator node's name */
     GET_IR_NODE(conv);
     GET_IR_NODE(ew_bias_add);
@@ -396,7 +396,7 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    // recompute bias and weight for conv_xpu op
+    // recompute bias and weight for conv2d_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
     auto filter_dims = filter_t->dims();
@@ -482,40 +482,40 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
     PrepareWeight<int16_t>(
         graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
     // output && output max
-    std::string conv_xpu_out_name;
+    std::string conv2d_xpu_out_name;
     if (!act_type.empty()) {
-      conv_xpu_out_name = act_out->Name();
+      conv2d_xpu_out_name = act_out->Name();
     } else if (ew_branch_add) {
-      conv_xpu_out_name = ew_branch_add_out->Name();
+      conv2d_xpu_out_name = ew_branch_add_out->Name();
     } else if (bn) {
-      conv_xpu_out_name = bn_out->Name();
+      conv2d_xpu_out_name = bn_out->Name();
     } else if (ew_bias_add) {
-      conv_xpu_out_name = ew_bias_add_out->Name();
+      conv2d_xpu_out_name = ew_bias_add_out->Name();
     } else {
-      conv_xpu_out_name = conv_out->Name();
+      conv2d_xpu_out_name = conv_out->Name();
     }
-    std::string conv_out_max_name = conv_xpu_out_name + "_max";
+    std::string conv_out_max_name = conv2d_xpu_out_name + "_max";
     VarDesc conv_out_max_desc(conv_out_max_name);
-    Node* conv_xpu_out_max = graph->CreateVarNode(&conv_out_max_desc);
-    // Generate conv_xpu op
-    framework::OpDesc conv_xpu_op_desc(block);
+    Node* conv2d_xpu_out_max = graph->CreateVarNode(&conv_out_max_desc);
+    // Generate conv2d_xpu op
+    framework::OpDesc conv2d_xpu_op_desc(block);
     // set input&output var
-    conv_xpu_op_desc.SetType("conv_xpu");
-    conv_xpu_op_desc.SetInput("Input", {input->Name()});
-    conv_xpu_op_desc.SetInput("Filter", {filter_int16->Name()});
-    conv_xpu_op_desc.SetInput("FilterMax", {filter_max->Name()});
-    conv_xpu_op_desc.SetOutput("Output", {conv_xpu_out_name});
-    conv_xpu_op_desc.SetOutput("OutputMax", {conv_out_max_name});
+    conv2d_xpu_op_desc.SetType("conv2d_xpu");
+    conv2d_xpu_op_desc.SetInput("input", {input->Name()});
+    conv2d_xpu_op_desc.SetInput("filter", {filter_int16->Name()});
+    conv2d_xpu_op_desc.SetInput("filter_max", {filter_max->Name()});
+    conv2d_xpu_op_desc.SetOutput("output", {conv2d_xpu_out_name});
+    conv2d_xpu_op_desc.SetOutput("output_max", {conv_out_max_name});
     // set fusion_bias input node
     if (has_bias) {
-      conv_xpu_op_desc.SetInput("Bias", {fusion_bias_node->Name()});
-      conv_xpu_op_desc.SetAttr("has_bias", has_bias);
+      conv2d_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
+      conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
     }
     // set ew_branch_add input node
     if (ew_branch_add_in != nullptr) {
-      conv_xpu_op_desc.SetInput("Branch", {ew_branch_add_in->Name()});
+      conv2d_xpu_op_desc.SetInput("branch", {ew_branch_add_in->Name()});
     }
-    // set attrs of conv_xpu
+    // set attrs of conv2d_xpu
     float act_param_ = 0.0f;
     if (!act_type.empty()) {
       if (act_type == "leaky_relu") {
@@ -524,8 +524,8 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
         act_param_ = PADDLE_GET_CONST(float, act->Op()->GetAttr("slope"));
       }
     }
-    conv_xpu_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
-    conv_xpu_op_desc.SetAttr("act_param", act_param_);
+    conv2d_xpu_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
+    conv2d_xpu_op_desc.SetAttr("act_param", act_param_);
     std::vector<int> conv_bias;
     if (has_bias) {
       conv_bias.push_back(1);
@@ -533,7 +533,7 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
       conv_bias.push_back(0);
     }
     if (conv->Op()->HasAttr("padding_algorithm")) {
-      conv_xpu_op_desc.SetAttr(
+      conv2d_xpu_op_desc.SetAttr(
           "padding_algorithm",
           PADDLE_GET_CONST(std::string,
                            conv->Op()->GetAttr("padding_algorithm")));
@@ -551,45 +551,45 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
                       platform::errors::InvalidArgument(
                           "padding length should be 4, but received %d, ",
                           conv_paddings.size()));
-    conv_xpu_op_desc.SetAttr(
+    conv2d_xpu_op_desc.SetAttr(
         "dilations",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations")));
-    conv_xpu_op_desc.SetAttr(
+    conv2d_xpu_op_desc.SetAttr(
         "groups", PADDLE_GET_CONST(int, conv->Op()->GetAttr("groups")));
-    conv_xpu_op_desc.SetAttr(
+    conv2d_xpu_op_desc.SetAttr(
         "strides",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
-    conv_xpu_op_desc.SetAttr("conv_bias", conv_bias);
-    conv_xpu_op_desc.SetAttr("op_type", std::vector<int>{0});
-    conv_xpu_op_desc.SetAttr("place_x", std::vector<int>{0});
-    conv_xpu_op_desc.SetAttr("place_y", std::vector<int>{9});
-    conv_xpu_op_desc.SetAttr("place_z", std::vector<int>{10});
-    conv_xpu_op_desc.SetAttr("paddings", conv_paddings);
-    conv_xpu_op_desc.SetAttr("block_lod", std::vector<int>{1});
-    conv_xpu_op_desc.SetAttr("has_branch", with_branch_x || with_branch_y);
+    conv2d_xpu_op_desc.SetAttr("conv_bias", conv_bias);
+    conv2d_xpu_op_desc.SetAttr("op_type", std::vector<int>{0});
+    conv2d_xpu_op_desc.SetAttr("place_x", std::vector<int>{0});
+    conv2d_xpu_op_desc.SetAttr("place_y", std::vector<int>{9});
+    conv2d_xpu_op_desc.SetAttr("place_z", std::vector<int>{10});
+    conv2d_xpu_op_desc.SetAttr("paddings", conv_paddings);
+    conv2d_xpu_op_desc.SetAttr("block_lod", std::vector<int>{1});
+    conv2d_xpu_op_desc.SetAttr("has_branch", with_branch_x || with_branch_y);
 
-    auto* conv_xpu = graph->CreateOpNode(&conv_xpu_op_desc);
-    IR_NODE_LINK_TO(input, conv_xpu);
-    IR_NODE_LINK_TO(filter_int16, conv_xpu);
-    IR_NODE_LINK_TO(filter_max, conv_xpu);
+    auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
+    IR_NODE_LINK_TO(input, conv2d_xpu);
+    IR_NODE_LINK_TO(filter_int16, conv2d_xpu);
+    IR_NODE_LINK_TO(filter_max, conv2d_xpu);
     if (ew_bias_add || bn) {
-      SAFE_IR_NODE_LINK_TO(fusion_bias_node, conv_xpu);
+      SAFE_IR_NODE_LINK_TO(fusion_bias_node, conv2d_xpu);
     }
     if (ew_branch_add_in) {
-      IR_NODE_LINK_TO(ew_branch_add_in, conv_xpu);
+      IR_NODE_LINK_TO(ew_branch_add_in, conv2d_xpu);
     }
     if (act_out) {
-      IR_NODE_LINK_TO(conv_xpu, act_out);
+      IR_NODE_LINK_TO(conv2d_xpu, act_out);
     } else if (ew_branch_add_out) {
-      IR_NODE_LINK_TO(conv_xpu, ew_branch_add_out);
+      IR_NODE_LINK_TO(conv2d_xpu, ew_branch_add_out);
     } else if (bn_out) {
-      IR_NODE_LINK_TO(conv_xpu, bn_out);
+      IR_NODE_LINK_TO(conv2d_xpu, bn_out);
     } else if (ew_bias_add_out) {
-      IR_NODE_LINK_TO(conv_xpu, ew_bias_add_out);
+      IR_NODE_LINK_TO(conv2d_xpu, ew_bias_add_out);
     } else {
-      IR_NODE_LINK_TO(conv_xpu, conv_out);
+      IR_NODE_LINK_TO(conv2d_xpu, conv_out);
     }
-    IR_NODE_LINK_TO(conv_xpu, conv_xpu_out_max);
+    IR_NODE_LINK_TO(conv2d_xpu, conv2d_xpu_out_max);
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {conv};
     if (act != nullptr) {
@@ -625,9 +625,9 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv_xpu_fuse_pass, paddle::framework::ir::ConvXPUFusePass);
+REGISTER_PASS(conv2d_xpu_fuse_pass, paddle::framework::ir::Conv2dXPUFusePass);
 
-REGISTER_PASS_CAPABILITY(conv_xpu_fuse_pass)
+REGISTER_PASS_CAPABILITY(conv2d_xpu_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "conv_xpu", 0));
+            "conv2d_xpu", 0));

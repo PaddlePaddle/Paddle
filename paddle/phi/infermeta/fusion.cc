@@ -35,29 +35,29 @@ inline int ConvOutSize(int input_size,
   return output_size;
 }
 
-void ConvXPUInferMeta(const MetaTensor& Input,
-                      const MetaTensor& InputMax,
-                      const MetaTensor& Filter,
-                      const MetaTensor& Filtermax,
-                      const MetaTensor& Bias,
-                      const MetaTensor& Branch,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
-                      const std::vector<int>& strides,
-                      const std::string& padding_algorithm,
-                      int groups,
-                      bool has_bias,
-                      bool has_branch,
-                      int act_type,
-                      float act_param,
-                      MetaTensor* Output,
-                      MetaTensor* OutputMax) {
-  auto in_dims = Input.dims();
-  auto filter_dims = Filter.dims();
+void Conv2dXPUInferMeta(const MetaTensor& input,
+                        const MetaTensor& input_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations,
+                        const std::vector<int>& strides,
+                        const std::string& padding_algorithm,
+                        int groups,
+                        bool has_bias,
+                        bool has_branch,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* output,
+                        MetaTensor* output_max) {
+  auto in_dims = input.dims();
+  auto filter_dims = filter.dims();
   // do some checks
   PADDLE_ENFORCE_EQ(
-      in_dims.size() == 4,
-      true,
+      in_dims.size(),
+      4,
       phi::errors::InvalidArgument(
           "The input of Op(Conv_xpu) should be a 4-D Tensor. But "
           "received: input's dimension is %u, input's shape is [%s].",
@@ -157,8 +157,8 @@ void ConvXPUInferMeta(const MetaTensor& Input,
                                     strides[i]));
   }
   // set output and output max dims
-  Output->set_dims(DDim(out_shape.data(), out_shape.size()));
-  OutputMax->set_dims(phi::make_ddim({4}));
+  output->set_dims(DDim(out_shape.data(), out_shape.size()));
+  output_max->set_dims(phi::make_ddim({4}));
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(

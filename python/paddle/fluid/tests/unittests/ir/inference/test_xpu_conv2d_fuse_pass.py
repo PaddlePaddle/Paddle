@@ -21,10 +21,10 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestConvXPUFusePass(PassAutoScanTest):
+class TestConv2dXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ["conv_xpu"], (1e-3, 1e-3)
+        yield config, ["conv2d_xpu"], (1e-3, 1e-3)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -182,7 +182,7 @@ class TestConvXPUFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=25,
-            passes=["conv_xpu_fuse_pass"],
+            passes=["conv2d_xpu_fuse_pass"],
         )
 
 
