@@ -34,9 +34,9 @@ def paddle_dropout_add(x, y, p=0.5, training=True, mode="upscale_in_train"):
 )
 class TestFusedDropoutAdd(unittest.TestCase):
     def setUp(self):
-        self.shape = (2, 10, 10, 2)
-        self.dtype = 'float64'
-        self.dropout_rate = 0.9
+        self.shape = [2, 1024, 2, 1]
+        self.dtype = 'float16'
+        self.dropout_rate = 0.5
         self.training = True
         self.mode = "upscale_in_train"
         self.seed = 1027
@@ -66,9 +66,8 @@ class TestFusedDropoutAdd(unittest.TestCase):
                 mode=self.mode,
             )
             fw.append(out)
-
-        loss = paddle.mean(out)
-        loss.backward()
+        out_g = paddle.randn(self.shape, self.dtype)
+        paddle.autograd.backward([out], [out_g], True)
         for i in range(count):
             bw.append(data[i].grad)
         return fw, bw
@@ -95,7 +94,7 @@ def create_test_class(parent, dtype, mode, training, p, seed):
     )
     class TestFusedDropoutAddCase(parent):
         def setUp(self):
-            self.shape = (2, 10, 10, 2)
+            self.shape = (2, 1024, 1, 1)
             self.dtype = dtype
             self.dropout_rate = p
             self.training = training
@@ -168,7 +167,7 @@ class TestFusedDropoutAddStatic(unittest.TestCase):
         y = paddle.randn(self.shape, self.dtype)
         fused_d_a = FusedDropoutAdd(p=0.5)
         d = paddle.nn.Dropout(p=0.5)
-        print(d)
+        print(d.extra_repr())
         paddle.seed(2048)
         fused_out = fused_d_a(x, y)
         paddle.seed(2048)
