@@ -28,10 +28,9 @@
 
 DECLARE_bool(check_nan_inf);
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 SyncBatchNormGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -52,10 +51,10 @@ SyncBatchNormGradNode::operator()(
   auto reserve_space =
       egr::EagerUtils::RecoverTensorWrapper(&this->reserve_space_);
 
-  paddle::optional<paddle::experimental::Tensor> reserve_space_optional;
+  paddle::optional<paddle::Tensor> reserve_space_optional;
   if (reserve_space.impl())
     reserve_space_optional =
-        paddle::make_optional<paddle::experimental::Tensor>(reserve_space);
+        paddle::make_optional<paddle::Tensor>(reserve_space);
 
   auto& out_grad = hooked_grads[0][0];
   auto& momentum = this->momentum_;
@@ -68,8 +67,7 @@ SyncBatchNormGradNode::operator()(
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(5);
   for (int i = 0; i < 5; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)
@@ -244,10 +242,9 @@ SyncBatchNormGradNode::operator()(
 
 namespace sparse {
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 SyncBatchNormGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -267,10 +264,10 @@ SyncBatchNormGradNode::operator()(
   auto reserve_space =
       egr::EagerUtils::RecoverTensorWrapper(&this->reserve_space_);
 
-  paddle::optional<paddle::experimental::Tensor> reserve_space_optional;
+  paddle::optional<paddle::Tensor> reserve_space_optional;
   if (reserve_space.impl())
     reserve_space_optional =
-        paddle::make_optional<paddle::experimental::Tensor>(reserve_space);
+        paddle::make_optional<paddle::Tensor>(reserve_space);
 
   auto& out_grad = hooked_grads[0][0];
   auto& momentum = this->momentum_;
@@ -283,8 +280,7 @@ SyncBatchNormGradNode::operator()(
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(5);
   for (int i = 0; i < 5; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)

@@ -27,17 +27,17 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               int groups,
                               std::string data_format);
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
-sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
-                         const paddle::experimental::Tensor& scale,
-                         const paddle::experimental::Tensor& bias,
-                         paddle::experimental::Tensor& mean,      // NOLINT
-                         paddle::experimental::Tensor& variance,  // NOLINT
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
                          float momentum,
                          float epsilon,
                          std::string data_layout,
@@ -47,17 +47,17 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
                          bool fuse_with_relu);
 
 namespace sparse {
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
-sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
-                         const paddle::experimental::Tensor& scale,
-                         const paddle::experimental::Tensor& bias,
-                         paddle::experimental::Tensor& mean,      // NOLINT
-                         paddle::experimental::Tensor& variance,  // NOLINT
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
                          float momentum,
                          float epsilon,
                          std::string data_layout,

@@ -212,9 +212,9 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~SyncBatchNormGradNode() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
@@ -238,25 +238,22 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+  void SetTensorWrapperx(const paddle::Tensor& x) {
     x_ = egr::TensorWrapper(x, false);
   }
-  void SetTensorWrapperscale(const paddle::experimental::Tensor& scale) {
+  void SetTensorWrapperscale(const paddle::Tensor& scale) {
     scale_ = egr::TensorWrapper(scale, false);
   }
-  void SetTensorWrapperbias(const paddle::experimental::Tensor& bias) {
+  void SetTensorWrapperbias(const paddle::Tensor& bias) {
     bias_ = egr::TensorWrapper(bias, false);
   }
-  void SetTensorWrappersaved_mean(
-      const paddle::experimental::Tensor& saved_mean) {
+  void SetTensorWrappersaved_mean(const paddle::Tensor& saved_mean) {
     saved_mean_ = egr::TensorWrapper(saved_mean, false);
   }
-  void SetTensorWrappersaved_variance(
-      const paddle::experimental::Tensor& saved_variance) {
+  void SetTensorWrappersaved_variance(const paddle::Tensor& saved_variance) {
     saved_variance_ = egr::TensorWrapper(saved_variance, false);
   }
-  void SetTensorWrapperreserve_space(
-      const paddle::experimental::Tensor& reserve_space) {
+  void SetTensorWrapperreserve_space(const paddle::Tensor& reserve_space) {
     reserve_space_ = egr::TensorWrapper(reserve_space, false);
   }
 
@@ -304,9 +301,9 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~SyncBatchNormGradNode() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
@@ -330,25 +327,22 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+  void SetTensorWrapperx(const paddle::Tensor& x) {
     x_ = egr::TensorWrapper(x, false);
   }
-  void SetTensorWrapperscale(const paddle::experimental::Tensor& scale) {
+  void SetTensorWrapperscale(const paddle::Tensor& scale) {
     scale_ = egr::TensorWrapper(scale, false);
   }
-  void SetTensorWrapperbias(const paddle::experimental::Tensor& bias) {
+  void SetTensorWrapperbias(const paddle::Tensor& bias) {
     bias_ = egr::TensorWrapper(bias, false);
   }
-  void SetTensorWrappersaved_mean(
-      const paddle::experimental::Tensor& saved_mean) {
+  void SetTensorWrappersaved_mean(const paddle::Tensor& saved_mean) {
     saved_mean_ = egr::TensorWrapper(saved_mean, false);
   }
-  void SetTensorWrappersaved_variance(
-      const paddle::experimental::Tensor& saved_variance) {
+  void SetTensorWrappersaved_variance(const paddle::Tensor& saved_variance) {
     saved_variance_ = egr::TensorWrapper(saved_variance, false);
   }
-  void SetTensorWrapperreserve_space(
-      const paddle::experimental::Tensor& reserve_space) {
+  void SetTensorWrapperreserve_space(const paddle::Tensor& reserve_space) {
     reserve_space_ = egr::TensorWrapper(reserve_space, false);
   }
 

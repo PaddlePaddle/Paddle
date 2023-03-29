@@ -26,17 +26,17 @@
 DECLARE_bool(check_nan_inf);
 DECLARE_string(tensor_operants_mode);
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
-sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
-                         const paddle::experimental::Tensor& scale,
-                         const paddle::experimental::Tensor& bias,
-                         paddle::experimental::Tensor& mean,      // NOLINT
-                         paddle::experimental::Tensor& variance,  // NOLINT
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
                          float momentum,
                          float epsilon,
                          std::string data_layout,
@@ -59,8 +59,7 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
   // Layout autotune
 
   if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         tensors_vector = {{x}, {scale}, {bias}, {mean}, {variance}};
 
     auto op_name = phi::TransToFluidOpName("sync_batch_norm_");
@@ -75,12 +74,12 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
     VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
     paddle::imperative::LayoutAutotuneGuard guard(
         egr::Controller::Instance().GetCurrentTracer(), false);
-    std::tuple<paddle::experimental::Tensor,
-               paddle::experimental::Tensor&,
-               paddle::experimental::Tensor&,
-               paddle::experimental::Tensor,
-               paddle::experimental::Tensor,
-               paddle::experimental::Tensor>
+    std::tuple<paddle::Tensor,
+               paddle::Tensor&,
+               paddle::Tensor&,
+               paddle::Tensor,
+               paddle::Tensor,
+               paddle::Tensor>
         api_result = sync_batch_norm__ad_func(new_x,
                                               new_scale,
                                               new_bias,
@@ -108,12 +107,12 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
     transformer->SetOutTensorLayout(&reserve_space);
 
     // Returns
-    return std::tuple<paddle::experimental::Tensor,
-                      paddle::experimental::Tensor&,
-                      paddle::experimental::Tensor&,
-                      paddle::experimental::Tensor,
-                      paddle::experimental::Tensor,
-                      paddle::experimental::Tensor>{
+    return std::tuple<paddle::Tensor,
+                      paddle::Tensor&,
+                      paddle::Tensor&,
+                      paddle::Tensor,
+                      paddle::Tensor,
+                      paddle::Tensor>{
         out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
   }
 
@@ -374,28 +373,28 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
   // check and save output tensor
 
   // Returns
-  return std::tuple<paddle::experimental::Tensor,
-                    paddle::experimental::Tensor&,
-                    paddle::experimental::Tensor&,
-                    paddle::experimental::Tensor,
-                    paddle::experimental::Tensor,
-                    paddle::experimental::Tensor>{
+  return std::tuple<paddle::Tensor,
+                    paddle::Tensor&,
+                    paddle::Tensor&,
+                    paddle::Tensor,
+                    paddle::Tensor,
+                    paddle::Tensor>{
       out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
 }
 
 namespace sparse {
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor&,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
-sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
-                         const paddle::experimental::Tensor& scale,
-                         const paddle::experimental::Tensor& bias,
-                         paddle::experimental::Tensor& mean,      // NOLINT
-                         paddle::experimental::Tensor& variance,  // NOLINT
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
                          float momentum,
                          float epsilon,
                          std::string data_layout,
@@ -418,8 +417,7 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
   // Layout autotune
 
   if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         tensors_vector = {{x}, {scale}, {bias}, {mean}, {variance}};
 
     auto op_name = phi::TransToFluidOpName("sync_batch_norm_");
@@ -434,12 +432,12 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
     VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
     paddle::imperative::LayoutAutotuneGuard guard(
         egr::Controller::Instance().GetCurrentTracer(), false);
-    std::tuple<paddle::experimental::Tensor,
-               paddle::experimental::Tensor&,
-               paddle::experimental::Tensor&,
-               paddle::experimental::Tensor,
-               paddle::experimental::Tensor,
-               paddle::experimental::Tensor>
+    std::tuple<paddle::Tensor,
+               paddle::Tensor&,
+               paddle::Tensor&,
+               paddle::Tensor,
+               paddle::Tensor,
+               paddle::Tensor>
         api_result = sync_batch_norm__ad_func(new_x,
                                               new_scale,
                                               new_bias,
@@ -467,12 +465,12 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
     transformer->SetOutTensorLayout(&reserve_space);
 
     // Returns
-    return std::tuple<paddle::experimental::Tensor,
-                      paddle::experimental::Tensor&,
-                      paddle::experimental::Tensor&,
-                      paddle::experimental::Tensor,
-                      paddle::experimental::Tensor,
-                      paddle::experimental::Tensor>{
+    return std::tuple<paddle::Tensor,
+                      paddle::Tensor&,
+                      paddle::Tensor&,
+                      paddle::Tensor,
+                      paddle::Tensor,
+                      paddle::Tensor>{
         out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
   }
 
@@ -734,12 +732,12 @@ sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
   }
 
   // Returns
-  return std::tuple<paddle::experimental::Tensor,
-                    paddle::experimental::Tensor&,
-                    paddle::experimental::Tensor&,
-                    paddle::experimental::Tensor,
-                    paddle::experimental::Tensor,
-                    paddle::experimental::Tensor>{
+  return std::tuple<paddle::Tensor,
+                    paddle::Tensor&,
+                    paddle::Tensor&,
+                    paddle::Tensor,
+                    paddle::Tensor,
+                    paddle::Tensor>{
       out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
 }
 
