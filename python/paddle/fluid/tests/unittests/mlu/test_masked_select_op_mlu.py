@@ -17,7 +17,7 @@ import sys
 
 sys.path.append("..")
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 import paddle
 
@@ -44,7 +44,6 @@ class TestMaskedSelectOp(OpTest):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
         self.op_type = "masked_select"
-        self.python_api = paddle.masked_select
         x = np.random.random(self.shape).astype('float32')
         mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
         out = np_masked_select(self.shape, x, mask)

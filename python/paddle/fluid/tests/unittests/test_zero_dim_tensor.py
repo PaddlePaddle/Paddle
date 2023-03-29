@@ -1100,12 +1100,10 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_numpy(self):
         x = paddle.full([], 0.5)
-        # 0D Tensor hack to 1D Numpy defaut, will remove in future
         x_np = x.numpy()
-        np.testing.assert_array_equal(x_np.shape, (1,))
-        np.testing.assert_array_equal(x_np, np.array([0.5]))
+        np.testing.assert_array_equal(x_np.shape, ())
+        np.testing.assert_array_equal(x_np, np.array(0.5))
 
-        # return origin correct numpy
         x_np = x.numpy(False)
         np.testing.assert_array_equal(x_np.shape, ())
         np.testing.assert_array_equal(x_np, np.array(0.5))

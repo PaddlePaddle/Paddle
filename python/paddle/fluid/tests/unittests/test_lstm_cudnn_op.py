@@ -20,7 +20,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -534,7 +534,7 @@ class TestCUDNNLstmOp(OpTest):
         for var_name in var_name_list:
             self.check_grad_with_place(
                 place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                {'Input', var_name, 'InitH', 'InitC'},
                 ['Out', 'LastH', 'LastC'],
             )
 

@@ -103,6 +103,27 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
         pass
 
 
+class TestMKLDNNElementwiseAddOpZeroDim(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOpZeroDim2(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOpZeroDim3(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
 ''' INT8 Tests '''
 
 

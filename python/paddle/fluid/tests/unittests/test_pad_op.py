@@ -20,8 +20,7 @@ from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):

@@ -99,6 +99,8 @@ void IRPassManager::CreatePasses(Argument *argument,
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("enable_custom_device_mixed",
+              new bool(argument->enable_custom_device_mixed()));
     pass->Set("mixed_precision_mode",
               new int(argument->mixed_precision_mode()));
     pass->Set("model_precision", new int(argument->model_precision()));

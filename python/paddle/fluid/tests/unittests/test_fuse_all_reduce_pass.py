@@ -21,8 +21,8 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import bow_net, fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 

@@ -22,9 +22,9 @@ import numpy as np
 from dist_test_utils import remove_ps_flag
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers.ops as ops
+from paddle import fluid
 from paddle.fluid import core
+from paddle.fluid.layers import ops
 from paddle.incubate.nn.layer.io import ListenAndServ, Recv, Send
 
 RPC_OP_ROLE_ATTR_NAME = (
