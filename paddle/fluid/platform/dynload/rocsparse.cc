@@ -28,6 +28,10 @@ ROCSPARSE_ROUTINE_EACH(DEFINE_WRAP);
 ROCSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
 #endif
 
+#ifdef ROCSPARSE_ROUTINE_EACH_R3
+ROCSPARSE_ROUTINE_EACH_R3(DEFINE_WRAP);
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
