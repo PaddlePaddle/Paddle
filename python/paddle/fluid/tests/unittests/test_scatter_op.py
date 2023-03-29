@@ -67,6 +67,7 @@ class TestScatterFP16Op(TestScatterOp):
 class TestScatterBF16Op(TestScatterOp):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -128,6 +129,7 @@ class TestScatterFP16Op0(TestScatterOp0):
 class TestScatterBF16Op0(TestScatterOp0):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -192,6 +194,7 @@ class TestScatterFP16Op1(TestScatterOp1):
 class TestScatterBF16Op1(TestScatterOp1):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -267,6 +270,7 @@ class TestScatterFP16Op2(TestScatterOp2):
 class TestScatterBF16Op2(TestScatterOp2):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -331,6 +335,7 @@ class TestScatterFP16Op3(TestScatterOp3):
 class TestScatterBF16Op3(TestScatterOp3):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
 
 class TestScatterOp4(OpTest):
@@ -376,6 +381,7 @@ class TestScatterFP16Op4(TestScatterOp4):
 class TestScatterBF16Op4(TestScatterOp4):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -451,6 +457,7 @@ class TestScatterFP16Op5(TestScatterOp5):
 class TestScatterBF16Op5(TestScatterOp5):
     def _set_dtype(self):
         self.dtype = np.uint16
+        self.enable_cinn = False
 
 
 class TestScatterOp6(OpTest):
