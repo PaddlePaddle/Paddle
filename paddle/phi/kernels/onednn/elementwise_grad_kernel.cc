@@ -243,44 +243,6 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                                    false);
 
       src_1_memory = binary_handler.AcquireSecondSrcMemory(non_const_x);
-
-      if (BINARY_OP == dnnl::algorithm::binary_div) {
-        funcs::BinaryOneDNNHandler<T> post_op_binary_handler(
-            dnnl::algorithm::binary_div,
-            axis,
-            onednn_engine,
-            dev_ctx.GetPlace(),
-            non_const_y,
-            non_const_y,
-            nullptr,
-            1.0f,
-            1.0f,
-            1.0f,
-            false);
-
-        post_op_memory = post_op_binary_handler.AcquireSrcMemory(non_const_y);
-
-        dnnl::post_ops po;
-        po.append_binary(dnnl::algorithm::binary_div,
-                         post_op_memory->get_desc());
-
-        binary_handler =
-            funcs::BinaryOneDNNHandler<T>(dnnl::algorithm::binary_mul,
-                                          axis,
-                                          onednn_engine,
-                                          dev_ctx.GetPlace(),
-                                          &dout,
-                                          out,
-                                          nullptr,
-                                          -1.0f,
-                                          1.0f,
-                                          1.0f,
-                                          false,
-                                          po);
-
-        src_1_memory = binary_handler.AcquireSecondSrcMemory(out);
-      }
-
       src_0_memory = binary_handler.AcquireSrcMemory(&dout);
 
       const auto dst_dy_memory = (dout.dims() == dy->dims())
@@ -293,10 +255,6 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
               {DNNL_ARG_DST, *dst_dy_memory},
               {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
               {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
-
-      if (BINARY_OP == dnnl::algorithm::binary_div)
-        args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-                     *post_op_memory});
 
       binary_prim->execute(astream, args);
       broadcast_src_memory = dst_dy_memory;
