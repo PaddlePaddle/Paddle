@@ -1591,6 +1591,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'flatten',
         )

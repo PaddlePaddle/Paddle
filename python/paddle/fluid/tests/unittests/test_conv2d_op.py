@@ -699,12 +699,12 @@ create_test_cudnn_class(TestWithInput1x1Filter1x1)
 
 # ----------------Conv2DCUDNN fp16----------------
 
-create_test_cudnn_fp16_class(TestConv2DOp, grad_check=False)
-create_test_cudnn_fp16_class(TestWithPad, grad_check=False)
-create_test_cudnn_fp16_class(TestWithStride, grad_check=False)
-create_test_cudnn_fp16_class(TestWithGroup, grad_check=False)
-create_test_cudnn_fp16_class(TestWith1x1, grad_check=False)
-create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1, grad_check=False)
+create_test_cudnn_fp16_class(TestConv2DOp)
+create_test_cudnn_fp16_class(TestWithPad)
+create_test_cudnn_fp16_class(TestWithStride)
+create_test_cudnn_fp16_class(TestWithGroup)
+create_test_cudnn_fp16_class(TestWith1x1)
+create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1)
 
 # ----------------Conv2DCUDNN bf16----------------
 
@@ -1089,21 +1089,11 @@ create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithDilation_AsyPadding)
 
-create_test_cudnn_channel_last_fp16_class(
-    TestConv2DOp_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithPad_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithStride_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithGroup_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithDilation_AsyPadding, grad_check=False
-)
+create_test_cudnn_channel_last_fp16_class(TestConv2DOp_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithPad_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithStride_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithGroup_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithDilation_AsyPadding)
 
 if __name__ == '__main__':
     paddle.enable_static()

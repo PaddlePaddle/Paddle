@@ -32,5 +32,12 @@ template <>
 Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
   return ::cast_ad_func(x, dtype);
 }
+
+template <>
+Tensor reshape<Tensor>(const Tensor& x, const IntArray& shape) {
+  VLOG(4) << "Eager Prim API reshape_ad_func call";
+  return ::reshape_ad_func(x, shape);
+}
+
 }  // namespace prim
 }  // namespace paddle
