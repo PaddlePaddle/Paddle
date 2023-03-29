@@ -216,26 +216,19 @@ void RefcountedMemoryMapAllocation::close() {
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
-  try {
-    PADDLE_ENFORCE_NE(
-        munmap(this->ptr(), this->size()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unmap the shared memory file %s", this->ipc_name()));
-  } catch (std::exception &e) {
-  }
+  PADDLE_ENFORCE_NE(
+      munmap(this->ptr(), this->size()),
+      -1,
+      platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                    this->ipc_name()));
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
-  try {
-    PADDLE_ENFORCE_NE(
-
-        munmap(this->ptr(), this->size()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unmap the shared memory file %s", this->ipc_name()));
-  } catch (std::exception &e) {
-  }
+  PADDLE_ENFORCE_NE(
+      munmap(this->ptr(), this->size()),
+      -1,
+      platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                    this->ipc_name()));
   /* Here we do not pay attention to the result of shm_unlink,
      because the memory mapped file may have been cleared due to the
      MemoryMapFdSet::Clear() */

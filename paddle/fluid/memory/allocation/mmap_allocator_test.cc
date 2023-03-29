@@ -24,7 +24,6 @@ namespace allocation {
 
 TEST(MemoryMapAllocation, test_allocation_base) {
   size_t data_size = 4UL * 1024;
-
   // 1. allocate writer holader
   auto mmap_writer_holder = AllocateMemoryMapWriterAllocation(data_size);
   std::string ipc_name = mmap_writer_holder->ipc_name();
