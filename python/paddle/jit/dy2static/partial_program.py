@@ -272,6 +272,8 @@ class PartialProgramLayer:
                 amp_program, self._amp_list
             )
         if is_infer_mode:
+            if self._hooker:
+                amp_program = self._hooker.after_infer(amp_program)
             return amp_program
         else:
             train_amp_program = self._append_backward_desc(amp_program)

@@ -605,6 +605,12 @@ class PrimForwardChecker:
             )
             ret = flatten(_as_list(self.public_python_api(*args)))
             primapi.to_prim(main_program.blocks)
+        # check the operator not in program if check prim
+        if self.prim_op_type == "comp":
+            forward_ops = [op.type for op in main_program.blocks[0].ops]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program"
+            ) % (self.op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -676,6 +682,17 @@ class PrimForwardChecker:
         )
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
+        # check the operator not in program if check prim
+        if self.prim_op_type == "comp":
+            forward_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                ._train_program.block(0)
+                .ops
+            ]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program"
+            ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -760,6 +777,17 @@ class PrimForwardChecker:
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
+        # check the operator not in program if check prim
+        if self.prim_op_type == "comp":
+            forward_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                ._train_program.block(0)
+                .ops
+            ]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program"
+            ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -1053,6 +1081,12 @@ class PrimGradChecker(PrimForwardChecker):
                 var_dict={**inputs_dict, **outputs_dict}
             )
             ret = paddle.static.gradients(ys, xs, vs, no_grad_set=no_grad_vars)
+        # check the backward operator not in program
+        ops = [op.type for op in main_program.blocks[0].ops]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program"
+        ) % (backward_op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1136,6 +1170,17 @@ class PrimGradChecker(PrimForwardChecker):
         )
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
+        # check the backward operator not in program
+        ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            ._train_program.block(0)
+            .ops
+        ]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program"
+        ) % (backward_op_type)
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
             outputs_sig = self.op_test.python_out_sig
@@ -1253,6 +1298,18 @@ class PrimGradChecker(PrimForwardChecker):
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
+        # check the backward operator not in program
+        ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            ._train_program.block(0)
+            .ops
+        ]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program"
+        ) % (backward_op_type)
+
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
             outputs_sig = self.op_test.python_out_sig
