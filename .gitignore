@@ -28,6 +28,7 @@ paddle/phi/api/lib/sparse_bw_api.cc
 paddle/phi/api/lib/tensor_api.cc
 paddle/phi/api/lib/tensor_operants.cc
 paddle/phi/extension.h
+paddle/phi/config.h
 paddle/phi/include/*
 paddle/phi/infermeta/generated.*
 paddle/fluid/prim/api/generated_prim/*.cc

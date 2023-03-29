@@ -38,6 +38,9 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     }
   }
   auto& info = OpInfoMap::Instance().Get(type);
+  if (info.proto_) {
+    CanonicalizeScalarAttrs(*info.proto_, &standard_attrs);
+  }
   if (attr_check) {
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&standard_attrs);
@@ -67,6 +70,9 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
     auto tmp_attrs = attrs;
+    if (info.proto_) {
+      CanonicalizeScalarAttrs(*info.proto_, &tmp_attrs);
+    }
     info.Checker()->Check(&tmp_attrs);
     op_base = std::unique_ptr<OperatorBase>(
         info.Creator()(type, inputs, outputs, tmp_attrs));

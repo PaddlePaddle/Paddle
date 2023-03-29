@@ -830,7 +830,6 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(autograd)
 add_subdirectory(distribution)
 add_subdirectory(prim)
 
@@ -871,8 +870,6 @@ endif()
 if(WITH_IPU)
   add_subdirectory(ipu)
 endif()
-
-add_subdirectory(asp)
 
 add_subdirectory(ir)
 
