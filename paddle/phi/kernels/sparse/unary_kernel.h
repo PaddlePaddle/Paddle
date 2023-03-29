@@ -172,20 +172,6 @@ SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
 }
 
 template <typename T, typename Context>
-SparseCooTensor IsnanCoo(const Context& dev_ctx, const SparseCooTensor& x) {
-  SparseCooTensor coo;
-  IsnanCooKernel<T, Context>(dev_ctx, x, &coo);
-  return coo;
-}
-
-template <typename T, typename Context>
-SparseCooTensor IsnanCsr(const Context& dev_ctx, const SparseCooTensor& x) {
-  SparseCooTensor csr;
-  IsnanCsrKernel<T, Context>(dev_ctx, x, &csr);
-  return csr;
-}
-
-template <typename T, typename Context>
 void ReshapeCooKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const phi::IntArray& shape,
