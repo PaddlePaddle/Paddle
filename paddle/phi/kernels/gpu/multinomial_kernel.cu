@@ -51,7 +51,15 @@ __global__ void NormalizeProbability(MT* norm_probs,
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
   if (id < num_distributions * num_categories) {
+    PADDLE_ENFORCE(
+        static_cast<MT>(in_data[id]) >= 0.0,
+        "The input of multinomial distribution should be >= 0, but got %f.",
+        static_cast<MT>(in_data[id]));
     int64_t row_id = id / num_categories;
+    PADDLE_ENFORCE(sum_rows[row_id] > 0.0,
+                   "The sum of one multinomial distribution probability should "
+                   "be > 0, but got %f.",
+                   sum_rows[row_id]);
     norm_probs[id] = static_cast<MT>(in_data[id]) / sum_rows[row_id];
   }
 }
@@ -146,11 +154,23 @@ void MultinomialKernel(const Context& dev_ctx,
       int zero_num = 0;
       for (size_t j = 0; j < num_categories; ++j) {
         T weight = cpu_in_data[i * num_categories + j];
+        PADDLE_ENFORCE_GE(
+            static_cast<MT>(weight),
+            0,
+            errors::InvalidArgument(
+                "Each element of multinomial'input must >= 0, but got %f.",
+                static_cast<MT>(weight)));
         if (weight == static_cast<T>(0)) {
           zero_num++;
         }
       }
       int valid_samples = num_categories - zero_num;
+      PADDLE_ENFORCE_LE(
+          int_num_samples,
+          valid_samples,
+          errors::InvalidArgument("When replacement=False, 'num_samples' "
+                                  "must less than or eaqual to the number of "
+                                  "positive item of input"));
     }
 
     // Refer to [gumbel softmax algorithm]
@@ -207,8 +227,6 @@ void MultinomialKernel(const Context& dev_ctx,
   DenseTensor norm_probs_tensor;
   norm_probs_tensor.Resize({num_distributions, num_categories});
   auto* norm_probs_data = dev_ctx.template Alloc<MT>(&norm_probs_tensor);
-  std::cout << "XYY Debug == line 211, norm_probs_tensor.dtype() is : "
-            << norm_probs_tensor.dtype() << std::endl;
   // number of threads in a block is min(num_categories, 512)
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
