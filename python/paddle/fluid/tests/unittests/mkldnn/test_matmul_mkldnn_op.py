@@ -119,17 +119,17 @@ class TestDnnlMatMulOpMixedDimsXWiderTransposeX(TestDnnlMatMulWithGradOp):
 
 class TestDnnlMatMulOpVectorMultiply(TestDnnlMatMulWithGradOp):
     def generate_data(self):
-        self.x = np.random.random((5)).astype("float32")
-        self.y = np.random.random((5)).astype("float32")
+        self.x = np.random.random(5).astype("float32")
+        self.y = np.random.random(5).astype("float32")
         self.out = np.matmul(self.x, self.y)
 
 
 class TestDnnlMatMulOpVectorMultiplyTranspose(TestDnnlMatMulWithGradOp):
     def generate_data(self):
-        self.x = np.random.random((5)).astype("float32")
+        self.x = np.random.random(5).astype("float32")
         x_resized = np.copy(self.x)
         x_resized = np.expand_dims(x_resized, 1)
-        self.y = np.random.random((6)).astype("float32")
+        self.y = np.random.random(6).astype("float32")
         y_resized = np.copy(self.y)
         y_resized = np.expand_dims(y_resized, 0)
         self.out = np.matmul(x_resized, y_resized)

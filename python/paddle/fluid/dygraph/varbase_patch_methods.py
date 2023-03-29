@@ -379,8 +379,8 @@ def monkey_patch_varbase():
             if self.grad is None:
                 return None
             if self.grad.is_selected_rows():
-                return (np.array(self.grad.numpy()), np.array(self.grad.rows()))
-            return self.grad.numpy()
+                return (np.array(self.grad), np.array(self.grad.rows()))
+            return np.array(self.grad)
         else:
             if self._grad_ivar() is None:
                 return None
@@ -735,11 +735,11 @@ def monkey_patch_varbase():
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
         if framework.global_var._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
-            return bool(np.all(self.numpy() > 0))
+            return bool(self.item() > 0)
         else:
             tensor = self.value().get_tensor()
             assert tensor._is_initialized(), "tensor not initialized"
-            return bool(np.all(tensor.__array__() > 0))
+            return bool(self.item() > 0)
 
     def __bool__(self):
         return self.__nonzero__()
