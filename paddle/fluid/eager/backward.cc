@@ -127,10 +127,6 @@ std::vector<paddle::Tensor> RunBackward(
     force_sequential_nodes_forward_queue.pop();
   }
 
-  LOG(WARNING) << force_sequential_nodes_size
-               << " SyncBatchNorm ops called in forward. Please make sure it "
-                  "is equal to the other cards.";
-
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
