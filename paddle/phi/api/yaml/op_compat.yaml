@@ -183,10 +183,10 @@
 - op : bce_loss
   backward : bce_loss_grad
   inputs :
-    input : X
-    label : Label
+    {input : X, label : Label}
   outputs :
     out : Out
+  inplace : (x -> out)
 
 - op : bernoulli
   inputs :
