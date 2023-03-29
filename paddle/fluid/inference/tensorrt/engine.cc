@@ -154,6 +154,7 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
+  infer_builder_config_->setPreviewFeature(nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
