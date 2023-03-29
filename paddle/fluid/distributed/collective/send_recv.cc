@@ -30,10 +30,10 @@ void send_recv(SendRecvOptions* opts) {
   const auto slot = gloo::Slot::build(kSendRecvSlotPrefix, opts->tag);
 
   if (context->rank == opts->src) {
-    in->send((context->rank + 1) % 2, slot);
+    in->send(opts->dst, slot);
     in->waitSend(opts->timeout);
-  } else {
-    out->recv((context->rank + 1) % 2, slot);
+  } else if (context->rank == opts->dst) {
+    out->recv(opts->src, slot);
     out->waitRecv(opts->timeout);
   }
 }

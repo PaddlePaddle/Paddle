@@ -289,6 +289,7 @@ class SendGlooTask : public ProcessGroupGloo::GlooTask {
     GENERATE_FUNC(dtype, set_input, opts, in[0]);
 
     opts.setSrc(_context.get()->rank);
+    opts.setDst(_dst);
     opts.setTag(_tag);
     send_recv(&opts);
   }
@@ -338,6 +339,7 @@ class RecvGlooTask : public ProcessGroupGloo::GlooTask {
     GENERATE_FUNC(dtype, set_output, opts, out[0]);
 
     opts.setSrc(_src);
+    opts.setDst(_context.get()->rank);
     opts.setTag(_tag);
     send_recv(&opts);
   }

@@ -33,6 +33,8 @@ class SendRecvOptions {
 
   void setSrc(int src) { this->src = src; }
 
+  void setDst(int dst) { this->dst = dst; }
+
   void setTag(uint32_t tag) { this->tag = tag; }
 
   void setTimeout(std::chrono::milliseconds timeout) {
@@ -46,6 +48,9 @@ class SendRecvOptions {
 
   // Rank of process to send_recv from.
   int src = -1;
+
+  // Rank of process to send_recv to.
+  int dst = -1;
 
   // Tag for this operation.
   // Must be unique across operations executing in parallel.
