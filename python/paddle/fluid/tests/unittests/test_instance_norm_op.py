@@ -240,20 +240,6 @@ if paddle.is_compiled_with_cuda():
             'test1',
             (2, 100, 3, 5),
             1e-5,
-            1,
-            'NCHW',
-            places,
-            'float32',
-            [
-                [5e-5, 5e-5, 5e-5],  # cpu thresholds
-                [1e-4, 1e-4, 1e-4],
-            ],  # gpu thresholds
-            None,
-        ),
-        (
-            'test2',
-            (2, 100, 3, 5),
-            1e-5,
             'NCHW',
             places,
             'float32',
@@ -312,7 +298,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
         np.random.seed(1234)
         self.fwd_desire = []
         self.rev_desire = []
-        print('self.shape', self.shape)
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
         self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
@@ -333,8 +318,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             self.static_rev_desire[-1].append(rev[0])
             self.static_rev_desire[-1].append(rev[1])
             self.static_rev_desire[-1].append(rev[2])
-        print('self.static_fwd_desire', self.static_fwd_desire)
-        print('self.static_rev_desire', self.static_rev_desire)
 
     def get_eager_desire(self, place):
         if isinstance(place, fluid.CPUPlace):
@@ -389,8 +372,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             )
 
             blocks = mp.blocks
-            print(blocks[0].ops)
-            print(blocks[0].ops[0])
             names = dict(
                 zip(
                     blocks[0].ops[0].output_names,

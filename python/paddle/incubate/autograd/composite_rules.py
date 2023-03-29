@@ -197,6 +197,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
     sqrt_var = sqrt(var_tmp3)
+    saved_variance = 1 / sqrt_var
     out = difference / sqrt_var
 
     if scale is not None:
@@ -207,8 +208,8 @@ def instancenorm_composite(x, scale, bias, epsilon):
         out = out + bias_tile
 
     mean_ = reshape(mean_, [-1])
-    variance = reshape(variance, [-1])
-    return out, mean_, variance
+    saved_variance = reshape(saved_variance, [-1])
+    return out, mean_, saved_variance
 
 
 @REGISTER_COMPOSITE('gelu')
