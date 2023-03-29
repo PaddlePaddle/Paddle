@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
-
+import os
+import re
 import numpy as np
 
 import paddle
+import paddle.fluid.core as core
+
 from paddle.incubate.nn.attn_bias import (
     BlockDiagonalCausalMask,
     BlockDiagonalCausalWithOffsetPaddedKeysMask,
@@ -26,6 +29,18 @@ from paddle.incubate.nn.attn_bias import (
     PaddedSeqLenInfo,
     SeqLenInfo,
 )
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 def all_dtypes():
@@ -38,6 +53,10 @@ def all_dtypes():
     return dtypes
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestLowerTriangularMask(unittest.TestCase):
     @paddle.no_grad()
     def check_materialize(self, shape, dtype, has_bias=False):
@@ -141,6 +160,10 @@ def check_same_tensor_list(tensors1, tensors2):
         np.testing.assert_equal(t1.numpy(), t2.numpy())
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestSeqLenInfo(unittest.TestCase):
     def test_seq_len_info(self):
         n = 100
@@ -173,6 +196,10 @@ class TestSeqLenInfo(unittest.TestCase):
         check_split_tensor_with_batch_sizes(info, extra_shape, batch_sizes)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestPaddedSeqLenInfo(unittest.TestCase):
     def test_padded_seq_len_info(self):
         n = 100
@@ -192,6 +219,10 @@ class TestPaddedSeqLenInfo(unittest.TestCase):
             self.assertEqual(interval[1] - interval[0], seqlens[i])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestBlockDiagonalMask(unittest.TestCase):
     def setUp(self):
         self.mask_class = BlockDiagonalMask
@@ -352,6 +383,10 @@ class TestBlockDiagonalCausalMaskQKVDiffLength(TestBlockDiagonalCausalMask):
         self.qkv_same_length = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestBlockDiagonalCausalWithOffsetPaddedKeysMask(unittest.TestCase):
     def test_main(self):
         kv_padding = 20
