@@ -53,7 +53,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             PrecisionType.Bfloat16,
         ]
         keep_io_types_options = [True, False, False, True]
-        black_list_options = [set(), set(), set(['conv2d']), set()]
+        black_list_options = [set(), set(), {'conv2d'}, set()]
 
         test_configs = zip(
             mixed_precision_options, keep_io_types_options, black_list_options

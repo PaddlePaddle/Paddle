@@ -14,8 +14,8 @@
 
 import unittest
 
+import eager_op_test
 import numpy as np
-import op_test
 
 import paddle
 from paddle.distributed.models.moe import utils
@@ -33,7 +33,7 @@ def count(x, upper_num):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestNumberCountOpInt64(op_test.OpTest):
+class TestNumberCountOpInt64(eager_op_test.OpTest):
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
