@@ -103,6 +103,27 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         y = paddle.to_tensor([1, 5, 2], 'float32')
         z = paddle.add(x, y)
 
+    def test_tensor_checker(self):
+        import paddle
+
+        checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            enable=True,
+            debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_ONLY_AND_ABORT,
+        )
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
+        x = paddle.to_tensor(
+            [1, 0, 3],
+            place=paddle.CPUPlace(),
+            dtype='float32',
+            stop_gradient=False,
+        )
+        y = paddle.to_tensor(
+            [0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32'
+        )
+        res = paddle.pow(x, y)
+        paddle.autograd.backward(res, retain_graph=True)
+        paddle.amp.debugging.disable_tensor_checker()
+
 
 if __name__ == '__main__':
     unittest.main()
