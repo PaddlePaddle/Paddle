@@ -856,8 +856,6 @@ if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
 
-add_subdirectory(asp)
-
 add_subdirectory(ir)
 
 add_subdirectory(standalone_executor)
