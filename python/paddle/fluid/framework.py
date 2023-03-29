@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import textwrap
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -29,7 +31,6 @@ import sys
 import logging
 
 from .proto import framework_pb2, data_feed_pb2
-
 
 from . import core
 from . import unique_name
@@ -71,6 +72,7 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
 
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
@@ -126,7 +128,6 @@ _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
 
-
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
 special_op_attrs = {
@@ -168,7 +169,6 @@ extra_op_attrs = {
     "uniform": ["diag_num"],
     "unique": ["is_sorted"],
 }
-
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -1422,6 +1422,101 @@ def _all_is_type(vals, expected_type):
     if not vals:
         return False
     return all(isinstance(v, expected_type) for v in vals)
+
+
+def wrap_as_scalar(number):
+    """Wrap a number(either python scalar or numpy scalar) as core.Scalar if
+    it is not a scalar.
+
+
+    Args:
+        number (Number): number
+
+    Returns:
+        Scalar: A Scalar that contains the value.
+    """
+    if isinstance(number, core.Scalar):
+        return number
+    if isinstance(number, (bool, int, float, complex)):
+        return core.Scalar(number)
+    if isinstance(number, np.number):
+        # it is a numpy scalar
+        return core.Scalar(number.item())
+    else:
+        raise TypeError("Cannot wrap {} as core.Scalar".format(number))
+
+
+def wrap_as_scalars(array):
+    """This function is used to convert flat list, or numpy array(not
+    necesarily flat) to list of core.Scalar, which correspond to
+    std::vector<paddle::experimental::Scalar> in operator runtime.
+
+    Args:
+        array (List | np.ndarray): array of numbers
+
+    Returns:
+        List: list of core.Scalar, of which each element is a Scalar containing
+          the corresponding value.
+    """
+    if isinstance(array, np.ndarray):
+        array = array.ravel().tolist()
+    return [wrap_as_scalar(item) for item in array]
+
+
+def extract_plain_list(array):
+    """extract value from a list of core.Scalar.
+
+    Args:
+        array (list): Scalars
+
+    Returns:
+        list: values extracted from the scalars.
+    """
+    return [item.value() for item in array]
+
+
+def canonicalize_attrs(attrs, op_proto):
+    """This function is used to canonicalize attributes(as a string->any dict)
+    according to the type specification in the OpProto. This is especially
+    important for operators that has any attributes of type Scalar or Scalars.
+
+    Though various frontends of phi kernels & paddle operators can wrap variables
+    of concrete types into Scalars(a tagged union of several numeric types) or
+    vector of Scalars. Paddle operator requires strict type matching.
+
+    Args:
+        attrs (Dict[str, Any]): attribute dict intended to pass to an operator.
+        op_proto (OpProto): Proto (signature) of the operator.
+
+    Returns:
+        Dict[str, Any]: canonicalized attributes.
+    """
+    canonicalized_attrs = attrs.copy()  # shallow copy is enough here
+    for attr in op_proto.attrs:
+        attr_name = attr.name
+        type_index = attr.type
+        if (attr_name not in attrs) or (attrs[attr_name] is None):
+            continue
+
+        attr_val = attrs[attr_name]
+
+        # VAR and VARS should be skipped
+        if isinstance(attr_val, Variable):
+            continue
+        if isinstance(attr_val, list) and _all_is_type(attr_val, Variable):
+            continue
+
+        # wrap
+        if type_index == core.AttrType.SCALAR:
+            canonicalized_attrs[attr_name] = core.Scalar(attr_val)
+        elif type_index == core.AttrType.SCALARS:
+            # it should be a list (or a numpy array)
+            if len(attr_val) > 0:
+                attr_val = np.array(attr_val).ravel().tolist()
+                attr_val = [core.Scalar(x) for x in attr_val]
+                canonicalized_attrs[attr_name] = attr_val
+
+    return canonicalized_attrs
 
 
 class VariableMetaClass(type):
@@ -3506,7 +3601,12 @@ class Operator:
             return
 
         type_index = self._attr_types[name]
-        if type_index == core.AttrType.BOOL:
+        # if the required attribute is a SCALAR, pass as-is
+        if type_index == core.AttrType.SCALAR:
+            desc._set_scalar_attr(name, wrap_as_scalar(val))
+        elif type_index == core.AttrType.SCALARS:
+            desc._set_scalars_attr(name, wrap_as_scalars(val))
+        elif type_index == core.AttrType.BOOL:
             desc._set_bool_attr(name, val)
         elif type_index == core.AttrType.INT:
             desc._set_int32_attr(name, val)
@@ -3514,8 +3614,8 @@ class Operator:
             desc._set_int64_attr(name, val)
         elif type_index == core.AttrType.FLOAT:
             desc._set_float32_attr(name, val)
-        # elif type_index == core.AttrType.FLOAT64:
-        #     desc._set_float64_attr(name, val)
+        elif type_index == core.AttrType.FLOAT64:
+            desc._set_float64_attr(name, val)
         elif type_index == core.AttrType.STRING:
             desc._set_str_attr(name, val)
         elif type_index == core.AttrType.BOOLS:
