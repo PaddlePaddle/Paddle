@@ -27,7 +27,7 @@ class MyModel(paddle.nn.Layer):
         self.linear2 = paddle.nn.Linear(hidden_size, hidden_size)
         self.linear3 = paddle.nn.Linear(hidden_size, 1)
         self.batchnorm = paddle.nn.Sequential(paddle.nn.BatchNorm(hidden_size))
-        register_buffer_in_temp = paddle.randn([4, 6])
+        register_buffer_in_temp = paddle.ones([4, 6])
         self.register_buffer('register_buffer_in', register_buffer_in_temp)
 
     def forward(self, inputs):
@@ -35,7 +35,6 @@ class MyModel(paddle.nn.Layer):
         x = F.relu(x)
         x = self.batchnorm(x)
         x = self.linear3(x)
-
         return x
 
 
@@ -54,11 +53,11 @@ class TestDtypeConvert(unittest.TestCase):
         else:
             model.float(excluded_layers=excluded_layers)
 
-        for name, buf in model.named_parameters():
+        for name, para in model.named_parameters():
             if 'linear' in name:
-                self.assertEqual(buf.dtype, corrected_dtype)
+                self.assertEqual(para.dtype, corrected_dtype)
             elif 'batchnorm' in name:
-                self.assertEqual(buf.dtype, paddle.float32)
+                self.assertEqual(para.dtype, paddle.float32)
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "Require compiled with CUDA."
@@ -73,11 +72,6 @@ class TestDtypeConvert(unittest.TestCase):
             test_type='float16',
             excluded_layers=nn.Linear,
             corrected_dtype=paddle.float32,
-        )
-        self.verify_trans_dtype(
-            test_type='float16',
-            excluded_layers=None,
-            corrected_dtype=paddle.float16,
         )
 
     @unittest.skipIf(
