@@ -30,7 +30,6 @@ class TestConcatOp(OpTest):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -134,7 +133,6 @@ class TestConcatOp6(TestConcatOp):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]

@@ -308,7 +308,7 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True,
         }
         self.outputs = {'Out': out}
-        self.enable_cinn = False
+        self.enable_cinn = True
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
@@ -1698,7 +1698,7 @@ class TestCompositeDropout(unittest.TestCase):
                 data=self.x, dtype=self.dtype, place=place, stop_gradient=False
             )
             net = PrimNet()
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, True)
             output = net(
                 input_, self.p, training=(not self.is_test), mode=self.mode
             )

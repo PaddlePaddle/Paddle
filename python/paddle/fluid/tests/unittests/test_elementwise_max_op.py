@@ -36,7 +36,7 @@ class TestElementwiseOp(OpTest):
         self.init_data()
         self.op_type = "elementwise_max"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enbale_cinn()
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.inputs = {'X': self.x, 'Y': self.y}
@@ -95,6 +95,9 @@ class TestElementwiseOp(OpTest):
                 check_prim=True,
             )
 
+    def if_enbale_cinn(self):
+        self.enable_cinn = True
+
 
 class TestElementwiseFP16Op(TestElementwiseOp):
     def init_data(self):
@@ -110,11 +113,17 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, []).astype("float64")
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
+
 
 class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseOp):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float16")
         self.y = np.random.uniform(0.1, 1, []).astype("float16")
+
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
@@ -122,11 +131,17 @@ class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
+
 
 class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseOp):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
         self.y = np.random.uniform(0.1, 1, []).astype("float16")
+
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
@@ -134,11 +149,17 @@ class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, []).astype("float64")
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
 
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
+
 
 class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseOp):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float16")
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+
+    def if_enbale_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(

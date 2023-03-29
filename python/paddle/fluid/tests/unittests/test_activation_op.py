@@ -234,11 +234,13 @@ class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1154,7 +1156,6 @@ class TestSqrt(TestActivation, TestParameter):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
 
     # TODO(wanghao107) add prim test
     def test_check_grad(self):
@@ -1180,7 +1181,6 @@ class TestSqrtPrimFp32(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = True
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1353,9 +1353,11 @@ class TestAbs(TestActivation):
         self.prim_op_type = "prim"
         self.python_api = paddle.abs
         self.public_python_api = paddle.abs
-        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1491,7 +1493,9 @@ class TestCos(TestActivation):
         self.init_dtype()
         self.init_shape()
         # prim not support now
-        self.enable_cinn = False
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1627,7 +1631,9 @@ class TestSin(TestActivation, TestParameter):
         self.init_dtype()
         self.init_shape()
         # prim not support now
-        self.enable_cinn = False
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1796,7 +1802,9 @@ class TestRelu(TestActivation):
         self.public_python_api = paddle.nn.functional.relu
         self.init_dtype()
         self.init_shape()
-        self.skip_cinn()
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         if self.dtype == np.uint16:
@@ -1822,16 +1830,10 @@ class TestRelu(TestActivation):
     def test_check_output(self):
         self.check_output(check_prim=True)
 
-    def skip_cinn(self):
-        self.enable_cinn = False
-
 
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
-
-    def skip_cinn(self):
-        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):
@@ -2063,7 +2065,9 @@ class TestGelu(TestActivation):
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
-        self.if_enable_cinn()
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -2087,9 +2091,6 @@ class TestGelu(TestActivation):
 class TestGelu_ZeroDim(TestGelu):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestGELUAPI(unittest.TestCase):
@@ -2338,7 +2339,6 @@ class TestHardSwish(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
