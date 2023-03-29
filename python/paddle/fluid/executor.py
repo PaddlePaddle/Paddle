@@ -1585,8 +1585,6 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu():
-                return False
 
             compiled = isinstance(
                 program, compiler.CompiledProgram
