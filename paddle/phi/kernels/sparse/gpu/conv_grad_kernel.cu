@@ -30,6 +30,7 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
+extern size_t workspace_size;
 
 // rulebook[3, rulebook_len]:
 //[
@@ -202,6 +203,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       const size_t key = autotune::GenKey(M / features_num_range, N, K);
       // call gemm: d_kernel = transpose(x) * out_grad
       // (in_channels, n) * (n, out_channels)
+      static cutlass::device_memory::allocation<uint8_t> workspace(
+          workspace_size);
       GatherGemmScatterDriver<T, IntT, true, false>(
           dev_ctx,
           key,
@@ -216,7 +219,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
           gather_out_indices,
           static_cast<const IntT*>(nullptr),
           static_cast<const T>(1.0),
-          static_cast<const T>(0.0));
+          static_cast<const T>(0.0),
+          &workspace);
       // call gemm: d_x = out_grad * transpose(kernel)
       // (n, out_channels) * (out_channels, in_channels)
       GatherGemmScatterDriver<T, IntT, false, true>(

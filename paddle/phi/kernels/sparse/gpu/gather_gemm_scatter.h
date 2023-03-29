@@ -34,20 +34,23 @@ constexpr int features_num_range = 10000;
       std::is_same<T, dtype>::value && std::is_same<IntT, int32_t>::value &&  \
           TransposeA == transpose_a && TransposeB == transpose_b,             \
       void>::type                                                             \
-  GatherGemmScatterDriver(const phi::GPUContext& ctx,                         \
-                          const size_t key,                                   \
-                          const T* const a,                                   \
-                          const T* const b,                                   \
-                          const T* const c,                                   \
-                          T* const d,                                         \
-                          const int& m,                                       \
-                          const int& n,                                       \
-                          const int& k,                                       \
-                          const IntT* a_indices,                              \
-                          const IntT* b_indices,                              \
-                          const IntT* c_d_indices,                            \
-                          T alpha,                                            \
-                          T beta) {                                           \
+  GatherGemmScatterDriver(                                                    \
+      const phi::GPUContext& ctx,                                             \
+      const size_t key,                                                       \
+      const T* const a,                                                       \
+      const T* const b,                                                       \
+      const T* const c,                                                       \
+      T* const d,                                                             \
+      const int& m,                                                           \
+      const int& n,                                                           \
+      const int& k,                                                           \
+      const IntT* a_indices,                                                  \
+      const IntT* b_indices,                                                  \
+      const IntT* c_d_indices,                                                \
+      T alpha,                                                                \
+      T beta,                                                                 \
+      cutlass::device_memory::allocation<uint8_t>* const workspace_ptr =      \
+          nullptr) {                                                          \
     auto* tuner =                                                             \
         autotune::MakeGatherGemmScatterTuner<TransposeA, TransposeB>(         \
             kernels[0]);                                                      \
@@ -66,7 +69,8 @@ constexpr int features_num_range = 10000;
                k,                                                             \
                a_indices,                                                     \
                b_indices,                                                     \
-               c_d_indices);                                                  \
+               c_d_indices,                                                   \
+               workspace_ptr);                                                \
   }
 
 template <typename T, typename IntT, bool TransposeA, bool TransposeB>
@@ -86,7 +90,9 @@ GatherGemmScatterDriver(const phi::GPUContext& ctx,
                         const IntT* b_indices,
                         const IntT* c_d_indices,
                         T alpha,
-                        T beta) {}
+                        T beta,
+                        cutlass::device_memory::allocation<uint8_t>* const
+                            workspace_ptr = nullptr) {}
 
 DEFINE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16,
                                   fp16_nn_kernels,
