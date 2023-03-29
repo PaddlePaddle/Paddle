@@ -26,7 +26,7 @@ from hybrid_parallel_mp_model import (
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 vocab_size = 20
 hidden_size = 10
