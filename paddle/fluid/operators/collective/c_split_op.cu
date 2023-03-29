@@ -37,7 +37,7 @@ __global__ void SplitFromRank(const T* input,
                               const int rank,
                               const int nranks,
                               const int64_t limit) {
-  CUDA_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP_TYPE(i, limit, int64_t) {
     int64_t row = i / columns;
     int64_t col = i % columns;
 
