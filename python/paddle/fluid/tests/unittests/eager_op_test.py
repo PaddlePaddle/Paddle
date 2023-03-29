@@ -1515,6 +1515,7 @@ class OpTest(unittest.TestCase):
         self,
         place,
         atol=0,
+        rtol=0,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -1629,7 +1630,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
                             "Output ("
@@ -1646,7 +1647,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
                     "Output ("
@@ -1818,7 +1819,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
                                 "Output ("
@@ -1835,7 +1836,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
                         "Output ("
@@ -2057,6 +2058,7 @@ class OpTest(unittest.TestCase):
     def check_output(
         self,
         atol=1e-5,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -2079,6 +2081,7 @@ class OpTest(unittest.TestCase):
             res = self.check_output_with_place(
                 place,
                 atol,
+                rtol,
                 no_check_set,
                 equal_nan,
                 check_dygraph=check_dygraph,

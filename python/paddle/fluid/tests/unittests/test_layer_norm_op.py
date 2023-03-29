@@ -137,7 +137,6 @@ class TestLayerNormOpByOpTest(OpTest):
             no_check_set=["Mean", "Variance"],
             atol=self.ori_atol,
             rtol=self.ori_rtol,
-            check_eager=True,
             check_prim=True,
         )
 
@@ -146,7 +145,6 @@ class TestLayerNormOpByOpTest(OpTest):
             self.check_grad_input_list,
             ['Y'],
             max_relative_error=self.max_relative_error,
-            check_eager=True,
             check_prim=True,
         )
 
@@ -158,6 +156,9 @@ class TestLayerNormOpByOpTest(OpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
+        self.cinn_atol = 1e-5
+        self.cinn_rtol = 1e-5
+
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
@@ -220,6 +221,9 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
+        self.cinn_atol = 1e-5
+        self.cinn_rtol = 1e-5
+
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
@@ -239,6 +243,9 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
+        self.cinn_atol = 1e-5
+        self.cinn_rtol = 1e-5
+
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
@@ -258,6 +265,9 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
+        self.cinn_atol = 1e-5
+        self.cinn_rtol = 1e-5
+
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"

@@ -1580,7 +1580,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
                             "Output ("
@@ -1802,7 +1802,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
                                 "Output ("
