@@ -1374,6 +1374,7 @@
     func : SigmoidCrossEntropyWithLogitsInferMeta
   kernel :
     func : sigmoid_cross_entropy_with_logits
+  inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
 
 - op : sign
