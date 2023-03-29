@@ -14,7 +14,6 @@
 
 import collections
 import inspect
-import os
 import textwrap
 import threading
 import warnings
@@ -305,20 +304,13 @@ class PrimState:
     """
 
     def __init__(self):
-        all_flag = os.getenv("FLAGS_prim_all")
-        fwd_flag = os.getenv("FLAGS_prim_forward")
-        bwd_flag = os.getenv("FLAGS_prim_backward")
-        self.__prim_fwd = self.__parse_flag(fwd_flag) or self.__parse_flag(
-            all_flag
+        core.check_and_set_prim_all_enabled()
+        self.__prim_fwd = (
+            core._is_all_prim_enabled() or core._is_fwd_prim_enabled()
         )
-        self.__prim_bwd = self.__parse_flag(bwd_flag) or self.__parse_flag(
-            all_flag
+        self.__prim_bwd = (
+            core._is_all_prim_enabled() or core._is_bwd_prim_enabled()
         )
-
-    def __parse_flag(self, flag):
-        if str(flag).lower() in ['1', 'true']:
-            return True
-        return False
 
     def enable_fwd(self):
         self.__prim_fwd = True

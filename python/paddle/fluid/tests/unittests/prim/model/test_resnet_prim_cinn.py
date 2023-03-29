@@ -138,7 +138,6 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(enable_prim)
 
     train_reader = paddle.batch(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -154,6 +153,8 @@ def train(to_static, enable_prim, enable_cinn):
         if enable_cinn:
             build_strategy.build_cinn_pass = True
         resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+        if enable_prim:
+            resnet.forward.enable_prim_all()
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
     for epoch in range(epoch_num):

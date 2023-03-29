@@ -79,7 +79,6 @@ def train(to_static, enable_prim, enable_cinn):
         paddle.set_device('gpu')
     else:
         paddle.set_device('cpu')
-    fluid.core._set_prim_all_enabled(enable_prim)
 
     np.random.seed(SEED)
     paddle.seed(SEED)
@@ -93,8 +92,18 @@ def train(to_static, enable_prim, enable_cinn):
         worker_init=None,
     )
 
-    # Now only apply dy2st for encoder
-    bert = Bert(to_static, enable_cinn)
+    bert = Bert()
+    if to_static:
+        build_strategy = paddle.static.BuildStrategy()
+        if enable_cinn:
+            build_strategy.build_cinn_pass = True
+        # Now only apply dy2st for encoder
+        bert.bert_model.encoder = paddle.jit.to_static(
+            bert.bert_model.encoder, build_strategy=build_strategy
+        )
+        if enable_prim:
+            bert.bert_model.encoder.forward.enable_prim_all()
+
     criterion = BertPretrainingCriterion()
 
     optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
