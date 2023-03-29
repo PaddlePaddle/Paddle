@@ -512,7 +512,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
       }
 
-      handler.SetScalesIfNeeded(&fc_args);
+      if (phi::funcs::is_int8<T_in>()) {
+        handler.SetScalesIfNeeded(&fc_args);
+      }
 
       fc_p = handler.AcquireForwardPrimitive();
     }
