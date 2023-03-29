@@ -411,8 +411,10 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
         PADDLE_ENFORCE_EQ(filter_dims[0],
                           ew_bias_add_y_dims[0],
                           platform::errors::InvalidArgument(
-                              "dims of batch "
-                              "must equal out_channel of conv"));
+                              "the shape[%d] of elewise bias tensor "
+                              "must equal out_channel[%d] of conv",
+                              ew_bias_add_y_dims[0],
+                              filter_dims[0]));
         PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
       }
       if (bn != nullptr) {
@@ -421,8 +423,10 @@ int ConvXPUFusePass::ApplyImpl(ir::Graph* graph,
         PADDLE_ENFORCE_EQ(filter_dims[0],
                           bn_bias_t->dims()[0],
                           platform::errors::InvalidArgument(
-                              "dims of batch bias"
-                              "must equal out_channel of conv"));
+                              "the shape[%d] of bn bias tensor "
+                              "must equal out_channel[%d] of conv",
+                              bn_bias_t->dims()[0],
+                              filter_dims[0]));
         auto bn_scale_t =
             scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
         auto bn_mean_t =
