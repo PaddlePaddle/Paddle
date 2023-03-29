@@ -20,11 +20,23 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+#ifdef PADDLE_WITH_GLOO
+#include <gloo/broadcast.h>
+#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_HETERPS
-
 typedef paddle::distributed::GraphTableType GraphTableType;
 
 enum GpuGraphStorageMode {
@@ -50,7 +62,7 @@ class GraphGpuWrapper {
   void initialize();
   void finalize();
   void set_device(std::vector<int> ids);
-  void init_service();
+  void init_service(const std::vector<int>& dev_ids);
   std::string get_reverse_etype(std::string etype);
   std::vector<std::string> get_ntype_from_etype(std::string etype);
   void set_up_types(const std::vector<std::string>& edge_type,
@@ -237,7 +249,18 @@ class GraphGpuWrapper {
   std::set<std::string> uniq_first_node_;
   std::string node_type_size_str_;
   std::string edge_type_size_str_;
-};
+
+  // add for multi-node
+  int rank_id_ = 0;
+  int node_size_ = 1;
+  int multi_node_ = 0;
+#ifdef PADDLE_WITH_CUDA
+  std::vector<ncclComm_t> inner_comms_;
+  std::vector<ncclComm_t> inter_comms_;
+  std::vector<ncclUniqueId> inter_ncclids_;
 #endif
-}  // namespace framework
+};  // class GraphGpuWrapper 
+#endif
+
+};  // namespace framework
 };  // namespace paddle

@@ -284,10 +284,12 @@ class HeterCommKernel {
                    int64_t len,
                    size_t value_bytes,
                    const StreamType& stream);
-  template <typename T, typename StreamType>
-  void scatter_vals(const float* d_shard_vals,
-                    float* d_vals,
-                    T* idx,
+  //template <typename ValType, typename T, typename StreamType>
+  template <typename ValType, typename StreamType>
+  void scatter_vals(const ValType* d_shard_vals,
+                    ValType* d_vals,
+                    //T* idx,
+                    uint32_t* idx,
                     int64_t len,
                     size_t value_bytes,
                     const StreamType& stream);
