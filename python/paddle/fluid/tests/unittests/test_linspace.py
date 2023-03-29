@@ -77,11 +77,17 @@ class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
 
 class TestLinspaceOpReverseCaseFP16(TestLinspaceOpReverseCase):
     def _set_dtype(self):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
@@ -89,8 +95,16 @@ class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
         self.dtype = np.float16
         self.attr_dtype = int(core.VarDesc.VarType.FP16)
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
-class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCase):
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    'not supported bf16',
+)
+class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
     def _set_dtype(self):
         self.dtype = np.uint16
         self.attr_dtype = int(core.VarDesc.VarType.BF16)
@@ -106,10 +120,30 @@ class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCase):
         }
 
 
-# class TestLinspaceOpReverseCaseBF16(TestLinspaceOpReverseCase):
-#     def _set_dtype(self):
-#         self.dtype="bfloat16"
-#         self.attr_dtype = int(core.VarDesc.VarType.BF16)
+class TestLinspaceOpReverseCaseBF16(TestLinspaceOpCommonCaseBF16):
+    def _set_data(self):
+        self.inputs = {
+            'Start': convert_float_to_uint16(np.array([10]).astype("float32")),
+            'Stop': convert_float_to_uint16(np.array([0]).astype("float32")),
+            'Num': np.array([11]).astype('int32'),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                np.arange(10, -1, -1).astype("float32")
+            )
+        }
+
+
+class TestLinspaceOpNumOneCaseBF16(TestLinspaceOpCommonCaseBF16):
+    def _set_data(self):
+        self.inputs = {
+            'Start': convert_float_to_uint16(np.array([10]).astype("float32")),
+            'Stop': convert_float_to_uint16(np.array([0]).astype("float32")),
+            'Num': np.array([1]).astype('int32'),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.array(10, dtype="float32"))
+        }
 
 
 class TestLinspaceAPI(unittest.TestCase):
