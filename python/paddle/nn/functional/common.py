@@ -1598,6 +1598,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             "pad",
         )

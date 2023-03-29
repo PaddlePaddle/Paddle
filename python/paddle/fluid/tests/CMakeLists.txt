@@ -10,4 +10,3 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(cpp_extension)
-add_subdirectory(custom_runtime)
