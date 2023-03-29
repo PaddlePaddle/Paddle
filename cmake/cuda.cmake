@@ -171,7 +171,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     else()
       if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
         set(cuda_arch_bin "80")
-      else()
+      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
         set(cuda_arch_bin "80 86")
       endif()
     endif()
@@ -236,7 +236,6 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   set(${out_variable}_readable
       ${nvcc_archs_readable}
       PARENT_SCOPE)
-
   set(${out_arch_bin}
       ${cuda_arch_bin}
       PARENT_SCOPE)
