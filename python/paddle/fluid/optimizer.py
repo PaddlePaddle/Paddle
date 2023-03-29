@@ -4675,11 +4675,35 @@ class PipelineOptimizer(object):
         device = self._param_device_map[param_name]
         return device
 
+    def _find_op_by_output(self, startup_program, var_name):
+        """ find the first op with output named var_name in startup_program. """
+        for op in startup_program.global_block().ops:
+            if op.output_arg_names[0] == var_name:
+                return op
+        return None 
+
     def _split_startup_program(self, startup_program, device_id):
         block = startup_program.global_block()
         new_startup_program = Program()
-        for op in block.ops:
-            device = op.attr(self._op_device_key)
+
+        cur_device = None 
+        prev_master_name = ''
+        for idx, op in enumerate(list(block.ops)):
+            if "master" in op.output_arg_names[0]:
+                master_name = op.output_arg_names[0]
+                if master_name != prev_master_name or prev_master_name == '':
+                    #assert cur_device is None 
+                    param_name = master_name[:master_name.index("_fp32_master")]
+                    pre_op = self._find_op_by_output(startup_program, param_name)
+                    device = pre_op.attr(self._op_device_key)
+                    cur_device = device
+                    prev_master_name = param_name 
+                else:
+                    device = cur_device
+            else:
+                device = op.attr(self._op_device_key)
+                cur_device = None
+
             if device == "cpu":
                 assert op.type == "fill_constant", (
                     "For ops in startup program with the op_device attribute "
@@ -4847,6 +4871,13 @@ class PipelineOptimizer(object):
             param_name = self._strip_grad_suffix(grad_name[0])
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
+        elif self._is_optimize_op(op) and self._is_gradient_clip_op(op) and op.type == "cast":
+            # For fp16-->fp32 cast added by AMP in grad clip phase
+            grad_name = op.desc.input('X')
+            assert len(grad_name) == 1
+            param_name = self._strip_grad_suffix(grad_name[0])
+            prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
+            op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif self._is_gradient_clip_op(op) or self._is_regularization_op(op):
             # For gradient clip and regularization ops, we set their op_device
             # attribute to the device where their corresponding parameters on.

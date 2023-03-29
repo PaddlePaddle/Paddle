@@ -85,7 +85,7 @@ def _squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'uint16', 'float16'], op_type)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 

@@ -482,10 +482,10 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'],
         original_op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'],
         original_op_type)
 
     axis = helper.kwargs.get('axis', -1)
@@ -1537,10 +1537,10 @@ def add_n(inputs, name=None):
         if len(inputs) > 0:
             for input in inputs:
                 check_variable_and_dtype(input, "inputs", \
-                   ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
+                   ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'], 'add_n')
     else:
         check_variable_and_dtype(inputs, "inputs", \
-                ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'], 'add_n')
 
 
     out = helper.create_variable_for_type_inference(
