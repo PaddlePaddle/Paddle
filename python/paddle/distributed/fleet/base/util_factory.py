@@ -427,7 +427,7 @@ class UtilBase:
         def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
             def reader(batch_size, fn, dim):
                 data = []
-                if isinstance(dim, list) or isinstance(dim, tuple):
+                if isinstance(dim, (list, tuple)):
                     shape = list(dim)
                     _temp = 1
                     for x in dim:

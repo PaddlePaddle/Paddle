@@ -134,7 +134,7 @@ def memory_efficient_attention(
             "causal_diagonal": causal_diagonal,
             "seqlen_k": seqlen_k,
         },
-        args={
+        attrs={
             "max_seqlen_q": max_seqlen_q,
             "max_seqlen_k": max_seqlen_k,
             "causal": causal,

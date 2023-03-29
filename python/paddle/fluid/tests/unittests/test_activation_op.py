@@ -469,9 +469,12 @@ class TestLogSigmoidAPI(unittest.TestCase):
 class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tanh
+        self.public_python_api = paddle.tanh
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -483,7 +486,7 @@ class TestTanh(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -491,10 +494,16 @@ class TestTanh(TestActivation, TestParameter):
         # for now.
         self.dtype = np.float32
 
+    def if_enable_cinn(self):
+        pass
+
 
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -601,7 +610,7 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
-class TestAtan_ZeroDim(TestTanh):
+class TestAtan_ZeroDim(TestAtan):
     def init_shape(self):
         self.shape = []
 
@@ -3910,7 +3919,7 @@ create_test_act_fp16_class(TestTanh)
 create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
-create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestSqrt, check_prim=True)
 create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)

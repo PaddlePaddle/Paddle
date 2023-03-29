@@ -16,7 +16,10 @@ import re
 
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import _convert_into_variable
+from paddle.fluid.dygraph.base import (
+    _convert_into_variable,
+    in_declarative_mode,
+)
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow
 from paddle.fluid.layers.control_flow import while_loop
@@ -40,8 +43,6 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    from paddle.fluid.dygraph.base import in_declarative_mode
-
     if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
         """
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.

@@ -51,7 +51,7 @@ def train_abort(prefix):
     if trainer_id == 0:
         try:
             # train abort
-            exit(1)
+            sys.exit(1)
         except SystemExit:
             name = "abort>>> selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
                 selected_gpus,
