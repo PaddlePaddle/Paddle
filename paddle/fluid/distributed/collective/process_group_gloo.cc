@@ -296,12 +296,16 @@ class SendGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
     const phi::DenseTensor& tensor, int dst_rank, bool sync_op) {
-  std::unique_ptr<SendGlooTask> task;
   std::vector<phi::DenseTensor> in_wrapper{tensor};
+  return Send(in_wrapper, dst_rank);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
+    std::vector<phi::DenseTensor>& inputs, int dst_rank) {
+  std::unique_ptr<SendGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_unique<SendGlooTask>(
-      context, &in_wrapper, rank_, dst_rank, tag);
+  task = std::make_unique<SendGlooTask>(context, &inputs, rank_, dst_rank, tag);
   task->Run();
 
   return task;
@@ -310,28 +314,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
 class RecvGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   RecvGlooTask(const std::shared_ptr<gloo::Context>& context,
-               std::vector<phi::DenseTensor>* inputs,
+               std::vector<phi::DenseTensor>* outputs,
                int rank,
                int src_rank,
                uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, *inputs, CommType::RECV),
+      : ProcessGroupGloo::GlooTask(rank, *outputs, CommType::RECV),
         _context(context),
-        _inputs(*inputs),
+        _outputs(*outputs),
         _src(src_rank),
         _tag(tag) {}
 
-  void Run() override { _do_recv(_inputs); }
+  void Run() override { _do_recv(_outputs); }
 
  private:
   std::shared_ptr<gloo::Context> _context;
-  std::vector<phi::DenseTensor> _inputs;
+  std::vector<phi::DenseTensor> _outputs;
   const int _src;
   const uint32_t _tag;
 
-  void _do_recv(std::vector<phi::DenseTensor>& in) {  // NOLINT
+  void _do_recv(std::vector<phi::DenseTensor>& out) {  // NOLINT
     SendRecvOptions opts(_context);
-    const auto& dtype = in[0].dtype();
-    GENERATE_FUNC(dtype, set_output, opts, in[0]);
+    const auto& dtype = out[0].dtype();
+    GENERATE_FUNC(dtype, set_output, opts, out[0]);
 
     opts.setSrc(_src);
     opts.setTag(_tag);
@@ -341,13 +345,18 @@ class RecvGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
     phi::DenseTensor* tensor, int src_rank, bool sync_op) {
-  std::unique_ptr<RecvGlooTask> task;
   std::vector<phi::DenseTensor> in_wrapper{*tensor};
+  return Recv(in_wrapper, src_rank);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
+    std::vector<phi::DenseTensor>& outputs, int src_rank) {
+  std::unique_ptr<RecvGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
 
-  task = std::make_unique<RecvGlooTask>(
-      context, &in_wrapper, rank_, src_rank, tag);
+  task =
+      std::make_unique<RecvGlooTask>(context, &outputs, rank_, src_rank, tag);
   task->Run();
   return task;
 }
