@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    paddle_static_guard,
+    skip_check_grad_ci,
+)
 from testsuite import create_op
 
 import paddle
@@ -42,28 +47,41 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle_static_guard():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
 
-            def test_x_type():
-                input = np.random.random(2, 100, 3, 5).astype('float32')
-                groups = 2
-                paddle.static.nn.group_norm(input, groups)
+                def test_x_type():
+                    input = np.random.random(2, 100, 3, 5).astype('float32')
+                    groups = 2
+                    paddle.static.nn.group_norm(input, groups)
 
-            self.assertRaises(TypeError, test_x_type)
+                self.assertRaises(TypeError, test_x_type)
 
-            def test_x_dtype():
-                x2 = paddle.static.data(
-                    name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
-                )
-                groups = 2
-                paddle.static.nn.group_norm(x2, groups)
+                def test_x_dtype():
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
+                    )
+                    groups = 2
+                    paddle.static.nn.group_norm(x2, groups)
 
-            self.assertRaises(TypeError, test_x_dtype)
+                self.assertRaises(TypeError, test_x_dtype)
+
+
+def group_norm_wrapper(
+    input, weight, bias, epsilon=1e-5, num_groups=0, data_format="NCHW"
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.group_norm(
+        input, weight, bias, epsilon, num_groups, data_format
+    )
 
 
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.float64
         self.shape = (2, 100, 3, 5)
@@ -201,6 +219,8 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.uint16
         self.shape = (2, 100, 3, 5)
@@ -361,58 +381,68 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
-    paddle.enable_static()
-
     def test_case1(self):
-        data1 = paddle.static.data(
-            name='data1', shape=[None, 3, 3, 4], dtype='float64'
-        )
-        out1 = paddle.static.nn.group_norm(
-            input=data1, groups=2, data_layout="NHWC"
-        )
-        data2 = paddle.static.data(
-            name='data2', shape=[None, 4, 3, 3], dtype='float64'
-        )
-        out2 = paddle.static.nn.group_norm(
-            input=data2, groups=2, data_layout="NCHW"
-        )
+        with paddle_static_guard():
+            data1 = paddle.static.data(
+                name='data1', shape=[None, 3, 3, 4], dtype='float64'
+            )
+            out1 = paddle.static.nn.group_norm(
+                input=data1, groups=2, data_layout="NHWC"
+            )
+            data2 = paddle.static.data(
+                name='data2', shape=[None, 4, 3, 3], dtype='float64'
+            )
+            out2 = paddle.static.nn.group_norm(
+                input=data2, groups=2, data_layout="NCHW"
+            )
 
-        data1_np = np.random.random((2, 3, 3, 4)).astype("float64")
-        data2_np = np.random.random((2, 4, 3, 3)).astype("float64")
-        scale = np.array([1]).astype("float64")
-        bias = np.array([0]).astype("float64")
+            data1_np = np.random.random((2, 3, 3, 4)).astype("float64")
+            data2_np = np.random.random((2, 4, 3, 3)).astype("float64")
+            scale = np.array([1]).astype("float64")
+            bias = np.array([0]).astype("float64")
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={"data1": data1_np, "data2": data2_np},
-            fetch_list=[out1, out2],
-            return_numpy=True,
-        )
-        expect_res1 = group_norm_naive(
-            data1_np, scale, bias, epsilon=1e-5, groups=2, data_layout="NHWC"
-        )
-        expect_res2 = group_norm_naive(
-            data2_np, scale, bias, epsilon=1e-5, groups=2, data_layout="NCHW"
-        )
-        np.testing.assert_allclose(results[0], expect_res1[0], rtol=1e-05)
-        np.testing.assert_allclose(results[1], expect_res2[0], rtol=1e-05)
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(
+                fluid.default_main_program(),
+                feed={"data1": data1_np, "data2": data2_np},
+                fetch_list=[out1, out2],
+                return_numpy=True,
+            )
+            expect_res1 = group_norm_naive(
+                data1_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NHWC",
+            )
+            expect_res2 = group_norm_naive(
+                data2_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NCHW",
+            )
+            np.testing.assert_allclose(results[0], expect_res1[0], rtol=1e-05)
+            np.testing.assert_allclose(results[1], expect_res2[0], rtol=1e-05)
 
 
 class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
-        data = paddle.static.data(
-            name='data', shape=[None, 3, 3, 4], dtype="float64"
-        )
-
-        def attr_data_format():
-            out = paddle.static.nn.group_norm(
-                input=data, groups=2, data_layout="NDHW"
+        with paddle_static_guard():
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 3, 4], dtype="float64"
             )
 
-        self.assertRaises(ValueError, attr_data_format)
+            def attr_data_format():
+                out = paddle.static.nn.group_norm(
+                    input=data, groups=2, data_layout="NDHW"
+                )
+
+            self.assertRaises(ValueError, attr_data_format)
 
 
 class TestGroupNormEager(unittest.TestCase):

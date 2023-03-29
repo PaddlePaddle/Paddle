@@ -100,7 +100,7 @@ class TestFusedGateAttentionOp(OpTest):
             self.gating_b = _random((self.num_heads, self.head_dim))
 
         self.output_w = _random((self.num_heads, self.head_dim, self.out_dim))
-        self.output_b = _random((self.out_dim))
+        self.output_b = _random(self.out_dim)
 
         self.dout = _random(
             (self.batch_size, self.msa_len, self.res_len, self.q_dim)

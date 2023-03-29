@@ -399,9 +399,7 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
-    if (isinstance(size, list) or isinstance(size, tuple)) and len(
-        size
-    ) != x.ndim - 2:
+    if isinstance(size, (tuple, list)) and (len(size) != x.ndim - 2):
         raise ValueError(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
@@ -427,11 +425,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if (
-            isinstance(size, list)
-            or isinstance(size, tuple)
-            or isinstance(size, Variable)
-        ):
+        if isinstance(size, (list, tuple, Variable)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -464,7 +458,7 @@ def interpolate(
         )
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
@@ -496,7 +490,7 @@ def interpolate(
         else:
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
-                    out_shape = list(out_shape.numpy())
+                    out_shape = list(out_shape.numpy(False))
                 else:
                     out_shape = list(out_shape)
 
@@ -581,18 +575,14 @@ def interpolate(
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
-        elif (
-            isinstance(scale, float)
-            or isinstance(scale, int)
-            or isinstance(scale, numpy.ndarray)
-        ):
+        elif isinstance(scale, (float, int, numpy.ndarray)):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
             scale_list = []
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list) or isinstance(scale, tuple):
+        elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
                     "scale_shape length should be {} for "
@@ -1964,7 +1954,10 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
+        label,
+        'label',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'label_smooth',
     )
 
     helper = LayerHelper("label_smooth", **locals())
@@ -2275,7 +2268,7 @@ def fold(
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]

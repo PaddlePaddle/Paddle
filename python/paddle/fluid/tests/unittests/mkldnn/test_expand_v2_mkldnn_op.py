@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -90,7 +90,7 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
         self.expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
             self.expand_shapes_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
     def set_additional_inputs(self):
