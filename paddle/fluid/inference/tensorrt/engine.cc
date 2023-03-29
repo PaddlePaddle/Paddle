@@ -154,7 +154,8 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
-  infer_builder_config_->setPreviewFeature(nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
+  infer_builder_config_->setPreviewFeature(
+      nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
@@ -164,7 +165,7 @@ void TensorRTEngine::FreezeNetwork() {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
-                   "FP16 speed up, use FP32 instead.";
+                   "FP16 speed up, use FP32 instead. ";
     } else {
       LOG(INFO) << "Run Paddle-TRT FP16 mode";
     }

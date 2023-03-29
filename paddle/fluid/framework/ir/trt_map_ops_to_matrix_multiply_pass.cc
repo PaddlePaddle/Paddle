@@ -103,12 +103,13 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
       LOG(WARNING) << "TrtMapOpsToMatrixMultiplyPass in op compat failed.";
       return;
     }
-  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  if (!with_dynamic_shape) {
-    VLOG(3) << "TrtMapOpsToMatrixMultiplyPass need: with_dynamic_shape. Stop this pass, "
-               "please reconfig.";
-    return;
-  }
+    bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+    if (!with_dynamic_shape) {
+      VLOG(3) << "TrtMapOpsToMatrixMultiplyPass need: with_dynamic_shape. Stop "
+                 "this pass, "
+                 "please reconfig. ";
+      return;
+    }
     VLOG(4) << "trt map some ops to matrix_multiply";
     GET_IR_NODE_FROM_SUBGRAPH(ops, ops, mul_matmul_matmul_v2);
     GET_IR_NODE_FROM_SUBGRAPH(ops_out, ops_out, mul_matmul_matmul_v2);
