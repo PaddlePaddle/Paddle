@@ -123,10 +123,8 @@ class TestBase(IPUOpTest):
                 pad_batch = self.batch_size - dy_batch
                 for k, v in feed.items():
                     pad_size = tuple(
-                        (
-                            (0, 0 if i != 0 else pad_batch)
-                            for i in range(len(v.shape))
-                        )
+                        (0, 0 if i != 0 else pad_batch)
+                        for i in range(len(v.shape))
                     )
                     feed[k] = np.pad(v, pad_size, 'constant', constant_values=0)
 

@@ -33,7 +33,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-5, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -46,7 +46,7 @@ def output_hist_diag(out):
     hist, _ = np.histogram(out, range=(-5, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -58,7 +58,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -90,7 +90,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int32") * ele)
+                ("x" + str(index), np.ones(1).astype("int32") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -471,7 +471,7 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
             x = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
             x_np = x.numpy()
             for i in range(10):
-                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+                self.assertTrue(x_np[i] > 0 and x_np[i] < 1.0)
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
@@ -562,7 +562,7 @@ class TestUniformDygraphMode(unittest.TestCase):
             )
             x_np = x.numpy()
             for i in range(10):
-                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+                self.assertTrue(x_np[i] > 0 and x_np[i] < 1.0)
 
 
 class TestUniformDtype(unittest.TestCase):
