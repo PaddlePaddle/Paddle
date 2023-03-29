@@ -68,7 +68,7 @@ class TestCastOpFp16ToFp32(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_grad(self):
         self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
@@ -89,7 +89,7 @@ class TestCastOpFp32ToFp16(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_grad(self):
         self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
