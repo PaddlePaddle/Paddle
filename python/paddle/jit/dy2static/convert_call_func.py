@@ -23,7 +23,6 @@ from typing import Any, List
 
 import numpy
 
-
 from paddle.nn import Layer
 
 from .convert_operators import (
