@@ -62,7 +62,7 @@ class Quant2Int8MkldnnPass:
         ]
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = (
-            _op_ids_to_skip if _op_ids_to_skip is not None else set([-1])
+            _op_ids_to_skip if _op_ids_to_skip is not None else {-1}
         )
         self._scale_immutable_ops = [
             'transpose2',

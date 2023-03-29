@@ -178,7 +178,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
         def test_check_grad_padding_data(self):
             if self.padding_trainable:
                 self.check_grad(
-                    ['PaddingData'], 'Out', no_grad_set=set(['X', 'Filter'])
+                    ['PaddingData'], 'Out', no_grad_set={'X', 'Filter'}
                 )
 
         def test_check_grad_Filter(self):
@@ -189,20 +189,18 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
         def test_check_grad_input_filter(self):
             if self.padding_trainable:
                 self.check_grad(
-                    ['X', 'Filter'], 'Out', no_grad_set=set(['PaddingData'])
+                    ['X', 'Filter'], 'Out', no_grad_set={'PaddingData'}
                 )
 
         def test_check_grad_padding_input(self):
             if self.padding_trainable:
                 self.check_grad(
-                    self.inputs_val_no_f, 'Out', no_grad_set=set(['Filter'])
+                    self.inputs_val_no_f, 'Out', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_padding_filter(self):
             if self.padding_trainable:
-                self.check_grad(
-                    self.inputs_val_no_x, 'Out', no_grad_set=set(['X'])
-                )
+                self.check_grad(self.inputs_val_no_x, 'Out', no_grad_set={'X'})
 
         def init_test_case(self):
             self.input_row = 7
@@ -431,7 +429,7 @@ for stype in support_types:
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
         y = paddle.static.nn.sequence_lod.sequence_conv(

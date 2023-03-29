@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def nearest_neighbor_interp_np(

@@ -16,9 +16,9 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def gen_input_help(input, rank_offset, max_rank, max_size):

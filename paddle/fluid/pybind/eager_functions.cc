@@ -518,6 +518,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             "sure you registered your op first and try again. ",
             op_type));
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
+    // TODO(HongyuJia): Optimize Attrs Cast naming and implementation
     std::vector<paddle::any> res_attrs = CastAttrsToTargetType(
         ctx.Attrs(),
         paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[0]));

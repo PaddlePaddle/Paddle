@@ -23,8 +23,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static.amp as amp
+from paddle import fluid
+from paddle.static import amp
 
 paddle.enable_static()
 
