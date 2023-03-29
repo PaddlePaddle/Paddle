@@ -19,8 +19,8 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
+from paddle.utils import deprecated
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize

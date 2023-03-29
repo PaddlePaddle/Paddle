@@ -255,6 +255,7 @@ PassBase._PASS_PROCESS_ORDER_LIST = [
     "fused_attention",
     "fused_feedforward",
     "fuse_gemm_epilogue",
+    "fuse_adamw",
     "fuse_optimizer",
 ]
 

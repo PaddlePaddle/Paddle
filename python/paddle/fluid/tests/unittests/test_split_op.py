@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -154,7 +154,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         sections_tensor = []
         for index, ele in enumerate(self.sections):
             sections_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs['SectionsTensorList'] = sections_tensor

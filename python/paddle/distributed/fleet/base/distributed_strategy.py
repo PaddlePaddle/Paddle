@@ -24,9 +24,9 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 protobuf_version = google.protobuf.__version__
 if protobuf_version >= "4.21.0":
-    import google._upb._message as _message
+    from google._upb import _message
 else:
-    import google.protobuf.pyext._message as _message
+    from google.protobuf.pyext import _message
 
 __all__ = []
 
@@ -543,7 +543,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:

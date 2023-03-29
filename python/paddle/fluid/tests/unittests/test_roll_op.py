@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestRollOp(OpTest):
@@ -107,10 +106,10 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=True)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 @unittest.skipIf(
@@ -127,10 +126,10 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=True)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 @unittest.skipIf(
@@ -147,10 +146,10 @@ class TestRollBF16OpCase3(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=True)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestRollAPI(unittest.TestCase):

@@ -18,8 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
 
 
@@ -202,6 +201,7 @@ class TestUnbindOp4(TestUnbindOp):
 
 class TestUnbindBF16Op(OpTest):
     def setUp(self):
+        paddle.disable_static()
         self._set_op_type()
         self.python_api = paddle.unbind
         self.dtype = self.get_dtype()
@@ -246,6 +246,14 @@ class TestUnbindAxisError(unittest.TestCase):
                 tensor.unbind(input=x, axis=2)
 
             self.assertRaises(ValueError, test_invalid_axis)
+
+
+class TestUnbindBool(unittest.TestCase):
+    def test_bool(self):
+        x = paddle.to_tensor([[True, True], [False, False]])
+        xs = paddle.unbind(x, axis=0)
+        self.assertEqual(len(xs), 2)
+        np.testing.assert_array_equal(xs[0].numpy(), [True, True])
 
 
 if __name__ == '__main__':
