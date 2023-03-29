@@ -200,91 +200,91 @@ TEST(Attribute, ProtoAttrToAttribute_scalar) {
       paddle::experimental::Scalar(std::complex<double>(42.1, 42.1));
 
   auto proto_scalar_bool = new paddle::framework::proto::Scalar;
-  *proto_scalar_bool = paddle::framework::make_scalar_proto(s_bool);
+  *proto_scalar_bool = paddle::framework::MakeScalarProto(s_bool);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_bool);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_int8 = new paddle::framework::proto::Scalar;
-  *proto_scalar_int8 = paddle::framework::make_scalar_proto(s_int8);
+  *proto_scalar_int8 = paddle::framework::MakeScalarProto(s_int8);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_int8);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_int16 = new paddle::framework::proto::Scalar;
-  *proto_scalar_int16 = paddle::framework::make_scalar_proto(s_int16);
+  *proto_scalar_int16 = paddle::framework::MakeScalarProto(s_int16);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_int16);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_int32 = new paddle::framework::proto::Scalar;
-  *proto_scalar_int32 = paddle::framework::make_scalar_proto(s_int32);
+  *proto_scalar_int32 = paddle::framework::MakeScalarProto(s_int32);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_int32);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_int64 = new paddle::framework::proto::Scalar;
-  *proto_scalar_int64 = paddle::framework::make_scalar_proto(s_int64);
+  *proto_scalar_int64 = paddle::framework::MakeScalarProto(s_int64);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_int64);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_uint8 = new paddle::framework::proto::Scalar;
-  *proto_scalar_uint8 = paddle::framework::make_scalar_proto(s_uint8);
+  *proto_scalar_uint8 = paddle::framework::MakeScalarProto(s_uint8);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_uint8);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_uint16 = new paddle::framework::proto::Scalar;
-  *proto_scalar_uint16 = paddle::framework::make_scalar_proto(s_uint16);
+  *proto_scalar_uint16 = paddle::framework::MakeScalarProto(s_uint16);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_uint16);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_uint32 = new paddle::framework::proto::Scalar;
-  *proto_scalar_uint32 = paddle::framework::make_scalar_proto(s_uint32);
+  *proto_scalar_uint32 = paddle::framework::MakeScalarProto(s_uint32);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_uint32);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_uint64 = new paddle::framework::proto::Scalar;
-  *proto_scalar_uint64 = paddle::framework::make_scalar_proto(s_uint64);
+  *proto_scalar_uint64 = paddle::framework::MakeScalarProto(s_uint64);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_uint64);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_float16 = new paddle::framework::proto::Scalar;
-  *proto_scalar_float16 = paddle::framework::make_scalar_proto(s_float16);
+  *proto_scalar_float16 = paddle::framework::MakeScalarProto(s_float16);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_float16);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_bfloat16 = new paddle::framework::proto::Scalar;
-  *proto_scalar_bfloat16 = paddle::framework::make_scalar_proto(s_bfloat16);
+  *proto_scalar_bfloat16 = paddle::framework::MakeScalarProto(s_bfloat16);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_bfloat16);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_float = new paddle::framework::proto::Scalar;
-  *proto_scalar_float = paddle::framework::make_scalar_proto(s_float);
+  *proto_scalar_float = paddle::framework::MakeScalarProto(s_float);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_float);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_double = new paddle::framework::proto::Scalar;
-  *proto_scalar_double = paddle::framework::make_scalar_proto(s_double);
+  *proto_scalar_double = paddle::framework::MakeScalarProto(s_double);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_double);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_cfloat = new paddle::framework::proto::Scalar;
-  *proto_scalar_cfloat = paddle::framework::make_scalar_proto(s_cfloat);
+  *proto_scalar_cfloat = paddle::framework::MakeScalarProto(s_cfloat);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_cfloat);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
 
   auto proto_scalar_cdouble = new paddle::framework::proto::Scalar;
-  *proto_scalar_cdouble = paddle::framework::make_scalar_proto(s_cdouble);
+  *proto_scalar_cdouble = paddle::framework::MakeScalarProto(s_cdouble);
   proto_attr_scalar.set_allocated_scalar(proto_scalar_cdouble);
   ASSERT_EQ(AttrTypeID(paddle::framework::GetAttrValue(proto_attr_scalar)),
             paddle::framework::proto::SCALAR);
@@ -302,7 +302,7 @@ TEST(Attribute, ProtoAttrToAttribute_scalars) {
   std::vector<paddle::framework::proto::Scalar> proto_scalars;
   proto_scalars.reserve(scalars.size());
   for (const auto &item : scalars) {
-    proto_scalars.emplace_back(paddle::framework::make_scalar_proto(item));
+    proto_scalars.emplace_back(paddle::framework::MakeScalarProto(item));
   }
   paddle::framework::VectorToRepeated(proto_scalars,
                                       proto_attr_scalars.mutable_scalars());
@@ -310,8 +310,8 @@ TEST(Attribute, ProtoAttrToAttribute_scalars) {
             paddle::framework::proto::SCALARS);
 }
 
-TEST(Attribute, make_scalar_from_attribute) {
-  using paddle::framework::make_scalar_from_attribute;
+TEST(Attribute, MakeScalarFromAttribute) {
+  using paddle::framework::MakeScalarFromAttribute;
   auto s_bool = true;
   auto s_int32 = static_cast<int32_t>(42.1);
   auto s_int64 = static_cast<int64_t>(42.1);
@@ -321,22 +321,22 @@ TEST(Attribute, make_scalar_from_attribute) {
 
   auto s_scalar = paddle::experimental::Scalar(42.1);
 
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_bool)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_bool)),
             paddle::experimental::Scalar(s_bool));
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_int32)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_int32)),
             paddle::experimental::Scalar(s_int32));
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_int64)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_int64)),
             paddle::experimental::Scalar(s_int64));
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_float)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_float)),
             paddle::experimental::Scalar(s_float));
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_double)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_double)),
             paddle::experimental::Scalar(s_double));
-  ASSERT_EQ(make_scalar_from_attribute(paddle::framework::Attribute(s_scalar)),
+  ASSERT_EQ(MakeScalarFromAttribute(paddle::framework::Attribute(s_scalar)),
             s_scalar);
 }
 
-TEST(Attribute, make_scalars_from_attribute) {
-  using paddle::framework::make_scalars_from_attribute;
+TEST(Attribute, MakeScalarsFromAttribute) {
+  using paddle::framework::MakeScalarsFromAttribute;
   std::vector<bool> v_bool(4, true);
   std::vector<int> v_int(4, 42);
   std::vector<int64_t> v_int64(4, 42);
@@ -345,23 +345,18 @@ TEST(Attribute, make_scalars_from_attribute) {
   std::vector<paddle::experimental::Scalar> v_scalar(
       4, paddle::experimental::Scalar(std::complex<float>(42.1, 42.1)));
 
-  ASSERT_EQ(
-      make_scalars_from_attribute(paddle::framework::Attribute(v_bool))[0],
-      paddle::experimental::Scalar(v_bool[0]));
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_bool))[0],
+            paddle::experimental::Scalar(v_bool[0]));
 
-  ASSERT_EQ(make_scalars_from_attribute(paddle::framework::Attribute(v_int))[0],
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_int))[0],
             paddle::experimental::Scalar(v_int[0]));
-  ASSERT_EQ(
-      make_scalars_from_attribute(paddle::framework::Attribute(v_int64))[0],
-      paddle::experimental::Scalar(v_int64[0]));
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_int64))[0],
+            paddle::experimental::Scalar(v_int64[0]));
 
-  ASSERT_EQ(
-      make_scalars_from_attribute(paddle::framework::Attribute(v_float))[0],
-      paddle::experimental::Scalar(v_float[0]));
-  ASSERT_EQ(
-      make_scalars_from_attribute(paddle::framework::Attribute(v_double))[0],
-      paddle::experimental::Scalar(v_double[0]));
-  ASSERT_EQ(
-      make_scalars_from_attribute(paddle::framework::Attribute(v_scalar))[0],
-      v_scalar[0]);
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_float))[0],
+            paddle::experimental::Scalar(v_float[0]));
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_double))[0],
+            paddle::experimental::Scalar(v_double[0]));
+  ASSERT_EQ(MakeScalarsFromAttribute(paddle::framework::Attribute(v_scalar))[0],
+            v_scalar[0]);
 }

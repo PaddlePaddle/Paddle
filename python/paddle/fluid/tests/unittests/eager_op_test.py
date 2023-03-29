@@ -33,9 +33,9 @@ from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
-    canonicalize_attrs,
 )
 from paddle.fluid.op import Operator
+from paddle.framework import canonicalize_attrs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker

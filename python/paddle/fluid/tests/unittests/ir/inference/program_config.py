@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, framework
+from paddle.fluid import core
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import (
     IrGraph,
@@ -28,6 +28,7 @@ from paddle.fluid.framework import (
     OpProtoHolder,
     convert_np_dtype_to_dtype_,
 )
+from paddle.framework import canonicalize_attrs
 from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
@@ -186,9 +187,7 @@ class BlockConfig:
             # canonicalize scalar attrs
             if OpProtoHolder.instance().has_op_proto(op_config.type):
                 proto = OpProtoHolder.instance().get_op_proto(op_config.type)
-                canonicalized_attrs = framework.canonicalize_attrs(
-                    op_config.attrs, proto
-                )
+                canonicalized_attrs = canonicalize_attrs(op_config.attrs, proto)
             else:
                 canonicalized_attrs = op_config.attrs
             for name, values in canonicalized_attrs.items():
@@ -335,9 +334,7 @@ def create_fake_model(program_config):
         # canonicalize scalar attrs
         if OpProtoHolder.instance().has_op_proto(op_config.type):
             proto = OpProtoHolder.instance().get_op_proto(op_config.type)
-            canonicalized_attrs = framework.canonicalize_attrs(
-                op_config.attrs, proto
-            )
+            canonicalized_attrs = canonicalize_attrs(op_config.attrs, proto)
         else:
             canonicalized_attrs = op_config.attrs
 

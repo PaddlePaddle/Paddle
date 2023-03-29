@@ -37,10 +37,10 @@ from paddle.fluid.framework import (
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
     _test_eager_guard,
-    canonicalize_attrs,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
+from paddle.framework import canonicalize_attrs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker

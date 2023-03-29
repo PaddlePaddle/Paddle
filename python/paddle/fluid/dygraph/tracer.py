@@ -18,6 +18,7 @@ import numpy as np
 
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.framework import canonicalize_attrs
 from paddle import _C_ops, _legacy_C_ops
 
 name_mapping = {
@@ -330,7 +331,7 @@ class Tracer(core.Tracer):
             # `trace`
             if framework.OpProtoHolder.instance().has_op_proto(type):
                 proto = framework.OpProtoHolder.instance().get_op_proto(type)
-                attrs = framework.canonicalize_attrs(attrs, proto)
+                attrs = canonicalize_attrs(attrs, proto)
 
             self.trace(
                 type,

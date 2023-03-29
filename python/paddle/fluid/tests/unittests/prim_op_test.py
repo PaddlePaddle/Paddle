@@ -24,9 +24,9 @@ from paddle.fluid import core
 from paddle.fluid.framework import (
     OpProtoHolder,
     _dygraph_tracer,
-    canonicalize_attrs,
     in_dygraph_mode,
 )
+from paddle.framework import canonicalize_attrs
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
