@@ -44,7 +44,7 @@ def find_arch_range(min_arch, max_arch):
     assert min_arch <= max_arch
     n = len(DEFAULT_ARCH)
 
-    start_idx = 0
+    start_idx = n - 1
     for i in range(n - 1):
         if DEFAULT_ARCH[i] <= min_arch and min_arch < DEFAULT_ARCH[i + 1]:
             start_idx = i
@@ -54,6 +54,7 @@ def find_arch_range(min_arch, max_arch):
     for i in range(n - 1):
         if DEFAULT_ARCH[i] <= max_arch and max_arch < DEFAULT_ARCH[i + 1]:
             end_idx = i + 1
+
     return DEFAULT_ARCH[start_idx:end_idx]
 
 

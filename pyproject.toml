@@ -36,6 +36,9 @@ select = [
     "C400",
     "C401",
     "C402",
+    "C403",
+    "C404",
+    "C405",
     "C408",
     "C409",
     "C410",
@@ -51,6 +54,7 @@ select = [
     "UP003",
     "UP004",
     "UP005",
+    "UP006",
     "UP007",
     "UP008",
     "UP009",
@@ -86,7 +90,7 @@ select = [
     # Bugbear
     "B002",
     "B003",
-    # "B004",
+    "B004",
     # "B005",
     # "B006",
     # "B007",
@@ -97,12 +101,12 @@ select = [
     "B012",
     "B013",
     "B014",
-    # "B015",
+    "B015",
     "B016",
     # "B017",
     "B018",
     "B019",
-    # "B020",
+    "B020",
     "B021",
     "B022",
     # "B023",
@@ -117,9 +121,9 @@ select = [
     # "B904",
 
     # Pylint
-    # "PLC0414",
+    "PLC0414",
     # "PLC1901",
-    # "PLC3002",
+    "PLC3002",
     "PLE0100",
     "PLE0101",
     # "PLE0116",
@@ -128,7 +132,7 @@ select = [
     "PLE0604",
     "PLE0605",
     "PLE1142",
-    # "PLE1205",
+    "PLE1205",
     "PLE1206",
     "PLE1307",
     # "PLE1310",
@@ -166,3 +170,4 @@ unfixable = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "setup.py" = ["UP036"]
+"python/paddle/fluid/tests/unittests/dygraph_to_static/test_lambda.py" = ["PLC3002"]

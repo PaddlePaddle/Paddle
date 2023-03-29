@@ -265,6 +265,10 @@ cc_library(
   SRCS fuse_relu_depthwise_conv_pass.cc
   DEPS pass graph_pattern_detector)
 cc_library(
+  fuse_adamw_op_pass
+  SRCS fuse_adamw_op_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
   fused_feedforward_pass
   SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)

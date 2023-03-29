@@ -79,8 +79,8 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
                 paddle.XPUPlace(0),
                 ['X'],
                 'Loss',
-                no_grad_set=set(["Target"]),
-                check_dygraph=True,
+                no_grad_set={"Target"},
+                check_eager=True,
             )
 
         def initTestCase(self):
