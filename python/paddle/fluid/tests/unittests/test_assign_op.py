@@ -48,6 +48,9 @@ class TestAssignOp(op_test.OpTest):
         paddle.disable_static()
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+)
 class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
@@ -70,6 +73,9 @@ class TestAssignFP16Op(op_test.OpTest):
         paddle.disable_static()
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+)
 class TestAssignBFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
@@ -191,26 +197,6 @@ class TestAssignOApi(unittest.TestCase):
                 paddle.assign(array, result1)
             np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
-    def test_assign_fp16(self):
-        x = np.random.uniform(0, 10, [3, 3]).astype(np.float16)
-        x = paddle.to_tensor(x)
-        result = paddle.zeros(shape=[3, 3], dtype='float16')
-        paddle.assign(x, result)
-        np.testing.assert_equal(result.numpy(), x.numpy())
-
-    def test_assign_bfp16(self):
-        x_f = np.random.uniform(0, 10, [3, 3]).astype(np.float32)
-        x = convert_float_to_uint16(x_f)
-        x = paddle.to_tensor(x)
-        result = paddle.zeros(shape=[3, 3], dtype='bfloat16')
-        paddle.assign(x, result)
-        np.testing.assert_allclose(
-            convert_uint16_to_float(result.numpy()), x_f, rtol=1e-02
-        )
-        np.testing.assert_equal(
-            convert_uint16_to_float(result.numpy()), convert_uint16_to_float(x)
-        )
-
     def test_assign_List(self):
         l = [1, 2, 3]
         result = paddle.assign(l)
@@ -254,6 +240,31 @@ class TestAssignOApi(unittest.TestCase):
 
         np.testing.assert_array_equal(y_np, x_np)
         paddle.disable_static()
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+)
+class TestAssignOApiFP16(unittest.TestCase):
+    def test_assign_fp16(self):
+        x = np.random.uniform(0, 10, [3, 3]).astype(np.float16)
+        x = paddle.to_tensor(x)
+        result = paddle.zeros(shape=[3, 3], dtype='float16')
+        paddle.assign(x, result)
+        np.testing.assert_equal(result.numpy(), x.numpy())
+
+    def test_assign_bfp16(self):
+        x_f = np.random.uniform(0, 10, [3, 3]).astype(np.float32)
+        x = convert_float_to_uint16(x_f)
+        x = paddle.to_tensor(x)
+        result = paddle.zeros(shape=[3, 3], dtype='bfloat16')
+        paddle.assign(x, result)
+        np.testing.assert_allclose(
+            convert_uint16_to_float(result.numpy()), x_f, rtol=1e-02
+        )
+        np.testing.assert_equal(
+            convert_uint16_to_float(result.numpy()), convert_uint16_to_float(x)
+        )
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
@@ -308,6 +319,7 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+        paddle.disable_static()
 
 
 class TestAssignTripleGradCheck(unittest.TestCase):
@@ -339,6 +351,7 @@ class TestAssignTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
