@@ -376,15 +376,10 @@ class TestBicubicInterpCase1FP16(TestBicubicInterpOpFP16):
         self.dtype = np.float16
 
 
-# this case will cause accuracy loss （backward:0.008773442)
-# class TestBicubicInterpCase2FP16(TestBicubicInterpOpFP16):
-#     def init_test_case(self):
-#         self.interp_method = 'bicubic'
-#         self.input_shape = [3, 3, 9, 6]
-#         self.out_h = 10
-#         self.out_w = 8
-#         self.scale = []
-#         self.align_corners = True
+class TestBicubicInterpCase2FP16(TestBicubicInterpOpFP16):
+    def init_test_case(self):
+        create_test_case2(self)
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase3FP16(TestBicubicInterpOpFP16):
