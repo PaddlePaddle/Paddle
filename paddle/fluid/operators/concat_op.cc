@@ -215,10 +215,10 @@ REGISTER_OPERATOR(concat,
                   ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ConcatCompositeGradOpMaker,
                   ConcatInferShapeFunctor);
 REGISTER_OPERATOR(concat_grad,
                   ops::ConcatOpGrad,
-                  ops::ConcatCompositeGradOpMaker,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);

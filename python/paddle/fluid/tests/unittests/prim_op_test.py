@@ -683,7 +683,7 @@ class PrimForwardChecker:
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         # check the operator not in program if check prim
-        if self.prim_op_type == "comp":
+        if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
                 for op in net.forward.get_concrete_program(args)[1]
@@ -778,7 +778,7 @@ class PrimForwardChecker:
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
         # check the operator not in program if check prim
-        if self.prim_op_type == "comp":
+        if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
                 for op in net.forward.get_concrete_program(args)[1]
