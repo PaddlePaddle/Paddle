@@ -105,22 +105,6 @@ class TestElementwiseMinFP16Op_ZeroDim1(TestElementwiseFP16Op):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
 
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X")
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y')
-        )
-
 
 class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
@@ -415,16 +399,16 @@ class TestElementwiseBF16Op(OpTest):
         self.check_output(atol=1e-2)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
+        self.check_grad(['X', 'Y'], 'Out', numeric_grad_delta=0.05)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-2, no_grad_set=set("X")
+            ['Y'], 'Out', numeric_grad_delta=0.05, no_grad_set=set("X")
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-2, no_grad_set=set('Y')
+            ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
         )
 
 

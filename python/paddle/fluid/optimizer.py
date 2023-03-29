@@ -389,7 +389,7 @@ class Optimizer:
                     dtype='float32' if self._dtype is None else self._dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
                 self._learning_rate_map[
                     framework.default_main_program()

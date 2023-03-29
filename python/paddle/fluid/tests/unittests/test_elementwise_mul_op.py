@@ -130,7 +130,7 @@ class ElementwiseMulOp(OpTest):
                 self.check_grad_with_place(*check_args, **check_kwargs)
 
 
-class TestElementwiseMulPrimOpFp32(ElementwiseMulOp):
+class TestElementwiseMulPrimOpFP32(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float32
         self.val_dtype = np.float32
@@ -461,7 +461,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(*check_args, **check_kwargs)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{0}_{1}".format(parent.__name__, "FP16")
     TestElementwiseMulFP16Op.__name__ = cls_name
     globals()[cls_name] = TestElementwiseMulFP16Op
 

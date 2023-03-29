@@ -344,7 +344,7 @@ class XPUTestPool3DOp(XPUOpTestWrapper):
                 return
 
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, set(['X']), 'Out')
+            self.check_grad_with_place(place, {'X'}, 'Out')
 
         def init_data_format(self):
             self.data_format = "NCDHW"
@@ -532,7 +532,7 @@ class XPUTestPool3DOp(XPUOpTestWrapper):
             if self.dtype == np.float16:
                 return
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, set(['X']), 'Out')
+            self.check_grad_with_place(place, {'X'}, 'Out')
 
 
 support_types = get_xpu_op_support_types('pool3d')

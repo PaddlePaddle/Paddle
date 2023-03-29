@@ -32,6 +32,7 @@ list(
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc
+  bitwise_not_op.cc
   one_hot_op.cc
   swish_op.cc
   silu_op.cc

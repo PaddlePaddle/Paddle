@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle.fluid import core
@@ -44,22 +44,20 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output()
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
                 self.check_grad(
-                    ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+                    ['X', 'Y'], 'Out', check_dygraph=False, check_prim=True
                 )
             else:
-                self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+                self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
-            )
+            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
 
     def test_check_grad_ingore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
@@ -68,6 +66,7 @@ class TestElementwiseOp(OpTest):
                 'Out',
                 max_relative_error=0.005,
                 no_grad_set=set("X"),
+                check_dygraph=False,
             )
         else:
             self.check_grad(
@@ -85,6 +84,7 @@ class TestElementwiseOp(OpTest):
                 'Out',
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
+                check_dygraph=False,
             )
         else:
             self.check_grad(
@@ -106,21 +106,34 @@ class TestElementwiseFP16Op(TestElementwiseOp):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False, atol=1e-3)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(atol=1e-3)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
                 self.check_grad(
-                    ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+                    ['X', 'Y'],
+                    'Out',
+                    check_dygraph=False,
+                    check_prim=True,
+                    max_relative_error=1e-3,
                 )
             else:
-                self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+                self.check_grad(
+                    ['X', 'Y'],
+                    'Out',
+                    check_dygraph=False,
+                    max_relative_error=1e-3,
+                )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
+                ['X', 'Y'],
+                'Out',
+                check_dygraph=True,
+                check_prim=True,
+                max_relative_error=1e-3,
             )
 
     def test_check_grad_ingore_x(self):
@@ -129,6 +142,7 @@ class TestElementwiseFP16Op(TestElementwiseOp):
                 ['Y'],
                 'Out',
                 max_relative_error=1e-3,
+                check_dygraph=False,
                 no_grad_set=set("X"),
             )
         else:
@@ -146,6 +160,7 @@ class TestElementwiseFP16Op(TestElementwiseOp):
                 ['X'],
                 'Out',
                 max_relative_error=1e-3,
+                check_dygraph=False,
                 no_grad_set=set('Y'),
             )
         else:
@@ -164,7 +179,7 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
 
-class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float16")
         self.y = np.random.uniform(0.1, 1, []).astype("float16")
@@ -176,7 +191,7 @@ class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
 
-class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
         self.y = np.random.uniform(0.1, 1, []).astype("float16")
@@ -188,7 +203,7 @@ class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
 
 
-class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float16")
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
@@ -231,29 +246,27 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, atol=1e-2)
+            self.check_output(check_dygraph=False, atol=1e-2)
         else:
-            self.check_output(check_eager=True, atol=1e-2)
+            self.check_output(check_dygraph=True, atol=1e-2)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             # check_prim=False, bfloat16 is not supported in `less_equal`
             self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=False, max_relative_error=1e-2
+                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_dygraph=False
             )
         else:
-            self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=True, max_relative_error=1e-2
-            )
+            self.check_grad(['X', 'Y'], 'Out', numeric_grad_delta=0.05)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=1e-2
+            ['Y'], 'Out', numeric_grad_delta=0.05, no_grad_set=set("X")
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=1e-2
+            ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
         )
 
 
@@ -279,7 +292,10 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
         self.y = np.array([0.5]).astype("float64")
 
 
-class TestElementwiseMaxFP16Op_scalar(TestElementwiseMaxOp_scalar):
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
+class TestElementwiseMaxFP16Op_scalar(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float16")
         self.y = np.array([0.5]).astype("float16")
@@ -294,7 +310,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
         )
 
 
-class TestElementwiseMaxFP16Op_Vector(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_Vector(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.random((100,)).astype("float16")
         sgn = np.random.choice([-1, 1], (100,)).astype("float16")
@@ -333,7 +349,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxFP16Op_broadcast_0(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_broadcast_0(TestElementwiseFP16Op):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -375,7 +391,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxFP16Op_broadcast_1(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_broadcast_1(TestElementwiseFP16Op):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -416,7 +432,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxFP16Op_broadcast_2(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_broadcast_2(TestElementwiseFP16Op):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -457,7 +473,7 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxFP16Op_broadcast_3(TestElementwiseOp):
+class TestElementwiseMaxFP16Op_broadcast_3(TestElementwiseFP16Op):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -492,7 +508,7 @@ class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseFP16Op_broadcast_4(TestElementwiseOp):
+class TestElementwiseFP16Op_broadcast_4(TestElementwiseFP16Op):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum

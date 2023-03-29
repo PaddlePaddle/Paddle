@@ -18,7 +18,7 @@ import numpy as np
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
