@@ -1296,7 +1296,6 @@ function(math_library TARGET)
   endif()
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
     list(APPEND cu_srcs ${TARGET}.cu)
-    message("add cu_srcs ${TARGET}.cu")
   endif()
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu.cc)
     list(APPEND cu_srcs ${TARGET}.cu.cc)
@@ -1313,8 +1312,6 @@ function(math_library TARGET)
       ${TARGET}
       SRCS ${cc_srcs} ${cu_srcs}
       DEPS ${math_library_DEPS} ${math_common_deps})
-    message("make hip_library ${TARGET}:")
-    message("cc_srcs: ${cc_srcs}, cu_srcs: ${cu_srcs}")
   elseif(${cc_srcs_len} GREATER 0)
     cc_library(
       ${TARGET}
