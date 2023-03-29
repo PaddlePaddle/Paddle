@@ -881,7 +881,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+            if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(int(value))
                 attrs['value'] = int(value)
             else:
@@ -904,6 +904,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
                 'uint8',
                 'int16',
                 'int32',
@@ -2045,6 +2046,7 @@ def assign(x, output=None):
                     'int32',
                     'int64',
                     'uint8',
+                    'int8',
                     'bool',
                 ],
                 'assign',
@@ -2218,6 +2220,7 @@ def _memcpy(input, place=None, output=None):
                 'int32',
                 'int64',
                 'uint8',
+                'int8',
                 'bool',
             ],
             'memcpy',

@@ -476,7 +476,7 @@ def launch_collective(args):
         except:
             logger.warning("Terminating... exit")
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     if os.path.exists(tmp_dir):
         shutil.rmtree(tmp_dir)

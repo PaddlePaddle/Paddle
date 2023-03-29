@@ -53,7 +53,7 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
-  # add_subdirectory(asp)
+  add_subdirectory(asp)
   # add_subdirectory(auto_parallel)
   add_subdirectory(autograd)
   add_subdirectory(book)
