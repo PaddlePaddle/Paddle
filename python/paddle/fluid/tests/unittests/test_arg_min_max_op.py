@@ -99,7 +99,7 @@ class TestCase1FP16(BaseTestCase):
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
 )
-class BFP16TestCase0(OpTest):
+class TestArgMinBF16OP(OpTest):
     def initTestType(self):
         self.op_type = 'arg_min'
         self.python_api = paddle.tensor.argmin
@@ -108,8 +108,9 @@ class BFP16TestCase0(OpTest):
         self.initTestType()
         self.dims = (3, 4, 5)
         self.axis = 0
+        self.dtype = np.uint16
 
-    def SetUp(self):
+    def setUp(self):
         self.initTestCase()
         x = np.random.random(self.dims).astype("float32")
         self.x = convert_float_to_uint16(x)
@@ -120,11 +121,30 @@ class BFP16TestCase0(OpTest):
         else:
             self.outputs = {'Out': np.argmax(x, axis=self.axis)}
 
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CUDAPlace(0))
 
-class BFP16TestCase1(BFP16TestCase0):
+
+class TestArgMaxBF16OP(TestArgMinBF16OP):
     def initTestType(self):
         self.op_type = 'arg_max'
         self.python_api = paddle.tensor.argmax
+
+
+class TestArgMinMaxTypeCheck(unittest.TestCase):
+    def test_type_error(self):
+        #  in static mode
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='bool')
+            self.assertRaises(TypeError, paddle.argmin, x)
+            self.assertRaises(TypeError, paddle.argmax, x)
+
+    def test_bfp16(self):
+        # in static mode
+        with program_guard(Program(), Program()):
+            x = paddle.zeros(name='x', shape=[100, 10], dtype='uint16')
+            t1 = paddle.argmin(x)
+            t2 = paddle.argmax(x)
 
 
 class TestCase2_1(BaseTestCase):
