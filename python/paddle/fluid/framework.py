@@ -27,10 +27,8 @@ import subprocess
 import multiprocessing
 import sys
 import logging
-import paddle
 
 from .proto import framework_pb2, data_feed_pb2
-
 
 from . import core
 from . import unique_name
@@ -1719,12 +1717,14 @@ class Variable(metaclass=VariableMetaClass):
                 loss.backward()
 
         """
+        from .backward import append_backward
+
         if retain_graph is True:
             raise AssertionError(
                 "`retain_graph` == True is not supported in @to_static function."
                 "please set retain_graph = False."
             )
-        param_grad_list = paddle.fluid.backward.append_backward(self)
+        param_grad_list = append_backward(self)
         for param, param_grad in param_grad_list:
             # set grad to simulate dygraph loss.backward() in static mode.
             setattr(param, "grad", param_grad)
@@ -7625,12 +7625,11 @@ def _get_var(name, program=None):
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
     from .dygraph.base import in_declarative_mode
+    from .dygraph import Tracer
 
     if in_declarative_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
-        with paddle.fluid.framework._dygraph_guard(
-            tracer=paddle.fluid.dygraph.Tracer()
-        ):
+        with _dygraph_guard(tracer=Tracer()):
             yield
     else:
         yield
