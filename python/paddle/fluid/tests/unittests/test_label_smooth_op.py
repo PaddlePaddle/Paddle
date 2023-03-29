@@ -50,6 +50,7 @@ class TestLabelSmoothOp(OpTest):
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
 
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
     "core is not compiled with CUDA or place do not support bfloat16",
@@ -81,6 +82,7 @@ class TestLabelSmoothOpBF16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ["X"], "Out")
+
 
 class TestLabelSmoothFP16OP(TestLabelSmoothOp):
     def init_dtype(self):
