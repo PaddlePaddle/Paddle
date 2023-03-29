@@ -18,6 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/squared_l2_norm_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    squared_l2_norm, GPU, ALL_LAYOUT, phi::SquaredL2NormKernel, float, double) {
-}
+PD_REGISTER_KERNEL(squared_l2_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SquaredL2NormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -230,7 +230,16 @@ class OptimizerWithMixedPrecision(object):
                 )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
-                loss = loss.astype('float32')
+                op_device = None
+                for op in self._train_program.global_block().ops:
+                    if loss.name in op.desc.output_arg_names():
+                        op_device = op.attr(
+                            paddle.fluid.core.op_proto_and_checker_maker.kOpDeviceAttrName()
+                        )
+                        break
+                assert op_device is not None, "op device must not be None."
+                with paddle.fluid.framework.device_guard(op_device):
+                    loss = loss.astype('float32')
             # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
             # the model can be optimized.
             if self._use_dynamic_loss_scaling or self._init_loss_scaling != 1.0:
@@ -340,9 +349,14 @@ class OptimizerWithMixedPrecision(object):
             self._train_program is not None
         ), "Please call the minimize method first."
         if self._use_pure_fp16:
+            train_program = self._train_program
+            if hasattr(self._train_program, "_pipeline_opt"):
+                train_program = self._train_program._pipeline_opt[
+                    'section_program'
+                ]
             cast_parameters_to_fp16(
                 place,
-                self._train_program,
+                train_program,
                 scope,
                 self._to_fp16_var_names,
                 self._type,
