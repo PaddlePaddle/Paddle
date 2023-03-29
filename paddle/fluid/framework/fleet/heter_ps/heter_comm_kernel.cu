@@ -745,11 +745,9 @@ void HeterCommKernel::gather_vals(float* d_shard_vals,
   gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals, d_vals, idx, N, value_size_float);
 }
-//template <typename ValType, typename T, typename StreamType>
 template <typename ValType, typename StreamType>
 void HeterCommKernel::scatter_vals(const ValType* d_shard_vals,
                                    ValType* d_vals,
-                                   //T* idx,
                                    uint32_t* idx,
                                    int64_t len,
                                    size_t value_bytes,
@@ -1415,7 +1413,6 @@ template void HeterCommKernel::gather_vals<uint32_t, cudaStream_t>(
     int64_t len,
     size_t value_bytes,
     const cudaStream_t& stream);
-//template void HeterCommKernel::scatter_vals<float, uint32_t, cudaStream_t>(
 template void HeterCommKernel::scatter_vals<float, cudaStream_t>(
     const float* d_shard_vals,
     float* d_vals,
@@ -1423,7 +1420,6 @@ template void HeterCommKernel::scatter_vals<float, cudaStream_t>(
     int64_t len,
     size_t value_bytes,
     const cudaStream_t& stream);
-//template void HeterCommKernel::scatter_vals<uint64_t, uint32_t, cudaStream_t>(
 template void HeterCommKernel::scatter_vals<uint64_t, cudaStream_t>(
     const uint64_t* d_shard_vals,
     uint64_t* d_vals,
@@ -1431,7 +1427,6 @@ template void HeterCommKernel::scatter_vals<uint64_t, cudaStream_t>(
     int64_t len,
     size_t value_bytes,
     const cudaStream_t& stream);
-//template void HeterCommKernel::scatter_vals<int, uint32_t, cudaStream_t>(
 template void HeterCommKernel::scatter_vals<int, cudaStream_t>(
     const int* d_shard_vals,
     int* d_vals,
