@@ -324,6 +324,9 @@ class TestFP16DropoutOp(OpTest):
             core.CUDAPlace(0), atol=1e-3, check_prim=True
         )
 
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
