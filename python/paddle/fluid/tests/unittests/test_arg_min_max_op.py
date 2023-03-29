@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -94,6 +94,37 @@ class TestCase1FP16(BaseTestCase):
         self.dims = (3, 4)
         self.dtype = np.float16
         self.axis = 1
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+)
+class BFP16TestCase0(OpTest):
+    def initTestType(self):
+        self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
+
+    def initTestCase(self):
+        self.initTestType()
+        self.dims = (3, 4, 5)
+        self.axis = 0
+
+    def SetUp(self):
+        self.initTestCase()
+        x = np.random.random(self.dims).astype("float32")
+        self.x = convert_float_to_uint16(x)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        if self.op_type == "arg_min":
+            self.outputs = {'Out': np.argmin(x, axis=self.axis)}
+        else:
+            self.outputs = {'Out': np.argmax(x, axis=self.axis)}
+
+
+class BFP16TestCase1(BFP16TestCase0):
+    def initTestType(self):
+        self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
 
 
 class TestCase2_1(BaseTestCase):
