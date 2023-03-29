@@ -21,7 +21,7 @@ import numpy as np
 
 from paddle import enable_static, fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTestTool,
     _set_use_system_allocator,
 )
