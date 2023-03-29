@@ -26,3 +26,43 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               std::vector<int> dilations,
                               int groups,
                               std::string data_format);
+
+std::tuple<paddle::experimental::Tensor,
+           paddle::experimental::Tensor&,
+           paddle::experimental::Tensor&,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor>
+sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
+                         const paddle::experimental::Tensor& scale,
+                         const paddle::experimental::Tensor& bias,
+                         paddle::experimental::Tensor& mean,      // NOLINT
+                         paddle::experimental::Tensor& variance,  // NOLINT
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool is_test,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+                         bool fuse_with_relu);
+
+namespace sparse {
+std::tuple<paddle::experimental::Tensor,
+           paddle::experimental::Tensor&,
+           paddle::experimental::Tensor&,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor>
+sync_batch_norm__ad_func(const paddle::experimental::Tensor& x,
+                         const paddle::experimental::Tensor& scale,
+                         const paddle::experimental::Tensor& bias,
+                         paddle::experimental::Tensor& mean,      // NOLINT
+                         paddle::experimental::Tensor& variance,  // NOLINT
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool is_test,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+                         bool fuse_with_relu);
+}  // namespace sparse

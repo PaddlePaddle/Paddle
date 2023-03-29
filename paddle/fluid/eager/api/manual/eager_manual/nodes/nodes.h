@@ -204,3 +204,188 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
 
   // Attributes
 };
+
+class SyncBatchNormGradNode : public egr::GradNodeBase {
+ public:
+  SyncBatchNormGradNode() : egr::GradNodeBase() {}
+  SyncBatchNormGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~SyncBatchNormGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "SyncBatchNormGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    scale_.clear();
+    bias_.clear();
+    saved_mean_.clear();
+    saved_variance_.clear();
+    reserve_space_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<SyncBatchNormGradNode>(
+        new SyncBatchNormGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrapperscale(const paddle::experimental::Tensor& scale) {
+    scale_ = egr::TensorWrapper(scale, false);
+  }
+  void SetTensorWrapperbias(const paddle::experimental::Tensor& bias) {
+    bias_ = egr::TensorWrapper(bias, false);
+  }
+  void SetTensorWrappersaved_mean(
+      const paddle::experimental::Tensor& saved_mean) {
+    saved_mean_ = egr::TensorWrapper(saved_mean, false);
+  }
+  void SetTensorWrappersaved_variance(
+      const paddle::experimental::Tensor& saved_variance) {
+    saved_variance_ = egr::TensorWrapper(saved_variance, false);
+  }
+  void SetTensorWrapperreserve_space(
+      const paddle::experimental::Tensor& reserve_space) {
+    reserve_space_ = egr::TensorWrapper(reserve_space, false);
+  }
+
+  // SetAttributes
+  void SetAttributemomentum(const float& momentum) { momentum_ = momentum; }
+  void SetAttributeepsilon(const float& epsilon) { epsilon_ = epsilon; }
+  void SetAttributedata_layout(const std::string& data_layout) {
+    data_layout_ = data_layout;
+  }
+  void SetAttributeis_test(const bool& is_test) { is_test_ = is_test; }
+  void SetAttributeuse_global_stats(const bool& use_global_stats) {
+    use_global_stats_ = use_global_stats;
+  }
+  void SetAttributetrainable_statistics(const bool& trainable_statistics) {
+    trainable_statistics_ = trainable_statistics;
+  }
+  void SetAttributefuse_with_relu(const bool& fuse_with_relu) {
+    fuse_with_relu_ = fuse_with_relu;
+  }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper scale_;
+  egr::TensorWrapper bias_;
+  egr::TensorWrapper saved_mean_;
+  egr::TensorWrapper saved_variance_;
+  egr::TensorWrapper reserve_space_;
+
+  // Attributes
+  float momentum_;
+  float epsilon_;
+  std::string data_layout_;
+  bool is_test_;
+  bool use_global_stats_;
+  bool trainable_statistics_;
+  bool fuse_with_relu_;
+};
+
+namespace sparse {
+class SyncBatchNormGradNode : public egr::GradNodeBase {
+ public:
+  SyncBatchNormGradNode() : egr::GradNodeBase() {}
+  SyncBatchNormGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~SyncBatchNormGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "SyncBatchNormGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    scale_.clear();
+    bias_.clear();
+    saved_mean_.clear();
+    saved_variance_.clear();
+    reserve_space_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<SyncBatchNormGradNode>(
+        new SyncBatchNormGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrapperscale(const paddle::experimental::Tensor& scale) {
+    scale_ = egr::TensorWrapper(scale, false);
+  }
+  void SetTensorWrapperbias(const paddle::experimental::Tensor& bias) {
+    bias_ = egr::TensorWrapper(bias, false);
+  }
+  void SetTensorWrappersaved_mean(
+      const paddle::experimental::Tensor& saved_mean) {
+    saved_mean_ = egr::TensorWrapper(saved_mean, false);
+  }
+  void SetTensorWrappersaved_variance(
+      const paddle::experimental::Tensor& saved_variance) {
+    saved_variance_ = egr::TensorWrapper(saved_variance, false);
+  }
+  void SetTensorWrapperreserve_space(
+      const paddle::experimental::Tensor& reserve_space) {
+    reserve_space_ = egr::TensorWrapper(reserve_space, false);
+  }
+
+  // SetAttributes
+  void SetAttributemomentum(const float& momentum) { momentum_ = momentum; }
+  void SetAttributeepsilon(const float& epsilon) { epsilon_ = epsilon; }
+  void SetAttributedata_layout(const std::string& data_layout) {
+    data_layout_ = data_layout;
+  }
+  void SetAttributeis_test(const bool& is_test) { is_test_ = is_test; }
+  void SetAttributeuse_global_stats(const bool& use_global_stats) {
+    use_global_stats_ = use_global_stats;
+  }
+  void SetAttributetrainable_statistics(const bool& trainable_statistics) {
+    trainable_statistics_ = trainable_statistics;
+  }
+  void SetAttributefuse_with_relu(const bool& fuse_with_relu) {
+    fuse_with_relu_ = fuse_with_relu;
+  }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper scale_;
+  egr::TensorWrapper bias_;
+  egr::TensorWrapper saved_mean_;
+  egr::TensorWrapper saved_variance_;
+  egr::TensorWrapper reserve_space_;
+
+  // Attributes
+  float momentum_;
+  float epsilon_;
+  std::string data_layout_;
+  bool is_test_;
+  bool use_global_stats_;
+  bool trainable_statistics_;
+  bool fuse_with_relu_;
+};
+
+}  // namespace sparse
