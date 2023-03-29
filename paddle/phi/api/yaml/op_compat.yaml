@@ -398,6 +398,15 @@
   outputs :
     out : Out
 
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
+  outputs :
+    out : Out
+
 - op : cumsum
   backward: cumsum_grad
   inputs :
@@ -980,6 +989,13 @@
     x : X
   outputs :
     out : Out
+
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
 
 - op : kron
   backward : kron_grad
