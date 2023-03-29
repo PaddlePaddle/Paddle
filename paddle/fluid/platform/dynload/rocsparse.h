@@ -33,6 +33,12 @@ namespace dynload {
  *
  * note: default dynamic linked libs
  */
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP(__name) \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
+
+#if defined(PADDLE_WITH_HIP)
+#if HIP_VERSION >= 402
 #define ROCSPARSE_ROUTINE_EACH(__macro)   \
   __macro(rocsparse_create_coo_descr);    \
   __macro(rocsparse_create_csr_descr);    \
@@ -45,7 +51,20 @@ namespace dynload {
   __macro(rocsparse_set_stream);
 
 ROCSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP)
+#endif
 
+#if HIP_VERSION >= 403
+#define ROCSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(rocsparse_sddmm_buffer_size);    \
+  __macro(rocsparse_sddmm_preprocess);     \
+  __macro(rocsparse_sddmm);
+
+ROCSPARSE_ROUTINE_EACH_R2(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP)
+#endif
+
+#endif  // PADDLE_WITH_HIP
+
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

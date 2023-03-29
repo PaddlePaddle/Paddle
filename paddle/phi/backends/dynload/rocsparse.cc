@@ -21,7 +21,13 @@ void *rocsparse_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
+#ifdef ROCSPARSE_ROUTINE_EACH
 ROCSPARSE_ROUTINE_EACH(DEFINE_WRAP)
+#endif
+
+#ifdef ROCSPARSE_ROUTINE_EACH_R2
+ROCSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
+#endif
 
 }  // namespace dynload
 }  // namespace phi

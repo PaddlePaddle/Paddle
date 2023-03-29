@@ -49,6 +49,8 @@ extern void *rocsparse_dso_handle;
   };                                                                  \
   extern DynLoad__##__name __name
 
+#if defined(PADDLE_WITH_HIP)
+#if HIP_VERSION >= 402
 #define ROCSPARSE_ROUTINE_EACH(__macro)   \
   __macro(rocsparse_create_coo_descr);    \
   __macro(rocsparse_create_csr_descr);    \
@@ -61,6 +63,18 @@ extern void *rocsparse_dso_handle;
   __macro(rocsparse_set_stream);
 
 ROCSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP)
+#endif
+
+#if HIP_VERSION >= 403
+#define ROCSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(rocsparse_sddmm_buffer_size);    \
+  __macro(rocsparse_sddmm_preprocess);     \
+  __macro(rocsparse_sddmm);
+
+ROCSPARSE_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP)
+#endif
+
+#endif  // PADDLE_WITH_HIP
 
 #undef DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP
 }  // namespace dynload

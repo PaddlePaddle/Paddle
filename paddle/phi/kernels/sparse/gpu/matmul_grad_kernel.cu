@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
@@ -35,7 +36,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCooTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030
+#if CUDA_VERSION >= 11030 || HIP_VERSION >= 500
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCoo} = dout{Dense} * y'{Dense}
@@ -44,6 +45,10 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     // which will increase some expenses.
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
     SparseCsrTensor dx_csr = CooToCsr<T, Context>(dev_ctx, *dx);
+#ifdef PADDLE_WITH_HIP
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(dev_ctx, dx_csr.mutable_non_zero_elements(), static_cast<T>(0.0f));
+#endif
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), &dx_csr);
     CsrToCooKernel<T, Context>(dev_ctx, dx_csr, dx);
@@ -56,13 +61,25 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     meta_dy.set_dtype(y.dtype());
     dev_ctx.template Alloc<T>(dy);
 
+#ifdef PADDLE_WITH_HIP
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(dev_ctx, dy, static_cast<T>(0.0f));
+#endif
+
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
 #else
+#ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use rocsparse_spmm with transpose, which is "
+      "supported from "
+      "ROCM 5.0.0"));
+#endif
 #endif
 }
 
@@ -73,7 +90,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030
+#if CUDA_VERSION >= 11030 || HIP_VERSION >= 500
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
@@ -94,13 +111,25 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
 
     dev_ctx.template Alloc<T>(dy);
 
+#ifdef PADDLE_WITH_HIP
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(dev_ctx, dy, static_cast<T>(0.0f));
+#endif
+
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
 #else
+#ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use rocsparse_spmm with transpose, which is "
+      "supported from "
+      "ROCM 5.0.0"));
+#endif
 #endif
 }
 
