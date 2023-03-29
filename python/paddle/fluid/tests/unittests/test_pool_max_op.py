@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -149,9 +150,11 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_test_case()
         self.init_global()
         self.init_adaptive()
+        self.init_dtype()
 
-        input = np.random.random(self.shape).astype("float64")
+        input = np.random.random(self.shape).astype(self.dtype)
         input = np.round(input * 100.0, 2)
+
         output, mask = self.pool_forward_naive(
             input,
             self.ksize,
@@ -160,8 +163,13 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.global_pool,
             self.adaptive,
         )
-        output = output.astype("float64")
-        mask = mask.astype("int32")
+
+        if self.is_bfloat16_op():
+            output = output.astype(np.float32)
+            mask = mask.astype(np.float32)
+        else:
+            output = output.astype(self.dtype)
+            mask = mask.astype(self.mask_dtype)
 
         self.attrs = {
             'strides': self.strides,
@@ -171,8 +179,16 @@ class TestMaxPoolWithIndex_Op(OpTest):
             'adaptive': self.adaptive,
         }
 
-        self.inputs = {'X': input}
+        if self.is_bfloat16_op():
+            self.inputs = {'X': convert_float_to_uint16(input)}
+        else:
+            self.inputs = {'X': input}
+
         self.outputs = {'Out': output, "Mask": mask}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.mask_dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -218,6 +234,77 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 class TestCase3(TestCase2):
     def init_global(self):
         self.global_pool = False
+
+
+class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
+    def init_adaptive(self):
+        self.adaptive = True
+
+
+# ----------------max_pool3d_with_index_fp16----------------
+def create_test_fp16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestMaxPool3dFP16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+            self.mask_dtype = np.float32
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(place, {'X'}, ['Out'])
+
+    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    TestMaxPool3dFP16.__name__ = cls_name
+    globals()[cls_name] = TestMaxPool3dFP16
+
+
+create_test_fp16_class(TestMaxPoolWithIndex_Op)
+create_test_fp16_class(TestCase1)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCastAdaptive3d)
+
+
+# ----------------max_pool3d_with_index_bf16----------------
+def create_test_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestMaxPool3dBF16(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place, atol=1e-2)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, {'X'}, ['Out'])
+
+    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    TestMaxPool3dBF16.__name__ = cls_name
+    globals()[cls_name] = TestMaxPool3dBF16
+
+
+create_test_bf16_class(TestMaxPoolWithIndex_Op)
+create_test_bf16_class(TestCase1)
+create_test_bf16_class(TestCase2)
+create_test_bf16_class(TestCase3)
+create_test_bf16_class(TestCastAdaptive3d)
 
 
 # ----------------max_pool2d_with_index----------------
@@ -279,9 +366,70 @@ class TestCastAdaptive2d(TestCase6):
         self.adaptive = True
 
 
-class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
-    def init_adaptive(self):
-        self.adaptive = True
+# ----------------max_pool2d_with_index_fp16----------------
+def create_test_fp16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestMaxPool2dFP16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+            self.mask_dtype = np.float32
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(place, {'X'}, ['Out'])
+
+    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    TestMaxPool2dFP16.__name__ = cls_name
+    globals()[cls_name] = TestMaxPool2dFP16
+
+
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
+create_test_fp16_class(TestCase6)
+create_test_fp16_class(TestCase7)
+create_test_fp16_class(TestCastAdaptive2d)
+
+
+# ----------------max_pool3d_with_index_bf16----------------
+def create_test_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestMaxPool2dBF16(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place, atol=1e-2)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, {'X'}, ['Out'])
+
+    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    TestMaxPool2dBF16.__name__ = cls_name
+    globals()[cls_name] = TestMaxPool2dBF16
+
+
+create_test_bf16_class(TestCase4)
+create_test_bf16_class(TestCase5)
+create_test_bf16_class(TestCase6)
+create_test_bf16_class(TestCase7)
+create_test_bf16_class(TestCastAdaptive2d)
 
 
 if __name__ == '__main__':
