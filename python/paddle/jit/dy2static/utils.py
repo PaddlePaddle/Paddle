@@ -587,10 +587,6 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             'Function: %s doesn\'t exist in the Module transformed from AST.'
             % func_name
         )
-    # After transform dygraph function into callable_func saved in tmp file,
-    # it lost the global variables from imported statements or defined in source file.
-    # Recovers the necessary variables by `__globals__`.
-    recover_globals_attribute(dyfunc, callable_func)
 
     return callable_func, f.name
 

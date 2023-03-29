@@ -23,6 +23,7 @@ from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.jit.dy2static.utils import recover_globals_attribute
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -95,6 +96,10 @@ class FunctionCache:
             static_func = self._convert(func)
             self._converted_static_func_caches[func] = static_func
 
+        # After transform dygraph function into callable_func saved in tmp file,
+        # it lost the global variables from imported statements or defined in source file.
+        # Recovers the necessary variables by `__globals__`.
+        recover_globals_attribute(func, static_func)
         return static_func
 
     def _convert(self, func):
