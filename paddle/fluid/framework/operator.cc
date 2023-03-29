@@ -966,6 +966,11 @@ OperatorBase::OperatorBase(const std::string& type,
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
+
+  // canonicalize attrs
+  if (info_ && info_->proto_) {
+    CanonicalizeScalarAttrs(*info_->proto_, &attrs_);
+  }
   // In OperatorBase level, all attributes with VarDesc type will be considered
   // as Input.
   for (auto& attr : FilterAttrVar(attrs)) {
@@ -1406,7 +1411,8 @@ bool OperatorWithKernel::SupportsMKLDNN(const phi::DataType data_type) const {
           [data_type](OpKernelMap::const_reference kern_pair) {
             return platform::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
-                   kern_pair.first.data_type_ == TransToProtoVarType(data_type);
+                   kern_pair.first.data_type_ ==
+                       paddle::framework::TransToProtoVarType(data_type);
           });
     }
   }
@@ -3250,6 +3256,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
+            case proto::AttrType::SCALAR:
+              phi_kernel_context->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(
+                      paddle::experimental::Scalar, attr_iter->second))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -3357,6 +3368,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
             for (const auto& val : vec) {
               scalar_list.emplace_back(val);
             }
+            phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::SCALARS: {
+            const auto& vec = PADDLE_GET_CONST(
+                std::vector<paddle::experimental::Scalar>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
             phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
           } break;
           default:

@@ -16,11 +16,11 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -169,7 +169,7 @@ class TestMultinomialApi(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            x = fluid.data('x', shape=[4], dtype='float32')
+            x = paddle.static.data('x', shape=[4], dtype='float32')
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
             place = fluid.CPUPlace()

@@ -54,29 +54,16 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "adam",
     "adamw",
     "any_raw",
-    "arg_sort",
-    "atan2",
-    "clip_by_norm",
     "eig_grad",
     "eigh",
-    "ftt_c2r",
-    "ftt_r2c",
-    "generate_proposals",
     "graph_sample_neighbors",
     "group_norm",
-    "instance_norm",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
     "less_equal",
     "less_than",
     "merged_adam",
-    "momentum",
-    "multiclass_nms3",
-    "multinomial",
-    "nanmedian",
-    "rnn",
-    "search_sort",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
@@ -349,6 +336,8 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
+      (!platform::is_xpu_place(place) ||
+       op->Attr<bool>("persist_output") == false) &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
     return OpFuncType::kGpuSync;

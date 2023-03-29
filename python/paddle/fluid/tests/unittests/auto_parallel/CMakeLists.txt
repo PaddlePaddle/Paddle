@@ -49,6 +49,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_amp MODULES test_pass_amp)
   set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                 TIMEOUT 50)
+  py_test_modules(test_amp_o2_pass MODULES test_amp_o2_pass)
+  set_tests_properties(test_amp_o2_pass PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                   TIMEOUT 50)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
@@ -123,6 +126,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_convert_to_process_meshes)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
+  py_test_modules(test_engine_save_load MODULES test_engine_save_load)
+  py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

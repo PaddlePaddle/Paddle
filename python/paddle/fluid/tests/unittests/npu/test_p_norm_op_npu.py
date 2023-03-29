@@ -19,7 +19,7 @@ import numpy as np
 sys.path.append("..")
 
 import paddle
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_norm_all import p_norm
 
 paddle.enable_static()

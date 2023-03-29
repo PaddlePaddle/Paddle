@@ -18,7 +18,6 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
@@ -400,9 +399,7 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
-    if (isinstance(size, list) or isinstance(size, tuple)) and len(
-        size
-    ) != x.ndim - 2:
+    if isinstance(size, (tuple, list)) and (len(size) != x.ndim - 2):
         raise ValueError(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
@@ -428,11 +425,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if (
-            isinstance(size, list)
-            or isinstance(size, tuple)
-            or isinstance(size, Variable)
-        ):
+        if isinstance(size, (list, tuple, Variable)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -465,7 +458,7 @@ def interpolate(
         )
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
@@ -503,7 +496,7 @@ def interpolate(
 
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
-                        out_shape[i] = dim.numpy().item()
+                        out_shape[i] = dim.item()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -529,7 +522,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
+                        paddle.tensor.fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
                         new_size_tensor.append(temp_out)
@@ -582,18 +575,14 @@ def interpolate(
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
-        elif (
-            isinstance(scale, float)
-            or isinstance(scale, int)
-            or isinstance(scale, numpy.ndarray)
-        ):
+        elif isinstance(scale, (float, int, numpy.ndarray)):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
             scale_list = []
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list) or isinstance(scale, tuple):
+        elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
                     "scale_shape length should be {} for "
@@ -1693,7 +1682,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy().tolist()
+            pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
@@ -1965,7 +1954,10 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
+        label,
+        'label',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'label_smooth',
     )
 
     helper = LayerHelper("label_smooth", **locals())
@@ -1996,7 +1988,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
-    .. hint::
+    Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 
@@ -2276,7 +2268,7 @@ def fold(
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]

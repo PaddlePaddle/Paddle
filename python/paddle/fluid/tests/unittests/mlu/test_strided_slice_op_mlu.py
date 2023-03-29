@@ -15,7 +15,7 @@
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_strided_slice_op import strided_slice_native_forward
 import numpy as np
 import unittest
@@ -31,7 +31,6 @@ class TestStrideSliceOp(OpTest):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
         self.op_type = 'strided_slice'
-        self.python_api = paddle.strided_slice
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides
         )
@@ -47,11 +46,11 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, set(['Input']), 'Out', check_eager=False
+            self.place, set(['Input']), 'Out'
         )
 
     def initTestCase(self):
@@ -525,8 +524,8 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 class TestStridedSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float32")
-        minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+        minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
+        minus_3 = paddle.tensor.fill_constant([1], "int32", -3)
         starts = paddle.static.data(
             name='starts', shape=[3], dtype='int32'
         )
