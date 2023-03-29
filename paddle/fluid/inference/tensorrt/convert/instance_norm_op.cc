@@ -15,19 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
 
-namespace nvinfer1 {
-class IPluginLayer;
-}  // namespace nvinfer1
-namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {

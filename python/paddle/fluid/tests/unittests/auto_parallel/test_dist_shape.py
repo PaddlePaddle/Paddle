@@ -60,8 +60,8 @@ class TestDistShape(unittest.TestCase):
         ops = dist_main_prog.global_block().ops
         shape_op = ops[0]
         dist_op = dist_context.get_dist_op_for_program(shape_op)
-        dist_op.dist_attr.impl_type == "shape"
-        dist_op.dist_attr.impl_idx == 0
+        assert dist_op.dist_attr.impl_type == "shape"
+        assert dist_op.dist_attr.impl_idx == 0
 
         in_name = shape_op.input_arg_names[0]
         out_name = shape_op.output_arg_names[0]
