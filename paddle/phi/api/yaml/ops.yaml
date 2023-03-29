@@ -952,6 +952,15 @@
     func : logsigmoid
   backward : logsigmoid_grad
 
+- op : logsumexp
+  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  output : Tensor(out)
+  infer_meta :
+    func : LogsumexpInferMeta
+  kernel :
+    func : logsumexp
+  backward : logsumexp_grad
+
 - op : lu_unpack
   args : (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true)
   output : Tensor(pmat), Tensor(l), Tensor(u)
