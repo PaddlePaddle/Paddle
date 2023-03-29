@@ -510,7 +510,7 @@ class Quant2Int8MkldnnPass:
         if self._debug:
             graph.draw(
                 '.',
-                '{}_{}_{}'.format(self._pass_group, self._pass_idx, pass_name),
+                f'{self._pass_group}_{self._pass_idx}_{pass_name}',
                 graph.all_op_nodes(),
             )
         self._remove_unused_var_nodes(graph)

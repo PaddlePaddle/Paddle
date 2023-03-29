@@ -670,7 +670,7 @@ class TestMobileNet(unittest.TestCase):
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dy_out: {}, st_out: {}'.format(dy_out, st_out),
+            err_msg=f'dy_out: {dy_out}, st_out: {st_out}',
         )
 
     def assert_same_predict(self, model_name):
@@ -693,7 +693,7 @@ class TestMobileNet(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+            err_msg=f'dy_pre:\n {dy_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             dy_jit_pre,

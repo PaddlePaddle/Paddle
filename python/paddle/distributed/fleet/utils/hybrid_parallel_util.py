@@ -164,7 +164,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.warning("it doesn't support data type {}".format(type(v)))
+            logger.warning(f"it doesn't support data type {type(v)}")
 
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
@@ -176,7 +176,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.warning("it doesn't support data type {}".format(type(v)))
+            logger.warning(f"it doesn't support data type {type(v)}")
     return inputs, kwargs
 
 

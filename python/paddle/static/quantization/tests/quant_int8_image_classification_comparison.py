@@ -239,14 +239,13 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                    'latency: {3:.4f} ms, fps: {4:.2f}'.format(
+                    'batch {}{}, acc1: {:.4f}, acc5: {:.4f}, latency: {:.4f} ms, fps: {:.2f}'.format(
                         iters,
+                        appx,
                         batch_acc1,
                         batch_acc5,
                         batch_time / batch_size,
                         fps,
-                        appx,
                     )
                 )
 
@@ -259,21 +258,19 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             infer_total_time = time.time() - infer_start_time
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time)
-            )
+            _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
     def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
         _logger.info('--- Performance summary ---')
         _logger.info(
-            'FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            'FP32: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 fp32_fps, fp32_lat
             )
         )
         _logger.info(
-            'INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            'INT8: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 int8_fps, int8_lat
             )
         )
@@ -283,17 +280,17 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     ):
         _logger.info('--- Accuracy summary ---')
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'.format(
+            'Accepted top1 accuracy drop threshold: {}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'.format(
                 threshold
             )
         )
         _logger.info(
-            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+            'FP32: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 fp32_acc1, fp32_acc5
             )
         )
         _logger.info(
-            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+            'INT8: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 int8_acc1, int8_acc5
             )
         )
@@ -320,11 +317,11 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
 
         _logger.info('Quant FP32 & INT8 prediction run.')
-        _logger.info('Quant model: {0}'.format(quant_model_path))
-        _logger.info('Dataset: {0}'.format(data_path))
-        _logger.info('Batch size: {0}'.format(batch_size))
-        _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
+        _logger.info(f'Quant model: {quant_model_path}')
+        _logger.info(f'Dataset: {data_path}')
+        _logger.info(f'Batch size: {batch_size}')
+        _logger.info(f'Batch number: {batch_num}')
+        _logger.info(f'Accuracy drop threshold: {acc_diff_threshold}.')
 
         _logger.info('--- Quant FP32 prediction start ---')
         val_reader = paddle.batch(

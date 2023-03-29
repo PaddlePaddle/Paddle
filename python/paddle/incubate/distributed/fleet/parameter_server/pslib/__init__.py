@@ -112,9 +112,9 @@ class PSLib(Fleet):
             # prepare for client to client communication
             if self._role_maker.is_worker():
                 info = self._fleet_ptr.get_clients_info()
-                print("Client Info: {}".format(info))
+                print(f"Client Info: {info}")
                 all_info = self._role_maker._worker_gather(info[0])
-                print("All Client Info: {}".format(all_info))
+                print(f"All Client Info: {all_info}")
                 self._fleet_ptr.gather_clients(all_info)
                 self._fleet_ptr.set_client2client_config(
                     self._client2client_request_timeout_ms,
@@ -916,9 +916,7 @@ def _prepare_params(
     if d_size.get(name) is None:
         d_size[name] = size
     elif d_size[name] != size:
-        raise ValueError(
-            "embedding size error: %s vs %s" % (size, d_size[name])
-        )
+        raise ValueError(f"embedding size error: {size} vs {d_size[name]}")
 
     # check embedding accessor
     accessor = FLEET_GLOBAL_DICT["cur_accessor"]
@@ -926,7 +924,7 @@ def _prepare_params(
         d_accessor[name] = accessor
     elif d_accessor[name] != accessor:
         raise ValueError(
-            "embedding size error: %s vs %s" % (d_accessor[name], accessor)
+            f"embedding size error: {d_accessor[name]} vs {accessor}"
         )
 
     # check embedding table id

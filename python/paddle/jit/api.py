@@ -602,9 +602,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -1828,7 +1828,7 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX

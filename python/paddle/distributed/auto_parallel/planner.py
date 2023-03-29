@@ -420,7 +420,7 @@ class PlanSpace:
 
             assert (
                 op_valid_dist_attrs is not None
-            ), "Enumerate {} valid distributed attribute failed.".format(op)
+            ), f"Enumerate {op} valid distributed attribute failed."
             valid_dist_attr_dict[op.desc.id()] = [
                 op_valid_dist_attrs,
                 pipeline_stage,

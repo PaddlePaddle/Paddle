@@ -1336,7 +1336,7 @@ class RuleBasedTuner:
                                 stop_gradient=src_var.stop_gradient,
                                 is_data=src_var.is_data,
                                 belong_to_optimizer=src_var.belong_to_optimizer,
-                                **copied_kwargs
+                                **copied_kwargs,
                             )
                         else:
                             target_block._clone_variable(vars[var_name])
@@ -1538,7 +1538,7 @@ class RuleBasedTuner:
                         )
                 assert (
                     ref_dims_mapping is not None
-                ), "[{}] 's dims mapping is NONE".format(input_name)
+                ), f"[{input_name}] 's dims mapping is NONE"
                 grad_op_dist_attr.set_input_dims_mapping(
                     input_name, ref_dims_mapping
                 )
@@ -1938,7 +1938,7 @@ class RuleBasedTuner:
         self.gen_fwd_sub_programs_by_clone()
         end = time.time()
         self._logger.info(
-            "Generate programs of every layer in {}s.".format(end - begin)
+            f"Generate programs of every layer in {end - begin}s."
         )
 
         # step3: partition devices to device meshes
@@ -1949,7 +1949,7 @@ class RuleBasedTuner:
         )
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
-        self._logger.info("Partition cluster in {}s.".format(end - begin))
+        self._logger.info(f"Partition cluster in {end - begin}s.")
 
         # step4: transform device mesh to process meshes
         dm_idx = 0
@@ -1989,7 +1989,7 @@ class RuleBasedTuner:
         begin = time.time()
         self.gen_full_program()
         end = time.time()
-        self._logger.info("Generate full program in {}s.".format(end - begin))
+        self._logger.info(f"Generate full program in {end - begin}s.")
 
         # step6: complete forward sub programs
         begin = time.time()
@@ -1997,7 +1997,7 @@ class RuleBasedTuner:
             self.complete_sub_fwd_programs(process_mesh)
         end = time.time()
         self._logger.info(
-            "Complete all sub forward programs in {}s.".format(end - begin)
+            f"Complete all sub forward programs in {end - begin}s."
         )
 
         if self.mode == "train":
@@ -2006,7 +2006,7 @@ class RuleBasedTuner:
             self.complete_sub_bwd_programs()
             end = time.time()
             self._logger.info(
-                "Complete all sub backward programs in {}s.".format(end - begin)
+                f"Complete all sub backward programs in {end - begin}s."
             )
 
             # step8: complete update sub programs
@@ -2014,7 +2014,7 @@ class RuleBasedTuner:
             self.complete_sub_update_programs()
             end = time.time()
             self._logger.info(
-                "Complete all sub update programs in {}s.".format(end - begin)
+                f"Complete all sub update programs in {end - begin}s."
             )
 
     def tune_o1(self):
@@ -2139,7 +2139,7 @@ class RuleBasedTuner:
         dist_attrs["cluster"] = self._cluster
         with open(path, 'wb') as f:
             pickle.dump(dist_attrs, f)
-        self._logger.info("The strategy has been saved at {}".format(path))
+        self._logger.info(f"The strategy has been saved at {path}")
 
     def run_or_quit(self):
         # Quit if just tune
@@ -2153,7 +2153,7 @@ class RuleBasedTuner:
         begin = time.time()
         self.match_program(self._dist_context.serial_main_program)
         end = time.time()
-        self._logger.info("Pattern match in {}s.".format(end - begin))
+        self._logger.info(f"Pattern match in {end - begin}s.")
 
         if self._use_dp:
             completer = Completer(self._dist_context)
@@ -2215,7 +2215,7 @@ class RuleBasedTuner:
         self._dist_context._process_meshes = best_dist_context._process_meshes
 
         end = time.time()
-        self._logger.info("Rule-based tuner end in {}s.".format(end - begin))
+        self._logger.info(f"Rule-based tuner end in {end - begin}s.")
         self._logger.info("The best strategy found is as follows: ")
         print_program_with_dist_attr(self.full_main_program, best_dist_context)
 

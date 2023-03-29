@@ -1130,7 +1130,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         if isinstance(attr, ((Variable, core.eager.Tensor))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
-            raise TypeError("{} should be a non-negative int.".format(message))
+            raise TypeError(f"{message} should be a non-negative int.")
 
     _check_attr(num_rows, "num_rows")
 
@@ -1345,7 +1345,7 @@ def _tril_triu_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert x is not None, f'x cannot be None in {op_type}'
     check_variable_and_dtype(
         x,
         'x',
@@ -1353,10 +1353,10 @@ def _tril_triu_op(helper):
         op_type,
     )
     if len(x.shape) < 2:
-        raise ValueError("x shape in {} must be at least 2-D".format(op_type))
+        raise ValueError(f"x shape in {op_type} must be at least 2-D")
     diagonal = helper.kwargs.get('diagonal', 0)
     if not isinstance(diagonal, (int,)):
-        raise TypeError("diagonal in {} must be a python Int".format(op_type))
+        raise TypeError(f"diagonal in {op_type} must be a python Int")
     name = helper.kwargs.get('name', None)
 
     if name is None:
