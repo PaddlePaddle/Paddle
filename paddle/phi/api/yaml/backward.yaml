@@ -1122,7 +1122,7 @@
   args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
   output : Tensor(x_grad), Tensor(alpha_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
+    func : PreluGradInferMeta
     param: [x, alpha]
   kernel :
     func : prelu_grad
