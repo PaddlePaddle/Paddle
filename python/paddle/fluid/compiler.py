@@ -82,18 +82,6 @@ def _has_optimize_op(block):
     return False
 
 
-def _has_optimizer_in_control_flow(program):
-    if not program:
-        program = framework.default_main_program()
-    for op in program.global_block().ops:
-        if op.type == "conditional_block_grad":
-            sub_block = program.block(op._block_attr_id("sub_block"))
-            if _has_optimize_op(sub_block):
-                return True
-
-    return False
-
-
 def _should_broadcast_or_not_exists(program, var_name):
     block = program.global_block()
     var = block.vars.get(var_name, None)
@@ -174,9 +162,7 @@ class CompiledProgram:
         self._place = None
         self._executor = None
         self._compiled = False
-        self._is_data_parallel = False
         self._is_inference = False
-        self._loss_name = None
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
@@ -190,9 +176,6 @@ class CompiledProgram:
         Returns:
             self
         """
-        assert (
-            not self._is_data_parallel
-        ), "Cannot compile with both data parallel and inference"
         assert (
             not self._is_inference
         ), "Already compiled with inference, cannot be recompiled."
@@ -216,11 +199,6 @@ class CompiledProgram:
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
-            if not self._share_vars_from._is_data_parallel:
-                raise ValueError(
-                    "The shared Program is not data parallel, cannot "
-                    "share variables from it."
-                )
             if self._share_vars_from._executor is None:
                 raise ValueError(
                     "The shared Program is not compiled and executed, so there is no "
@@ -340,7 +318,7 @@ class CompiledProgram:
         return core.ParallelExecutor(
             places,
             self._persistable_vars,
-            self._loss_name if self._loss_name else '',
+            '',
             self._scope,
             self._local_scopes,
             self._exec_strategy,
@@ -376,10 +354,7 @@ class CompiledProgram:
         if self._is_inference:
             self._executor = self._compile_inference()
         else:
-            if self._is_data_parallel:
-                self._places = self._get_places(self._place, self._places)
-            else:
-                self._places = [self._place]
+            self._places = [self._place]
 
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
@@ -1260,15 +1235,15 @@ class IpuCompiledProgram:
         convert_pass.apply(self._graph)
         program = framework.Program._construct_from_desc(desc)
 
-        if hasattr(self._program, 'lr_sheduler'):
+        if hasattr(self._program, 'lr_scheduler'):
             # how to share var between two different block ?
-            lr_var_name = self._program.lr_sheduler._var_name
+            lr_var_name = self._program.lr_scheduler._var_name
 
-            program.lr_sheduler = self._program.lr_sheduler
-            # Program.clone will clone lr_sheduler, so i set lr_var as
-            # lr_sheduler attribute
+            program.lr_scheduler = self._program.lr_scheduler
+            # Program.clone will clone lr_scheduler, so i set lr_var as
+            # lr_scheduler attribute
             global_block = self._program.global_block()
-            program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+            program.lr_scheduler.lr_var = global_block.vars[lr_var_name]
 
         # with popart, we need to support batches_per_step, what means
         # the shape of feed_var and feed_tensor(maybe numpy array) will

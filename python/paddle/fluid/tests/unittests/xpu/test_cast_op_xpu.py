@@ -26,9 +26,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 typeid_dict = {
     'int32': int(core.VarDesc.VarType.INT32),
@@ -36,6 +35,7 @@ typeid_dict = {
     'float32': int(core.VarDesc.VarType.FP32),
     'float16': int(core.VarDesc.VarType.FP16),
     'bool': int(core.VarDesc.VarType.BOOL),
+    'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
     'float64': int(core.VarDesc.VarType.FP64),
 }
@@ -54,6 +54,7 @@ class XPUTestCastOp(XPUOpTestWrapper):
             'float32',
             'int32',
             'int64',
+            'int8',
             'uint8',
             'bool',
             'float64',

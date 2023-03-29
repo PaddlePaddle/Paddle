@@ -241,7 +241,7 @@ class Normal(distribution.Distribution):
         )
         return paddle.add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + paddle.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
             name=name,
         )
 

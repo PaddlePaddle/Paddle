@@ -24,9 +24,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
@@ -34,7 +34,6 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.layers import collective
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -62,7 +61,7 @@ def to_numpy(var):
         var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
     ), "not a variable"
     if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
-        return var.numpy()
+        return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
 
@@ -91,10 +90,11 @@ def extract_args(func):
     return inspect.getfullargspec(func).args
 
 
-def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(
-        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
-    )
+def _all_gather(x):
+    output = []
+    dist.all_gather(output, x)
+    output = paddle.concat(output, axis=0)
+    return output
 
 
 def wait_server_ready(endpoints):
@@ -658,9 +658,9 @@ class StaticGraphAdapter:
                 losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
-                outputs = [_all_gather(o, self._nranks) for o in outputs]
+                outputs = [_all_gather(o) for o in outputs]
                 if mode != 'test':
-                    labels = [_all_gather(l, self._nranks) for l in labels]
+                    labels = [_all_gather(l) for l in labels]
 
             if mode != 'test':
                 for metric in self.model._metrics:
@@ -885,8 +885,8 @@ class DynamicGraphAdapter:
             losses = to_list(losses)
 
         if self._nranks > 1:
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
-            labels = [_all_gather(l, self._nranks) for l in labels]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
+            labels = [_all_gather(l) for l in labels]
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
@@ -931,7 +931,7 @@ class DynamicGraphAdapter:
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
 
         return [to_numpy(o) for o in to_list(outputs)]
 
@@ -1514,7 +1514,7 @@ class Model:
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
+                        "Skip loading for {}. ".format(key) + str(err)
                     )
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
@@ -2324,9 +2324,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 

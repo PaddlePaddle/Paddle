@@ -21,11 +21,11 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
-import paddle.framework.io_utils as io_utils
+from paddle import fluid
 from paddle.fluid import core, debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
+from paddle.framework import io_utils
 
 __all__ = [
     "load_program",
@@ -192,7 +192,7 @@ def load_var(var_name, shape_list, dtype, save_path):
 
 def reader(batch_size, fn, dim):
     data = []
-    if isinstance(dim, list) or isinstance(dim, tuple):
+    if isinstance(dim, (list, tuple)):
         shape = list(dim)
         _temp = 1
         for x in dim:

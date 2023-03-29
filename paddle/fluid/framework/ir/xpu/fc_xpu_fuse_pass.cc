@@ -272,8 +272,6 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (mul_type == "matmul") {
       fc_xpu_op_desc.SetAttr(
           "alpha", PADDLE_GET_CONST(float, mul->Op()->GetAttr("alpha")));
-      fc_xpu_op_desc.SetAttr(
-          "beta", PADDLE_GET_CONST(float, mul->Op()->GetAttr("beta")));
     }
     fc_xpu_op_desc.SetAttr("act_type", 0);
     fc_xpu_op_desc.SetAttr("act_alpha", 0.f);
