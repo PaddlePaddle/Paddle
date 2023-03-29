@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-from paddle.static.amp.fp16_lists import (
-    AutoMixedPrecisionLists,
-)
+
+from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 
 class TestAMPList(unittest.TestCase):
