@@ -39,13 +39,9 @@ if(WITH_PYTHON)
   set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 endif()
 
-# Disable on Windows CPU CI for timeout
 if(WIN32 AND NOT WITH_GPU)
-  list(REMOVE_ITEM TEST_OPS test_resnet_amp)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
+  list(REMOVE_ITEM TEST_OPS test_resnet_amp
+  )# disable on Windows CPU CI for timeout
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -82,4 +78,11 @@ if(APPLE)
   set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
   set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 300)
+endif()
+
+# TODO(SigureMo): Temporarily disable train step on CPU CI.
+# We should remove this after fix the performance issue.
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
 endif()
