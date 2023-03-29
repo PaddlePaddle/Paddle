@@ -1954,7 +1954,10 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
+        label,
+        'label',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'label_smooth',
     )
 
     helper = LayerHelper("label_smooth", **locals())
