@@ -38,8 +38,12 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64', "'uint16'"],
-                                 'check_finite_and_unscale')
+        check_variable_and_dtype(
+            e,
+            "x",
+            ['float16', 'float32', 'float64', "'uint16'"],
+            'check_finite_and_unscale',
+        )
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
@@ -109,18 +113,8 @@ def update_loss_scaling(
     )
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
-<<<<<<< HEAD
-        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
-                                 'update_loss_scaling')
-        if e.dtype == core.VarDesc.VarType.FP16 or e.dtype == core.VarDesc.VarType.BF16:
-            assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
-                "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
-=======
         check_variable_and_dtype(
-            e,
-            "x",
-            ['float16', 'float32', 'float64', 'bfloat16', 'uint16'],
-            'update_loss_scaling',
+            e, "x", ['float16', 'float32', 'float64'], 'update_loss_scaling'
         )
         if (
             e.dtype == core.VarDesc.VarType.FP16
@@ -129,7 +123,6 @@ def update_loss_scaling(
             assert (
                 prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
             ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
->>>>>>> c448b206311319d902f72addb4cf495475318898
         else:
             assert (
                 prev_loss_scaling.dtype == e.dtype

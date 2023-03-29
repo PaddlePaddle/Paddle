@@ -179,7 +179,6 @@ gray_list = {
 # The set of ops that don't support fp16 calculation
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
 _sys_unsupported_fp16_list = []
-_sys_unsupported_bf16_list = []
 if core.is_compiled_with_xpu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'XPU', core.VarDesc.VarType.FP16
@@ -202,6 +201,8 @@ else:
     )
 
 
-unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list |_sys_unsupported_bf16_list
+unsupported_fp16_list = (
+    _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
+)
 
 CustomOpLists = AutoMixedPrecisionLists

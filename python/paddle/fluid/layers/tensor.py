@@ -657,11 +657,19 @@ def sums(input, out=None):
     check_type(input, 'input', (Variable, tuple, list), 'sums')
     if isinstance(input, list) or isinstance(input, tuple):
         for input_section in input:
-            check_variable_and_dtype(input_section, "input", \
-                    ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'], 'sums')
+            check_variable_and_dtype(
+                input_section,
+                "input",
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                'sums',
+            )
     else:
-        check_variable_and_dtype(input, "input", \
-                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'], 'sums')
+        check_variable_and_dtype(
+            input,
+            "input",
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'sums',
+        )
 
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -973,12 +981,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs['ValueTensor'] = value
 
     check_shape(shape)
-<<<<<<< HEAD
-    check_dtype(dtype, 'dtype', [
-        'bool', 'float16', 'float32', 'float64', 'uint8', 'int16', 'int32',
-        'int64', 'complex64', 'complex128', 'uint16'
-    ], 'fill_constant')
-=======
     check_dtype(
         dtype,
         'dtype',
@@ -993,10 +995,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             'int64',
             'complex64',
             'complex128',
+            'uint16',
         ],
         'fill_constant',
     )
->>>>>>> c448b206311319d902f72addb4cf495475318898
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
