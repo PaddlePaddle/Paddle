@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,27 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import sys
+import unittest
 
-import paddle
-from paddle.jit import to_static
-from paddle.static import InputSpec
+sys.path.append(".")
 
 
-class AbsNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
+class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
+    def pdrun(self):
+        cmd = [
+            sys.executable,
+            "-m",
+            "paddle.distributed.launch",
+            "--devices",
+            "0,1",
+            "c_softmax_with_cross_entropy_op.py",
+        ]
+        proc = subprocess.Popen(cmd)
+        return proc
 
-    def forward(self, x):
-        x = paddle.abs(x)
-        return x
+    def test_c_softmax_with_cross_entropy_op(self):
+        p = self.pdrun()
+        p.wait()
 
 
 if __name__ == '__main__':
-    # build network
-    model = AbsNet()
-    # save inferencing format model
-    net = to_static(
-        model, input_spec=[InputSpec(shape=[None, 1, 28, 28], name='x')]
-    )
-    paddle.jit.save(net, sys.argv[1])
+    unittest.main()

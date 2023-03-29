@@ -14,11 +14,11 @@
 
 import unittest
 
+import eager_op_test
 import gradient_checker
 import numpy as np
-import op_test
 from decorator_helper import prog_scope
-from op_test import convert_float_to_uint16, convert_uint16_to_float
+from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import fluid
@@ -26,7 +26,7 @@ from paddle.fluid import Program, core, program_guard
 from paddle.fluid.backward import append_backward
 
 
-class TestAssignOp(op_test.OpTest):
+class TestAssignOp(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -39,19 +39,19 @@ class TestAssignOp(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
 )
-class TestAssignFP16Op(op_test.OpTest):
+class TestAssignFP16Op(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -64,19 +64,19 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
 )
-class TestAssignBFP16Op(op_test.OpTest):
+class TestAssignBFP16Op(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
