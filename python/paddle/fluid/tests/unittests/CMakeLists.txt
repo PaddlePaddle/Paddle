@@ -591,6 +591,13 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
 if(WITH_DISTRIBUTE)
+  set(IGN collective collective/fleet collective/multinode)
+  execute_process(
+    COMMAND python gen_ut_cmakelists.py -f ./collective/testslist.csv
+            --ignore-cmake-dirs ${IGN}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  message("generated CMakeLists.txts for collective unit tests")
+
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)

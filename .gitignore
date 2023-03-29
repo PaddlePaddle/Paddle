@@ -53,6 +53,8 @@ Makefile
 .test_env/
 .cache/
 third_party/
+python/paddle/fluid/tests/unittests/collective/CMakeLists.txt
+python/paddle/fluid/tests/unittests/collective/*/CMakeLists.txt
 
 *~
 bazel-*
