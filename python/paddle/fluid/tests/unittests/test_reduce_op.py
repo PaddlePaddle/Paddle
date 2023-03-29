@@ -423,7 +423,7 @@ class TestProdOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestProdOpFp64(TestProdOp):
@@ -475,7 +475,7 @@ class TestProd6DOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestProd8DOp(OpTest):
