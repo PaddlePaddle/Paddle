@@ -953,9 +953,7 @@ void layer_norm_grad(const Tensor& x,
     }
   }
   auto x_sub_mean = x_cast - mean_;
-  auto eps =
-      full<T>(phi::vectorize(variance_.dims()), epsilon, variance_.dtype());
-  auto tmp = (1.0 / (variance_ + eps));
+  auto tmp = (1.0 / (variance_ + epsilon));
   auto sqrt_var_1 = sqrt<T>(tmp);
   if (scale_grad) {
     if (scale_ptr) {
@@ -985,6 +983,7 @@ void layer_norm_grad(const Tensor& x,
     d_std_2 = reshape<T>(d_std_2, std::vector<int64_t>({shape_1, 1}));
     d_std_2 = d_std_2 * x_sub_mean;
     auto d_std = d_std_1 * d_std_2;
+
     auto x_grad_tmp = dx_end + d_mean + d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
     if (x.dtype() == phi::DataType::FLOAT16) {
