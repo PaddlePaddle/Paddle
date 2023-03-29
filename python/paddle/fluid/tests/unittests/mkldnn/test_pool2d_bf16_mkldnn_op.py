@@ -12,24 +12,162 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 
 from paddle import enable_static
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
-from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
-    pool2d_backward_navie as pool2d_backward_naive,
-)
-from paddle.fluid.tests.unittests.test_pool2d_op import (
+
+sys.path.append("..")
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
+from test_pool2d_op import (
     TestPool2D_Op_Mixin,
+    adaptive_end_index,
+    adaptive_start_index,
     max_pool2D_forward_naive,
 )
+
+
+def pool2d_backward_naive(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=True,
+    adaptive=False,
+    data_format='NCHW',
+    pool_type="max",
+    padding_algorithm="EXPLICIT",
+):
+    # update paddings
+    def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
+        padding = []
+        for input_size, filter_size, stride_size in zip(
+            input_shape, pool_size, pool_stride
+        ):
+            out_size = int((input_size + stride_size - 1) / stride_size)
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
+            pad_0 = int(pad_sum / 2)
+            pad_1 = int(pad_sum - pad_0)
+            padding.append(pad_0)
+            padding.append(pad_1)
+        return padding
+
+    if isinstance(padding_algorithm, str):
+        padding_algorithm = padding_algorithm.upper()
+        if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
+            raise ValueError(
+                "Unknown Attr(padding_algorithm): '%s'. "
+                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            )
+
+        if padding_algorithm == "VALID":
+            paddings = [0, 0, 0, 0]
+            if ceil_mode is not False:
+                raise ValueError(
+                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
+                    " must be False. "
+                    "Received ceil_mode: True."
+                )
+        elif padding_algorithm == "SAME":
+            input_data_shape = []
+            if data_format == "NCHW":
+                input_data_shape = x.shape[2:4]
+            elif data_format == "NHWC":
+                input_data_shape = x.shape[1:3]
+            paddings = _get_padding_with_SAME(input_data_shape, ksize, strides)
+
+    assert len(paddings) == 2 or len(paddings) == 4
+    is_sys = True if len(paddings) == 2 else False
+
+    if data_format == "NHWC":
+        x = x.transpose([0, 3, 1, 2])
+
+    N, C, H, W = x.shape
+
+    if global_pool == 1:
+        ksize = [H, W]
+        paddings = [0 for _ in range(len(paddings))]
+
+    pad_h_up = paddings[0] if is_sys else paddings[0]
+    pad_h_down = paddings[0] if is_sys else paddings[1]
+    pad_w_left = paddings[1] if is_sys else paddings[2]
+    pad_w_right = paddings[1] if is_sys else paddings[3]
+
+    if adaptive:
+        H_out, W_out = ksize
+    else:
+        H_out = (
+            (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1)
+            // strides[0]
+            + 1
+            if ceil_mode
+            else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
+        )
+        W_out = (
+            (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1)
+            // strides[1]
+            + 1
+            if ceil_mode
+            else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        )
+
+    x_grad = np.zeros_like(x)
+    for i in range(H_out):
+        if adaptive:
+            in_h_start = adaptive_start_index(i, H, ksize[0])
+            in_h_end = adaptive_end_index(i, H, ksize[0])
+        else:
+            in_h_start = np.max((i * strides[0] - pad_h_up, 0))
+            in_h_end = np.min((i * strides[0] + ksize[0] - pad_h_up, H))
+
+        for j in range(W_out):
+            if adaptive:
+                in_w_start = adaptive_start_index(j, W, ksize[1])
+                in_w_end = adaptive_end_index(j, W, ksize[1])
+            else:
+                in_h_start = i * strides[0] - pad_h_up
+                in_w_start = j * strides[1] - pad_w_left
+                in_h_end = i * strides[0] + ksize[0] - pad_h_up
+                in_w_end = j * strides[1] + ksize[1] - pad_w_left
+
+                field_size = (in_h_end - in_h_start) * (in_w_end - in_w_start)
+                in_h_start = np.max((in_h_start, 0))
+                in_w_start = np.max((in_w_start, 0))
+                in_h_end = np.min((in_h_end, H))
+                in_w_end = np.min((in_w_end, W))
+
+            if pool_type == 'avg':
+                if exclusive or adaptive:
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
+                x_grad[:, :, in_h_start:in_h_end, in_w_start:in_w_end] += (
+                    1 / field_size
+                )
+            elif pool_type == 'max':
+                for n in range(N):
+                    for c in range(C):
+                        idx = np.argmax(
+                            x[
+                                n, c, in_h_start:in_h_end, in_w_start:in_w_end
+                            ].flatten()
+                        )
+                        idx_h = idx // (in_w_end - in_w_start)
+                        idx_w = idx % (in_w_end - in_w_start)
+                        x_grad[
+                            n, c, in_h_start + idx_h, in_w_start + idx_w
+                        ] += 1
+
+    if data_format == "NHWC":
+        x_grad = x_grad.transpose([0, 2, 3, 1])
+    return x_grad
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

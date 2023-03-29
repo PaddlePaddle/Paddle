@@ -270,7 +270,7 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile done! avg speed : {} step / s.".format((avg_tput)))
+        print("profile done! avg speed : {} step / s.".format(avg_tput))
 
     except paddle.framework.core.EOFException:
         data_loader._inner_dataloader.reset()
