@@ -35,12 +35,12 @@ struct Node {
   }
   Node(T node_id, float weight_key, T eid = 0)
       : node_id(node_id), weight_key(weight_key), eid(eid) {}
-  Node(const Node& other) {
+  Node(const Node<T>& other) {
     node_id = other.node_id;
     weight_key = other.weight_key;
     eid = other.eid;
   }
-  friend inline bool operator>(const struct Node& n1, const struct Node& n2) {
+  friend bool operator>(const Node<T>& n1, const Node<T>& n2) {
     return n1.weight_key > n2.weight_key;
   }
 };
