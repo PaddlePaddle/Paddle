@@ -46,15 +46,7 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                return _legacy_C_ops.c_identity(
-                    tensor,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    group.id,
-                    'use_model_parallel',
-                    True,
-                )
+                return tensor
 
             @staticmethod
             def backward(ctx, dy):
@@ -257,15 +249,7 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(
-                    dy,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    ctx.ring_id,
-                    'use_model_parallel',
-                    True,
-                )
+                return dy
 
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel
@@ -373,7 +357,11 @@ class _Linear(Layer):
 
 
 def _c_softmax_with_cross_entropy(
-    logits, label, group=None, return_softmax=False
+    logits,
+    label,
+    group=None,
+    return_softmax=False,
+    ignore_index=-100,
 ):
     if group is not None and not group.is_member():
         return
@@ -400,7 +388,16 @@ def _c_softmax_with_cross_entropy(
 
     if in_dygraph_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
-            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks
+            logits,
+            label,
+            'ring_id',
+            ring_id,
+            'rank',
+            rank,
+            'nranks',
+            nranks,
+            'ignore_index',
+            ignore_index,
         )
         if not return_softmax:
             return loss
@@ -411,6 +408,7 @@ def _c_softmax_with_cross_entropy(
             'ring_id': ring_id,
             'rank': rank,
             'nranks': nranks,
+            'ignore_index': ignore_index,
         }
         helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
         softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)

@@ -17,8 +17,8 @@ import warnings
 
 import numpy
 
-import paddle.fluid.core as core
 from paddle import Tensor
+from paddle.fluid import core
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -791,11 +791,7 @@ class LinearWarmup(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
-        type_check = (
-            isinstance(learning_rate, float)
-            or isinstance(learning_rate, int)
-            or isinstance(learning_rate, LRScheduler)
-        )
+        type_check = isinstance(learning_rate, (float, int, LRScheduler))
         if not type_check:
             raise TypeError(
                 "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".format(

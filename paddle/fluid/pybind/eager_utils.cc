@@ -1219,7 +1219,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
   return result;
 }
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none) {
   std::vector<paddle::Tensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -1229,6 +1230,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (allow_none && (item == Py_None)) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
@@ -1245,6 +1249,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (allow_none && (item == Py_None)) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
@@ -1262,16 +1269,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
   return result;
 }
 
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
-  if (!PyCheckTensor(obj)) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument must be "
-        "Tensor, but got %s",
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj) {
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
-
 paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos) {
@@ -1308,10 +1308,18 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.int32" || type_name == "numpy.intc") {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.complex64") {
+    phi::dtype::complex<float> value = CastPyArg2Complex(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.complex128") {
+    phi::dtype::complex<double> value =
+        CastPyArg2Complex128(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "numpy.float16/float32/float64, numpy.int32/int64, but got %s",
+        "numpy.float32/float64, numpy.int32/int64, numpy.complex64/complex128, "
+        "but got %s",
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
@@ -1350,7 +1358,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (type_name.find("numpy") != std::string::npos) {
     return CastNumpy2Scalar(obj, op_type, arg_pos);
   } else if (PyComplex_Check(obj)) {
-    auto value = CastPyArg2Complex(obj, op_type, arg_pos);
+    auto value = CastPyArg2Complex128(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
@@ -1405,11 +1413,19 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
             phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
       }
       return value;
+    } else if (PyObject_CheckComplexOrToComplex(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        Py_complex v = PyComplex_AsCComplex(item);
+        value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
+      }
+      return value;
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "a list of int, float, or bool, but got %s",
+        "a list of int, float, complex, or bool, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
@@ -1532,7 +1548,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
-    return paddle::experimental::DataType::UNDEFINED;
+    return phi::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

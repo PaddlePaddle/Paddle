@@ -6,14 +6,46 @@
   kernel :
     func : all
 
-- op : embedding_with_eltwise_add_xpu
-  args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
-  output: Tensor
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
   infer_meta :
-    func: EmbeddingWithEltwiseAddXPUInferMeta
-  kernel:
-    func: embedding_with_eltwise_add_xpu
-    data_type: tables
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
+
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  optional : x
+  inplace : (x -> out)
+  backward : assign_grad
+
+- op : broadcast
+  args : (Tensor x, int ring_id = 0, int root = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistBroadcastInferMeta
+    param: [x]
+  kernel :
+    func : broadcast
+    param: [x, root]
 
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -27,16 +59,6 @@
     backend : x
     force_backend : force_cpu
 
-- op : fc_xpu
-  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
-  output : Tensor(out), Tensor(out_max)
-  infer_meta :
-    func : FcXPUInferMeta
-  kernel :
-    func : fc_xpu
-    data_type : x
-  optional : bias, x_max
-
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
@@ -46,25 +68,6 @@
     func : frobenius_norm
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
-
-- op : fused_multi_transformer_xpu
-  args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[] qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax, Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id)
-  output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
-  infer_meta :
-    func : FusedMultiTransformerXpuInferMeta
-  kernel :
-    func : fused_multi_transformer_xpu
-    data_type : x
-  optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask
-
-- op : generate_sequence_xpu
-  args : (Tensor x, DataType dtype)
-  output : Tensor
-  infer_meta :
-    func : GenerateSequenceXPUInferMeta
-  kernel :
-    func : generate_sequence_xpu
-    data_type : dtype
 
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -114,16 +117,6 @@
     backend : x
     force_backend : force_cpu
 
-- op : multi_encoder_xpu
-  args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
-  output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
-  infer_meta :
-    func : MultiEncoderXPUInferMeta
-  kernel :
-    func : multi_encoder_xpu
-    data_type : x
-  optional : mask, x_fp16, out_fp16
-
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -135,6 +128,25 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+
+- op : one_hot
+  args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+  output : Tensor(out)
+  infer_meta :
+    func : OneHotRawInferMeta
+  kernel :
+    func : one_hot_raw
+    data_type : x
+
+- op : reduce
+  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param: [x]
+  kernel :
+    func : reduce
+    param: [x, root_id, reduce_type]
 
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})

@@ -233,10 +233,12 @@ if(WITH_XPU)
   pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(link_xpu_op_max_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(one_beam_size_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(delete_isolated_node_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -262,6 +264,14 @@ cc_library(
 cc_library(
   fuse_relu_depthwise_conv_pass
   SRCS fuse_relu_depthwise_conv_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fuse_adamw_op_pass
+  SRCS fuse_adamw_op_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fused_feedforward_pass
+  SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
 
 set(GLOB_PASS_LIB
@@ -499,4 +509,12 @@ if(WITH_XPU)
     test_fused_multi_transformer_xpu_quant_pass
     SRCS xpu/fused_multi_transformer_xpu_quant_pass_tester.cc
     DEPS fused_multi_transformer_xpu_quant_pass)
+  cc_test(
+    test_one_beam_size_fuse_pass
+    SRCS xpu/one_beam_size_fuse_pass_test.cc
+    DEPS one_beam_size_fuse_pass)
+  cc_test(
+    test_stack_fuse_pass
+    SRCS xpu/stack_fuse_pass_test.cc
+    DEPS stack_fuse_pass)
 endif()

@@ -21,8 +21,8 @@ import unittest
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def train(network, use_cuda, batch_size=32, pass_num=2):
@@ -47,7 +47,7 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
-    reader = feeder.decorate_reader(train_reader, multi_devices=False)
+    reader = feeder.feed(train_reader())
 
     exe = fluid.Executor(place)
     fluid.default_startup_program().random_seed = 1

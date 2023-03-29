@@ -19,7 +19,7 @@ import numpy as np
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
@@ -138,7 +138,7 @@ class TestConvertWithCache(unittest.TestCase):
 
 @to_static
 def sum_even_until_limit(max_len, limit):
-    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    ret_sum = fluid.dygraph.to_variable(np.zeros(1).astype('int32'))
     for i in range(max_len):
         if i % 2 > 0:
             continue
@@ -150,8 +150,8 @@ def sum_even_until_limit(max_len, limit):
 
 
 def sum_under_while(limit):
-    i = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
-    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    i = fluid.dygraph.to_variable(np.zeros(1).astype('int32'))
+    ret_sum = fluid.dygraph.to_variable(np.zeros(1).astype('int32'))
     while i <= limit:
         ret_sum += i
         i += 1

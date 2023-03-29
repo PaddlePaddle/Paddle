@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd import PyLayer
 from paddle.fluid import core
 from paddle.nn import functional as F
 
@@ -328,6 +329,17 @@ class ColumnParallelLinear(paddle.nn.Layer):
         return output
 
 
+class MPScale(PyLayer):
+    @staticmethod
+    def forward(ctx, x, mp_degree):
+        out = paddle.scale(x, 1.0 / mp_degree)
+        return out
+
+    @staticmethod
+    def backward(ctx, dout):
+        return dout
+
+
 class RowParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
@@ -467,6 +479,7 @@ class RowParallelLinear(paddle.nn.Layer):
             from paddle.incubate.nn.functional import fused_linear
 
             self.linear = fused_linear
+        self.fuse_matmul_bias = fuse_matmul_bias
 
     def forward(self, x):
         if self.input_is_parallel or (not self.is_mp):
@@ -476,16 +489,30 @@ class RowParallelLinear(paddle.nn.Layer):
             input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
 
         if self.is_mp:
-            output_parallel = self.linear(
-                input_parallel, self.weight, name=self._name
-            )
-            output_ = mp_ops._mp_allreduce(
-                output_parallel,
-                group=self.model_parallel_group,
-                use_calc_stream=True,
-                use_model_parallel=True,
-            )
-            output = output_ + self.bias if self.bias is not None else output_
+            if self.fuse_matmul_bias:
+                bias = MPScale.apply(self.bias, self.world_size)
+                output_parallel = self.linear(
+                    input_parallel, self.weight, bias, name=self._name
+                )
+                output = mp_ops._mp_allreduce(
+                    output_parallel,
+                    group=self.model_parallel_group,
+                    use_calc_stream=True,
+                    use_model_parallel=True,
+                )
+            else:
+                output_parallel = self.linear(
+                    input_parallel, self.weight, name=self._name
+                )
+                output_ = mp_ops._mp_allreduce(
+                    output_parallel,
+                    group=self.model_parallel_group,
+                    use_calc_stream=True,
+                    use_model_parallel=True,
+                )
+                output = (
+                    output_ + self.bias if self.bias is not None else output_
+                )
         else:
             output = self.linear(
                 input_parallel, self.weight, self.bias, name=self._name
@@ -502,6 +529,9 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
+        ignore_index (int, optional):  Specifies a target value that is ignored and
+            does not contribute to the loss. A negative value means that no label value
+            needs to be ignored. Default is -100 .
 
     Examples:
         .. code-block:: python
@@ -509,7 +539,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         loss = loss_func(img, lable)
     """
 
-    def __init__(self, mp_group=None, name=None):
+    def __init__(self, mp_group=None, name=None, ignore_index=-100):
         super().__init__()
         self.name = name
         self.model_parallel_group = (
@@ -527,9 +557,13 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             if mp_group is None
             else mp_group.rank
         )
+        self.ignore_index = ignore_index
 
     def forward(self, input, label):
         loss = mp_ops._c_softmax_with_cross_entropy(
-            input, label, group=self.model_parallel_group
+            input,
+            label,
+            group=self.model_parallel_group,
+            ignore_index=self.ignore_index,
         )
         return loss

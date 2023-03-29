@@ -887,7 +887,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 def is_cuda_file(path):
 
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
@@ -1057,7 +1057,6 @@ def _custom_api_content(op_name):
 
         def {op_name}({inputs}):
             # prepare inputs and outputs
-            ins = {ins}
             attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
@@ -1075,6 +1074,11 @@ def _custom_api_content(op_name):
                     ctx.add_outputs(outs[out_name])
                 core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
+                ins = {{}}
+                for key, value in dict({ins}).items():
+                    # handle optional inputs
+                    if value is not None:
+                        ins[key] = value
                 helper = LayerHelper("{op_name}", **locals())
                 for out_name in out_names:
                     outs[out_name] = helper.create_variable(dtype='float32')
@@ -1273,7 +1277,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 

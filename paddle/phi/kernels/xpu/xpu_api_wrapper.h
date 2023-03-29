@@ -24,7 +24,7 @@
 
 namespace phi {
 
-using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
 enum XPUFCCalcType {
   FC_INT16 = 0,
@@ -35,7 +35,7 @@ enum XPUFCCalcType {
 template <typename T>
 XPUFCCalcType FCCalcType() {
   if (std::is_same<phi::dtype::float16, T>::value ||
-      std::is_same<float16, T>::value) {
+      std::is_same<XPUTypeFP16, T>::value) {
     return XPUFCCalcType::FC_INT16;
   } else if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
     return XPUFCCalcType::FC_INT32;
@@ -270,25 +270,25 @@ static void xpu_fc_wrapper(xpu::Context* ctx,
 }
 
 template <>
-void xpu_fc_wrapper<float16, int32_t>(xpu::Context* ctx,
-                                      const float16* x,
-                                      const float16* w,
-                                      float16* y,
-                                      int m,
-                                      int n,
-                                      int k,
-                                      bool x_trans,
-                                      bool w_trans,
-                                      const float* x_maxptr,
-                                      const float* w_maxptr,
-                                      float* y_maxptr,
-                                      int ldx,
-                                      int ldw,
-                                      int ldy,
-                                      float alpha,
-                                      float beta,
-                                      const float* bias,
-                                      const xpu::Activation_t& act) {
+void xpu_fc_wrapper<XPUTypeFP16, int32_t>(xpu::Context* ctx,
+                                          const XPUTypeFP16* x,
+                                          const XPUTypeFP16* w,
+                                          XPUTypeFP16* y,
+                                          int m,
+                                          int n,
+                                          int k,
+                                          bool x_trans,
+                                          bool w_trans,
+                                          const float* x_maxptr,
+                                          const float* w_maxptr,
+                                          float* y_maxptr,
+                                          int ldx,
+                                          int ldw,
+                                          int ldy,
+                                          float alpha,
+                                          float beta,
+                                          const float* bias,
+                                          const xpu::Activation_t& act) {
   int r = xpu::Error_t::INVALID_PARAM;
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");
 }
@@ -333,45 +333,45 @@ static void xpu_fc_batch_wrapper(xpu::Context* xpu_ctx,
 }
 
 template <>
-void xpu_fc_batch_wrapper<float16, int32_t>(xpu::Context* xpu_ctx,
-                                            int bs,
-                                            bool trans_x,
-                                            bool trans_w,
-                                            int m,
-                                            int n,
-                                            int k,
-                                            float alpha,
-                                            const float16* x,
-                                            int stride_x,
-                                            const float16* w,
-                                            int stride_w,
-                                            float beta,
-                                            float16* y,
-                                            int stride_y,
-                                            const float* x_maxptr,
-                                            const float* w_maxptr) {
+void xpu_fc_batch_wrapper<XPUTypeFP16, int32_t>(xpu::Context* xpu_ctx,
+                                                int bs,
+                                                bool trans_x,
+                                                bool trans_w,
+                                                int m,
+                                                int n,
+                                                int k,
+                                                float alpha,
+                                                const XPUTypeFP16* x,
+                                                int stride_x,
+                                                const XPUTypeFP16* w,
+                                                int stride_w,
+                                                float beta,
+                                                XPUTypeFP16* y,
+                                                int stride_y,
+                                                const float* x_maxptr,
+                                                const float* w_maxptr) {
   int r = xpu::Error_t::INVALID_PARAM;
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
 }
 
 template <>
-void xpu_fc_batch_wrapper<float16, float>(xpu::Context* xpu_ctx,
-                                          int bs,
-                                          bool trans_x,
-                                          bool trans_w,
-                                          int m,
-                                          int n,
-                                          int k,
-                                          float alpha,
-                                          const float16* x,
-                                          int stride_x,
-                                          const float16* w,
-                                          int stride_w,
-                                          float beta,
-                                          float16* y,
-                                          int stride_y,
-                                          const float* x_maxptr,
-                                          const float* w_maxptr) {
+void xpu_fc_batch_wrapper<XPUTypeFP16, float>(xpu::Context* xpu_ctx,
+                                              int bs,
+                                              bool trans_x,
+                                              bool trans_w,
+                                              int m,
+                                              int n,
+                                              int k,
+                                              float alpha,
+                                              const XPUTypeFP16* x,
+                                              int stride_x,
+                                              const XPUTypeFP16* w,
+                                              int stride_w,
+                                              float beta,
+                                              XPUTypeFP16* y,
+                                              int stride_y,
+                                              const float* x_maxptr,
+                                              const float* w_maxptr) {
   int r = xpu::Error_t::INVALID_PARAM;
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
 }

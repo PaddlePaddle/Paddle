@@ -95,7 +95,9 @@ class Conv3DTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
                 weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
@@ -129,11 +131,13 @@ class Conv3DTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
                 y_var = F.conv3d(

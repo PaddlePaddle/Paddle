@@ -18,8 +18,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
@@ -173,7 +173,7 @@ class TestVariable(unittest.TestCase):
             y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []
-            data.append((np.random.randint(10, size=[13]).astype('float32')))
+            data.append(np.random.randint(10, size=[13]).astype('float32'))
             exe.run(fluid.default_startup_program())
 
             local_out = exe.run(

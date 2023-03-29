@@ -39,7 +39,6 @@ namespace patterns {
 struct FusedMultiTransformerPattern : public PatternBase {
   FusedMultiTransformerPattern(PDPattern* pattern,
                                const std::string& name_scope,
-                               bool with_cache_kv,
                                bool with_pre_caches,
                                bool with_rotary_pos_emb,
                                bool with_time_step,
@@ -54,7 +53,6 @@ struct FusedMultiTransformerPattern : public PatternBase {
   PATTERN_DECL_NODE(ln_bias);
   PATTERN_DECL_NODE(qkv_w);
   PATTERN_DECL_NODE(qkv_bias);
-  PATTERN_DECL_NODE(cache_kv);
   PATTERN_DECL_NODE(pre_caches);
   PATTERN_DECL_NODE(rotary_pos_emb);
   PATTERN_DECL_NODE(time_step);
@@ -68,11 +66,9 @@ struct FusedMultiTransformerPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn1_bias);
   PATTERN_DECL_NODE(ffn2_w);
   PATTERN_DECL_NODE(ffn2_bias);
-  PATTERN_DECL_NODE(cache_kv_out);
   PATTERN_DECL_NODE(out);
 
  private:
-  bool with_cache_kv_{false};
   bool with_pre_caches_{false};
   bool with_rotary_pos_emb_{false};
   bool with_time_step_{false};
@@ -83,14 +79,12 @@ struct FusedMultiTransformerPattern : public PatternBase {
 FusedMultiTransformerPattern::FusedMultiTransformerPattern(
     PDPattern* pattern,
     const std::string& name_scope,
-    bool with_cache_kv,
     bool with_pre_caches,
     bool with_rotary_pos_emb,
     bool with_time_step,
     bool with_seq_lengths,
     bool with_src_mask)
     : PatternBase(pattern, name_scope, name_scope),
-      with_cache_kv_(with_cache_kv),
       with_pre_caches_(with_pre_caches),
       with_rotary_pos_emb_(with_rotary_pos_emb),
       with_time_step_(with_time_step),
@@ -102,9 +96,6 @@ FusedMultiTransformerPattern::FusedMultiTransformerPattern(
   auto* x = pattern->NewNode(x_repr())
                 ->assert_is_op_input(op_type, "X")
                 ->assert_var_not_persistable();
-  auto* cache_kv_out = pattern->NewNode(cache_kv_out_repr())
-                           ->assert_is_op_output(op_type, "CacheKVOut")
-                           ->assert_var_not_persistable();
   auto* out = pattern->NewNode(out_repr())
                   ->assert_is_op_output(op_type, "Out")
                   ->assert_var_not_persistable();
@@ -195,21 +186,14 @@ FusedMultiTransformerPattern::FusedMultiTransformerPattern(
                                   ffn1_bias,
                                   ffn2_w,
                                   ffn2_bias};
-  std::vector<PDNode*> output_vars{cache_kv_out, out};
+  std::vector<PDNode*> output_vars{out};
 
   // optional node
-  PDNode* cache_kv = nullptr;
   PDNode* pre_caches = nullptr;
   PDNode* rotary_pos_emb = nullptr;
   PDNode* time_step = nullptr;
   PDNode* seq_lengths = nullptr;
   PDNode* src_mask = nullptr;
-  if (with_cache_kv_) {
-    cache_kv = pattern->NewNode(cache_kv_repr())
-                   ->assert_is_op_input(op_type, "CacheKV")
-                   ->assert_var_not_persistable();
-    input_vars.push_back(cache_kv);
-  }
   if (with_pre_caches_) {
     pre_caches = pattern->NewNode(pre_caches_repr())
                      ->assert_is_op_input(op_type, "PreCaches")
@@ -256,7 +240,6 @@ class FusedMultiTransformerXPUQuantPass : public FusePassBase {
 
  private:
   int ApplyImpl(ir::Graph* graph,
-                bool with_cache_kv,
                 bool with_pre_caches,
                 bool with_rotary_pos_emb,
                 bool with_time_step,
@@ -275,13 +258,12 @@ void FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph) const {
   int found_subgraph_count = 0;
   for (bool with_time_step : {true, false}) {
     found_subgraph_count +=
-        ApplyImpl(graph, true, false, false, with_time_step, false, true);
+        ApplyImpl(graph, false, false, with_time_step, false, true);
   }
   AddStatis(found_subgraph_count);
 }
 
 int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
-                                                 bool with_cache_kv,
                                                  bool with_pre_caches,
                                                  bool with_rotary_pos_emb,
                                                  bool with_time_step,
@@ -290,7 +272,6 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerPattern pattern(gpd.mutable_pattern(),
                                                  name_scope_,
-                                                 with_cache_kv,
                                                  with_pre_caches,
                                                  with_rotary_pos_emb,
                                                  with_time_step,
@@ -307,7 +288,6 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ln_bias);
     GET_IR_NODE(qkv_w);
     GET_IR_NODE(qkv_bias);
-    GET_IR_NODE(cache_kv);
     GET_IR_NODE(pre_caches);
     GET_IR_NODE(rotary_pos_emb);
     GET_IR_NODE(time_step);
@@ -321,7 +301,6 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ffn1_bias);
     GET_IR_NODE(ffn2_w);
     GET_IR_NODE(ffn2_bias);
-    GET_IR_NODE(cache_kv_out);
     GET_IR_NODE(out);
     GET_IR_NODE(fused_mt);
     auto* block = fused_mt->Op()->Block();
@@ -469,7 +448,7 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     fused_mt_xpu_op_desc->SetInput("ln_scale", name_caches.at("LnScale"));
     fused_mt_xpu_op_desc->SetInput("ln_bias", name_caches.at("LnBias"));
     fused_mt_xpu_op_desc->SetInput("qkv_bias", name_caches.at("QKVBias"));
-    if (cache_kv) {
+    if (name_caches.count("CacheKV") > 0) {
       fused_mt_xpu_op_desc->SetInput("cache_kv", name_caches.at("CacheKV"));
     }
     if (pre_caches) {
