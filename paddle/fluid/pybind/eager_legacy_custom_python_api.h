@@ -44,12 +44,30 @@ static PyObject *eager_api_run_program(PyObject *self,
     // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
     //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
     // }
-    run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, attrs);
+    PyObject* pylist = PyTuple_GET_ITEM(args, 5);
+    /*auto callable = [&](PyObject* list) {
+      VLOG(4) << "yoki callable cuda graph";
+      VLOG(4) << "yoki args: " << args;
+      VLOG(4) << "yoki enter0";
+      // SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+      PyObject* list = PyTuple_GET_ITEM(args, 5);
+      VLOG(4) << "yoki list: " << list;
+      Py_ssize_t len = PyList_Size(list);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        VLOG(4) << "yoki: i: " << i;
+        if (CUDAGraph[i] != nullptr) {
+          VLOG(4) << "yoki to pyobject";
+          PyList_SET_ITEM(list, i, ToPyObject(CUDAGraph[i]));
+        }
+      }
+    };*/
+    run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, pylist, attrs);
+    SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
     // VLOG(3) << "yoki: CUDAGraph.size1: " << CUDAGraph.size();
     // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
     //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];
     // }
-    SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+    // SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
     // VLOG(3) << "yoki: CUDAGraph.size2: " << CUDAGraph.size();
     // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
     //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -24,6 +26,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
+// #include "pybind11/pytypes.h"
+#include "pybind11/pybind11.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -703,6 +708,7 @@ inline void RunProgramGradAPI(
     VLOG(3) << "yoki: cuda_graph.size0: " << cuda_graph.size();
     size_t graph_idx = 2;
     if (cuda_graph[graph_idx].get() == nullptr) {
+    // if (true) {
       std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core = nullptr;
       auto callable = [x, params, &out_grad, &step_scope, attrs, &x_grad, &params_grad,  &interpreter_core]() {
         interpreter_core = RunProgramGradAPIImpl(x, params, out_grad, step_scope, attrs, x_grad, params_grad);
@@ -711,8 +717,8 @@ inline void RunProgramGradAPI(
       int64_t pool_id = cuda_graph[0].get() != nullptr
                             ? cuda_graph[0]->PoolID()
                             : cuda_graph[1]->PoolID();
-      cuda_graph[graph_idx] = paddle::operators::CaptureCUDAGraph2(
-        callable, {out_grad}, {x_grad}, place, mode, pool_id);
+      cuda_graph[graph_idx] = std::move(paddle::operators::CaptureCUDAGraph2(
+        callable, {out_grad}, {x_grad}, place, mode, pool_id));
       VLOG(10) << "Capture Backward CUDA Graph";
       VLOG(4) << "yoki: cuda_graph[" << graph_idx << "]: " << cuda_graph[graph_idx].get();
     } else {
@@ -793,6 +799,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
+    VLOG(4) << "yoki run program grad";
+    VLOG(4) << "yoki: cuda_graph_[" << 0 << "]: " << cuda_graph_[0].get();
+    VLOG(4) << "yoki: cuda_graph_[" << 1 << "]: " << cuda_graph_[1].get();
+    VLOG(4) << "yoki: cuda_graph_[" << 2 << "]: " << cuda_graph_[2].get();
     RunProgramGradAPI(x_,
                       params_,
                       hooked_grads[0],
@@ -801,6 +811,21 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       attrs_,
                       x_grad_ptr,
                       params_grad_ptr);
+    VLOG(4) << "yoki callback_";
+    VLOG(4) << "yoki: cuda_graph_[" << 0 << "]: " << cuda_graph_[0].get();
+    VLOG(4) << "yoki: cuda_graph_[" << 1 << "]: " << cuda_graph_[1].get();
+    VLOG(4) << "yoki: cuda_graph_[" << 2 << "]: " << cuda_graph_[2].get();
+    // callback_();
+    // callback_(pylist_);
+    VLOG(4) << "yoki list: " << pylist_;
+    Py_ssize_t len = PyList_Size(pylist_);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      VLOG(4) << "yoki: i: " << i;
+      if (cuda_graph_[i] != nullptr) {
+        VLOG(4) << "yoki to pyobject";
+        PyList_SET_ITEM(pylist_, i, paddle::pybind::ToPyObject(cuda_graph_[i]));
+      }
+    }
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
   }
@@ -824,6 +849,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   void SetCUDAGraph(const std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> &cuda_graph) {
     cuda_graph_ = cuda_graph;
+  }
+
+  // void setCallback(std::function<void()> callback) {
+  //   VLOG(4) << "yoki set callback";
+  //   callback_ = std::move(callback);
+  // }
+
+  void setPyObject(PyObject* pylist) {
+    pylist_ = pylist;
+    Py_INCREF(pylist_);
   }
 
  protected:
@@ -880,6 +915,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
   std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph_;
+  // std::function<void()> callback_;
+  PyObject* pylist_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;

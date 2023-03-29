@@ -63,12 +63,12 @@ class TestSimpleModel(unittest.TestCase):
             x.stop_gradient = False
             y = x * x + 100
             loss = func(y).mean()
-            # loss.backward()
-            # if is_layer:
-            #     func.clear_gradients()
+            loss.backward()
+            if is_layer:
+                func.clear_gradients()
 
-        # return func, x.grad.numpy()
-        return func, loss.numpy()
+        return func, x.grad.numpy()
+        # return func, loss.numpy()
 
     def check(self, func):
         if not is_cuda_graph_supported():

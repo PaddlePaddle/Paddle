@@ -15,11 +15,14 @@
 #pragma once
 
 #include <vector>
+#include <functional>
 
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
+#include "pybind11/pybind11.h"
+// #include "pybind11/pytypes.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -53,6 +56,7 @@ static void clear_no_grad_edges_with_partial_block(
   }
 }
 
+// template <typename Callback>
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
@@ -60,6 +64,8 @@ inline void run_program_ad_func(
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     std::vector<paddle::Tensor*>& dout,                  // NOLINT
     std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>& cuda_graph,            // NOLINT
+    // Callback &&callback,
+    PyObject* pylist,
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
@@ -97,6 +103,8 @@ inline void run_program_ad_func(
     grad_node->SetFwdParams(params);
     grad_node->SetStepScope(step_scope);
     grad_node->SetCUDAGraph(cuda_graph);
+    // grad_node->setCallback(std::forward<Callback>(callback));
+    grad_node->setPyObject(pylist);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
