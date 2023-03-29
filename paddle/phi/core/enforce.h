@@ -287,9 +287,9 @@ inline bool is_error(bool stat) { return !stat; }
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
-#define __THROW_WARN_INTERNAL__(string& msg) \
-  do {                                       \
-    LOG(WARNING) << "WARNING :" << msg;      \
+#define __THROW_WARN_INTERNAL__(__MSG__)    \
+  do {                                      \
+    LOG(WARNING) << "WARNING :" << __MSG__; \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
