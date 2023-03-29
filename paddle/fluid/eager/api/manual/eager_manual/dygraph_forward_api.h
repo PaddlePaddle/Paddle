@@ -34,18 +34,16 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor>
 sync_batch_norm__ad_func(const paddle::Tensor& x,
-                         const paddle::Tensor& scale,
-                         const paddle::Tensor& bias,
                          paddle::Tensor& mean,      // NOLINT
                          paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
                          float momentum,
                          float epsilon,
                          std::string data_layout,
-                         bool is_test,
                          bool use_global_stats,
-                         bool trainable_statistics,
-                         bool fuse_with_relu);
-
+                         bool trainable_statistics);
 namespace sparse {
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -54,15 +52,14 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor>
 sync_batch_norm__ad_func(const paddle::Tensor& x,
-                         const paddle::Tensor& scale,
-                         const paddle::Tensor& bias,
                          paddle::Tensor& mean,      // NOLINT
                          paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
                          float momentum,
                          float epsilon,
                          std::string data_layout,
-                         bool is_test,
                          bool use_global_stats,
-                         bool trainable_statistics,
-                         bool fuse_with_relu);
+                         bool trainable_statistics);
 }  // namespace sparse

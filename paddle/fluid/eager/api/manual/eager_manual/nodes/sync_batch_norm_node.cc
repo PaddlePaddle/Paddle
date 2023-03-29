@@ -63,7 +63,6 @@ SyncBatchNormGradNode::operator()(
   auto& is_test = this->is_test_;
   auto& use_global_stats = this->use_global_stats_;
   auto& trainable_statistics = this->trainable_statistics_;
-  auto& fuse_with_relu = this->fuse_with_relu_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
@@ -79,14 +78,15 @@ SyncBatchNormGradNode::operator()(
           ? nullptr
           : &returns[0][0];
   auto* api_output_1 =
-      (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
+      (out_metas[3].empty() || out_metas[3][0].IsStopGradient())
           ? nullptr
-          : &returns[1][0];
+          : &returns[3][0];
   auto* api_output_2 =
-      (out_metas[2].empty() || out_metas[2][0].IsStopGradient())
+      (out_metas[4].empty() || out_metas[4][0].IsStopGradient())
           ? nullptr
-          : &returns[2][0];
+          : &returns[4][0];
   // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
   // Inplace Check
 
@@ -101,32 +101,33 @@ SyncBatchNormGradNode::operator()(
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = "(out_grad, [%s]), ";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
     input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = "(x, [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_SCALE_TEMPLATE = "(scale, [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = "(bias, [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = "(saved_mean, [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
     std::string input_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     input_str += input_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = "(saved_variance, [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
+        " \n( saved_variance , [%s]), ";
     std::string input_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     input_str += input_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = "(reserve_space, [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
     std::string input_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
@@ -149,7 +150,6 @@ SyncBatchNormGradNode::operator()(
                                              is_test,
                                              use_global_stats,
                                              trainable_statistics,
-                                             fuse_with_relu,
                                              api_output_0,
                                              api_output_1,
                                              api_output_2);
@@ -166,68 +166,74 @@ SyncBatchNormGradNode::operator()(
                                   : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
-  auto& scale_grad = returns[1][0];
+  auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
+      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
                                   : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
-  auto& bias_grad = returns[2][0];
+  auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[2][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
+      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
                                   : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
-
+  if (trace_backward) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "The Op sync_batch_norm_grad doesn't have any grad"
+        "op. If you don't intend calculating higher order"
+        "derivatives, please set `create_graph`to False."));
+  }
   VLOG(4) << "Finish AD API GRAD: sync_batch_norm_grad";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  Output: [%s] } ";
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = "(out_grad, [%s]), ";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
     input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = "(x, [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_SCALE_TEMPLATE = "(scale, [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = "(bias, [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = "(saved_mean, [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
     std::string input_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     input_str += input_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = "(saved_variance, [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
+        " \n( saved_variance , [%s]), ";
     std::string input_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     input_str += input_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = "(reserve_space, [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
     std::string input_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
     input_str += input_reserve_space_str;
-    const char* TENSOR_X_GRAD_TEMPLATE = "(x_grad, [%s]), ";
+    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
     output_str += output_x_grad_str;
-    const char* TENSOR_SCALE_GRAD_TEMPLATE = "(scale_grad, [%s]), ";
+    const char* TENSOR_SCALE_GRAD_TEMPLATE = " \n ( scale_grad , [%s]), ";
     std::string output_scale_grad_str = paddle::string::Sprintf(
         TENSOR_SCALE_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(scale_grad));
     output_str += output_scale_grad_str;
-    const char* TENSOR_BIAS_GRAD_TEMPLATE = "(bias_grad, [%s]), ";
+    const char* TENSOR_BIAS_GRAD_TEMPLATE = " \n ( bias_grad , [%s]), ";
     std::string output_bias_grad_str = paddle::string::Sprintf(
         TENSOR_BIAS_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(bias_grad));
     output_str += output_bias_grad_str;
@@ -241,7 +247,6 @@ SyncBatchNormGradNode::operator()(
 }
 
 namespace sparse {
-
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 SyncBatchNormGradNode::operator()(
     paddle::small_vector<std::vector<paddle::Tensor>,
@@ -251,6 +256,7 @@ SyncBatchNormGradNode::operator()(
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
   // Fill Zero For GradIn Tensors
+
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
 
@@ -276,7 +282,6 @@ SyncBatchNormGradNode::operator()(
   auto& is_test = this->is_test_;
   auto& use_global_stats = this->use_global_stats_;
   auto& trainable_statistics = this->trainable_statistics_;
-  auto& fuse_with_relu = this->fuse_with_relu_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
@@ -292,14 +297,15 @@ SyncBatchNormGradNode::operator()(
           ? nullptr
           : &returns[0][0];
   auto* api_output_1 =
-      (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
+      (out_metas[3].empty() || out_metas[3][0].IsStopGradient())
           ? nullptr
-          : &returns[1][0];
+          : &returns[3][0];
   auto* api_output_2 =
-      (out_metas[2].empty() || out_metas[2][0].IsStopGradient())
+      (out_metas[4].empty() || out_metas[4][0].IsStopGradient())
           ? nullptr
-          : &returns[2][0];
+          : &returns[4][0];
   // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
   // Inplace Check
 
@@ -314,32 +320,33 @@ SyncBatchNormGradNode::operator()(
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = "(out_grad, [%s]), ";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
     input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = "(x, [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_SCALE_TEMPLATE = "(scale, [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = "(bias, [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = "(saved_mean, [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
     std::string input_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     input_str += input_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = "(saved_variance, [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
+        " \n( saved_variance , [%s]), ";
     std::string input_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     input_str += input_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = "(reserve_space, [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
     std::string input_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
@@ -362,7 +369,6 @@ SyncBatchNormGradNode::operator()(
                                                      is_test,
                                                      use_global_stats,
                                                      trainable_statistics,
-                                                     fuse_with_relu,
                                                      api_output_0,
                                                      api_output_1,
                                                      api_output_2);
@@ -379,68 +385,74 @@ SyncBatchNormGradNode::operator()(
                                   : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
-  auto& scale_grad = returns[1][0];
+  auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
+      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
                                   : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
-  auto& bias_grad = returns[2][0];
+  auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[2][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
+      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
                                   : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
-
+  if (trace_backward) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "The Op sync_batch_norm_grad doesn't have any grad"
+        "op. If you don't intend calculating higher order"
+        "derivatives, please set `create_graph`to False."));
+  }
   VLOG(4) << "Finish AD API GRAD: sync_batch_norm_grad";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  Output: [%s] } ";
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = "(out_grad, [%s]), ";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
     input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = "(x, [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_SCALE_TEMPLATE = "(scale, [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = "(bias, [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = "(saved_mean, [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
     std::string input_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     input_str += input_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = "(saved_variance, [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
+        " \n( saved_variance , [%s]), ";
     std::string input_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     input_str += input_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = "(reserve_space, [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
     std::string input_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
     input_str += input_reserve_space_str;
-    const char* TENSOR_X_GRAD_TEMPLATE = "(x_grad, [%s]), ";
+    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
     output_str += output_x_grad_str;
-    const char* TENSOR_SCALE_GRAD_TEMPLATE = "(scale_grad, [%s]), ";
+    const char* TENSOR_SCALE_GRAD_TEMPLATE = " \n ( scale_grad , [%s]), ";
     std::string output_scale_grad_str = paddle::string::Sprintf(
         TENSOR_SCALE_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(scale_grad));
     output_str += output_scale_grad_str;
-    const char* TENSOR_BIAS_GRAD_TEMPLATE = "(bias_grad, [%s]), ";
+    const char* TENSOR_BIAS_GRAD_TEMPLATE = " \n ( bias_grad , [%s]), ";
     std::string output_bias_grad_str = paddle::string::Sprintf(
         TENSOR_BIAS_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(bias_grad));
     output_str += output_bias_grad_str;
@@ -452,4 +464,5 @@ SyncBatchNormGradNode::operator()(
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
 }
+
 }  // namespace sparse

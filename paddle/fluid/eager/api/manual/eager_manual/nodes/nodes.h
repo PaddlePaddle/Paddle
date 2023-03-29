@@ -270,9 +270,6 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   void SetAttributetrainable_statistics(const bool& trainable_statistics) {
     trainable_statistics_ = trainable_statistics;
   }
-  void SetAttributefuse_with_relu(const bool& fuse_with_relu) {
-    fuse_with_relu_ = fuse_with_relu;
-  }
 
  private:
   // TensorWrappers
@@ -290,7 +287,6 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   bool is_test_;
   bool use_global_stats_;
   bool trainable_statistics_;
-  bool fuse_with_relu_;
 };
 
 namespace sparse {
@@ -359,9 +355,6 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   void SetAttributetrainable_statistics(const bool& trainable_statistics) {
     trainable_statistics_ = trainable_statistics;
   }
-  void SetAttributefuse_with_relu(const bool& fuse_with_relu) {
-    fuse_with_relu_ = fuse_with_relu;
-  }
 
  private:
   // TensorWrappers
@@ -379,7 +372,6 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   bool is_test_;
   bool use_global_stats_;
   bool trainable_statistics_;
-  bool fuse_with_relu_;
 };
 
 }  // namespace sparse
