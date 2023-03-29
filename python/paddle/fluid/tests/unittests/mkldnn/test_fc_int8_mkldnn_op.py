@@ -64,7 +64,7 @@ class TestFCINT8OneDNNOp(OpTest):
 
         self.out_float = np.dot(self.x_float, self.y_float)
         if self.use_bias:
-            self.bias = np.random.random((10)).astype("float32") * 10
+            self.bias = np.random.random(10).astype("float32") * 10
             self.out_float += self.bias
 
         self.out_scale, self.out = self.quantize(self.out_float)

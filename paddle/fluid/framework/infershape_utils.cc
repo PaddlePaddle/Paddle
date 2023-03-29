@@ -581,6 +581,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       case phi::AttributeType::SCALAR:
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
+          VLOG(6) << "type: " << AttrTypeID(attr);
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               infer_meta_context.EmplaceBackAttr(
@@ -605,6 +606,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             case framework::proto::AttrType::BOOLEAN:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr)));
+              break;
+            case framework::proto::AttrType::SCALAR:
+              infer_meta_context.EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -744,6 +749,12 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               for (const auto& val : vec) {
                 scalar_list.emplace_back(val);
               }
+              infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+            } break;
+            case proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
+              std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
               infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
             } break;
             default:
