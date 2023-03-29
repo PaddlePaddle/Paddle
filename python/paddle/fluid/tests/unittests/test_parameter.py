@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.dygraph import guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import ParamBase, Variable, default_main_program

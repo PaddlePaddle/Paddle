@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -41,12 +41,16 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
     return out
 
 
+def wrapper_temporal_shift(x, seg_num, shift_ratio=0.25, data_format="NCHW"):
+    return paddle._C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
+
+
 class TestTemporalShift(OpTest):
     def setUp(self):
         self.initTestCase()
         self.init_dtype()
         self.op_type = 'temporal_shift'
-        self.python_api = paddle.nn.functional.temporal_shift
+        self.python_api = wrapper_temporal_shift
         x = np.random.random(self.x_shape).astype(self.dtype)
 
         self.attrs = {
@@ -69,10 +73,10 @@ class TestTemporalShift(OpTest):
         self.dtype = 'float64'
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_ignore_uv(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.x_shape = (6, 4, 4, 4)
@@ -198,7 +202,7 @@ class TestTemporalShiftBF16(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'temporal_shift'
-        self.python_api = paddle.nn.functional.temporal_shift
+        self.python_api = wrapper_temporal_shift
 
         x = np.random.random(self.x_shape).astype(np.float32)
 

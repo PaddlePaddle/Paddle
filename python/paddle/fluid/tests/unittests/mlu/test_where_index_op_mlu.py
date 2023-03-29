@@ -17,7 +17,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid

@@ -30,6 +30,20 @@ from type_mapping import (
 )
 
 
+def get_infer_var_type_func(op_name):
+    if op_name == "assign":
+        return f"""
+ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SyncTypeAndDataType("X", "Out");
+  }}
+}};
+"""
+    else:
+        return None
+
+
 def quote(s):
     return '"{}"'.format(s)
 
