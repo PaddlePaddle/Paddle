@@ -454,11 +454,9 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = [
-            x.numpy().flat[0] if isinstance(x, Variable) else x for x in shape
-        ]
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.numpy().astype(int).tolist()
+        shape = shape.astype(int).tolist()
     return shape
 
 

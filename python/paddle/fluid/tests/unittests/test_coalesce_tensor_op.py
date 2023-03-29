@@ -106,7 +106,7 @@ class TestAllocContinuousSpace(OpTest):
 
         coalesce_tensor_var = np.concatenate(list(inputs))
         if set_constant:
-            coalesce_tensor_var = np.ones((len(coalesce_tensor_var))) * constant
+            coalesce_tensor_var = np.ones(len(coalesce_tensor_var)) * constant
             outputs = [
                 (out[0], np.ones(out[1].shape).astype(self.dtype) * constant)
                 for out in outputs
