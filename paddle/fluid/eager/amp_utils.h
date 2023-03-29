@@ -129,7 +129,7 @@ inline phi::DataType GetAmpDestDtype(
   } else if (paddle::imperative::AmpOperators::Instance()
                  .GetMutableBlockOps()
                  ->count(op_name)) {
-    dst_type = paddle::experimental::DataType::FLOAT32;
+    dst_type = phi::DataType::FLOAT32;
   } else {
     dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
   }

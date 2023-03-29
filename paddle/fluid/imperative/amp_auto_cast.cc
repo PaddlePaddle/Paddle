@@ -204,7 +204,7 @@ std::shared_ptr<std::unordered_set<std::string>>
 AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
   PADDLE_ENFORCE_EQ(
       data_type == phi::DataType::FLOAT16 ||
-      data_type == phi::DataType::BFLOAT16,
+          data_type == phi::DataType::BFLOAT16,
       true,
       phi::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));

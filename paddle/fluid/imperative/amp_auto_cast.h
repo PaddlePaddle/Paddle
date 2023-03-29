@@ -55,11 +55,7 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
   std::shared_ptr<std::unordered_set<std::string>> GetMutableUnsupportedOps(
-<<<<<<< HEAD
       const phi::DataType& data_type);
-=======
-      const paddle::experimental::DataType& data_type);
->>>>>>> polish the amp code
 
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
