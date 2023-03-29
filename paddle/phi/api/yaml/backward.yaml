@@ -337,6 +337,16 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_op : cumprod_grad
+  forward : cumprod (Tensor x, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cumprod_grad
+
 - backward_op : det_grad
   forward : det (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad)
@@ -743,6 +753,17 @@
     func : InverseGradInferMeta
   kernel :
     func : inverse_grad
+
+- backward_op : kldiv_loss_grad
+  forward : kldiv_loss(Tensor x, Tensor label, str reduction="mean") -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, str reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : kldiv_loss_grad
+  no_need_buffer : x
 
 - backward_op : kron_grad
   forward : kron (Tensor x, Tensor y) -> Tensor(out)
@@ -1634,6 +1655,7 @@
     param : [out, out]
   kernel :
     func : tanh_double_grad
+  composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
   backward : tanh_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
