@@ -132,13 +132,13 @@ class TestDistRunnerBase:
 
     @staticmethod
     def get_lr_scheduler(program):
-        lr_sheduler = None
-        if hasattr(program, 'lr_sheduler'):
+        lr_scheduler = None
+        if hasattr(program, 'lr_scheduler'):
             from paddle.optimizer.lr import LRScheduler
 
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-        return lr_sheduler
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+        return lr_scheduler
 
     def run_pserver(self, args):
         self.lr = args.lr
@@ -196,14 +196,14 @@ class TestDistRunnerBase:
         out_losses = []
 
         main_program = fluid.default_main_program()
-        lr_sheduler = self.get_lr_scheduler(main_program)
+        lr_scheduler = self.get_lr_scheduler(main_program)
         for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
-            if lr_sheduler is not None:
-                lr_sheduler.step()
+            if lr_scheduler is not None:
+                lr_scheduler.step()
 
         data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
