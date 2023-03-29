@@ -1682,7 +1682,7 @@ class OpTest(unittest.TestCase):
             def check(self):
                 """
                 return None means ok, raise Error means failed.
-                
+
                 the main enter point of Checker class
                 """
                 self.init()
