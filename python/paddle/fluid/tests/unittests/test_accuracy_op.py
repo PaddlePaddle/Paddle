@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -109,31 +109,30 @@ class TestAccuracyOpBf16(OpTest):
 
 class TestAccuracyOpError(unittest.TestCase):
     def test_type_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of accuracy_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.static.accuracy, x1, label)
-            self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
-            # The input dtype of accuracy_op must be float32 or float64.
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
-            self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
-            self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
+        with paddle_static_guard():
+            with program_guard(Program(), Program()):
+                # The input type of accuracy_op must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([[-1]]), [[1]], fluid.CPUPlace()
+                )
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype="int32"
+                )
+                self.assertRaises(TypeError, paddle.static.accuracy, x1, label)
+                self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
+                # The input dtype of accuracy_op must be float32 or float64.
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
+                self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
+                self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
 
-            x3 = paddle.static.data(
-                name='input', shape=[-1, 2], dtype="float16"
-            )
-            paddle.static.accuracy(input=x3, label=label)
-            paddle.metric.accuracy(input=x3, label=label)
+                x3 = paddle.static.data(
+                    name='input', shape=[-1, 2], dtype="float16"
+                )
+                paddle.static.accuracy(input=x3, label=label)
+                paddle.metric.accuracy(input=x3, label=label)
 
     def test_value_errors(self):
         with program_guard(Program(), Program()):
-            paddle.disable_static()
-
             # The input rank of accuracy_op must be 2.
             with self.assertRaises(ValueError):
                 x3 = paddle.to_tensor([0.1], dtype='float32')
@@ -142,37 +141,37 @@ class TestAccuracyOpError(unittest.TestCase):
                 )
                 paddle.metric.accuracy(x3, label3)
 
-            paddle.enable_static()
-
 
 class TestAccuracyAPI1(unittest.TestCase):
     def setUp(self):
-        self.predictions = paddle.static.data(
-            shape=[2, 5], name="predictions", dtype="float32"
-        )
-        self.label = paddle.static.data(
-            shape=[2, 1], name="labels", dtype="int64"
-        )
-        self.result = paddle.static.accuracy(
-            input=self.predictions, label=self.label, k=1
-        )
-        self.input_predictions = np.array(
-            [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
-            dtype="float32",
-        )
-        self.input_labels = np.array([[2], [0]], dtype="int64")
-        self.expect_value = np.array([0.5], dtype='float32')
+        with paddle_static_guard():
+            self.predictions = paddle.static.data(
+                shape=[2, 5], name="predictions", dtype="float32"
+            )
+            self.label = paddle.static.data(
+                shape=[2, 1], name="labels", dtype="int64"
+            )
+            self.result = paddle.static.accuracy(
+                input=self.predictions, label=self.label, k=1
+            )
+            self.input_predictions = np.array(
+                [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+                dtype="float32",
+            )
+            self.input_labels = np.array([[2], [0]], dtype="int64")
+            self.expect_value = np.array([0.5], dtype='float32')
 
     def test_api(self):
-        exe = paddle.static.Executor()
-        (result,) = exe.run(
-            feed={
-                "predictions": self.input_predictions,
-                'labels': self.input_labels,
-            },
-            fetch_list=[self.result.name],
-        )
-        self.assertEqual((result == self.expect_value).all(), True)
+        with paddle_static_guard():
+            exe = paddle.static.Executor()
+            (result,) = exe.run(
+                feed={
+                    "predictions": self.input_predictions,
+                    'labels': self.input_labels,
+                },
+                fetch_list=[self.result.name],
+            )
+            self.assertEqual((result == self.expect_value).all(), True)
 
 
 class TestAccuracyAPI2(unittest.TestCase):
