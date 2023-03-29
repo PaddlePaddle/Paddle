@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 import google.protobuf
 import google.protobuf.text_format
 
@@ -150,6 +152,7 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.__lock_attr = True
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key, value):
@@ -1691,8 +1694,13 @@ class DistributedStrategy:
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
+        hybrid_config = copy.deepcopy(configs)
+        if "order" in hybrid_config:
+            self.hybrid_parallel_order = hybrid_config["order"]
+            hybrid_config.pop('order')
+
         check_configs_key(
-            self.strategy.hybrid_configs, configs, "hybrid_configs"
+            self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
