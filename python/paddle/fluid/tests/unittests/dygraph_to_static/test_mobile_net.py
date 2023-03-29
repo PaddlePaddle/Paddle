@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import time
 import unittest
@@ -508,7 +509,7 @@ def train_mobilenet(args, to_static):
             print(
                 "wrong model name, please try model = MobileNetV1 or MobileNetV2"
             )
-            exit()
+            sys.exit()
 
         optimizer = create_optimizer(args=args, parameter_list=net.parameters())
 
