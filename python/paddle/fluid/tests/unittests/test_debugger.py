@@ -19,8 +19,8 @@ from paddle.fluid import core
 from paddle.fluid.framework import Program
 
 
-class TestDebugger(unittest.TestCase):
-    def test_debug_str(self):
+class TestDrawBlockGraphviz(unittest.TestCase):
+    def test_DrawBlockGraphviz_str(self):
         p = Program()
         b = p.current_block()
 
@@ -55,8 +55,6 @@ class TestDebugger(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
-
-        # print(pprint_program_codes(p))
 
         draw_block_graphviz(p.block(0), path="./test.dot")
 
