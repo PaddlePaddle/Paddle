@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -24,6 +26,8 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(int, attr);
     case proto::AttrType::FLOAT:
       return PADDLE_GET_CONST(float, attr);
+    case proto::AttrType::FLOAT64:
+      return PADDLE_GET_CONST(double, attr);
     case proto::AttrType::STRING:
       return PADDLE_GET_CONST(std::string, attr);
     case proto::AttrType::INTS:
@@ -50,6 +54,10 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(BlockDesc*, attr);
     case proto::AttrType::BLOCKS:
       return PADDLE_GET_CONST(std::vector<BlockDesc*>, attr);
+    case proto::AttrType::SCALAR:
+      return PADDLE_GET_CONST(paddle::experimental::Scalar, attr);
+    case proto::AttrType::SCALARS:
+      return PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, attr);
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported Attribute value type `%s` for phi.",
@@ -70,6 +78,9 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
     case proto::AttrType::STRING: {
       return attr_desc.s();
+    }
+    case proto::AttrType::FLOAT64: {
+      return attr_desc.float64();
     }
     case proto::AttrType::BOOLEANS: {
       std::vector<bool> val(attr_desc.bools_size());
@@ -118,6 +129,18 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       return val;
     }
 
+    case proto::AttrType::SCALAR: {
+      return make_scalar_from_proto(attr_desc.scalar());
+    }
+
+    case proto::AttrType::SCALARS: {
+      std::vector<paddle::experimental::Scalar> val(attr_desc.scalars_size());
+      for (int i = 0; i < attr_desc.scalars_size(); ++i) {
+        val[i] = make_scalar_from_proto(attr_desc.scalars(i));
+      }
+      return val;
+    }
+
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Unsupported attribute type %d.", attr_desc.type()));
@@ -147,5 +170,154 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
   return paddle::blank();
 }
 
+paddle::experimental::Scalar make_scalar_from_proto(const proto::Scalar& v) {
+  auto data_type = v.type();
+  switch (data_type) {
+    case proto::Scalar_Type_BOOLEAN:
+      return paddle::experimental::Scalar(v.b());
+    case proto::Scalar_Type_LONG:
+      return paddle::experimental::Scalar(v.i());
+    case proto::Scalar_Type_FLOAT64:
+      return paddle::experimental::Scalar(v.r());
+    case proto::Scalar_Type_COMPLEX128: {
+      phi::dtype::complex<double> value(v.c().r(), v.c().i());
+      return paddle::experimental::Scalar(value);
+    }
+    default:
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Expected scalar of type boolean, "
+                                       "integer, floating point or complex."));
+      break;
+  }
+  return paddle::experimental::Scalar();
+}
+
+proto::Scalar make_scalar_proto(const paddle::experimental::Scalar& v) {
+  proto::Scalar s;
+  auto data_type = v.dtype();
+  switch (data_type) {
+    case phi::DataType::BOOL:
+      s.set_b(v.to<bool>());
+      s.set_type(proto::Scalar_Type_BOOLEAN);
+      break;
+    case phi::DataType::INT8:
+    case phi::DataType::UINT8:
+    case phi::DataType::INT16:
+    case phi::DataType::UINT16:
+    case phi::DataType::INT32:
+    case phi::DataType::UINT32:
+    case phi::DataType::INT64:
+    case phi::DataType::UINT64:
+      s.set_i(v.to<int64_t>());
+      s.set_type(proto::Scalar_Type_LONG);
+      break;
+    case phi::DataType::FLOAT16:
+    case phi::DataType::BFLOAT16:
+    case phi::DataType::FLOAT32:
+    case phi::DataType::FLOAT64:
+      s.set_r(v.to<double>());
+      s.set_type(proto::Scalar_Type_FLOAT64);
+      break;
+    case phi::DataType::COMPLEX64:
+    case phi::DataType::COMPLEX128: {
+      auto value = v.to<phi::dtype::complex<double>>();
+      auto* complex = s.mutable_c();
+      complex->set_r(value.real);
+      complex->set_i(value.imag);
+      s.set_type(proto::Scalar_Type_COMPLEX128);
+      break;
+    }
+    case phi::DataType::UNDEFINED:
+    case phi::DataType::PSTRING:
+    case phi::DataType::NUM_DATA_TYPES:
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Expected scalar of type boolean, "
+                                       "integer, floating point or complex."));
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Expected scalar of type boolean, "
+                                       "integer, floating point or complex."));
+      break;
+  }
+  return s;
+}
+
+paddle::experimental::Scalar make_scalar_from_attribute(const Attribute& v) {
+  auto attr_type = static_cast<proto::AttrType>(v.index() - 1);
+  switch (attr_type) {
+    case proto::AttrType::SCALAR:
+      return paddle::experimental::Scalar(
+          PADDLE_GET_CONST(paddle::experimental::Scalar, v));
+    case proto::AttrType::BOOLEAN:
+      return paddle::experimental::Scalar(PADDLE_GET_CONST(bool, v));
+    case proto::AttrType::INT:
+      return paddle::experimental::Scalar(PADDLE_GET_CONST(int, v));
+    case proto::AttrType::LONG:
+      return paddle::experimental::Scalar(PADDLE_GET_CONST(int64_t, v));
+    case proto::AttrType::FLOAT:
+      return paddle::experimental::Scalar(PADDLE_GET_CONST(float, v));
+    case proto::AttrType::FLOAT64:
+      return paddle::experimental::Scalar(PADDLE_GET_CONST(double, v));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unable to construct Scalar from given Attribute of type %s",
+          attr_type));
+  }
+}
+
+std::vector<paddle::experimental::Scalar> make_scalars_from_attribute(
+    const Attribute& v) {
+  auto attr_type = static_cast<proto::AttrType>(v.index() - 1);
+  switch (attr_type) {
+    case proto::AttrType::SCALARS:
+      return PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, v);
+    case proto::AttrType::BOOLEANS:
+      return experimental::WrapAsScalars(
+          PADDLE_GET_CONST(std::vector<bool>, v));
+    case proto::AttrType::INTS:
+      return experimental::WrapAsScalars(PADDLE_GET_CONST(std::vector<int>, v));
+    case proto::AttrType::LONGS:
+      return experimental::WrapAsScalars(
+          PADDLE_GET_CONST(std::vector<int64_t>, v));
+    case proto::AttrType::FLOATS:
+      return experimental::WrapAsScalars(
+          PADDLE_GET_CONST(std::vector<float>, v));
+    case proto::AttrType::FLOAT64S:
+      return experimental::WrapAsScalars(
+          PADDLE_GET_CONST(std::vector<double>, v));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unable to construct Scalars from given Attribute of type %s",
+          attr_type));
+  }
+}
+
+void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
+                             AttributeMap* attrs) {
+  PADDLE_ENFORCE_NOT_NULL(
+      attrs, platform::errors::InvalidArgument("attrs can not be nullptr"));
+  for (auto& attr : op_proto.attrs()) {
+    proto::AttrType attr_type = attr.type();
+    const std::string& attr_name = attr.name();
+    auto it = attrs->find(attr_name);
+    if (it == attrs->end()) {
+      continue;
+    }
+    proto::AttrType actual_attr_type = AttrTypeID(it->second);
+    if (actual_attr_type == attr_type) {
+      continue;
+    }
+    if (actual_attr_type == proto::AttrType::VAR ||
+        actual_attr_type == proto::AttrType::VARS) {
+      continue;  // VAR& VARS are not proper attribute
+    }
+    if (attr_type == proto::AttrType::SCALAR) {
+      it->second = Attribute(make_scalar_from_attribute(it->second));
+    } else if (attr_type == proto::AttrType::SCALARS) {
+      it->second = Attribute(make_scalars_from_attribute(it->second));
+    }
+  }
+}
 }  // namespace framework
 }  // namespace paddle
