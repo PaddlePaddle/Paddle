@@ -1342,6 +1342,17 @@
     data_type : out_grad
   optional: out, dst_count
 
+- backward_op : send_ue_grad
+  forward : send_ue (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
+  args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : send_ue_grad
+    data_type : x
+
 - backward_op : send_ue_recv_grad
   forward : send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op="ADD", str reduce_op="SUM", IntArray out_size={0}) -> Tensor(out), Tensor(dst_count)
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
