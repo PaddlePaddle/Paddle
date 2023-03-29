@@ -94,7 +94,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::ITensor* mask_tensor;
         nvinfer1::ITensor* pos_id_tensor;
         nvinfer1::ITensor* max_seqlen_tensor;
-        auto* new_input = input;
         if (flag_varseqlen) {
           mask_tensor = engine_->GetITensor("qkv_plugin_mask");
           pos_id_tensor = engine_->GetITensor("pos_id");
@@ -180,7 +179,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
           nvinfer1::ILayer* transformer_input_layer = engine_->AddDynamicPlugin(
               inputs_transformer.data(), inputs_transformer.size(), plugin);
 
-          new_input = transformer_input_layer->getOutput(0);
+          input = transformer_input_layer->getOutput(0);
+          if (op_desc.HasAttr("Input_scale")) {
+            in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+            engine_->SetTensorDynamicRange(input, in_scale);
+          }
           mask_tensor = transformer_input_layer->getOutput(1);
           pos_id_tensor = transformer_input_layer->getOutput(2);
           max_seqlen_tensor = transformer_input_layer->getOutput(3);
@@ -196,7 +199,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           float dp_probs = 1.0 / 127.0;
           nvinfer1::DimsHW nv_ksize(1, 1);
           fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *new_input, n, nv_ksize, weight, bias);
+              engine_, Convolution, *input, n, nv_ksize, weight, bias);
           fc_layer->setName(
               ("Multihead: Convolution/FullyConnected: (Output: " +
                output_name + ")")
@@ -254,22 +257,23 @@ class MultiheadMatMulOpConverter : public OpConverter {
               plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           auto* reshape_before_matrix =
-              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *new_input);
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
 
           std::vector<nvinfer1::ITensor*> reshape_before_tensor_matrix;
           reshape_before_tensor_matrix.push_back(
-              GetEleTensorOfShape(Shape(new_input), 0));
+              GetEleTensorOfShape(Shape(input), 0));
           reshape_before_tensor_matrix.push_back(
-              GetEleTensorOfShape(Shape(new_input), 1));
+              GetEleTensorOfShape(Shape(input), 1));
 
           reshape_before_matrix->setInput(
               1, *Concat(reshape_before_tensor_matrix));
           reshape_before_matrix->setName(
               ("reshape_before_matrix(Output: " + output_name + ")").c_str());
-          auto* new_input = reshape_before_matrix->getOutput(0);
-
-          // engine_->SetTensorDynamicRange(new_input, 1.0);
-
+          auto* input = reshape_before_matrix->getOutput(0);
+          if (op_desc.HasAttr("Input_scale")) {
+            in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+            engine_->SetTensorDynamicRange(input, in_scale);
+          }
           int head_size = hidden_out / head_number;
           // [hidden_in, 3, head_number, head_size] -> [hidden_in, head_number,
           // 3, head_size]
@@ -342,7 +346,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           auto* matrix_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                                     MatrixMultiply,
-                                                    *new_input,
+                                                    *input,
                                                     matrix_operation_x,
                                                     *weight_tensor,
                                                     matrix_operation_y);
@@ -360,9 +364,21 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                    *matrix_layer->getOutput(0),
                                    *bias_tensor,
                                    nvinfer1::ElementWiseOperation::kSUM);
+          auto* reshape_before_multihead_layer =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *add_layer->getOutput(0));
 
-          // engine_->SetTensorDynamicRange(weight_tensor, 1.0);
-          // engine_->SetTensorDynamicRange(bias_tensor, 1.0);
+          std::vector<nvinfer1::ITensor*> reshape_tensor;
+          reshape_tensor.push_back(
+              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 0));
+          reshape_tensor.push_back(
+              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 1));
+          reshape_tensor.push_back(Add1DConstantLayer(1));
+          reshape_tensor.push_back(Add1DConstantLayer(1));
+
+          reshape_before_multihead_layer->setInput(1, *Concat(reshape_tensor));
+          reshape_before_multihead_layer->setName(
+              ("reshape_before_multihead_mamul(Output: " + output_name + ")")
+                  .c_str());
 
           if (op_desc.HasAttr("fc_out_threshold")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
@@ -376,29 +392,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->SetTensorDynamicRange(matrix_layer->getOutput(0),
                                            out_scale);
             engine_->SetTensorDynamicRange(add_layer->getOutput(0), out_scale);
+            engine_->SetTensorDynamicRange(
+                reshape_before_multihead_layer->getOutput(0), out_scale);
 
             if (qkv2context_plugin_int8) {
               dp_probs =
                   PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
             }
           }
-
-          auto* reshape_before_multihead =
-              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *add_layer->getOutput(0));
-
-          std::vector<nvinfer1::ITensor*> reshape_tensor;
-          reshape_tensor.push_back(
-              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 0));
-          reshape_tensor.push_back(
-              GetEleTensorOfShape(Shape(matrix_layer->getOutput(0)), 1));
-          reshape_tensor.push_back(Add1DConstantLayer(1));
-          reshape_tensor.push_back(Add1DConstantLayer(1));
-
-          reshape_before_multihead->setInput(1, *Concat(reshape_tensor));
-          reshape_before_multihead->setName(
-              ("reshape_before_multihead_mamul(Output: " + output_name + ")")
-                  .c_str());
-          // new_input = reshape_before_multihead->getOutput(0);
 
           auto creator = GetPluginRegistry()->getPluginCreator(
               "CustomQKVToContextPluginDynamic", "2");
@@ -441,7 +442,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           free(plugin_collection);
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(reshape_before_multihead->getOutput(0));
+          plugin_inputs.emplace_back(
+              reshape_before_multihead_layer->getOutput(0));
           plugin_inputs.emplace_back(mask_tensor);
           plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
@@ -466,12 +468,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->SetITensor(output_name,
                                 transformer_output_layer->getOutput(0));
           } else {
-            if (op_desc.HasAttr("out_threshold")) {
-              float out_scale =
-                  PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-              engine_->SetTensorDynamicRange(plugin_layer->getOutput(0),
-                                             out_scale);
-            }
             engine_->SetITensor(output_name, plugin_layer->getOutput(0));
             if (op_desc.HasAttr("out_threshold")) {
               float out_scale =
