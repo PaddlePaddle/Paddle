@@ -34,16 +34,6 @@ class MyModel(paddle.nn.Layer):
         x = self.linear1(inputs)
         x = F.relu(x)
         x = self.batchnorm(x)
-        if (
-            paddle.rand(
-                [
-                    1,
-                ]
-            )
-            > 0.5
-        ):
-            x = self.linear2(x)
-            x = F.relu(x)
         x = self.linear3(x)
 
         return x
