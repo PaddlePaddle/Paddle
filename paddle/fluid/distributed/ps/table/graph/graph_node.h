@@ -19,6 +19,7 @@
 #include <set>
 #include <sstream>
 #include <vector>
+#include <cuda_fp16.h>
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
@@ -46,7 +47,7 @@ class Node {
     return std::vector<int>();
   }
   virtual uint64_t get_neighbor_id(int idx) { return 0; }
-  virtual float get_neighbor_weight(int idx) { return 1.; }
+  virtual half get_neighbor_weight(int idx) { return 1.; }
 
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
@@ -89,7 +90,7 @@ class GraphNode : public Node {
     return sampler->sample_k(k, rng);
   }
   virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
-  virtual float get_neighbor_weight(int idx) { return edges->get_weight(idx); }
+  virtual half get_neighbor_weight(int idx) { return edges->get_weight(idx); }
   virtual size_t get_neighbor_size() { return edges->size(); }
 
  protected:

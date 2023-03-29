@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <cuda_fp16.h>
 namespace paddle {
 namespace distributed {
 
@@ -26,7 +27,7 @@ class GraphEdgeBlob {
   size_t size() { return id_arr.size(); }
   virtual void add_edge(int64_t id, float weight);
   int64_t get_id(int idx) { return id_arr[idx]; }
-  virtual float get_weight(int idx) { return 1; }
+  virtual half get_weight(int idx) { return (half)(1.0); }
   std::vector<int64_t>& export_id_array() { return id_arr; }
 
  protected:
@@ -38,10 +39,10 @@ class WeightedGraphEdgeBlob : public GraphEdgeBlob {
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
   virtual void add_edge(int64_t id, float weight);
-  virtual float get_weight(int idx) { return weight_arr[idx]; }
+  virtual half get_weight(int idx) { return weight_arr[idx]; }
 
  protected:
-  std::vector<float> weight_arr;
+  std::vector<half> weight_arr;
 };
 }  // namespace distributed
 }  // namespace paddle

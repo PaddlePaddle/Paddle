@@ -195,7 +195,7 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   std::vector<uint64_t> edge_array[task_pool_size_];  // edge id list
 
   // get edge weight
-  std::vector<float> weight_array[task_pool_size_];  // neighbor weight list
+  std::vector<half> weight_array[task_pool_size_];  // neighbor weight list
 
   for (size_t i = 0; i < bags.size(); i++) {
     if (bags[i].size() > 0) {
