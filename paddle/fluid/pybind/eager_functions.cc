@@ -581,6 +581,25 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
     ctx.AssignInplaceOutputs();
 
+    // handle optional None output when construct backward graph
+    for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
+      if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
+        size_t idx = ctx.OutputRangeAt(i).first;
+        paddle::Tensor* out_tensor = ctx.MutableOutputAt(idx);
+        if (!out_tensor->initialized()) {
+          PADDLE_ENFORCE(outputs.at(idx).find(paddle::kOptionalSuffix) !=
+                             std::string::npos,
+                         "Custom operator's %d-th output is not initialized. "
+                         "Please check your implementation again. If you are "
+                         "using inplace optional output, then you must use "
+                         "`paddle::Optional` to decorate this output",
+                         idx);
+          // We can also consider using `autograd_meta` to tolerant nullptr.
+          out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
+        }
+      }
+    }
+
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
     std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
     std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
@@ -616,11 +635,13 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
                                         ins_auto_grad_metas[i][j],
                                         require_any_grad);
-          // Bump Inplace Version
-          ctx.MutableInputAt(start_idx + j).bump_inplace_version();
-          VLOG(3) << "Custom operator: Tensor("
-                  << ctx.InputAt(start_idx + j).name()
-                  << ") uses Inplace Strategy.";
+          if (ctx.MutableInputAt(start_idx + j).defined()) {
+            // Bump Inplace Version
+            ctx.MutableInputAt(start_idx + j).bump_inplace_version();
+            VLOG(3) << "Custom operator: Tensor("
+                    << ctx.InputAt(start_idx + j).name()
+                    << ") uses Inplace Strategy.";
+          }
         }
       }
     }
