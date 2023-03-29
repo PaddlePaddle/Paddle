@@ -80,7 +80,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
                 ['X'],
                 'Loss',
                 no_grad_set={"Target"},
-                check_eager=True,
+                check_dygraph=True,
             )
 
         def initTestCase(self):
