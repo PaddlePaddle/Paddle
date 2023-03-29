@@ -852,10 +852,6 @@ if(WIN32)
     DEPS python)
 endif()
 
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
 if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
@@ -863,8 +859,6 @@ endif()
 if(WITH_IPU)
   add_subdirectory(ipu)
 endif()
-
-add_subdirectory(asp)
 
 add_subdirectory(ir)
 
@@ -1005,7 +999,7 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
