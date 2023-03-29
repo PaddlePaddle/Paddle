@@ -31,7 +31,6 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
