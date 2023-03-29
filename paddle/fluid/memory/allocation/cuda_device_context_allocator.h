@@ -52,6 +52,7 @@ class GPUContextAllocation : public Allocation {
     auto *p_allocation = underlying_allocation_.release();
     VLOG(4) << "Adding callback to delete GPUContextAllocation at "
             << p_allocation;
+
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete GPUContextAllocation at " << p_allocation;
       Allocator::AllocationDeleter(p_allocation);
