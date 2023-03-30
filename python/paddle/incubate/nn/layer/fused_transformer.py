@@ -82,7 +82,6 @@ def _to_dtype(t, dtype):
 class FusedBiasDropoutResidualLayerNorm(Layer):
     """
     Applies fused_bias_dropout_residual_layer_norm operation.
-
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         dropout_rate (float, optional): The dropout probability used on attention
@@ -94,11 +93,8 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             See usage for details in :code:`ParamAttr`.
         epsilon (float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-
     Examples:
-
         .. code-block:: python
-
             # required: gpu
             import paddle
             # input: [batch_size, seq_len, embed_dim]
@@ -149,7 +145,6 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
     def forward(self, x, residual):
         """
         Applies fused_bias_dropout_residual_layer_norm operation.
-
         Parameters:
             x (Tensor): The input tensor. It is a tensor with shape
                 `[batch_size, seq_len, embed_dim]`. The data type should be
@@ -157,7 +152,6 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             residual (Tensor, optional): The residual tensor. It is a tensor
                 with shape `[batch_size, value_length, vdim]`. The data type
                 should be float32 or float64.
-
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
                 as `x`.
@@ -196,7 +190,6 @@ class FusedMultiHeadAttention(Layer):
     to information from different representation subspaces.
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
     for more details.
-
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
@@ -253,11 +246,8 @@ class FusedMultiHeadAttention(Layer):
             [3, num_head, hidden_size] in the fused_attention_op. Only support for GPU for now.
             The default value is False, which is not do transpose to qkv_w and qkv_b.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
     Examples:
-
         .. code-block:: python
-
             # required: gpu
             import paddle
             # input: [batch_size, sequence_length, embed_dim]
@@ -399,7 +389,6 @@ class FusedMultiHeadAttention(Layer):
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
-
         Parameters:
             query (Tensor): The queries for multi-head attention. It is a
                 tensor with shape `[batch_size, query_length, embed_dim]`. The
@@ -424,7 +413,6 @@ class FusedMultiHeadAttention(Layer):
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 Now, only None is supported. Default None.
-
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
                 as `query`, representing attention output.
@@ -540,14 +528,11 @@ class FusedFeedForward(Layer):
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
-
     Examples:
         .. code-block:: python
-
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedFeedForward
-
             fused_feedforward_layer = FusedFeedForward(8, 8)
             x = paddle.rand((1, 8, 8))
             out = fused_feedforward_layer(x)
@@ -724,14 +709,12 @@ class FusedFeedForward(Layer):
 
 class FusedTransformerEncoderLayer(Layer):
     """
-
     FusedTransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
     and post-precess would be applied on the input and output accordingly. If
     `normalize_before` is True, pre-process is layer normalization and post-precess
     includes dropout, residual connection. Otherwise, no pre-process and post-precess
     includes dropout, residual connection, layer normalization.
-
     Parameters:
         d_model (int): The expected feature size in the input and output.
         nhead (int): The number of heads in multi-head attention(MHA).
@@ -763,22 +746,17 @@ class FusedTransformerEncoderLayer(Layer):
             The `False` value means the corresponding layer would not have trainable
             bias parameter. See usage for details in :code:`ParamAttr` . Default: None,
             which means the default bias parameter property is used.
-
-
     Examples:
         .. code-block:: python
-
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedTransformerEncoderLayer
-
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, n_head, src_len, src_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
             encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
             enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
-
     """
 
     def __init__(
@@ -855,9 +833,7 @@ class FusedTransformerEncoderLayer(Layer):
 
     def forward(self, src, src_mask=None, cache=None):
         """
-
         Applies a Transformer encoder layer on the input.
-
         Parameters:
             src (Tensor): The input of Transformer encoder layer. It is
                 a tensor with shape `[batch_size, sequence_length, d_model]`.
@@ -876,7 +852,6 @@ class FusedTransformerEncoderLayer(Layer):
                 See :ref:`api_paddle_nn_TransformerEncoderLayer`.gen_cache for more details. It is
                 only used for inference and should be None for training. Default
                 None.
-
         Returns:
             Tensor|tuple, It is a tensor that has the same shape and data type \
                 as `enc_input`, representing the output of Transformer encoder \
@@ -885,7 +860,6 @@ class FusedTransformerEncoderLayer(Layer):
                 as input `cache` argument but `incremental_cache` has an \
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
-
         """
         src_mask = _convert_attention_mask(src_mask, src.dtype)
         if cache is None:
@@ -905,10 +879,8 @@ class FusedTransformer(Layer):
     A Transformer model composed of an instance of `TransformerEncoder` and an
     instance of `TransformerDecoder`. While the embedding layer and output layer
     are not included.
-
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
-
     Users can configurate the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
@@ -916,7 +888,6 @@ class FusedTransformer(Layer):
     `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
     applies another layer normalization on the output of last encoder/decoder layer.
-
     Parameters:
         d_model (int, optional): The expected feature size in the encoder/decoder input
             and output. Default 512
@@ -968,14 +939,10 @@ class FusedTransformer(Layer):
             Default None
         custom_decoder (Layer, optional): If custom decoder is provided, use it as the decoder.
             Default None
-
     Examples:
-
         .. code-block:: python
-
             import paddle
             from paddle.nn import Transformer
-
             # src: [batch_size, tgt_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
             # tgt: [batch_size, src_len, d_model]
@@ -1023,9 +990,7 @@ class FusedMultiTransformer(Layer):
     FusedMultiTransformer is composed of multi transformer layers which contains two
     sub-layers which are self (multi-head) attention and feedforward network. The
     function of one transformer layer is consistent with the following pseudo code:
-
     .. code-block:: python
-
         if pre_layer_norm:
             out = layer_norm(x)
             out = qkv_linear(out) + qkv_bias
@@ -1047,7 +1012,6 @@ class FusedMultiTransformer(Layer):
             out = x + dropout(out + bias)
         else:
             out = layer_norm(x + dropout(out + bias))
-
         residual = out;
         if pre_layer_norm:
             out = ffn_layer_norm(out)
@@ -1057,7 +1021,6 @@ class FusedMultiTransformer(Layer):
         out = residual + dropout(out + ffn2_bias)
         if not pre_layer_norm:
             out = ffn_layer_norm(out)
-
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention(MHA).
@@ -1161,15 +1124,11 @@ class FusedMultiTransformer(Layer):
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using mp.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
-
     Examples:
-
         .. code-block:: python
-
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedMultiTransformer
-
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, 1, src_len, src_len]
@@ -1260,6 +1219,10 @@ class FusedMultiTransformer(Layer):
                 assert len(attrs) == num_layers
                 return attrs[idx]
             return attrs
+
+        def _add_parameter(param):
+            assert param.name not in self._parameters
+            self._parameters[param.name] = param
 
         for i in range(num_layers):
             ln_scale_attr = get_attr(ln_scale_attrs, i)
@@ -1370,6 +1333,20 @@ class FusedMultiTransformer(Layer):
             self.ffn2_weights.append(ffn2_weight)
             self.ffn2_biases.append(ffn2_bias)
 
+            _add_parameter(ln_scale)
+            _add_parameter(ln_bias)
+            _add_parameter(qkv_weight)
+            _add_parameter(qkv_bias)
+            _add_parameter(linear_weight)
+            _add_parameter(linear_bias)
+
+            _add_parameter(ffn_ln_scale)
+            _add_parameter(ffn_ln_bias)
+            _add_parameter(ffn1_weight)
+            _add_parameter(ffn1_bias)
+            _add_parameter(ffn2_weight)
+            _add_parameter(ffn2_bias)
+
         self.dropout_rate = dropout_rate
         self.activation = activation
         self.name = name
@@ -1387,7 +1364,6 @@ class FusedMultiTransformer(Layer):
     ):
         r"""
         Applies multi transformer layers on the input.
-
         Parameters:
             src (Tensor): The input of Transformer layers. It is
                 a tensor with shape `[batch_size, sequence_length, d_model]`.
@@ -1407,12 +1383,11 @@ class FusedMultiTransformer(Layer):
             rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
             rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
                 1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
-            seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
+            model_inputs = {"input_ids" (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
                 in CPUPlace. Default None.
-
         Returns:
             Tensor|tuple: If `caches` is None, return a tensor that has
             the same shape and data type with `src`, representing the output

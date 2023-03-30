@@ -2025,7 +2025,7 @@ def assign(x, output=None):
                 "the data type of 'input' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype)
             )
-        if input.size > 1024 * 1024:
+        if input.size > 4096 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"

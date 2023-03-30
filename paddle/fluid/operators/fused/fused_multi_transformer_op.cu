@@ -698,6 +698,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     const auto input_x_dims = input_x->dims();
     int bsz = input_x_dims[0];
     int seq_len = input_x_dims[1];
+    // std::cout<<"seq_len   "<< seq_len <<std::endl;
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
@@ -729,6 +730,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              sequence_lengths->data<int>(),
                              bsz,
                              seq_len);
+      // std::cout<<"token_num   "<<token_num<<std::endl;
+      // std::cout<<"seq_len   "<<seq_len<<std::endl;
       padding_offset_tensor.Resize({{token_num}});
       x_remove_padding.Resize({{token_num, dim_embed}});
       dev_ctx.Alloc<T>(&x_remove_padding, x_remove_padding.numel() * sizeof(T));
@@ -743,7 +746,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     auto *padding_offset_data =
         encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
-
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
@@ -797,7 +799,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
     auto fmha_compute =
         FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
-    auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+    auto src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
     // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
@@ -807,14 +809,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       cache_offset = pre_caches[0]->dims()[3];
     }
 
+    int time_step_tmp = 0;
     auto out_seq_len = seq_len;
     if (time_step) {
-      PADDLE_ENFORCE_EQ(time_step->place(),
-                        platform::CPUPlace(),
-                        platform::errors::PreconditionNotMet(
-                            "The place of input(TimeStep) must be CPUPlace."));
-      // cache_seq_len
-      int time_step_value = time_step->data<int>()[0];
+      int time_step_value = 0;
+      if (time_step->place() == platform::CPUPlace()) {
+        time_step_value = time_step->data<int>()[0];
+      } else {
+        phi::memory_utils::Copy(phi::CPUPlace(),
+                                &time_step_value,
+                                dev_ctx.GetPlace(),
+                                time_step->data(),
+                                sizeof(int),
+                                dev_ctx.stream());
+        dev_ctx.Wait();
+      }
+      // std::cout<<"time_step_value  \n"<< time_step_value<<std::endl;
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
                         platform::errors::PreconditionNotMet(
@@ -827,6 +837,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
+      time_step_tmp = time_step_value;
     } else {
       out_seq_len += cache_offset;
     }
@@ -1026,10 +1037,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
 #endif
-
       // step3. fmha
       const phi::DenseTensor *cache_kv =
           cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+
       phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
       if (time_step) {  // generation decoder stage
@@ -1047,9 +1058,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 max_seq_len,
                 num_head,
                 dim_head,
-                time_step->data<int>()[0],
+                time_step_tmp,
                 rotary_emb_dims,
                 1. / sqrt(dim_head));
+
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
