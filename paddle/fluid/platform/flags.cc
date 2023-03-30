@@ -70,6 +70,28 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_check_nan_inf_level
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Used to debug. Setting the check and print level when
+ * FLAGS_check_nan_inf is set.
+ * - 0, abort the process when any operator produce NAN/INF and only print the
+ * information of tensor which holds NAN/INF.
+ * - 1, continue the training or inference process and print the information of
+ * all tensors which holds NAN/INF.
+ * - 2, print the information of float tensors when the max or min value
+ * overflowing float16's limit.
+ * - 3, print the information of all tensors.
+ */
+PADDLE_DEFINE_EXPORTED_int32(
+    check_nan_inf_level,
+    0,
+    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
  * Value Range: bool, default=false
