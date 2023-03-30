@@ -643,7 +643,7 @@ class DataParallelOptimizationPass(PassBase):
                     )
 
         # insert dependency op
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, op_role in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(

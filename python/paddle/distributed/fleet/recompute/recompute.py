@@ -31,7 +31,7 @@ __all__ = []
 def detach_variable(inputs):
     out = []
     for inp in inputs:
-        if not isinstance(inp, (core.eager.Tensor, core.VarBase)):
+        if not isinstance(inp, core.eager.Tensor):
             out.append(inp)
             continue
 
@@ -172,7 +172,7 @@ class RecomputeFunction(PyLayer):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, core.eager.Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -185,7 +185,7 @@ class RecomputeFunction(PyLayer):
             backward_inputs_with_grad = []
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], core.eager.Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -206,13 +206,13 @@ class RecomputeFunction(PyLayer):
                 grads = tuple(
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                    if isinstance(inp, core.eager.Tensor)
                 )
             else:
                 grads = [
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                    if isinstance(inp, core.eager.Tensor)
                 ]
             return grads
 

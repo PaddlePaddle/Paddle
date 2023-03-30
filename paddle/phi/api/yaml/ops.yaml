@@ -1011,6 +1011,14 @@
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
 
+- op : merge_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : merge_selected_rows {selected_rows -> selected_rows}
+
 - op : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
@@ -1386,6 +1394,16 @@
   inplace : (x -> out)
   backward : sigmoid_grad
 
+- op : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithLogitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+  inplace : (x -> out)
+  backward : sigmoid_cross_entropy_with_logits_grad
+
 - op : sign
   args : (Tensor x)
   output : Tensor(out)
@@ -1662,6 +1680,19 @@
   kernel :
     func : unstack
   backward : unstack_grad
+
+- op : update_loss_scaling_
+  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update=false)
+  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta :
+    func : UpdateLossScalingInferMeta
+    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
+    data_type : x
+  data_transform :
+    skip_transform : found_infinite
+  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
