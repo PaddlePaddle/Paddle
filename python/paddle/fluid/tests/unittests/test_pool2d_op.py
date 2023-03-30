@@ -19,6 +19,8 @@ import numpy as np
 from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import OpTest
 
+from eager_op_test import convert_float_to_uint16
+
 
 def adaptive_start_index(index, input_size, output_size):
     return int(np.floor(index * input_size / output_size))
@@ -304,7 +306,11 @@ class TestPool2D_Op_Mixin:
         self.init_data_format()
         self.init_shape()
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        if self.is_bfloat16_op():
+            input = np.random.random(self.shape).astype(np.float32)
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
         output = pool2D_forward_naive(
             input,
             self.ksize,
@@ -317,8 +323,14 @@ class TestPool2D_Op_Mixin:
             self.data_format,
             self.pool_type,
             self.padding_algorithm,
-        ).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        )
+
+        if self.is_bfloat16_op():
+            output = output.astype(np.float32)
+            self.inputs = {'X': convert_float_to_uint16(input)}
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -583,23 +595,21 @@ def create_test_bf16_class(parent, check_grad=True):
     class TestBf16Case(parent):
         def init_kernel_type(self):
             self.use_cuda = True
-            self.dtype = np.unint16
+            self.dtype = np.uint16
 
         def test_check_output(self):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
-                if core.is_bfloat16_supported(place):
-                    self.check_output_with_place(
-                        place,
-                        atol=1e-3,
-                        check_dygraph=(not self.use_mkldnn),
-                    )
+                self.check_output_with_place(
+                    place,
+                    atol=1e-3,
+                    check_dygraph=(not self.use_mkldnn),
+                )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if (
-                core.is_bfloat16_supported(place)
-                and self.pool_type != "max"
+                self.pool_type != "max"
                 and check_grad
             ):
                 self.check_grad_with_place(
