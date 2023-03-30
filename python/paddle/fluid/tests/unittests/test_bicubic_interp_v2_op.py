@@ -104,15 +104,17 @@ def bicubic_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, (float, int)):
+    if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, (list, tuple)):
+    elif isinstance(scale, list) or isinstance(scale, tuple):
         scale = list(map(float, scale))
     if SizeTensor is not None:
-        if not isinstance(SizeTensor, (list, tuple)):
+        if not isinstance(SizeTensor, list) and not isinstance(
+            SizeTensor, tuple
+        ):
             SizeTensor = [SizeTensor]
     return paddle._C_ops.bicubic_interp(
         x,
@@ -264,7 +266,7 @@ class TestBicubicInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -303,7 +305,7 @@ class TestBicubicInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -374,15 +376,10 @@ class TestBicubicInterpCase1FP16(TestBicubicInterpOpFP16):
         self.dtype = np.float16
 
 
-# this case will cause accuracy loss （backward:0.008773442)
-# class TestBicubicInterpCase2FP16(TestBicubicInterpOpFP16):
-#     def init_test_case(self):
-#         self.interp_method = 'bicubic'
-#         self.input_shape = [3, 3, 9, 6]
-#         self.out_h = 10
-#         self.out_w = 8
-#         self.scale = []
-#         self.align_corners = True
+class TestBicubicInterpCase2FP16(TestBicubicInterpOpFP16):
+    def init_test_case(self):
+        create_test_case2(self)
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase3FP16(TestBicubicInterpOpFP16):
@@ -424,7 +421,6 @@ class TestBicubicInterpOpBF16(OpTest):
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_dygraph while found them in Inputs.
-        self.check_dygraph = True
         self.dtype = np.uint16
         input_np = np.random.random(self.input_shape).astype("float32")
         scale_h = 0
@@ -465,10 +461,8 @@ class TestBicubicInterpOpBF16(OpTest):
         self.inputs = {'X': convert_float_to_uint16(input_np)}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_dygraph = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_dygraph = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -487,16 +481,10 @@ class TestBicubicInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=self.check_dygraph, atol=1e-2)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            check_dygraph=self.check_dygraph,
-            max_relative_error=1e-2,
-        )
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         create_test_case0(self)
