@@ -178,26 +178,6 @@ $$out = \min(\max(0, x), threshold)$$
   }
 };
 
-class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of STanh operator."
-             " A Tensor with type float32, float64.");
-    AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
-    AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
-        .SetDefault(0.67f);
-    AddAttr<float>("scale_b", "The scale parameter of b for the input")
-        .SetDefault(1.7159f);
-    AddComment(R"DOC(
-STanh Activation Operator.
-
-$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
-
-)DOC");
-  }
-};
-
 class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -436,7 +416,6 @@ REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
-REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
 REGISTER_ACTIVATION_OP(hard_swish,
                        HardSwish,
                        HardSwishFunctor,

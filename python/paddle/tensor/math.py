@@ -285,7 +285,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
 
     if in_dygraph_mode():
-        return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+        return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'stanh'
