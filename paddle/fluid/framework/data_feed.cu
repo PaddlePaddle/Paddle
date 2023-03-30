@@ -2318,7 +2318,10 @@ int GraphDataGenerator::FillWalkBuf() {
       buf_size_ - walk_degree_ * once_sample_startid_len_ * walk_len_;
   int total_samples = 0;
 
-  while (i <= remain_size) {
+  // FIXME, 限制pass内采样batch数, 临时解决方案.
+  // 规避由于d_walk打满导致的多卡pass级batch不一致导致的卡住问题
+  // 不影响样本量, 后面将使用规范方案解决这个问题.
+  while (i <= remain_size && sample_times < 40) {
     int cur_node_idx = cursor % node_type_len;
     int node_type = first_node_type[cur_node_idx];
     auto &path = meta_path[cur_node_idx];
@@ -2358,17 +2361,19 @@ int GraphDataGenerator::FillWalkBuf() {
       cur_walk_ntype = walk_ntype + i;
     }
 
+    int step = 1;
+    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
+
     NeighborSampleQuery q;
     q.initialize(gpuid_,
                  path[0],
                  (uint64_t)(d_type_keys + start),
                  walk_degree_,
-                 tmp_len);
+                 tmp_len,
+                 step);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
                                                               weighted_sample_);
 
-    int step = 1;
-    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
     jump_rows_ = sample_res.total_sample_size;
     total_samples += sample_res.total_sample_size;
     VLOG(2) << "i = " << i << " start = " << start << " tmp_len = " << tmp_len
@@ -2435,7 +2440,7 @@ int GraphDataGenerator::FillWalkBuf() {
                    edge_type_id,
                    (uint64_t)sample_keys_ptr,
                    1,
-                   sample_res.total_sample_size);
+                   sample_res.total_sample_size, step);
       int sample_key_len = sample_res.total_sample_size;
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
                                                            weighted_sample_);
@@ -2607,17 +2612,18 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
       cur_walk_ntype = walk_ntype + i;
     }
 
+    int step = 1;
+    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
+
     NeighborSampleQuery q;
     q.initialize(gpuid_,
                  path[0],
                  (uint64_t)(d_type_keys + start),
                  walk_degree_,
-                 tmp_len);
+                 tmp_len, step);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
                                                               weighted_sample_);
 
-    int step = 1;
-    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
     jump_rows_ = sample_res.total_sample_size;
     total_samples += sample_res.total_sample_size;
     VLOG(2) << "i = " << i << " start = " << start << " tmp_len = " << tmp_len
@@ -2682,7 +2688,7 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
                    edge_type_id,
                    (uint64_t)sample_keys_ptr,
                    1,
-                   sample_res.total_sample_size);
+                   sample_res.total_sample_size, step);
       int sample_key_len = sample_res.total_sample_size;
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
                                                            weighted_sample_);

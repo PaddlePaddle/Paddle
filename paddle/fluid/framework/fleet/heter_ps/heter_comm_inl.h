@@ -62,7 +62,8 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
 #endif
   enable_gpu_direct_access_ =
       (topo_aware_) ? false : FLAGS_gpugraph_enable_gpu_direct_access;
-  VLOG(0) << "device_num = " << device_num_ << ", multi_node = " << multi_node_
+  VLOG(0) << "device_num = " << device_num_
+          << ", multi_node = " << multi_node_
           << ", multi_mf_dim = " << multi_mf_dim_
           << ", topo_aware = " << topo_aware_
           << ", enable_gpu_direct_access = " << enable_gpu_direct_access_
@@ -251,7 +252,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::init_path() {
         node.out_stream = resource_->remote_stream(j, transfer_id);
         node.key_storage = NULL;
         node.val_storage = NULL;
-        node.sync = 0;
+        node.sync = 1;
         node.dev_num = j;
       }
     }
@@ -2591,12 +2592,12 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
     loc.inner_span_.Resume();
     // gather keys of all gpu and select shard key
     gather_inner_size =
-        gather_inter_keys_by_copy(gpu_id, fea_num, d_keys, stream);
+        gather_inner_keys_by_copy(gpu_id, fea_num, d_keys, stream);
     loc.inner_span_.Pause();
 
     loc.node_span_.Resume();
     // all2all mode begins. init resource, partition keys, pull vals by all2all
-    pull_size = gather_sparse_keys_by_all2all(
+    pull_size = gather_inter_keys_by_all2all(
         gpu_id, gather_inner_size, loc.d_merged_keys, stream);
     loc.node_span_.Pause();
 
@@ -2620,7 +2621,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
           max_value_bound_,
           stream);
 
-      scatter_sparse_vals_by_all2all(gpu_id,
+      scatter_inter_vals_by_all2all(gpu_id,
                                      gather_inner_size,
                                      loc.d_merged_push_vals,
                                      loc.d_merged_push_vals,
@@ -2651,7 +2652,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
 
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     } else {
-      scatter_sparse_vals_by_all2all(gpu_id,
+      scatter_inter_vals_by_all2all(gpu_id,
                                      gather_inner_size,
                                      loc.d_merged_vals,
                                      loc.d_merged_vals,
@@ -2670,7 +2671,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
     loc.alloc(fea_num, max_type_size_);
     loc.node_span_.Resume();
     // all2all mode begins. init resource, partition keys, pull vals by all2all
-    pull_size = gather_sparse_keys_by_all2all(gpu_id, fea_num, d_keys, stream);
+    pull_size = gather_inter_keys_by_all2all(gpu_id, fea_num, d_keys, stream);
 
     loc.node_span_.Pause();
     // get all tables
@@ -2690,7 +2691,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
           max_mf_dim_,
           max_value_bound_,
           stream);
-      scatter_sparse_vals_by_all2all(gpu_id,
+      scatter_inter_vals_by_all2all(gpu_id,
                                      pull_size,
                                      loc.d_merged_push_vals,
                                      loc.d_merged_push_vals,
@@ -2707,7 +2708,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
           stream);
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     } else {
-      scatter_sparse_vals_by_all2all(gpu_id,
+      scatter_inter_vals_by_all2all(gpu_id,
                                      pull_size,
                                      loc.d_merged_vals,
                                      d_vals,
@@ -2849,7 +2850,7 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 size_t
-HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inter_keys_by_copy(
+HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inner_keys_by_copy(
     const int &gpu_id,
     const size_t &fea_size,
     const KeyType *d_keys,
@@ -3085,7 +3086,7 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
-    gather_sparse_keys_by_all2all(const int &gpu_id,
+    gather_inter_keys_by_all2all(const int &gpu_id,
                                   const size_t &fea_size,
                                   const KeyType *d_in_keys,
                                   const cudaStream_t &stream) {
@@ -3105,8 +3106,6 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
                        h_local_part_sizes,
                        node_size_,
                        stream);
-  // barrier
-  //  barrier_.wait();
 
   int all_shard_part_size = node_size_ * node_size_;
   int rank_offset = rank_id_ * node_size_;
@@ -3156,9 +3155,6 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   }
   size_t &remote_size = h_remote_part_offsets[node_size_];  // remote_size：gather过来的总的key长度？
   cache.alloc(remote_size, max_type_size_, HeterCommType::COPY_KEY); // COPY_KEY: 仅拷贝key。
-  // max_type_size_ = std::max(pull_type_size_, grad_type_size_);
-  // barrier
-  //  barrier_.wait();
 
   size_t total_fea_num = 0;
   if (rdma_checker_->need_rdma_trans()) {
@@ -3192,7 +3188,7 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
-    scatter_sparse_vals_by_all2all(const int &gpu_id,
+    scatter_inter_vals_by_all2all(const int &gpu_id,
                                    const size_t &fea_size,
                                    const char *d_in_vals,
                                    void *d_out_vals,
@@ -3231,6 +3227,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
                                          stream);
   }
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
   // fill vals
   heter_comm_kernel_->scatter_vals(
       reinterpret_cast<const float *>(d_tmp_vals),  // in
@@ -3241,6 +3238,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
       stream);
   CUDA_CHECK(cudaStreamSynchronize(stream));
 }
+
 template <typename KeyType,
           typename ValType,
           typename GradType,
