@@ -4,12 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-file(
-  GLOB TEST_OPS
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_*.py")
-string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
 function(_inference_analysis_python_api_int8_test target model_dir data_path
          filename use_mkldnn)
   py_test(
