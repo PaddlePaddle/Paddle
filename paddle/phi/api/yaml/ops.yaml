@@ -1011,6 +1011,14 @@
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
 
+- op : merge_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : merge_selected_rows {selected_rows -> selected_rows}
+
 - op : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
@@ -1177,6 +1185,16 @@
     func : pow
     data_type : x
   backward : pow_grad
+
+- op : prelu
+  args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
+  output : Tensor(out)
+  infer_meta :
+    func : PReluInferMeta
+  kernel :
+    func : prelu
+    data_type : x
+  backward : prelu_grad
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
@@ -1386,6 +1404,16 @@
   inplace : (x -> out)
   backward : sigmoid_grad
 
+- op : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithLogitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+  inplace : (x -> out)
+  backward : sigmoid_cross_entropy_with_logits_grad
+
 - op : sign
   args : (Tensor x)
   output : Tensor(out)
@@ -1470,6 +1498,16 @@
     func : solve
     data_type : x
   backward : solve_grad
+
+- op : spectral_norm
+  args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
+  output : Tensor
+  infer_meta :
+    func : SpectralNormInferMeta
+  kernel :
+    func : spectral_norm
+    data_type : weight
+  backward : spectral_norm_grad
 
 - op : sqrt
   args : (Tensor x)
