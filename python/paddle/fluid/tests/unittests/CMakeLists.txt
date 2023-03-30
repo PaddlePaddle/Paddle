@@ -824,7 +824,6 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -1197,6 +1196,7 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scatter_op
     test_gather_op
     test_cast_op
     test_dropout_op
