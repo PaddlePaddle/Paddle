@@ -856,10 +856,6 @@ if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
 
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
 add_subdirectory(ir)
 
 add_subdirectory(standalone_executor)
