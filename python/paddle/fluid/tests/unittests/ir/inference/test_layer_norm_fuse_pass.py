@@ -90,7 +90,7 @@ class TestFcFusePass(PassAutoScanTest):
         if begin_norm_axis == x_shape_rank - 1 and draw(st.booleans()):
             reduce_mean_dim = [-1]
         else:
-            reduce_mean_dim = [i for i in range(x_shape_rank)]
+            reduce_mean_dim = list(range(x_shape_rank))
             reduce_mean_dim = reduce_mean_dim[begin_norm_axis:]
         error_test_ratio = draw(st.integers(min_value=1, max_value=10))
         if error_test_ratio > 9:

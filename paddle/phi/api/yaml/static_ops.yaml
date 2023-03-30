@@ -26,6 +26,16 @@
     func : all_reduce
     param: [x, reduce_type]
 
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+  kernel :
+    func : arange
+  data_transform :
+    skip_transform : start, end, step
+
 - op : assign
   args : (Tensor x)
   output : Tensor
@@ -116,6 +126,19 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+
+- op : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
+  kernel :
+    func : linspace
+    param: [start, stop, number, dtype]
+    data_type : dtype
+  data_transform :
+    skip_transform : start, stop, number
 
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)

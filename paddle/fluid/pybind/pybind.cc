@@ -2808,6 +2808,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
+  m.def("get_low_precision_op_list", [] {
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
+  });
+
+  m.def("clear_low_precision_op_list",
+        [] { phi::KernelFactory::Instance().ClearLowPrecisionKernelList(); });
+
   m.def("enable_autotune", [] {
     return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
   });
@@ -2823,20 +2840,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
-
-  m.def("get_low_precision_op_list", [] {
-    py::dict op_list;
-    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
-      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
-                         std::to_string(counts.bf16_called_) + "," +
-                         std::to_string(counts.fp32_called_) + "," +
-                         std::to_string(counts.other_called_);
-    }
-    return op_list;
-  });
 
   m.def("autotune_status", [] {
     py::dict res;

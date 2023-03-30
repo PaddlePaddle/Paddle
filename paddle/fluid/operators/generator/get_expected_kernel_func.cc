@@ -141,5 +141,15 @@ phi::KernelKey GetSgdExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetUpdateLossScalingExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle

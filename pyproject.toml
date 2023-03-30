@@ -33,21 +33,7 @@ select = [
     "F401",
 
     # Comprehensions
-    "C400",
-    "C401",
-    "C402",
-    "C403",
-    "C404",
-    "C405",
-    "C408",
-    "C409",
-    "C410",
-    "C411",
-    # "C413",
-    # "C414",
-    # "C415",
-    # "C416",
-    # "C417",
+    "C4",
 
     # Pyupgrade
     "UP001",
@@ -174,5 +160,7 @@ unfixable = [
 "python/paddle/fluid/tests/unittests/dygraph_to_static/test_slice.py" = ["UP034"]
 # Ignore version check in setup.py
 "setup.py" = ["UP036"]
+# Ignore unnecessary comprehension in dy2st unittest test_loop
+"python/paddle/fluid/tests/unittests/dygraph_to_static/test_loop.py" = ["C416"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "python/paddle/fluid/tests/unittests/dygraph_to_static/test_lambda.py" = ["PLC3002"]

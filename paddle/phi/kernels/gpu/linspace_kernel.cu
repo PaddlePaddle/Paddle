@@ -29,9 +29,10 @@ __global__ void LinspaceKernelInner(
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(start + step * index);
+      out[index] = static_cast<T>(static_cast<double>(start) + step * index);
     } else {
-      out[index] = static_cast<T>(stop - step * (size - index - 1));
+      out[index] =
+          static_cast<T>(static_cast<double>(stop) - step * (size - index - 1));
     }
   }
 }
@@ -111,7 +112,9 @@ PD_REGISTER_KERNEL(linspace,
                    float,
                    int32_t,
                    int64_t,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
