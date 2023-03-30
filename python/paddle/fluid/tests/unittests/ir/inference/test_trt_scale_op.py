@@ -18,16 +18,18 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static.nn as nn
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TRTScaleTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[-1, 512], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[-1, 512], dtype="float32"
+            )
             scale_out = self.append_scale(data)
             out = nn.batch_norm(scale_out, is_test=True)
 
@@ -57,7 +59,7 @@ class TRTScaleTest(InferencePassTest):
 class TRTScaleShape2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 512, 512], dtype="float32"
             )
             scale_out = self.append_scale(data)

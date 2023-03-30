@@ -31,6 +31,7 @@ import astor
 import numpy as np
 
 import paddle
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -262,7 +263,7 @@ def make_hashable(x, error_msg=None):
 # NOTE(Aurelius84): Consider the following paddle inner API as common case to
 # apply @to_static code transformation as usual. Because they contains
 # user-defined layer, like paddle.distributed.auto_parallel.helper.ProxyLayer.
-AS_NOT_INNER_FUNC_LIST = set()
+AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
 
 
 def as_not_paddle_func(path):
@@ -293,6 +294,8 @@ def is_paddle_func(func, ignore_white_list=True):
         if inspect.ismethod(func):
             func_name = func.__self__.__class__.__name__
             func = func.__func__
+        elif hasattr(func, '__class__'):  # for nn.Sequential
+            func_name = func.__class__.__name__
 
         m = inspect.getmodule(func)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
@@ -307,7 +310,6 @@ def is_paddle_func(func, ignore_white_list=True):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -388,10 +390,9 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+        "issubclass({}, paddle.nn.Layer)".format(class_src)
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -576,7 +577,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
-        callable_func = getattr(module, '__i_m_p_l__')
+        callable_func = module.__i_m_p_l__
         callable_func.__name__ = func_name
     elif hasattr(module, func_name):
         callable_func = getattr(module, func_name)
@@ -1120,11 +1121,11 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _reset_name_scope(self, node):
         # always reset the node as empty namescope.
-        setattr(node, "pd_scope", NameScope())
+        node.pd_scope = NameScope()
 
     def _get_name_scope(self, node):
         if not hasattr(node, "pd_scope"):
-            setattr(node, "pd_scope", NameScope())
+            node.pd_scope = NameScope()
         return node.pd_scope
 
     def _current_name_scope(self):
@@ -1224,11 +1225,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             )
 
         def pre_func():
-            setattr(
-                node,
-                "before_created",
-                self._nearest_function_scope().existed_vars(),
-            )
+            node.before_created = self._nearest_function_scope().existed_vars()
 
         self._visit_scope_node(node, pre_func, post_func)
 
@@ -1282,7 +1279,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         assert isinstance(
             node, gast.FunctionDef
         ), "Input node is not function define node"
-        names = [a for a in node.args.args]
+        names = list(node.args.args)
         names.append(node.args.vararg)
         names.append(node.args.kwarg)
         names = [i.id for i in names if i is not None]
@@ -1390,8 +1387,8 @@ class GetterSetterHelper:
     """
 
     def __init__(self, getter_func, setter_func, *name_lists):
-        name_lists = map(lambda x: [] if x is None else x, name_lists)
-        name_sets = map(lambda x: set(x), name_lists)
+        name_lists = ([] if x is None else x for x in name_lists)
+        name_sets = (set(x) for x in name_lists)
         self._union = list(
             functools.reduce(lambda x, y: x | y, name_sets, set())
         )
@@ -1408,14 +1405,14 @@ class GetterSetterHelper:
             names = []
         vars = self.getter()
         if vars is None:
-            return tuple()
+            return ()
         for n in names:
             assert (
                 n in self.name2id
             ), "the name `{}` not in name union set`{}`.".format(
                 n, self.name2id.keys()
             )
-        return tuple(map(lambda n: vars[self.name2id[n]], names))
+        return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
         if names is None:
@@ -1432,7 +1429,7 @@ class GetterSetterHelper:
                 n, self.name2id.keys()
             )
         vars = list(vars)
-        indices = list(map(lambda n: self.name2id[n], names))
+        indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
             vars[i] = v
         self.setter(vars)

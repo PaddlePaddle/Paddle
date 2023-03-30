@@ -19,9 +19,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def linear_interp_np(
@@ -228,7 +227,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
 
@@ -331,7 +330,7 @@ class TestLinearInterpOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def input_shape_error():
-                x1 = fluid.data(name="x1", shape=[1], dtype="float32")
+                x1 = paddle.static.data(name="x1", shape=[1], dtype="float32")
                 out1 = paddle.nn.Upsample(
                     size=[
                         256,
@@ -342,7 +341,9 @@ class TestLinearInterpOpError(unittest.TestCase):
                 out1_res = out1(x1)
 
             def data_format_error():
-                x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
+                x2 = paddle.static.data(
+                    name="x2", shape=[1, 3, 128], dtype="float32"
+                )
                 out2 = paddle.nn.Upsample(
                     size=[
                         256,
@@ -353,7 +354,9 @@ class TestLinearInterpOpError(unittest.TestCase):
                 out2_res = out2(x2)
 
             def out_shape_error():
-                x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
+                x3 = paddle.static.data(
+                    name="x3", shape=[1, 3, 128], dtype="float32"
+                )
                 out3 = paddle.nn.Upsample(
                     size=[
                         256,

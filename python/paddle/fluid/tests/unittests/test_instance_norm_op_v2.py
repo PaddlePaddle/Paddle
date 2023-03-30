@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestInstanceNorm(unittest.TestCase):
@@ -97,7 +96,9 @@ class TestInstanceNorm(unittest.TestCase):
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
                     ins = paddle.nn.InstanceNorm2D(shape[1])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -106,7 +107,9 @@ class TestInstanceNorm(unittest.TestCase):
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
                     ins = paddle.nn.InstanceNorm2D(shape[1])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]

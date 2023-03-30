@@ -14,11 +14,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid.framework import Program, program_guard
 
 
@@ -45,10 +44,10 @@ class TrilTriuOpDefaultTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])
@@ -78,7 +77,9 @@ def case_generator(op_type, Xshape, diagonal, expected):
         def test_failure(self):
             paddle.enable_static()
 
-            data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
+            data = paddle.static.data(
+                shape=Xshape, dtype='float64', name=cls_name
+            )
             with self.assertRaisesRegex(
                 eval(expected.split(':')[-1]), errmsg[expected]
             ):
@@ -121,14 +122,10 @@ cases = {
 for _op_type in ['tril', 'triu']:
     for _expected, _params in cases.items():
         for _Xshape, _diaglist in _params.items():
-            list(
-                map(
-                    lambda _diagonal: case_generator(
-                        _op_type, _Xshape, _diagonal, _expected
-                    ),
-                    _diaglist,
-                )
-            )
+            [
+                case_generator(_op_type, _Xshape, _diagonal, _expected)
+                for _diagonal in _diaglist
+            ]
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
@@ -143,7 +140,9 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             startup_prog = Program()
             with program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
-                x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
+                x = paddle.static.data(
+                    shape=[1, 9, -1, 4], dtype=dtype, name='x'
+                )
                 tril_out, triu_out = tensor.tril(x), tensor.triu(x)
 
                 place = (
@@ -184,7 +183,9 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             startup_prog = Program()
             with program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
-                x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
+                x = paddle.static.data(
+                    shape=[1, 9, -1, 4], dtype=dtype, name='x'
+                )
                 triu_out = paddle.triu(x)
 
                 place = (

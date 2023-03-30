@@ -20,7 +20,7 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -111,7 +111,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
             repeat_times_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -302,7 +302,9 @@ class TestTileAPIStatic(unittest.TestCase):
             repeat_times = [2, 2]
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
             out = paddle.tile(x1, repeat_times)
-            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            positive_2 = paddle.tensor.fill_constant(
+                [1], dtype="int32", value=2
+            )
             out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
 
 

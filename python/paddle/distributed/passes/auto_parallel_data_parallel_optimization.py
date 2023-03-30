@@ -208,12 +208,10 @@ class DataParallelOptimizationPass(PassBase):
     def _all_dp_groups_same_degree(self):
         return (
             len(
-                set(
-                    [
-                        len(group.ranks)
-                        for group in self._group_to_grad_name_map.keys()
-                    ]
-                )
+                {
+                    len(group.ranks)
+                    for group in self._group_to_grad_name_map.keys()
+                }
             )
             == 1
         )
@@ -430,7 +428,7 @@ class DataParallelOptimizationPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            grad_names = set([grad.name for grad in group.gradients])
+            grad_names = {grad.name for grad in group.gradients}
             return len(vars_.intersection(grad_names)) > 0
 
         for i, op in enumerate(ops):
@@ -645,7 +643,7 @@ class DataParallelOptimizationPass(PassBase):
                     )
 
         # insert dependency op
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, op_role in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(

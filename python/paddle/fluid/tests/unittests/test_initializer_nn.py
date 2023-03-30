@@ -17,11 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.nn as nn
-import paddle.nn.initializer as initializer
+from paddle import fluid, nn
+from paddle.fluid import framework
 from paddle.fluid.core import VarDesc
+from paddle.nn import initializer
 
 DELTA = 0.00001
 
@@ -645,7 +644,7 @@ class TestAssign(unittest.TestCase):
 
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random((10000)).astype(dtype)
+        np_array = numpy.random.random(10000).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,

@@ -88,7 +88,7 @@ class Choice(TunableVariable):
     def __init__(self, name, values, default=None):
         super().__init__(name=name, default=default)
 
-        types = set(type(v) for v in values)
+        types = {type(v) for v in values}
         if len(types) > 1:
             raise TypeError(
                 "Choice can contain only one type of value, but found values: {} with types: {}.".format(
@@ -115,7 +115,7 @@ class Choice(TunableVariable):
                 default = bool(default)
         else:
             self._is_unknown_type = True
-            self._indices = [i for i in range(len(values))]
+            self._indices = list(range(len(values)))
         self.values = values
 
         if default is not None and default not in values:

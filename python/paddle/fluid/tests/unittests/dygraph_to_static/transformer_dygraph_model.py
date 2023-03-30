@@ -15,12 +15,11 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Layer, to_variable
+from paddle import fluid
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -56,8 +55,7 @@ class PrePostProcessLayer(Layer):
             elif cmd == "n":  # add layer normalization
                 self.functors.append(
                     self.add_sublayer(
-                        "layer_norm_%d"
-                        % len([layer for layer in self.children()]),
+                        "layer_norm_%d" % len(list(self.children())),
                         paddle.nn.LayerNorm(
                             normalized_shape=d_model,
                             weight_attr=fluid.ParamAttr(
@@ -256,7 +254,7 @@ class Encoder(Layer):
 
         super().__init__()
 
-        self.encoder_layers = list()
+        self.encoder_layers = []
         for i in range(n_layer):
             self.encoder_layers.append(
                 self.add_sublayer(
@@ -450,7 +448,7 @@ class Decoder(Layer):
     ):
         super().__init__()
 
-        self.decoder_layers = list()
+        self.decoder_layers = []
         for i in range(n_layer):
             self.decoder_layers.append(
                 self.add_sublayer(
@@ -796,7 +794,7 @@ class Transformer(Layer):
         # constant number
         inf = float(1.0 * 1e7)
         max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-        vocab_size_tensor = layers.fill_constant(
+        vocab_size_tensor = paddle.tensor.fill_constant(
             shape=[1], dtype="int64", value=self.trg_vocab_size
         )
         end_token_tensor = to_variable(
@@ -824,7 +822,7 @@ class Transformer(Layer):
             np.full([batch_size, beam_size], 0, dtype="bool")
         )
 
-        trg_word = layers.fill_constant(
+        trg_word = paddle.tensor.fill_constant(
             shape=[batch_size * beam_size, 1], dtype="int64", value=bos_id
         )
 
@@ -838,12 +836,12 @@ class Transformer(Layer):
         # init states (caches) for transformer, need to be updated according to selected beam
         caches = [
             {
-                "k": layers.fill_constant(
+                "k": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_key],
                     dtype=enc_output.dtype,
                     value=0,
                 ),
-                "v": layers.fill_constant(
+                "v": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_value],
                     dtype=enc_output.dtype,
                     value=0,
@@ -853,7 +851,7 @@ class Transformer(Layer):
         ]
 
         for i in range(paddle.to_tensor(max_len)):
-            trg_pos = layers.fill_constant(
+            trg_pos = paddle.tensor.fill_constant(
                 shape=trg_word.shape, dtype="int64", value=i
             )
             caches = paddle.utils.map_structure(

@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -123,8 +123,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 3:
         with program_guard(Program(), Program()):
-            x = fluid.data(name="x", shape=[-1, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[-1, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 
             y_1 = paddle.cross(x, y, name='result')
             self.assertEqual(('result' in y_1.name), True)

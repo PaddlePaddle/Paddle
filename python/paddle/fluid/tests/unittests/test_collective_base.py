@@ -24,8 +24,8 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
+from paddle import fluid
 from paddle.fluid import core
 
 

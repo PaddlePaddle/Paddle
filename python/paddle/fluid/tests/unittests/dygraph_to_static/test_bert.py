@@ -23,7 +23,7 @@ from bert_utils import get_bert_config, get_feed_data_reader
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -237,10 +237,12 @@ class TestBert(unittest.TestCase):
 
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
+        # core._add_skip_comp_ops("layer_norm")
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
         core._set_prim_backward_enabled(False)
+        # core._add_skip_comp_ops("layer_norm")
         dygraph_loss, dygraph_ppl = self.train_dygraph(
             self.bert_config, self.data_reader
         )

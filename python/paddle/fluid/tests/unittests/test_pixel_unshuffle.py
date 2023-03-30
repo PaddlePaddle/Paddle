@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
@@ -68,6 +68,12 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         return npresult
 
 
+def pixel_unshuffle_wrapper(x, downscale_factor, data_format):
+    return paddle._legacy_C_ops.pixel_unshuffle(
+        x, "downscale_factor", downscale_factor, "data_format", data_format
+    )
+
+
 class TestPixelUnshuffleOp(OpTest):
     '''TestPixelUnshuffleOp'''
 
@@ -75,6 +81,7 @@ class TestPixelUnshuffleOp(OpTest):
         '''setUp'''
 
         self.op_type = "pixel_unshuffle"
+        self.python_api = pixel_unshuffle_wrapper
         self.init_data_format()
         n, c, h, w = 2, 1, 12, 12
 
@@ -140,10 +147,10 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 1, 12, 12], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
             out_1 = F.pixel_unshuffle(x_1, 3)
@@ -177,10 +184,10 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 1, 12, 12], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
             # init instance

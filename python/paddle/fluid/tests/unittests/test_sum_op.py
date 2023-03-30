@@ -27,10 +27,9 @@ from eager_op_test import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.inference as paddle_infer
-from paddle import enable_static
+from paddle import enable_static, fluid
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.op import Operator
 
@@ -275,16 +274,14 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
         w_tensor = var.get_tensor()
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         w_tensor.set(w_array, place)
         return var
 
@@ -300,14 +297,14 @@ class TestFP16SumOp(TestSumOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-2)
+            self.check_output_with_place(place)
 
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+            self.check_grad(['x0'], 'Out')
 
 
 def create_test_sum_fp16_class(parent):
@@ -362,10 +359,10 @@ class TestSumBF16Op(OpTest):
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
+            input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
-            input1 = fluid.layers.fill_constant(
+            input1 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=3
             )
             expected_result = np.empty((2, 3))
@@ -437,14 +434,14 @@ class TestRaiseSumError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
             paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
             paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
@@ -458,30 +455,38 @@ class TestRaiseSumsError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
             paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
             paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
             out = [10]
             out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
         def test_out_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            out = fluid.data(name="out", shape=[10], dtype="int8")
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
+            out = paddle.static.data(name="out", shape=[10], dtype="int8")
             out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
