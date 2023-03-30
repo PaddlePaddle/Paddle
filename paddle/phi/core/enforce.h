@@ -1117,7 +1117,16 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
       __THROW_ERROR_INTERNAL__(__summary__);               \
     }                                                      \
   } while (0)
-
+#define PADDLE_WARN_NOT_NULL(__VAL, ...)                  \
+  do {                                                    \
+    if (UNLIKELY(nullptr == (__VAL))) {                   \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);  \
+      auto __message__ = ::paddle::string::Sprintf(       \
+          "%s\n  [Hint: " #__VAL " should not be null.]", \
+          __summary__.error_message());                   \
+      __THROW_WARN_INTERNAL__(__message__);               \
+    }                                                     \
+  } while (0)
 inline void retry_sleep(unsigned millisecond) {
 #ifdef _WIN32
   Sleep(millisecond);
