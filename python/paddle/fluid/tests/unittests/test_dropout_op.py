@@ -96,7 +96,7 @@ class TestDropoutOpInput1d(OpTest):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((2000)).astype('uint8'),
+            'Mask': np.ones(2000).astype('uint8'),
         }
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,

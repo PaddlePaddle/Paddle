@@ -893,7 +893,7 @@ class ShardingPass(PassBase):
                     )
 
         # insert deps
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
@@ -1263,7 +1263,7 @@ class ShardingPass(PassBase):
             idx += 1
 
         # insert deps
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(

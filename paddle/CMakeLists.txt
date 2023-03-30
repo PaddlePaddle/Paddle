@@ -7,7 +7,6 @@ add_subdirectory(scripts)
 add_subdirectory(testing)
 
 add_subdirectory(phi)
-add_subdirectory(infrt)
 add_subdirectory(fluid)
 
 add_subdirectory(ir)

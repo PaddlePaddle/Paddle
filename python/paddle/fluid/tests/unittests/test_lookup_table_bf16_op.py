@@ -128,7 +128,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def prepare_w(self):
-        rows = [a for a in range(self.w_bf16.shape[0])]
+        rows = list(range(self.w_bf16.shape[0]))
         row_numel = self.w_bf16.shape[1]
 
         w_selected_rows = self.scope.var('W').get_selected_rows()

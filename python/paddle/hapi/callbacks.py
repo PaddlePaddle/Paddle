@@ -71,7 +71,7 @@ def config_callbacks(
 class CallbackList:
     def __init__(self, callbacks=None):
         # copy
-        self.callbacks = [c for c in callbacks]
+        self.callbacks = list(callbacks)
         self.params = {}
         self.model = None
 

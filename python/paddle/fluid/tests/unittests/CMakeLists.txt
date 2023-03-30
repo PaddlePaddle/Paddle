@@ -856,10 +856,6 @@ if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
 
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
 add_subdirectory(ir)
 
 add_subdirectory(standalone_executor)
@@ -1203,7 +1199,8 @@ set(TEST_CINN_OPS
     test_meshgrid_op
     test_gather_op
     test_cast_op
-    test_dropout_op)
+    test_dropout_op
+    test_group_norm_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
