@@ -553,8 +553,8 @@ def _lower(block, reverse, blacklist):
 def _lower_composite(
     block,
     filter_: typing.Callable[[framework.Operator], bool] = lambda x: True,
-    start_idx=0,
-    backward_length=0,
+    start_idx=-1,
+    backward_length=-1,
 ):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
 
@@ -607,20 +607,23 @@ def _lower_composite(
         change = None
 
         # Only process required sliced block
+        # If given start_idx, only ops[start_idx:] will be processed.
+        # If given backward_length, only ops[:-backward_length] will be processed.
+        # Note, start_idx and backward_length cannot be both given, because the length of non-processed part must be kept unchanged.
         length = len(block.ops)
         idx_list = range(length)
         assert (
-            0 <= backward_length <= length
-        ), f'expect 0 <= backward_length <= {length}, but got backward_length: {backward_length}'
+            -1 <= backward_length <= length
+        ), f'expect -1 <= backward_length <= {length}, but got backward_length: {backward_length}'
         assert (
-            0 <= start_idx <= length
-        ), f'expect 0 <= start_idx <= {length}, but got start_idx: {start_idx}'
+            -1 <= start_idx <= length
+        ), f'expect -1 <= start_idx <= {length}, but got start_idx: {start_idx}'
         assert not (
-            backward_length > 0 and start_idx > 0
+            backward_length > -1 and start_idx > -1
         ), f'got start_idx: {start_idx} and backward_length: {backward_length}'
-        if backward_length > 0:
+        if backward_length > -1:
             idx_list = range(length - backward_length)
-        if start_idx > 0:
+        if start_idx > -1:
             idx_list = range(start_idx, length)
 
         # Step2: Process all ops in the target block
@@ -629,13 +632,13 @@ def _lower_composite(
             ops_to_remove.append(op_idx)
 
             op_name = op.type
-            comp_flag = (
+            do_comp = (
                 (lookup_fn(op_name) is not None)
                 and filter_(op)
                 and op_idx in idx_list
             )
 
-            if comp_flag:
+            if do_comp:
                 change = True
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)

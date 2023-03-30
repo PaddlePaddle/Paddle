@@ -1266,9 +1266,11 @@ class PrimHooker(PartialProgramLayerHook):
     def after_append_backward(self, whole_program, backward_start_idx):
         backward_length = len(whole_program.block(0).ops) - backward_start_idx
         if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+            # only process backward part of block
             _to_prim(whole_program.blocks, backward_length=backward_length)
         new_start_index = len(whole_program.block(0).ops) - backward_length
         if backward_length > 0:
+            # only process forward part of block
             _to_prim(whole_program.blocks, start_idx=new_start_index)
         return whole_program, new_start_index
 
@@ -1699,8 +1701,8 @@ def _to_prim(
     blocks,
     blacklist=frozenset(),
     whitelist=frozenset(),
-    start_idx=0,
-    backward_length=0,
+    start_idx=-1,
+    backward_length=-1,
 ):
     """Swith to static graph and call to_prim."""
     # TODO(Aurelius84): Fix this cycle import problem
