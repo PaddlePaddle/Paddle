@@ -885,6 +885,18 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy) {
+  if (dx) {
+    dx->share_dims(x);
+  }
+  if (dy) {
+    dy->share_dims(y);
+  }
+}
+
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             const MetaTensor& rois_num,

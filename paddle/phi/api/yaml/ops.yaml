@@ -1186,6 +1186,16 @@
     data_type : x
   backward : pow_grad
 
+- op : prelu
+  args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
+  output : Tensor(out)
+  infer_meta :
+    func : PReluInferMeta
+  kernel :
+    func : prelu
+    data_type : x
+  backward : prelu_grad
+
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
   output : Tensor(out)

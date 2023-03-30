@@ -866,16 +866,6 @@
     func : pool3d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
 
-- backward_op : prelu_grad
-  forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
-  args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
-  output : Tensor(x_grad), Tensor(alpha_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param: [x, alpha]
-  kernel :
-    func : prelu_grad
-
 - backward_op : prod_grad
   forward : prod (Tensor x, IntArray dims, bool keep_dim, bool reduce_all) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims,  bool keep_dim, bool reduce_all)
