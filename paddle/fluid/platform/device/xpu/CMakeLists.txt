@@ -35,5 +35,3 @@ cc_library(
   xpu_resource_pool
   SRCS xpu_resource_pool.cc
   DEPS xpu_info)
-
-add_subdirectory(tests)

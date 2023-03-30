@@ -179,7 +179,7 @@ class AmpScaler:
                     scaled.backward()
                     scaler.minimize(optimizer, scaled)
         """
-        check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
+        check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
 
         if not self._enable:
             return var

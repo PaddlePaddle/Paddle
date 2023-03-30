@@ -192,9 +192,9 @@ extra_op_attrs = {
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
-def _update_monkey_methods(is_eager):
+def _update_monkey_methods():
     """
-    Update monkey methods of VarBase or eager.Tensor while
+    Update monkey methods of Tensor or eager.Tensor while
     switching eager mode and legacy mode.
     """
     from paddle import _C_ops, _legacy_C_ops
@@ -204,44 +204,21 @@ def _update_monkey_methods(is_eager):
     global _already_patch_eager_tensor
     global _already_patch_varbase
 
-    assert isinstance(is_eager, bool)
-    # switch into eager mode
-    if is_eager:
-        if not _already_patch_eager_tensor:
-            monkey_patch_varbase()
-            monkey_patch_math_varbase()
+    if not _already_patch_eager_tensor:
+        monkey_patch_varbase()
+        monkey_patch_math_varbase()
 
-            _already_patch_eager_tensor = True
-    # switch back into legacy mode
-    else:
-        if not _already_patch_varbase:
-            monkey_patch_varbase()
-            monkey_patch_math_varbase()
-
-            _already_patch_varbase = True
+        _already_patch_eager_tensor = True
 
     # switch Paddle.Tensor bind type
-    _switch_tensor_bind_type(is_eager)
+    _switch_tensor_bind_type()
 
 
-def _switch_tensor_bind_type(is_eager):
+def _switch_tensor_bind_type():
     import paddle
 
-    if is_eager:
-        paddle.Tensor = core.eager.Tensor
-    else:
-        paddle.Tensor = core.VarBase
+    paddle.Tensor = core.eager.Tensor
     paddle.Tensor.__qualname__ = 'Tensor'
-
-
-def _enable_legacy_dygraph():
-    global_var._in_eager_mode_ = False
-    _update_monkey_methods(is_eager=False)
-
-
-def _disable_legacy_dygraph():
-    global_var._in_eager_mode_ = True
-    _update_monkey_methods(is_eager=True)
 
 
 def _in_eager_without_dygraph_check():
@@ -251,36 +228,6 @@ def _in_eager_without_dygraph_check():
 # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
-
-
-def _fallback_legacy_dygraph():
-    global _is_first_import_
-    need_fallback = False
-    # Only enable eager on CPU/GPU/XPU
-    is_not_support = (
-        core.is_compiled_with_npu()
-        or core.is_compiled_with_ipu()
-        or core.is_compiled_with_mlu()
-    )
-
-    if global_var._in_eager_mode_ and is_not_support:
-        # switch into legacy dygraph mode
-        warnings.warn(
-            "We will fallback into legacy dygraph on NPU/XPU/MLU/IPU/ROCM devices. Because we only support new eager dygraph mode on CPU/GPU currently. "
-        )
-        global_var._in_eager_mode_ = False
-        if not _is_first_import_:
-            _enable_legacy_dygraph()
-        need_fallback = True
-
-    need_fallback = False
-    _is_first_import_ = False
-
-    return need_fallback
-
-
-# switch into legacy mode if need while import paddle
-_fallback_legacy_dygraph()
 
 
 def in_dygraph_mode():
@@ -317,19 +264,6 @@ def in_dygraph_mode():
 
 def _non_static_mode():
     return global_var._dygraph_tracer_ is not None
-
-
-@signature_safe_contextmanager
-def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
-    # only GPU/CPU/XPU. Remove this after we improve this feature.
-    already_fallback = _fallback_legacy_dygraph()
-    if not already_fallback:
-        _disable_legacy_dygraph()
-    try:
-        yield
-    finally:
-        pass
 
 
 global_ipu_index = -1
@@ -634,11 +568,11 @@ def _set_pipeline_stage(stage):
 
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
-# used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
-# official docments, logically, we want to keep VarBase and logically consistent. While, actually,
+# used to make Variable and Tensor has same interfaces, like numpy. Since Tensor is not exposed in our
+# official docments, logically, we want to keep Tensor and logically consistent. While, actually,
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
-# TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
+# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheritting
 # same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
@@ -757,23 +691,6 @@ def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
     _set_dygraph_tracer_expected_place(place)
-
-
-# TODO(zhiqiu): remove this function.
-def _var_base_to_np(var_base):
-    """
-    convert VarBase tp numpy
-
-    Args:
-        var_base(VarBase) : the VarBase to convert
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase
-    """
-
-    warnings.warn(
-        "paddle.fluid.framework._var_base_to_np is deprecated, please use var_base.numpy() instead of _var_base_to_np(var_base)."
-    )
-
-    return var_base.numpy(False)
 
 
 def _cpu_num():
@@ -1392,24 +1309,15 @@ def _varbase_creator(
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if global_var._in_eager_mode_:
-        eager_tensor = core.eager.Tensor(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            type if type else core.VarDesc.VarType.LOD_TENSOR,
-            True if persistable else False,
-        )
-        eager_tensor.retain_grads()
-        return eager_tensor
-    else:
-        return core.VarBase(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            type if type else core.VarDesc.VarType.LOD_TENSOR,
-            True if persistable else False,
-        )
+    eager_tensor = core.eager.Tensor(
+        dtype if dtype else core.VarDesc.VarType.FP32,
+        list(shape) if shape else [],
+        name,
+        type if type else core.VarDesc.VarType.LOD_TENSOR,
+        True if persistable else False,
+    )
+    eager_tensor.retain_grads()
+    return eager_tensor
 
 
 def _all_is_type(vals, expected_type):
@@ -3141,7 +3049,7 @@ class Operator:
                                 in_arg_names.append(arg)
                             elif isinstance(arg, bytes):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, (Variable, core.VarBase)):
+                            elif isinstance(arg, (Variable, core.eager.Tensor)):
                                 in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
@@ -4274,7 +4182,7 @@ class Block:
             op_desc = self.desc.append_op()
             inputs = kwargs.get("inputs", None)
             outputs = kwargs.get("outputs", None)
-            # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
+            # NOTE(Aurelius84): In case of @to_static, all Tensor(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
             ignore_ops = {
@@ -7205,155 +7113,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
     __repr__ = __str__
 
 
-class ParamBase(core.VarBase):
-    """
-    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode).
-    A ParamBase is a persistable Tensor, and will be updated by optimizers
-    after each iteration.
-    The training of a neural network is essentially the updating of
-    its ParamBase.
-
-    Relative to a general Tensor, a ParamBase has several its own
-    member variables:
-
-    Args:
-        trainable(bool): True if the ParamBase need to be updated after
-            iterations.
-        optimize_attr(map): ParamBase attributes related with optimizing.
-            Currently, it only contains 'learning_rate'.
-            Default: {'learning_rate': 1.0}
-        regularizer(WeightDecayRegularizer): The Regularizer which will
-            be applied on the ParamBase. Default: None
-        do_model_average(bool): True if the model average strategy will
-            be applied on this ParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped
-            in optimizer. Default is True.
-    """
-
-    @dygraph_only
-    def __init__(self, shape, dtype, **kwargs):
-        if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
-        if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
-
-        for each in shape:
-            if each < 0:
-                raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
-                )
-
-        if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
-
-        name = kwargs.get('name', unique_name.generate('_param_base'))
-
-        super().__init__(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            core.VarDesc.VarType.LOD_TENSOR,
-            True,
-        )
-
-        trainable = kwargs.get('trainable', True)
-        self.stop_gradient = not trainable
-
-        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
-
-        self.regularizer = kwargs.get('regularizer', None)
-
-        self.do_model_average = kwargs.get('do_model_average', None)
-
-        self.need_clip = kwargs.get('need_clip', True)
-
-        self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
-
-    @property
-    def trainable(self):
-        return not self.stop_gradient
-
-    @trainable.setter
-    def trainable(self, trainable):
-        if isinstance(trainable, bool):
-            self.stop_gradient = not trainable
-        else:
-            raise ValueError(
-                "The type of trainable MUST be bool, but the type is ",
-                type(trainable),
-            )
-
-    def __str__(self):
-        """
-        Convert a ParamBase object to a readable string.
-
-        Returns(str): A readable string.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                linear = paddle.nn.Linear(3, 3)
-                print(linear.weight)
-                # Parameter containing:
-                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-                #        [[ 0.48948765,  0.05829060, -0.25524026],
-                #         [-0.70368278,  0.52986908, -0.68742192],
-                #         [-0.54217887,  0.48439729,  0.34082305]])
-        """
-        return "Parameter containing:\n{tensor}".format(
-            tensor=super().__str__()
-        )
-
-    def __deepcopy__(self, memo):
-        """
-        Deep copy parameter, it will always performs Tensor copy.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import copy
-                linear = paddle.nn.Linear(1, 3)
-                linear_copy = copy.deepcopy(linear)
-
-                print(linear.weight)
-                # Parameter containing:
-                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
-                #     [[-0.30929261, -0.90929240, -1.07851017]])
-
-                print(linear_copy.weight)
-                # Parameter containing:
-                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
-                #     [[-0.30929261, -0.90929240, -1.07851017]])
-
-        """
-        state = copy.deepcopy(self.__dict__, memo)
-        state["name"] = self.name + unique_name.generate("_deepcopy")
-        new_param = ParamBase(self.shape, self.dtype, **state)
-        memo[id(self)] = new_param
-        new_param.copy_(self, True)
-        return new_param
-
-    def _copy_to(self, device, blocking):
-        state = copy.deepcopy(self.__dict__)
-        new_param = ParamBase(self.shape, self.dtype, **state)
-        core.varbase_copy(self, new_param, device, blocking)
-        return new_param
-
-    __repr__ = __str__
-
-
-if hasattr(core, "eager"):
-    _core_eager_eagertensor = core.eager.Tensor
-else:
-    _core_eager_eagertensor = object
-
-
-class EagerParamBase(_core_eager_eagertensor):
+class EagerParamBase(core.eager.Tensor):
     """
     EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode).
     A EagerParamBase is a persistable Tensor, and will be updated by optimizers

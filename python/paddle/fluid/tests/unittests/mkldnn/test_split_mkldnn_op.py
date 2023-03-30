@@ -114,7 +114,7 @@ class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
         self.sections_tensor_list = []
         for index, ele in enumerate(self.sections):
             self.sections_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
         self.sections = [-1, -1, -1]
         indices_or_sections = [2, 3]  # sections
