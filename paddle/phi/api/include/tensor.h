@@ -416,7 +416,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @return const std::string&
    */
@@ -425,7 +425,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Set name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @param const std::string& name
    */
@@ -657,7 +657,7 @@ class PADDLE_API Tensor final {
 
   /**
    * Tensor name: used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    */
   std::string name_{""};
 

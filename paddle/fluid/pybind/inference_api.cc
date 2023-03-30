@@ -65,7 +65,7 @@ constexpr int NPY_UINT16_ = 4;
 // paddle::platform::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
-struct npy_format_descriptor<paddle_infer::float16> {
+struct npy_format_descriptor<phi::dtype::float16> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -180,7 +180,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<float>();
       break;
     case PaddleDType::FLOAT16:
-      dt = py::dtype::of<paddle_infer::float16>();
+      dt = py::dtype::of<phi::dtype::float16>();
       break;
     case PaddleDType::UINT8:
       dt = py::dtype::of<uint8_t>();
@@ -264,7 +264,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         ToPaddleInferPlace(input_tensor.place().GetType()));
   } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
     tensor.ShareExternalData(
-        static_cast<paddle::platform::float16 *>(input_tensor.data()),
+        static_cast<phi::dtype::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
   } else if (input_tensor.dtype() == phi::DataType::INT32) {
@@ -353,7 +353,7 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(float);
       break;
     case PaddleDType::FLOAT16:
-      size = sizeof(paddle_infer::float16);
+      size = sizeof(phi::dtype::float16);
       break;
     case PaddleDType::INT8:
       size = sizeof(int8_t);
@@ -392,8 +392,8 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     case PaddleDType::FLOAT16:
-      tensor.copy_to_cpu<paddle::platform::float16>(
-          static_cast<paddle::platform::float16 *>(array.mutable_data()));
+      tensor.copy_to_cpu<phi::dtype::float16>(
+          static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
@@ -432,8 +432,8 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     case PaddleDType::FLOAT16:
-      tensor.CopyToCpu<paddle::platform::float16>(
-          static_cast<paddle::platform::float16 *>(array.mutable_data()));
+      tensor.CopyToCpu<phi::dtype::float16>(
+          static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
@@ -1070,6 +1070,17 @@ void BindPaddleInferPredictor(py::module *m) {
 #endif
              self.Run();
            })
+      .def(
+          "run",
+          [](paddle_infer::Predictor &self, py::handle py_in_tensor_list) {
+            auto in_tensor_list =
+                CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
+            std::vector<paddle::Tensor> outputs;
+            self.Run(in_tensor_list, &outputs);
+            return py::handle(ToPyObject(outputs));
+          },
+          py::arg("inputs"),
+          py::call_guard<py::gil_scoped_release>())
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1099,7 +1110,7 @@ void BindZeroCopyTensor(py::module *m) {
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<double>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
-      .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<phi::dtype::float16>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<bool>)
       .def("copy_from_cpu", &ZeroCopyStringTensorCreate)
       .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
@@ -1123,8 +1134,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
-      .def("_copy_from_cpu_bind",
-           &PaddleInferTensorCreate<paddle_infer::float16>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<phi::dtype::float16>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
       .def("_copy_from_cpu_bind", &PaddleInferStringTensorCreate)
       .def("_share_external_data_bind", &PaddleInferShareExternalData)

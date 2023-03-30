@@ -136,6 +136,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   Tensor out;
   copy(x, place, blocking, &out);
+  out.set_name(x.name());
   return out;
 }
 
