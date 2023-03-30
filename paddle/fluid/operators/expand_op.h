@@ -96,7 +96,7 @@ template <typename T,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::To32BitIndex;
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -182,7 +182,7 @@ class ExpandKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

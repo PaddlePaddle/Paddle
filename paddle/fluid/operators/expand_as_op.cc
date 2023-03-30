@@ -144,3 +144,27 @@ REGISTER_OPERATOR(expand_as,
 REGISTER_OPERATOR(expand_as_grad,
                   ops::ExpandAsGradOp,
                   ops::ExpandAsGradNoNeedBufVarsInferer);
+REGISTER_OP_CPU_KERNEL(expand_as,
+                       ops::ExpandAsKernel<phi::CPUContext, float>,
+                       ops::ExpandAsKernel<phi::CPUContext, double>,
+                       ops::ExpandAsKernel<phi::CPUContext, int>,
+                       ops::ExpandAsKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandAsKernel<phi::CPUContext, bool>);
+REGISTER_OP_CPU_KERNEL(expand_as_grad,
+                       ops::ExpandAsGradKernel<phi::CPUContext, int>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, float>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, double>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+REGISTER_OP_CUDA_KERNEL(expand_as,
+                        ops::ExpandAsKernel<phi::GPUContext, float>,
+                        ops::ExpandAsKernel<phi::GPUContext, double>,
+                        ops::ExpandAsKernel<phi::GPUContext, int>,
+                        ops::ExpandAsKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandAsKernel<phi::GPUContext, bool>);
+REGISTER_OP_CUDA_KERNEL(expand_as_grad,
+                        ops::ExpandAsGradKernel<phi::GPUContext, int>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, float>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, double>);
+#endif
