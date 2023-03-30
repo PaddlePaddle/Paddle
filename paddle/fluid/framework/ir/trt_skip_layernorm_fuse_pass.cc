@@ -109,6 +109,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
 
+#ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
   if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
           std::get<2>(trt_version) * 10 <
@@ -117,7 +118,10 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                "7.2 Stop this pass";
     return;
   }
-
+#else
+  // if no tensorrt, early stop
+  return;
+#endif
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
