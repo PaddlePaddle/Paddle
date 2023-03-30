@@ -1160,13 +1160,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op: logsumexp
-  backward: logsumexp_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op : lrn
   backward : lrn_grad
   extra :
@@ -2051,6 +2044,13 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: logsumexp
+  backward: logsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
