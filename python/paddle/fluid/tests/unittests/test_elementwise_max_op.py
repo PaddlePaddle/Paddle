@@ -104,73 +104,16 @@ class TestElementwiseFP16Op(TestElementwiseOp):
             np.float16
         )
 
-    def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False, atol=1e-3)
-        else:
-            self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            if self.attrs['axis'] == -1:
-                self.check_grad(
-                    ['X', 'Y'],
-                    'Out',
-                    check_dygraph=False,
-                    check_prim=True,
-                    max_relative_error=1e-3,
-                )
-            else:
-                self.check_grad(
-                    ['X', 'Y'],
-                    'Out',
-                    check_dygraph=False,
-                    max_relative_error=1e-3,
-                )
-        else:
-            self.check_grad(
-                ['X', 'Y'],
-                'Out',
-                check_dygraph=True,
-                check_prim=True,
-                max_relative_error=1e-3,
-            )
-
-    def test_check_grad_ingore_x(self):
-        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
-            self.check_grad(
-                ['Y'],
-                'Out',
-                max_relative_error=1e-3,
-                check_dygraph=False,
-                no_grad_set=set("X"),
-            )
-        else:
-            self.check_grad(
-                ['Y'],
-                'Out',
-                max_relative_error=1e-3,
-                no_grad_set=set("X"),
-                check_prim=True,
-            )
-
-    def test_check_grad_ingore_y(self):
-        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
-            self.check_grad(
-                ['X'],
-                'Out',
-                max_relative_error=1e-3,
-                check_dygraph=False,
-                no_grad_set=set('Y'),
-            )
-        else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                max_relative_error=1e-3,
-                no_grad_set=set('Y'),
-                check_prim=True,
-            )
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_max"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.python_api = paddle.maximum
+        self.dtype = np.float16
+        self.public_python_api = paddle.maximum
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
 class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
@@ -181,8 +124,8 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
 
 class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseFP16Op):
     def init_data(self):
-        self.x = np.random.uniform(0.1, 1, []).astype("float16")
-        self.y = np.random.uniform(0.1, 1, []).astype("float16")
+        self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
+        self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
 
 
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
@@ -193,8 +136,8 @@ class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
 
 class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseFP16Op):
     def init_data(self):
-        self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
-        self.y = np.random.uniform(0.1, 1, []).astype("float16")
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
+        self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
 
 
 class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
@@ -205,8 +148,8 @@ class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
 
 class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseFP16Op):
     def init_data(self):
-        self.x = np.random.uniform(0.1, 1, []).astype("float16")
-        self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+        self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
 
 
 @unittest.skipIf(
@@ -246,9 +189,9 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False, atol=1e-2)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_dygraph=True, atol=1e-2)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -297,8 +240,8 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
 )
 class TestElementwiseMaxFP16Op_scalar(TestElementwiseFP16Op):
     def init_data(self):
-        self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float16")
-        self.y = np.array([0.5]).astype("float16")
+        self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype(np.float16)
+        self.y = np.array([0.5]).astype(np.float16)
 
 
 class TestElementwiseMaxOp_Vector(TestElementwiseOp):
@@ -312,10 +255,10 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
 
 class TestElementwiseMaxFP16Op_Vector(TestElementwiseFP16Op):
     def init_data(self):
-        self.x = np.random.random((100,)).astype("float16")
-        sgn = np.random.choice([-1, 1], (100,)).astype("float16")
+        self.x = np.random.random((100,)).astype(np.float16)
+        sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
         self.y = self.x + sgn * np.random.uniform(0.1, 1, (100,)).astype(
-            "float16"
+            np.float16
         )
 
 
@@ -355,6 +298,7 @@ class TestElementwiseMaxFP16Op_broadcast_0(TestElementwiseFP16Op):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.dtype = np.float16
         x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
         y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -397,6 +341,7 @@ class TestElementwiseMaxFP16Op_broadcast_1(TestElementwiseFP16Op):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.dtype = np.float16
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
         y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -438,6 +383,7 @@ class TestElementwiseMaxFP16Op_broadcast_2(TestElementwiseFP16Op):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.dtype = np.float16
         x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -479,6 +425,7 @@ class TestElementwiseMaxFP16Op_broadcast_3(TestElementwiseFP16Op):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.dtype = np.float16
         x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float16)
         y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
@@ -514,6 +461,7 @@ class TestElementwiseFP16Op_broadcast_4(TestElementwiseFP16Op):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.dtype = np.float16
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float16)
         y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float16)

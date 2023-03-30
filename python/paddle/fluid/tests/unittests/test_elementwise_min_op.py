@@ -64,6 +64,7 @@ class TestElementwiseFP16Op(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.dtype = np.float16
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -74,20 +75,16 @@ class TestElementwiseFP16Op(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X")
-        )
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y')
-        )
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
@@ -396,7 +393,7 @@ class TestElementwiseBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', numeric_grad_delta=0.05)
