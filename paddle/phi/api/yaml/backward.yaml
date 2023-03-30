@@ -1614,6 +1614,16 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : squared_l2_norm_grad
+  forward : squared_l2_norm(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : squared_l2_norm_grad
+
 - backward_op : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axis)

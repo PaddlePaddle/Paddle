@@ -1058,16 +1058,6 @@
   invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
-- backward_op : squared_l2_norm_grad
-  forward : squared_l2_norm(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : squared_l2_norm_grad
-
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)

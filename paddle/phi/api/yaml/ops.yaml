@@ -1530,6 +1530,15 @@
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
 
+- op : squared_l2_norm
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : SquaredL2NormInferMeta
+  kernel :
+    func : squared_l2_norm
+  backward : squared_l2_norm_grad
+
 - op : squeeze
   args : (Tensor x, IntArray axis={})
   output : Tensor(out), Tensor(xshape)
