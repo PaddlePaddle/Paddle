@@ -140,7 +140,6 @@ if (WITH_MLU)
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
-op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

@@ -52,6 +52,17 @@ def get_infer_var_type_func(op_name):
     }}
     }};
     """
+    elif op_name == "eye":
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+public:
+void operator()(framework::InferVarTypeContext* ctx) const override {{
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
+    ctx->SetOutputDataType("Out", data_type);
+    }}
+}};
+"""
     else:
         return None
 
@@ -165,6 +176,8 @@ def to_input_name(s):
 
 
 def to_scalar_tensor_name(attr):
+    with open('/paddle/build/scalar_tensor_name.json', 'a+') as f:
+        print(attr, file=f)
     if 'tensor_name' in attr:
         return attr['tensor_name']
     return to_pascal_case(attr['name']) + 'Tensor'
