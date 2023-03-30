@@ -2545,6 +2545,96 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
   }}
   """
+                for i in range(len(grad_api_args)):
+                    if i in arrt_pos:
+                        pass
+                    else:
+                        if grad_api_args[i] in api_output_name_type_dict.keys():
+                            # grad_api_output_pos.append[i]
+                            output_name = api_output_name_type_dict[
+                                grad_api_args[i]
+                            ][1]
+                            if (
+                                api_output_name_type_dict[grad_api_args[i]][0]
+                                == "paddle::Tensor*"
+                            ):
+
+                                op_debug_grad_tensor_copy_list.append(
+                                    f"""
+{indent}paddle::Tensor dev2_{grad_api_args[i]}_tensor;
+{indent}{api_output_name_type_dict[grad_api_args[i]][0]}  dev2_{grad_api_args[i]} = &dev2_{grad_api_args[i]}_tensor;
+{indent}if ({grad_api_args[i]} == nullptr) {{
+{indent}{indent} dev2_{grad_api_args[i]} = nullptr;
+{indent}}} else {{
+{indent}{indent}paddle::experimental::copy(*{grad_api_args[i]}, paddle::experimental::xpu_debug_run_dev2(), false, dev2_{grad_api_args[i]});
+{indent}}}"""
+                                )
+                                check_grad_output_list.append(
+                                    f"""if ({grad_api_args[i]} != nullptr) debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{output_name}", *{grad_api_args[i]}, *dev2_{grad_api_args[i]});"""
+                                )
+                            else:
+                                # print("api_output_name_type_dict[grad_api_args[i]] = ", api_output_name_type_dict[grad_api_args[i]])
+                                op_debug_grad_tensor_copy_list.append(
+                                    f"""
+{indent}{api_output_name_type_dict[grad_api_args[i]][0]}  dev2_{grad_api_args[i]};
+{indent}std::vector<std::shared_ptr<paddle::Tensor>> dev2_{grad_api_args[i]}_tmp;
+{indent}dev2_{grad_api_args[i]}_tmp.reserve({grad_api_args[i]}.size());
+{indent}dev2_{grad_api_args[i]}.reserve({grad_api_args[i]}.size());
+{indent}for (size_t i = 0; i < {grad_api_args[i]}.size(); ++i) {{
+{indent}  auto dev2_{grad_api_args[i]}_tensor = std::make_shared<paddle::Tensor>();
+{indent}  if (!({grad_api_args[i]}[i])) {{
+{indent}    dev2_{grad_api_args[i]}_tmp.push_back(nullptr);
+{indent}    dev2_{grad_api_args[i]}.push_back(nullptr);
+{indent}  }} else {{
+{indent}    paddle::experimental::copy(*({grad_api_args[i]}[i]), paddle::experimental::xpu_debug_run_dev2(), false, dev2_{grad_api_args[i]}_tensor.get());
+{indent}    dev2_{grad_api_args[i]}_tmp.push_back(dev2_{grad_api_args[i]}_tensor);
+{indent}    dev2_{grad_api_args[i]}.push_back(dev2_{grad_api_args[i]}_tmp[i].get());
+{indent}  }}
+{indent}}}
+
+"""
+                                )
+                                check_grad_output_list.append(
+                                    f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{output_name}", {grad_api_args[i]}, dev2_{grad_api_args[i]});"""
+                                )
+                            # pass
+                            dev2_grad_api_args[i] = f"dev2_{grad_api_args[i]}"
+                        else:
+                            op_debug_grad_tensor_copy_list.append(
+                                f"auto dev2_{grad_api_args[i]} = paddle::experimental::copy({grad_api_args[i]}, paddle::experimental::xpu_debug_run_dev2(), false);"
+                            )
+                            check_grad_input_list.append(
+                                f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{grad_api_args[i]}", {grad_api_args[i]}, *dev2_{grad_api_args[i]});"""
+                            )
+                            dev2_grad_api_args[i] = f"*dev2_{grad_api_args[i]}"
+                new_line = "\n"
+                dev2_grad_api_args_str = ", ".join(dev2_grad_api_args)
+                op_debug_grad_tensor_copy_str = f"""{indent}paddle::experimental::OpIdAdd();
+{indent}VLOG(9) << "Op ID: " << paddle::experimental::OpId();
+{indent}std::string debug_str;
+{indent}VLOG(9) << "Start copy input and output!";
+{indent}{(new_line + indent).join(op_debug_grad_tensor_copy_list)}
+{indent}VLOG(9) << "End copy input and output!";
+{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}VLOG(9) << "Start check mse for input!";
+{indent}{indent}{(new_line + indent + indent).join(check_grad_input_list)}
+{indent}{indent}VLOG(9) << "End check mse for input!";
+{indent}}}"""
+                dev2_grad_function_call_str = f"""
+{indent}if (paddle::experimental::DebugOrNot() && !paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+{indent}{indent}debug_str += " out: ";
+{indent}{indent}VLOG(9) << "Strat run dev2";
+{indent}{indent}{grad_api_namespace}{backward_api_name}({dev2_grad_api_args_str});
+{indent}{indent}VLOG(9) << "End run dev2";
+{indent}{indent}VLOG(9) << "Start check mse for output!";
+{indent}{indent}{(new_line + indent + indent).join(check_grad_output_list)}
+{indent}{indent}VLOG(9) << "End check mse for output!";
+{indent}{indent}if (paddle::experimental::GetDebugStartStr() != "" && debug_str != " out: ") {{
+{indent}{indent}  std::cout << paddle::experimental::GetDebugStartStr() << "in: " << debug_str << std::endl;
+{indent}{indent}}}
+{indent}}}
+{indent}paddle::experimental::SetDebugStartStr("");
+"""
         else:
             for i in range(len(grad_api_args)):
                 if i in arrt_pos:
