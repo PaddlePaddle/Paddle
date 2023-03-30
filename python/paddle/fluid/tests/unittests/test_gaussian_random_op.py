@@ -19,7 +19,11 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    paddle_static_guard,
+)
 from paddle.tensor import random
 
 
@@ -119,7 +123,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.attrs = {
@@ -209,87 +213,86 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
 # Test python API
 class TestGaussianRandomAPI(unittest.TestCase):
     def test_api(self):
-        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2000)
+        with paddle_static_guard():
+            positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2000)
 
-        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 500)
-        shape_tensor_int32 = paddle.static.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32"
-        )
+            positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 500)
+            shape_tensor_int32 = paddle.static.data(
+                name="shape_tensor_int32", shape=[2], dtype="int32"
+            )
 
-        shape_tensor_int64 = paddle.static.data(
-            name="shape_tensor_int64", shape=[2], dtype="int64"
-        )
+            shape_tensor_int64 = paddle.static.data(
+                name="shape_tensor_int64", shape=[2], dtype="int64"
+            )
 
-        out_1 = random.gaussian(
-            shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
-        )
+            out_1 = random.gaussian(
+                shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
+            )
 
-        out_2 = random.gaussian(
-            shape=[2000, positive_2_int32],
-            dtype="float32",
-            mean=0.0,
-            std=1.0,
-            seed=10,
-        )
+            out_2 = random.gaussian(
+                shape=[2000, positive_2_int32],
+                dtype="float32",
+                mean=0.0,
+                std=1.0,
+                seed=10,
+            )
 
-        out_3 = random.gaussian(
-            shape=[2000, positive_2_int64],
-            dtype="float32",
-            mean=0.0,
-            std=1.0,
-            seed=10,
-        )
+            out_3 = random.gaussian(
+                shape=[2000, positive_2_int64],
+                dtype="float32",
+                mean=0.0,
+                std=1.0,
+                seed=10,
+            )
 
-        out_4 = random.gaussian(
-            shape=shape_tensor_int32,
-            dtype="float32",
-            mean=0.0,
-            std=1.0,
-            seed=10,
-        )
+            out_4 = random.gaussian(
+                shape=shape_tensor_int32,
+                dtype="float32",
+                mean=0.0,
+                std=1.0,
+                seed=10,
+            )
 
-        out_5 = random.gaussian(
-            shape=shape_tensor_int64,
-            dtype="float32",
-            mean=0.0,
-            std=1.0,
-            seed=10,
-        )
+            out_5 = random.gaussian(
+                shape=shape_tensor_int64,
+                dtype="float32",
+                mean=0.0,
+                std=1.0,
+                seed=10,
+            )
 
-        out_6 = random.gaussian(
-            shape=shape_tensor_int64,
-            dtype=np.float32,
-            mean=0.0,
-            std=1.0,
-            seed=10,
-        )
+            out_6 = random.gaussian(
+                shape=shape_tensor_int64,
+                dtype=np.float32,
+                mean=0.0,
+                std=1.0,
+                seed=10,
+            )
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "shape_tensor_int32": np.array([2000, 500]).astype("int32"),
-                "shape_tensor_int64": np.array([2000, 500]).astype("int64"),
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
-        )
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+                fluid.default_main_program(),
+                feed={
+                    "shape_tensor_int32": np.array([2000, 500]).astype("int32"),
+                    "shape_tensor_int64": np.array([2000, 500]).astype("int64"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+            )
 
-        self.assertAlmostEqual(np.mean(res_1), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_1), 1.0, delta=0.1)
-        self.assertAlmostEqual(np.mean(res_2), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_2), 1.0, delta=0.1)
-        self.assertAlmostEqual(np.mean(res_3), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_3), 1.0, delta=0.1)
-        self.assertAlmostEqual(np.mean(res_4), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
-        self.assertAlmostEqual(np.mean(res_5), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
-        self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
-        self.assertAlmostEqual(np.std(res_6), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_1), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_1), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_2), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_2), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_3), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_3), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_4), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_5), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
+            self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
+            self.assertAlmostEqual(np.std(res_6), 1.0, delta=0.1)
 
     def test_default_dtype(self):
-        paddle.disable_static()
-
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.gaussian([2, 3])
@@ -310,14 +313,10 @@ class TestGaussianRandomAPI(unittest.TestCase):
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
-
-        paddle.enable_static()
 
 
 class TestStandardNormalDtype(unittest.TestCase):
     def test_default_dtype(self):
-        paddle.disable_static()
-
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.standard_normal([2, 3])
@@ -338,8 +337,6 @@ class TestStandardNormalDtype(unittest.TestCase):
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
-
-        paddle.enable_static()
 
 
 class TestRandomValue(unittest.TestCase):
@@ -402,7 +399,6 @@ class TestRandomValue(unittest.TestCase):
         _check_random_value(
             core.VarDesc.VarType.FP32, expect, expect_mean, expect_std
         )
-        paddle.enable_static()
 
 
 if __name__ == "__main__":

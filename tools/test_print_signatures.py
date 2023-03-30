@@ -77,7 +77,7 @@ class Test_is_primitive(unittest.TestCase):
         self.assertTrue(is_primitive(set()))
         self.assertTrue(is_primitive([1, 2]))
         self.assertTrue(is_primitive((1.1, 2.2)))
-        self.assertTrue(is_primitive(set([1, 2.3])))
+        self.assertTrue(is_primitive({1, 2.3}))
         self.assertFalse(is_primitive(range(3)))
         self.assertFalse(is_primitive({}))
         self.assertFalse(is_primitive([1, 1j]))

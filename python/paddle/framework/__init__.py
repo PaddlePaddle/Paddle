@@ -27,7 +27,6 @@ from ..fluid.core import CUDAPinnedPlace  # noqa: F401
 from ..fluid.core import NPUPlace  # noqa: F401
 from ..fluid.core import MLUPlace  # noqa: F401
 from ..fluid.core import CustomPlace  # noqa: F401
-from ..fluid.core import VarBase  # noqa: F401
 
 from ..fluid import core  # noqa: F401
 from ..fluid.dygraph import base, to_variable
@@ -51,7 +50,7 @@ from ..fluid.dygraph import monkey_patch_math_varbase
 from ..fluid.framework import disable_signal_handler  # noqa: F401
 from ..fluid.framework import get_flags  # noqa: F401
 from ..fluid.framework import set_flags  # noqa: F401
-from ..fluid.framework import Parameter, ParamBase
+from ..fluid.framework import Parameter
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401

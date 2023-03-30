@@ -17,7 +17,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import core
@@ -29,6 +29,38 @@ from rnn_numpy import GRU
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
+
+
+def rnn_wrapper(
+    Input,
+    PreState,
+    WeightList=None,
+    SequenceLength=None,
+    dropout_prob=0.0,
+    is_bidirec=False,
+    input_size=10,
+    hidden_size=100,
+    num_layers=1,
+    mode="LSTM",
+    seed=0,
+    is_test=False,
+):
+    dropout_state_in = paddle.Tensor()
+    return paddle._C_ops.rnn(
+        Input,
+        [PreState],
+        WeightList,
+        SequenceLength,
+        dropout_state_in,
+        dropout_prob,
+        is_bidirec,
+        input_size,
+        hidden_size,
+        num_layers,
+        mode,
+        seed,
+        is_test,
+    )
 
 
 class TestGRUOp(OpTest):
@@ -44,6 +76,10 @@ class TestGRUOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
+        self.python_api = rnn_wrapper
+        self.python_out_sig = ["Out", "DropoutState", "State"]
+        self.python_out_sig_sub_name = {"State": ["last_hidden"]}
+
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
         self.sequence_length = (
             None
@@ -100,7 +136,7 @@ class TestGRUOp(OpTest):
             (self.num_layers * self.direction_num, batch_size, self.hidden_size)
         ).astype(self.dtype)
 
-        state_out = np.ndarray((300)).astype("uint8")
+        state_out = np.ndarray(300).astype("uint8")
 
         self.inputs = {
             'Input': input,
@@ -126,7 +162,7 @@ class TestGRUOp(OpTest):
         self.outputs = {
             'Out': output,
             'State': [('last_hidden', last_hidden)],
-            'Reserve': np.ndarray((400)).astype("uint8"),
+            'Reserve': np.ndarray(400).astype("uint8"),
             'DropoutState': state_out,
         }
 

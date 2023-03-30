@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.fluid import core
@@ -27,9 +27,9 @@ class TestUniqueOp(OpTest):
         self.init_config()
 
     def test_check_output(self):
-        paddle.enable_static()
-        self.check_output()
-        paddle.disable_static()
+        self.check_output(
+            check_dygraph=False
+        )  # unique return sorted data in dygraph
 
     def init_config(self):
         self.inputs = {
@@ -73,19 +73,20 @@ class TestRandom(TestUniqueOp):
 
 class TestUniqueRaiseError(unittest.TestCase):
     def test_errors(self):
-        paddle.enable_static()
+        with paddle_static_guard():
 
-        def test_type():
-            paddle.unique([10])
+            def test_type():
+                paddle.unique([10])
 
-        self.assertRaises(TypeError, test_type)
+            self.assertRaises(TypeError, test_type)
 
-        def test_dtype():
-            data = paddle.static.data(shape=[10], dtype="float16", name="input")
-            paddle.unique(data)
+            def test_dtype():
+                data = paddle.static.data(
+                    shape=[10], dtype="float16", name="input"
+                )
+                paddle.unique(data)
 
-        self.assertRaises(TypeError, test_dtype)
-        paddle.disable_static()
+            self.assertRaises(TypeError, test_dtype)
 
 
 @unittest.skipIf(
@@ -104,10 +105,10 @@ class TestOneGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            paddle.enable_static()
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-            paddle.disable_static()
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=False
+            )  # unique return sorted data in dygraph
 
 
 @unittest.skipIf(
@@ -131,10 +132,10 @@ class TestRandomGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            paddle.enable_static()
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-            paddle.disable_static()
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=False
+            )  # unique return sorted data in dygraph
 
 
 class TestSortedUniqueOp(TestUniqueOp):
@@ -243,6 +244,7 @@ class TestUniqueOpAxis1(TestUniqueOp):
 
 class TestUniqueAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
+        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out = paddle.unique(x)
@@ -250,6 +252,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((out.numpy() == expected_out).all(), True)
 
     def test_dygraph_api_attr(self):
+        paddle.disable_static()
         x_data = np.random.random((3, 5, 5)).astype("float32")
         x = paddle.to_tensor(x_data)
         out, index, inverse, counts = paddle.unique(
@@ -272,6 +275,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_dygraph_attr_dtype(self):
+        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out, indices, inverse, counts = paddle.unique(
@@ -290,69 +294,62 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_static_graph(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
-            unique, inverse, counts = paddle.unique(
-                x, return_inverse=True, return_counts=True, axis=0
-            )
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
-            result = exe.run(
-                feed={"x": x_np}, fetch_list=[unique, inverse, counts]
-            )
-        np_unique, np_inverse, np_counts = np.unique(
-            x_np, return_inverse=True, return_counts=True, axis=0
-        )
-        np.testing.assert_allclose(result[0], np_unique, rtol=1e-05)
-        np.testing.assert_allclose(result[1], np_inverse, rtol=1e-05)
-        np.testing.assert_allclose(result[2], np_counts, rtol=1e-05)
-        paddle.disable_static()
+        with paddle_static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
+                unique, inverse, counts = paddle.unique(
+                    x, return_inverse=True, return_counts=True, axis=0
+                )
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+                x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
+                result = exe.run(
+                    feed={"x": x_np}, fetch_list=[unique, inverse, counts]
+                )
 
 
 class TestUniqueError(unittest.TestCase):
     def test_input_dtype(self):
         def test_x_dtype():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    name='x', shape=[10, 10], dtype='float16'
-                )
-                result = paddle.unique(x)
+            with paddle_static_guard():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name='x', shape=[10, 10], dtype='float16'
+                    )
+                    result = paddle.unique(x)
 
-            self.assertRaises(TypeError, test_x_dtype)
+                self.assertRaises(TypeError, test_x_dtype)
 
     def test_attr(self):
-        paddle.enable_static()
-        x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
+        with paddle_static_guard():
+            x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
 
-        def test_return_index():
-            result = paddle.unique(x, return_index=0)
+            def test_return_index():
+                result = paddle.unique(x, return_index=0)
 
-        self.assertRaises(TypeError, test_return_index)
+            self.assertRaises(TypeError, test_return_index)
 
-        def test_return_inverse():
-            result = paddle.unique(x, return_inverse='s')
+            def test_return_inverse():
+                result = paddle.unique(x, return_inverse='s')
 
-        self.assertRaises(TypeError, test_return_inverse)
+            self.assertRaises(TypeError, test_return_inverse)
 
-        def test_return_counts():
-            result = paddle.unique(x, return_counts=3)
+            def test_return_counts():
+                result = paddle.unique(x, return_counts=3)
 
-        self.assertRaises(TypeError, test_return_counts)
+            self.assertRaises(TypeError, test_return_counts)
 
-        def test_axis():
-            result = paddle.unique(x, axis='12')
+            def test_axis():
+                result = paddle.unique(x, axis='12')
 
-        def test_dtype():
-            result = paddle.unique(x, dtype='float64')
+            def test_dtype():
+                result = paddle.unique(x, dtype='float64')
 
-        self.assertRaises(TypeError, test_axis)
-        paddle.disable_static()
+            self.assertRaises(TypeError, test_axis)
 
 
 if __name__ == "__main__":

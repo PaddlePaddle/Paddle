@@ -62,7 +62,7 @@ class Quant2Int8MkldnnPass:
         ]
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = (
-            _op_ids_to_skip if _op_ids_to_skip is not None else set([-1])
+            _op_ids_to_skip if _op_ids_to_skip is not None else {-1}
         )
         self._scale_immutable_ops = [
             'transpose2',
@@ -532,13 +532,12 @@ class Quant2Int8MkldnnPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)
         return graph
 

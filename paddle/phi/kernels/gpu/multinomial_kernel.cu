@@ -27,6 +27,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -41,25 +42,25 @@ namespace cub = hipcub;
 
 namespace phi {
 
-template <typename T>
-__global__ void NormalizeProbability(T* norm_probs,
+template <typename T, typename MT>
+__global__ void NormalizeProbability(MT* norm_probs,
                                      const T* in_data,
-                                     T* sum_rows,
+                                     MT* sum_rows,
                                      int64_t num_distributions,
                                      int64_t num_categories) {
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
   if (id < num_distributions * num_categories) {
     PADDLE_ENFORCE(
-        in_data[id] >= 0.0,
+        static_cast<MT>(in_data[id]) >= 0.0,
         "The input of multinomial distribution should be >= 0, but got %f.",
-        in_data[id]);
+        static_cast<MT>(in_data[id]));
     int64_t row_id = id / num_categories;
     PADDLE_ENFORCE(sum_rows[row_id] > 0.0,
                    "The sum of one multinomial distribution probability should "
                    "be > 0, but got %f.",
                    sum_rows[row_id]);
-    norm_probs[id] = in_data[id] / sum_rows[row_id];
+    norm_probs[id] = static_cast<MT>(in_data[id]) / sum_rows[row_id];
   }
 }
 
@@ -131,6 +132,8 @@ void MultinomialKernel(const Context& dev_ctx,
                        const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out) {
+  using MT = typename kps::details::MPTypeTrait<T>::Type;
+
   auto int_num_samples = num_samples.to<int>();
   auto* in_data = x.data<T>();
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
@@ -138,7 +141,6 @@ void MultinomialKernel(const Context& dev_ctx,
   int64_t dim_size = in_dims.size();
   const int64_t num_categories = in_dims[dim_size - 1];
   const int64_t num_distributions = dim_size > 1 ? in_dims[dim_size - 2] : 1;
-
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
   if (!replacement) {
@@ -153,11 +155,11 @@ void MultinomialKernel(const Context& dev_ctx,
       for (size_t j = 0; j < num_categories; ++j) {
         T weight = cpu_in_data[i * num_categories + j];
         PADDLE_ENFORCE_GE(
-            weight,
+            static_cast<MT>(weight),
             0,
             errors::InvalidArgument(
                 "Each element of multinomial'input must >= 0, but got %f.",
-                weight));
+                static_cast<MT>(weight)));
         if (weight == static_cast<T>(0)) {
           zero_num++;
         }
@@ -174,8 +176,8 @@ void MultinomialKernel(const Context& dev_ctx,
     // Refer to [gumbel softmax algorithm]
     DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
     T* rand_data = rand.data<T>();
-    funcs::uniform_distribution<T> dist;
-    funcs::exponential_transform<T> trans(1.0);
+    funcs::uniform_distribution<MT> dist;
+    funcs::exponential_transform<MT> trans(1.0);
     funcs::distribution_and_transform<T>(dev_ctx, &rand, dist, trans);
 
     funcs::ForRange<Context> for_range(dev_ctx, x.numel());
@@ -200,61 +202,60 @@ void MultinomialKernel(const Context& dev_ctx,
   // sum_row_data: sum of each row
   DenseTensor sum_rows_tensor;
   sum_rows_tensor.Resize({num_distributions});
-  auto* sum_rows_data = dev_ctx.template Alloc<T>(&sum_rows_tensor);
-
+  auto* sum_rows_data = dev_ctx.template Alloc<MT>(&sum_rows_tensor);
   auto& place = *dev_ctx.eigen_device();
 
   if (num_distributions == 1) {
     auto eigen_input = EigenVector<T>::Flatten(x);
-    auto eigen_sum_rows = EigenVector<T>::Flatten(sum_rows_tensor);
+    auto eigen_sum_rows = EigenVector<MT>::Flatten(sum_rows_tensor);
     eigen_sum_rows.device(place) =
         eigen_input.sum(Eigen::DSizes<int, 1>(1))
+            .template cast<MT>()
             .eval()
-            .reshape(Eigen::DSizes<int, 1>(sum_rows_tensor.dims()[0]));
+            .template cast<MT>()
+            .reshape(Eigen::DSizes<int, 1>(sum_rows_tensor.dims()[0]))
+            .template cast<MT>();
   } else {
     auto eigen_input = EigenMatrix<T>::From(x);
-    auto eigen_sum_rows = EigenVector<T>::Flatten(sum_rows_tensor);
-    eigen_sum_rows.device(place) = eigen_input.sum(Eigen::DSizes<int, 1>(1));
+    auto eigen_sum_rows = EigenVector<MT>::Flatten(sum_rows_tensor);
+    eigen_sum_rows.device(place) =
+        eigen_input.sum(Eigen::DSizes<int, 1>(1)).template cast<MT>();
   }
-
   // Normalize row of each distribution to get the probability in range [0,
   // 1].
   // norm_probs_data: probability of the distribution
   DenseTensor norm_probs_tensor;
   norm_probs_tensor.Resize({num_distributions, num_categories});
-  auto* norm_probs_data = dev_ctx.template Alloc<T>(&norm_probs_tensor);
-
+  auto* norm_probs_data = dev_ctx.template Alloc<MT>(&norm_probs_tensor);
   // number of threads in a block is min(num_categories, 512)
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
-  NormalizeProbability<T>
+
+  NormalizeProbability<T, MT>
       <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
                                                        in_data,
                                                        sum_rows_data,
                                                        num_distributions,
                                                        num_categories);
-
   // Get cumulative probability of each distribution. It's the same function
   // of ``cumsum`` op.
   DenseTensor cumulative_probs_tensor;
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
   auto* cumulative_probs_data =
-      dev_ctx.template Alloc<T>(&cumulative_probs_tensor);
-
+      dev_ctx.template Alloc<MT>(&cumulative_probs_tensor);
   // 'phi::funcs::InclusiveScan' has higher accuracy than
   // 'thrust::inclusive_scan'
-  funcs::InclusiveScan<T, std::plus<T>>(
+  funcs::InclusiveScan<MT, std::plus<MT>>(
       /*in*/ norm_probs_data,
       /*out*/ cumulative_probs_data,
       /*outer_dim*/ static_cast<size_t>(num_distributions),
       /*mid_dim*/ static_cast<size_t>(num_categories),
       /*inner_dim*/ static_cast<size_t>(1),
       /*init*/ static_cast<T>(0),
-      std::plus<T>(),
+      std::plus<MT>(),
       /*reverse=*/false,
       dev_ctx);
-
   // Sample the multinomial distributions.
   dim3 block(128);
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
@@ -269,7 +270,7 @@ void MultinomialKernel(const Context& dev_ctx,
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 
-  sampleMultinomialWithReplacement<T>
+  sampleMultinomialWithReplacement<MT>
       <<<grid, block, 0, dev_ctx.stream()>>>(int_num_samples,
                                              out_data,
                                              num_distributions,
@@ -286,6 +287,7 @@ PD_REGISTER_KERNEL(multinomial,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
+                   phi::dtype::float16,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
