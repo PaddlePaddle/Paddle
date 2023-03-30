@@ -446,7 +446,7 @@ def create_bf16_test_class(parent):
 
             self.dout = dout
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestMatMulV2Bf16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestMatMulV2Bf16OneDNNOp
 
