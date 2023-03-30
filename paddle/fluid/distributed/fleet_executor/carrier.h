@@ -93,6 +93,8 @@ class Carrier final {
 
   int32_t carrier_id() const { return carrier_id_; }
 
+  int64_t num_micro_batches() const { return microbatch_scopes_.size(); }
+
  private:
   DISABLE_COPY_AND_ASSIGN(Carrier);
   Carrier() = delete;

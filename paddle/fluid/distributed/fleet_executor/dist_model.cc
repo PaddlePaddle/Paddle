@@ -441,12 +441,12 @@ bool DistModel::PrepareFleetExe() {
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
   fleet_exe->Init(carrier_id_,
-                  *(program_.get()),
+                  {program_.get()},
                   scope_.get(),
                   place_,
                   1,
-                  {task_node_.get()},
-                  id_to_rank);
+                  {{task_node_.get()}},
+                  {id_to_rank});
   return true;
 }
 
