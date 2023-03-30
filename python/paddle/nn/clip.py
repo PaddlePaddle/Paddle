@@ -858,6 +858,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         scale_input = scale_var.astype('bfloat16')
                     else:
                         scale_input = scale_var
+
+                    scale_input = scale_var
+                    
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
