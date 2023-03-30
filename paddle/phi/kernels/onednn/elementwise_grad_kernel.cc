@@ -327,6 +327,10 @@ void DivideGradKernel(const Context& dev_ctx,
   auto scales_mem = dnnl::memory(scales_md, onednn_engine);
   auto scale_memory_buf = static_cast<float*>(scales_mem.get_data_handle());
   *scale_memory_buf = scale;
+
+  auto neg_scales_mem = dnnl::memory(scales_md, onednn_engine);
+  auto neg_scale_memory_buf = static_cast<float*>(neg_scales_mem.get_data_handle());
+  *neg_scale_memory_buf = -scale;
   if (dx) {
     funcs::BinaryOneDNNHandler<T> binary_handler(dnnl::algorithm::binary_div,
                                                  axis,
@@ -399,7 +403,7 @@ void DivideGradKernel(const Context& dev_ctx,
                                       &dout,
                                       &out,
                                       nullptr,
-                                      -1.0f,
+                                      1.0f,
                                       1.0f,
                                       1.0f,
                                       false,
@@ -418,7 +422,7 @@ void DivideGradKernel(const Context& dev_ctx,
         {DNNL_ARG_SRC_1, *src_out_memory},
         {DNNL_ARG_DST, *dst_dy_memory},
         {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, *y_memory},
-        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, neg_scales_mem},
         {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
 
     binary_prim->execute(astream, args);
