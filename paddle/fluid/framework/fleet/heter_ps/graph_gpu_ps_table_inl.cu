@@ -30,6 +30,10 @@
 
 DECLARE_bool(enable_neighbor_list_use_uva);
 
+PADDLE_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
+                            false,
+                            "control multi-node sample");
+
 namespace paddle {
 namespace framework {
 /*
@@ -54,7 +58,6 @@ __global__ void get_cpu_id_index(uint64_t* key,
       int old = atomicAdd(sum, 1);
       cpu_key[old] = key[i];
       index[old] = i;
-      // printf("old %d i-%d key:%lld\n",old,i,key[i]);
     }
   }
 }
@@ -1619,7 +1622,33 @@ void GpuPsGraphTable::build_graph_from_cpu(
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch, bool compress, bool weighted) {
-  return graph_neighbor_sample_v2(global_device_map[q.gpu_id],
+  if (multi_node_ && FLAGS_enable_graph_multi_node_sampling) {
+    // multi node mode
+    if (q.sample_step == 1 ) {
+      auto result = graph_neighbor_sample_v2(global_device_map[q.gpu_id],
+              q.table_idx,
+              q.src_nodes,
+              q.sample_size,
+              q.len,
+              cpu_switch,
+              compress,
+              weighted);
+      return result;
+    } else {
+      auto result = graph_neighbor_sample_all2all(global_device_map[q.gpu_id],
+              q.sample_step,
+              q.table_idx,
+              q.src_nodes,
+              q.sample_size,
+              q.len,
+              cpu_switch,
+              compress,
+              weighted);
+      return result;
+    }
+  } else {
+    // single node mode
+    auto result = graph_neighbor_sample_v2(global_device_map[q.gpu_id],
                                   q.table_idx,
                                   q.src_nodes,
                                   q.sample_size,
@@ -1627,6 +1656,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
                                   cpu_switch,
                                   compress,
                                   weighted);
+    return result;
+  }
 }
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
@@ -1635,6 +1666,135 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
                                                             int len) {
   return graph_neighbor_sample_v2(
       gpu_id, 0, key, sample_size, len, false, true, false);
+}
+
+NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
+    int gpu_id,
+    int sample_step,
+    int table_idx,
+    uint64_t* d_keys,
+    int sample_size,
+    int len,
+    bool cpu_query_switch,
+    bool compress,
+    bool weighted) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto &loc = storage_[gpu_id];
+  auto stream = resource_->local_stream(gpu_id, 0);
+
+  loc.alloc(len, sizeof(uint64_t)/*key_bytes*/);
+
+
+  // all2all mode begins. init resource, partition keys, pull vals by all2all
+  auto pull_size = gather_inter_keys_by_all2all(gpu_id, len, d_keys, stream);
+  VLOG(0) << "gather_inter_keys_by_all2all finish, pull_size=" << pull_size << ", len=" << len;
+
+
+  // do single-node multi-card sampling
+  auto result = graph_neighbor_sample_v2(gpu_id,
+                                         table_idx,
+                                         loc.d_merged_keys,
+                                         sample_size,
+                                         pull_size,
+                                         cpu_query_switch,
+                                         compress,
+                                         weighted);
+  VLOG(0) << "graph_neighbor_sample_v2 local finish"
+      << ", gpu_id=" << gpu_id
+      << ", pull_size=" << pull_size
+      << ", total_sample_size=" << result.total_sample_size;
+
+  // init neighbor result
+  NeighborSampleResult final;
+  final.set_stream(stream);
+  final.initialize(sample_size, len, gpu_id);
+
+  // all2all mode finish, scatter sample values by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                 len,
+                                 sizeof(uint64_t), //value_bytes
+                                 reinterpret_cast<const uint64_t*>(result.val), // in
+                                 reinterpret_cast<uint64_t*>(final.val), // out
+                                 reinterpret_cast<uint64_t*>(loc.d_merged_vals), // tmp hbm
+                                 stream);
+  VLOG(0) << "scatter_inter_vals_by_all2all val finish" << " gpu_id=" << gpu_id;
+
+  // all2all mode finish, scatter sample sizes of every node by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                 len,
+                                 sizeof(int), //value_bytes
+                                 reinterpret_cast<const int*>(result.actual_sample_size), // in
+                                 reinterpret_cast<int*>(final.actual_sample_size), // out
+                                 reinterpret_cast<int*>(loc.d_merged_vals), // temp hbm
+                                 stream);
+  VLOG(0) << "scatter_inter_vals_by_all2all actual_sample_size finish" << " gpu_id=" << gpu_id;
+
+  // build final.actual_val
+  if (compress) {
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    size_t temp_storage_bytes = 0;
+    int total_sample_size = 0;
+    auto cumsum_actual_sample_size =
+        memory::Alloc(place,
+                      (len + 1) * sizeof(int),
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    int* cumsum_actual_sample_size_p =
+        reinterpret_cast<int*>(cumsum_actual_sample_size->ptr());
+    CUDA_CHECK(
+        cudaMemsetAsync(cumsum_actual_sample_size_p, 0, sizeof(int), stream));
+    //VLOG(0) << "InclusiveSum begin";
+    CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
+                                             temp_storage_bytes,
+                                             final.actual_sample_size,
+                                             cumsum_actual_sample_size_p + 1,
+                                             len,
+                                             stream));
+    auto d_temp_storage =
+        memory::Alloc(place,
+                      temp_storage_bytes,
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
+                                             temp_storage_bytes,
+                                             final.actual_sample_size,
+                                             cumsum_actual_sample_size_p + 1,
+                                             len,
+                                             stream));
+    CUDA_CHECK(cudaMemcpyAsync(&total_sample_size,
+                               cumsum_actual_sample_size_p + len,
+                               sizeof(int),
+                               cudaMemcpyDeviceToHost,
+                               stream));
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    final.set_total_sample_size(total_sample_size);
+    //VLOG(0) << "InclusiveSum finish";
+
+    final.actual_val_mem = memory::AllocShared(
+        place,
+        total_sample_size * sizeof(uint64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    final.actual_val =
+        reinterpret_cast<uint64_t*>((final.actual_val_mem)->ptr());
+
+    VLOG(0) << "sample step:" << sample_step
+        << ", total_sample_size:" << total_sample_size
+        << ", len=" << len
+        << ", final.val=" << final.val
+        << ", final.actual_val=" << final.actual_val
+        << ", final.actual_sample_size=" << final.actual_sample_size;
+
+    int grid_size = (len - 1) / block_size_ + 1;
+    fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
+        final.val,
+        final.actual_val,
+        final.actual_sample_size,
+        cumsum_actual_sample_size_p,
+        sample_size,
+        len);
+    CUDA_CHECK(cudaStreamSynchronize(stream));  // hbm safe
+  }
+
+  return final;
 }
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(

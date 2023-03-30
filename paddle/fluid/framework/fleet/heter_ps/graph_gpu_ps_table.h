@@ -109,6 +109,15 @@ class GpuPsGraphTable
                                                 bool cpu_query_switch,
                                                 bool compress,
                                                 bool weighted);
+  NeighborSampleResult graph_neighbor_sample_all2all(int gpu_id,
+                                                int sample_step,
+                                                int idx,
+                                                uint64_t *key,
+                                                int sample_size,
+                                                int len,
+                                                bool cpu_query_switch,
+                                                bool compress,
+                                                bool weighted);
   NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
       int gpu_id,
       int edge_type_len,

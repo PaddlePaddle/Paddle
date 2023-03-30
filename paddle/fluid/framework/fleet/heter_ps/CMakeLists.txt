@@ -47,7 +47,8 @@ if(WITH_GPU)
            heter_ps
            ${HETERPS_DEPS}
            graph_gpu_ps
-           fleet_wrapper)
+           fleet_wrapper
+           gloo_wrapper)
     nv_test(
       test_cpu_query
       SRCS test_cpu_query.cu

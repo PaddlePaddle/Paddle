@@ -552,7 +552,7 @@ class HeterComm {
                              const int& gpu_num,
                              const int& trans_id,
                              const cudaStream_t& stream);
-  size_t gather_inter_keys_by_copy(const int& gpu_id,
+  size_t gather_inner_keys_by_copy(const int& gpu_id,
                                    const size_t& fea_size,
                                    const KeyType* d_keys,
                                    const cudaStream_t& stream);
@@ -575,17 +575,70 @@ class HeterComm {
                               const char* d_send_buff,
                               char* d_rev_buff,
                               const cudaStream_t& stream);
-  size_t gather_sparse_keys_by_all2all(const int& gpu_id,
+  size_t gather_inter_keys_by_all2all(const int& gpu_id,
                                        const size_t& fea_size,
                                        const KeyType* d_in_keys,
                                        const cudaStream_t& stream);
-  void scatter_sparse_vals_by_all2all(const int& gpu_id,
+  void scatter_inter_vals_by_all2all(const int& gpu_id,
                                       const size_t& fea_size,
                                       const char* d_in_vals,
                                       void* d_out_vals,
                                       const size_t& value_bytes,
                                       void* d_tmp_vals,
                                       const cudaStream_t& stream);
+  template<typename T>
+  void scatter_inter_vals_by_all2all_common(
+          const int& gpu_id,
+          const size_t& len,
+          const size_t& value_bytes,
+          const T* d_in_vals,
+          T* d_out_vals,
+          T* d_tmp_vals,
+          const cudaStream_t& stream) {
+    auto &cache = storage_[gpu_id];
+    auto &res = cache.shard_res;
+    auto h_local_part_sizes = res.h_local_part_sizes.data();
+    auto h_local_part_offsets = res.h_local_part_offsets.data();
+    auto h_remote_part_sizes = res.h_remote_part_sizes.data();
+    auto h_remote_part_offsets = res.h_remote_part_offsets.data();
+
+    size_t total_fea_num = 0;
+    if (rdma_checker_->need_rdma_trans()) {
+      total_fea_num =
+          send_vals_by_all2all_trans(gpu_id,
+                  rank_id_,
+                  node_size_,
+                  reinterpret_cast<const char*>(d_in_vals),
+                  reinterpret_cast<char *>(d_tmp_vals),
+                  value_bytes,
+                  stream);
+    } else {
+      total_fea_num = send_data_by_all2all(gpu_id,
+              node_size_,
+              rank_id_,
+              value_bytes,
+              h_remote_part_sizes,
+              h_remote_part_offsets,
+              h_local_part_sizes,
+              h_local_part_offsets,
+              reinterpret_cast<const char*>(d_in_vals),
+              reinterpret_cast<char *>(d_tmp_vals),
+              stream);
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
+    // fill vals
+    heter_comm_kernel_->scatter_vals(
+            reinterpret_cast<const T*>(d_tmp_vals),  // in
+            reinterpret_cast<T*>(d_out_vals),        // out
+            res.d_local_idx_parted,
+            len,
+            value_bytes,
+            stream);
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+  }
+
   void scatter_inner_vals_p2p(const size_t& total_fea_num,
                               void* d_out_vals,
                               InnerResource& res,  // NOLINT
