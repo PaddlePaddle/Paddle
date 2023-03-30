@@ -333,7 +333,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         self.check_grad(
