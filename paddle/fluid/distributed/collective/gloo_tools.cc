@@ -16,12 +16,28 @@
 #include <cstring>
 
 #include "gloo/common/logging.h"
+#include "gloo/math.h"
 #include "gloo/types.h"
-#include "paddle/fluid/distributed/collective/gather.h"
+#include "paddle/fluid/distributed/collective/gloo_tools.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
+
+void send_recv(SendRecvOptions* opts) {
+  const auto& context = opts->context;
+  gloo::transport::UnboundBuffer* in = opts->in.get();
+  gloo::transport::UnboundBuffer* out = opts->out.get();
+  const auto slot = gloo::Slot::build(kSendRecvSlotPrefix, opts->tag);
+
+  if (context->rank == opts->src) {
+    in->send(opts->dst, slot);
+    in->waitSend(opts->timeout);
+  } else if (context->rank == opts->dst) {
+    out->recv(opts->src, slot);
+    out->waitRecv(opts->timeout);
+  }
+}
 
 void gather(GatherCommOptions* opts) {
   const auto& context = opts->context;
@@ -29,13 +45,33 @@ void gather(GatherCommOptions* opts) {
   gloo::transport::UnboundBuffer* out = opts->out.get();
   const auto slot = gloo::Slot::build(gloo::kGatherSlotPrefix, opts->tag);
 
-  PADDLE_ENFORCE(opts->root >= 0 && opts->root < context->size);
-  PADDLE_ENFORCE(in);
-  PADDLE_ENFORCE(opts->elementSize > 0);
+  PADDLE_ENFORCE_GE(opts->root,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "root must be greater and equal than 0."));
+  PADDLE_ENFORCE_LT(
+      opts->root,
+      context->size,
+      platform::errors::InvalidArgument("root must be less than worldsize."));
+  PADDLE_ENFORCE_NE(
+      in,
+      nullptr,
+      platform::errors::InvalidArgument("input buffer must not be nullptr."));
+  PADDLE_ENFORCE_GT(
+      opts->elementSize,
+      0,
+      platform::errors::InvalidArgument("elementSize must be greater than 0."));
 
   if (context->rank == opts->root) {
-    PADDLE_ENFORCE(out);
-    PADDLE_ENFORCE(out->size >= in->size * context->size);
+    PADDLE_ENFORCE_NE(out,
+                      nullptr,
+                      platform::errors::InvalidArgument(
+                          "output buffer must not be nullptr."));
+    PADDLE_ENFORCE_GE(out->size,
+                      in->size * context->size,
+                      platform::errors::InvalidArgument(
+                          "output buffer size must be greater than input "
+                          "buffer size * worldsize."));
     memcpy(static_cast<uint8_t*>(out->ptr) + context->rank * in->size,
            static_cast<uint8_t*>(in->ptr),
            in->size);

@@ -29,9 +29,8 @@
 #include <gloo/scatter.h>
 
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/gather.h"
+#include "paddle/fluid/distributed/collective/gloo_tools.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/distributed/collective/send_recv.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
