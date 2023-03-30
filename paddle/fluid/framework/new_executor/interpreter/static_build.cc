@@ -31,11 +31,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "eig_grad",
     "eigh",
-    "graph_sample_neighbors",
-    "group_norm",
     "lamb",
-    "less_equal",
-    "less_than",
     "sync_batch_norm_grad",
     "update_loss_scaling",
     "unique",

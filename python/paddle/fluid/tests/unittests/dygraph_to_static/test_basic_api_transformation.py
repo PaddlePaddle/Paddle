@@ -456,7 +456,7 @@ def _dygraph_fn():
     x = np.random.random((1, 3)).astype('float32')
     with fluid.dygraph.guard():
         fluid.dygraph.to_variable(x)
-        np.random.random((1))
+        np.random.random(1)
 
 
 class TestDygraphApiRecognition(unittest.TestCase):

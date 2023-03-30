@@ -612,7 +612,7 @@ class DeleteOptimizesPass(PassBase):
             main_program, remote_optimize_ops, local_optimize_ops
         )
 
-        if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
+        if hasattr(attrs['origin_main_program'], 'lr_scheduler'):
             self._add_lr_var(main_program, attrs)
 
 

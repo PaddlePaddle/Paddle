@@ -114,17 +114,15 @@ def operator_equal(a, b):
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in a.__dict__.items():
-        if isinstance(v, fluid.framework.Program) or isinstance(
-            v, fluid.framework.Block
-        ):
+        if isinstance(v, (fluid.framework.Program, fluid.framework.Block)):
             continue
 
         elif isinstance(v, core.OpDesc):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(v.items()), key=lambda x: x[0])
-            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
+            v0 = sorted(v.items(), key=lambda x: x[0])
+            v1 = sorted(b.__dict__[k].items(), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
@@ -137,13 +135,10 @@ def operator_equal(a, b):
 
 def block_equal(a, b):
     for k, v in a.__dict__.items():
-        if (
-            isinstance(v, core.ProgramDesc)
-            or isinstance(v, fluid.framework.Program)
-            or isinstance(v, core.BlockDesc)
+        if isinstance(
+            v, (core.ProgramDesc, fluid.framework.Program, core.BlockDesc)
         ):
             continue
-
         elif k == "ops":
             assert len(a.ops) == len(b.ops)
             for i in range(0, len(a.ops)):

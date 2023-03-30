@@ -97,6 +97,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : arange(range)
+  inputs :
+    {start : Start, end : End, step : Step}
+  outputs :
+    out : Out
+
 - op : argsort
   inputs :
     x : X
@@ -130,6 +136,16 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : assign
+  backward : assign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  manual_signature : [assign, assign_grad]
+  get_expected_kernel_type :
+    assign : GetAssignExpectedKernelType
 
 - op : atan
   inputs :
@@ -385,6 +401,15 @@
     {x : X, y : Y}
   attrs :
     axis : dim
+  outputs :
+    out : Out
+
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
   outputs :
     out : Out
 
@@ -879,6 +904,13 @@
   outputs :
     out : Out
 
+- op : huber_loss
+  backward : huber_loss_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -964,6 +996,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
@@ -1048,6 +1087,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
+
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)
   inputs :
@@ -1093,6 +1138,10 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1122,6 +1171,13 @@
     {x : X, y : Pivots}
   outputs :
     {pmat : Pmat, l : L, u : U}
+
+- op : margin_cross_entropy
+  backward : margin_cross_entropy_grad
+  inputs:
+    {logits : Logits, label : Label}
+  outputs:
+    {softmax : Softmax, loss : Loss}
 
 - op : masked_select
   inputs :
@@ -1196,6 +1252,12 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : merge_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : meshgrid
   backward : meshgrid_grad
@@ -1307,6 +1369,16 @@
   outputs :
     size : Out
 
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
+
 - op : overlap_add
   backward : overlap_add_grad
   inputs :
@@ -1375,6 +1447,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    { x : X, alpha : Alpha}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1598,7 +1674,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+    sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
 
@@ -1939,6 +2015,18 @@
   outputs :
     out : Y
 
+- op : update_loss_scaling_
+  inputs :
+    {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
+  outputs :
+    {out : Out, loss_scaling : LossScaling, out_good_steps : OutGoodSteps, out_bad_steps : OutBadSteps}
+  scalar :
+    stop_update :
+      data_type : bool
+      tensor_name : StopUpdate
+  get_expected_kernel_type :
+    update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
+
 - op : viterbi_decode
   inputs :
     {potentials : Input, transition_params : Transition, lengths : Length}
@@ -1956,3 +2044,10 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: sigmoid_cross_entropy_with_logits
+  backward: sigmoid_cross_entropy_with_logits_grad
+  inputs :
+    {x: X, label: Label}
+  outputs :
+    out : Out
