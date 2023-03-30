@@ -21,7 +21,12 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+from paddle.fluid.framework import (
+    OpProtoHolder,
+    _dygraph_tracer,
+    canonicalize_attrs,
+    in_dygraph_mode,
+)
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
@@ -62,11 +67,16 @@ class OpTestUtils:
         cls, op_type, eager_tensor_inputs, eager_tensor_outputs, attrs_outputs
     ):
         try:
+            op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+            canonicalized_attrs = canonicalize_attrs(attrs_outputs, op_proto)
+        except ValueError:
+            canonicalized_attrs = attrs_outputs
+        try:
             kernel_sig = _dygraph_tracer()._get_kernel_signature(
                 op_type,
                 eager_tensor_inputs,
                 eager_tensor_outputs,
-                attrs_outputs,
+                canonicalized_attrs,
             )
         except RuntimeError as re:
             """we think the kernel_sig is missing."""
@@ -169,6 +179,8 @@ class OpTestUtils:
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
                 results.append(get_default(idx, api_defaults))
+                if idx_of_op_proto_arguments < len(input_arguments):
+                    idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
                     tmp = input_arguments[idx_of_op_proto_arguments]

@@ -56,8 +56,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "any_raw",
     "eig_grad",
     "eigh",
-    "graph_sample_neighbors",
-    "group_norm",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
