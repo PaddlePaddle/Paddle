@@ -97,6 +97,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : arange(range)
+  inputs :
+    {start : Start, end : End, step : Step}
+  outputs :
+    out : Out
+
 - op : argsort
   inputs :
     x : X
@@ -395,6 +401,15 @@
     {x : X, y : Y}
   attrs :
     axis : dim
+  outputs :
+    out : Out
+
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
   outputs :
     out : Out
 
@@ -981,6 +996,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
@@ -1064,6 +1086,12 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
 
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)
@@ -1636,7 +1664,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+    sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
 
@@ -1976,6 +2004,18 @@
     x : X
   outputs :
     out : Y
+
+- op : update_loss_scaling_
+  inputs :
+    {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
+  outputs :
+    {out : Out, loss_scaling : LossScaling, out_good_steps : OutGoodSteps, out_bad_steps : OutBadSteps}
+  scalar :
+    stop_update :
+      data_type : bool
+      tensor_name : StopUpdate
+  get_expected_kernel_type :
+    update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
 
 - op : viterbi_decode
   inputs :

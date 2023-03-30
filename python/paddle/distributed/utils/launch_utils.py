@@ -54,9 +54,9 @@ def get_cluster_from_args(args, selected_gpus):
         if args.started_port is not None:
             started_port = args.started_port
 
-        free_ports = [
-            x for x in range(started_port, started_port + len(selected_gpus))
-        ]
+        free_ports = list(
+            range(started_port, started_port + len(selected_gpus))
+        )
 
     trainer_endpoints = []
     for ip in node_ips:
@@ -354,7 +354,7 @@ def terminate_local_procs(procs):
         time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
-    exit(1)
+    sys.exit(1)
 
 
 def get_host_name_ip():
@@ -543,7 +543,7 @@ def watch_local_trainers(procs, nranks):
 
         if error:
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")

@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -33,7 +23,7 @@ class ExpandV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a paddle expand_v2 op to trt expand layer.";
+    VLOG(3) << "convert a expand_v2 op to trt expand layer.";
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto inputs = op_desc.Inputs();
