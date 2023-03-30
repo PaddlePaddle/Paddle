@@ -196,7 +196,7 @@ class AscendIRParser:
                 HcomGroupConfig(
                     name="hcom_group_0",
                     nranks=fleet.world_size(),
-                    rank_ids=[x for x in range(fleet.world_size())],
+                    rank_ids=list(range(fleet.world_size())),
                 )
             )
 

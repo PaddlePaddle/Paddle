@@ -1223,6 +1223,27 @@ void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void scatter_grad(const Tensor& index,
+                  const Tensor& updates,
+                  const Tensor& out_grad,
+                  bool overwrite,
+                  Tensor* x_grad,
+                  Tensor* updates_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(phi::vectorize(updates.dims()), 0.0, updates.dtype());
+    auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
+    set_output<T>(tmp_grad, x_grad);
+  }
+
+  if (updates_grad) {
+    Scalar tmp_zero = 0;
+    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+    set_output<T>(tmp_updates_grad, updates_grad);
+  }
+}
+
+template <typename T>
 void batch_norm_grad(const Tensor& x,
                      const Tensor& scale,
                      const Tensor& bias,
@@ -1299,7 +1320,7 @@ void batch_norm_grad(const Tensor& x,
 
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
   auto dtype = x_data.dtype();
 
   switch (data_layout_) {

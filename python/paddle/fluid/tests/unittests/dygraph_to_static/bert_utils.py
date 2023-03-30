@@ -282,7 +282,7 @@ class DataReader:
             sent_ids = [0 for i in range(sent0_len)] + [
                 1 for i in range(sent1_len)
             ]
-            pos_ids = [i for i in range(sent0_len + sent1_len)]
+            pos_ids = list(range(sent0_len + sent1_len))
             label = 1
             yield token_ids, sent_ids, pos_ids, label
 
