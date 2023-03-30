@@ -21,6 +21,7 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/generator.h"
 
 DECLARE_bool(cudnn_deterministic);
 
@@ -84,6 +85,12 @@ void SetCinnRuntimeFlags() {
   VLOG(4) << "Set FLAGS_cinn_cudnn_deterministic to "
           << FLAGS_cudnn_deterministic;
   ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
+}
+
+template <>
+void SetCinnRandomSeed<phi::CPUContext>() {
+  auto seed = phi::DefaultCPUGenerator()->GetCurrentSeed();
+  ::cinn::runtime::RandomSeed::GetOrSet(seed);
 }
 
 }  // namespace details

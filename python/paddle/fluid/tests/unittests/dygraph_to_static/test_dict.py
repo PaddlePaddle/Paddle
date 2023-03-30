@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit import to_static
 
 PLACE = (
@@ -171,7 +171,7 @@ def test_dic_pop_2(x):
 
 class TestDictPop(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.input = np.random.random(3).astype('int32')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()

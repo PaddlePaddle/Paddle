@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import Call
 from paddle.nn import clip
 
@@ -62,7 +62,7 @@ class TestLen(unittest.TestCase):
             else:
                 out = self.func(self.x_data)
 
-            if isinstance(out, fluid.core.VarBase):
+            if isinstance(out, fluid.core.eager.Tensor):
                 out = out.numpy()
             return out
 

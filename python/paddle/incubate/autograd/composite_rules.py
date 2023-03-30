@@ -86,11 +86,6 @@ def composite_batchnorm(
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
     )
-    if use_global_stats is None:
-        use_global_stats = is_test
-        trainable_statistics = False
-    else:
-        trainable_statistics = not use_global_stats
 
     use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != feature_axis)
@@ -139,8 +134,10 @@ def composite_batchnorm(
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
-
-    return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
+    if not use_run_stat:
+        return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
+    else:
+        return y, run_mean_, run_var_, None, None, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
@@ -188,12 +185,13 @@ def gelu_composite(x, approximate):
         0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
     )
     M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
-    one = ones(x.shape, x.dtype)
-    half = full(x.shape, 0.5, x.dtype)
+    full_shape = x.shape if len(x.shape) == 0 else [1]
+    one = ones(full_shape, x.dtype)
+    half = full(full_shape, 0.5, x.dtype)
     if approximate:
         # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
-        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
-        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        kAlpha = full(full_shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full(full_shape, 0.044715, x.dtype)
         tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
         out = x * half * (one + tanh_out)
         return out
@@ -215,7 +213,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=sum_x.shape,
+        shape=x.shape if len(x.shape) == 0 else [1],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
@@ -321,7 +319,9 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     start_dim = start_axis if len(shape_in) != 0 else 0
     end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
-    if len(shape_in) == 0 or start_dim == end_dim:
+    if len(shape_in) == 0:
+        return reshape(x, shape=[1]), None
+    if start_dim == end_dim:
         return reshape(x, shape=shape_in), None
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
@@ -377,7 +377,7 @@ def bernoulli(shape, dtype, p, seed=0):
     return cast(
         greater_equal(
             uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
-            fill_constant(shape, new_dtype, p),
+            fill_constant(shape if len(shape) == 0 else [1], new_dtype, p),
         ),
         dtype,
     )
@@ -394,16 +394,17 @@ def hard_swish_composite(x):
     offset = 3.0
     threshold = 6.0
     scale = 6.0
+    full_shape = x.shape if len(x.shape) == 0 else [1]
     res = (
         minimum(
             maximum(
-                x + full(x.shape, offset, dtype=x.dtype),
-                full(x.shape, 0.0, dtype=x.dtype),
+                x + full(full_shape, offset, dtype=x.dtype),
+                full(full_shape, 0.0, dtype=x.dtype),
             ),
-            full(x.shape, threshold, dtype=x.dtype),
+            full(full_shape, threshold, dtype=x.dtype),
         )
         * x
-        / full(x.shape, scale, dtype=x.dtype)
+        / full(full_shape, scale, dtype=x.dtype)
     )
     return res
 
@@ -439,6 +440,33 @@ def silu_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('meshgrid')
+def meshgrid_composite(inputs):
+    """
+    define composite rule of op meshgrid
+    If the input has N tensors of size S_0, ... S_n-1, then the output will also have N tensors, where
+    each tensor is of shape (S_0, ..., S_n-1).
+    E.g. a1 is Tensor [1,2,3]
+         b1 is Tensor [4,5]
+         r1, r2 = paddle.meshgrid([a1, b1])
+         r1 is Tensor [[1,1], [2,2], [3,3]]
+         r2 is Tensor [[4,5], [4,5], [4,5]]
+    """
+    size = len(inputs)
+    shape = [1] * size
+    for i in range(size):
+        dim = inputs[i].dim()
+        assert dim == 0 or dim == 1
+        if dim == 1:
+            shape[i] = inputs[i].shape[0]
+    outputs = []
+    for i in range(size):
+        view_shape = [1] * size
+        view_shape[i] = shape[i]
+        outputs.append(inputs[i].reshape(view_shape).broadcast_to(shape))
+    return outputs
+
+
 @REGISTER_COMPOSITE('fill_any_like')
 def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
@@ -462,7 +490,7 @@ def squeeze2_composite(x, axis):
     if len(axis) == 0:
         dims = set(range(rank))
     else:
-        dims = set([ax % rank for ax in axis])
+        dims = {ax % rank for ax in axis}
     new_shape = []
     for d, s in enumerate(x.shape):
         if not (s == 1 and (d in dims)):
@@ -477,7 +505,7 @@ def sqrt_composite(x):
     define composite rule of op sqrt
     res = pow(x, 0.5)
     """
-    y = full(x.shape, 0.5, x.dtype)
+    y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
     res = pow(x, y)
     return res
 
@@ -489,7 +517,7 @@ def pow_composite(x, y):
     res = x^y
     """
     if isinstance(y, (int, float)):
-        y = full([1], y, x.dtype)
+        y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
     res = pow(x, y)
     return res
 
@@ -498,7 +526,10 @@ def pow_composite(x, y):
 def relu_composite(x):
     """define composite rule of op relu."""
     # relu(x) = max(x, 0)
-    return maximum(x, zeros_like(x))
+    if len(x.shape) == 0:
+        return maximum(x, full(x.shape, 0.0, x.dtype))
+    else:
+        return maximum(x, full([1], 0.0, x.dtype))
 
 
 @REGISTER_COMPOSITE('unsqueeze2')
@@ -525,5 +556,45 @@ def unsqueeze_composite(x, axis):
 def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
-    y = full(x.shape, -0.5, x.dtype)
+    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     return pow(x, y)
+
+
+@REGISTER_COMPOSITE('group_norm')
+def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
+    """
+    define composite rule of op group_norm.
+    x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
+    mean and var are computed from groups
+    """
+    # original GroupNorm op cannot support NHWC format
+    assert data_layout == 'NCHW'
+    N, C, H, W = x.shape
+
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # when inputs are float16, convert to float32 in computing
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+        scale = cast(scale, "float32")
+        bias = cast(bias, "float32")
+
+    x = reshape(x, (N * groups, -1))
+    mean_ = mean(x, axis=1, keepdim=True)
+    var_ = mean(x * x, axis=1, keepdim=True) - mean_ * mean_
+    var_ = maximum(var_, zeros_like(var_))
+    var_inv = 1 / sqrt(var_ + epsilon)
+    out = (x - mean_) * var_inv
+    out = reshape(out, (N, C, H, W))
+    if scale is not None:
+        out = out * reshape(scale, (-1, 1, 1))
+    if bias is not None:
+        out = out + reshape(bias, (-1, 1, 1))
+    ret_mean_ = reshape(mean_, (N, groups))
+    ret_var_ = reshape(var_, (N, groups))
+    # return output in float16, mean and var in float32
+    if is_amp:
+        out = cast(out, "float16")
+    return out, ret_mean_, ret_var_

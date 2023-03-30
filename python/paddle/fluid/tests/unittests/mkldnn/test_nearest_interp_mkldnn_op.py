@@ -16,7 +16,10 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    skip_check_grad_ci,
+)
 
 
 def nearest_neighbor_interp_mkldnn_np(

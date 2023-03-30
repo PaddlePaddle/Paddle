@@ -19,8 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
+from paddle import nn
 from paddle.nn import Sequential
 from paddle.optimizer import Adam
 from paddle.quantization import ImperativeQuantAware
@@ -262,8 +261,6 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         test(lenet)
 
     def test_quant_aware_training(self):
-        with _test_eager_guard():
-            self.func_quant_aware_training()
         self.func_quant_aware_training()
 
 

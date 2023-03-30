@@ -198,6 +198,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -1060,7 +1061,9 @@ PYBIND11_MODULE(libpaddle, m) {
              if (PyList_Check(obj) || PyTuple_Check(obj)) {
                self.EmplaceBackInputs(
                    std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else if (obj == Py_None) {  // check optional Tensor
+             } else if (obj == Py_None) {
+               // Check optional Tensor, use one un-initialized tensor to
+               // indicate both Tensor and vector<Tensor> inputs
                self.EmplaceBackInput(std::move(paddle::Tensor()));
              } else {
                self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
@@ -2805,6 +2808,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
+  m.def("get_low_precision_op_list", [] {
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
+  });
+
+  m.def("clear_low_precision_op_list",
+        [] { phi::KernelFactory::Instance().ClearLowPrecisionKernelList(); });
+
   m.def("enable_autotune", [] {
     return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
   });
@@ -2820,20 +2840,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
-
-  m.def("get_low_precision_op_list", [] {
-    py::dict op_list;
-    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
-      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
-                         std::to_string(counts.bf16_called_) + "," +
-                         std::to_string(counts.fp32_called_) + "," +
-                         std::to_string(counts.other_called_);
-    }
-    return op_list;
-  });
 
   m.def("autotune_status", [] {
     py::dict res;
@@ -2856,6 +2862,12 @@ All parameter, weight, gradient are variables in Paddle.
   // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  m.def("check_numerics",
+        [](const std::string &op_name, const paddle::Tensor &tensor) {
+          VLOG(4) << "Check tensor whether has nan or inf.";
+          egr::CheckTensorHasNanOrInf(op_name, tensor);
+        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

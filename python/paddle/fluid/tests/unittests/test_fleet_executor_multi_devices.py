@@ -16,14 +16,14 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
-    def run_fleet_executor(self, place, fleet_opt=dict()):
+    def run_fleet_executor(self, place, fleet_opt={}):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):

@@ -28,8 +28,8 @@ import time
 from contextlib import closing
 from distutils.util import strtobool
 
-import paddle.framework as framework
 import paddle.utils.cpp_extension.extension_utils as utils
+from paddle import framework
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -370,7 +370,7 @@ def terminate_local_procs(procs):
         time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
-    exit(1)
+    sys.exit(1)
 
 
 def get_host_name_ip():
@@ -678,7 +678,7 @@ def watch_local_trainers(procs, nranks):
 
         if error:
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
@@ -951,7 +951,7 @@ def get_device_proc_info(args):
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
-            devices_per_proc = [x for x in range(0, args.nproc_per_node)]
+            devices_per_proc = list(range(0, args.nproc_per_node))
     else:
         raise AssertionError(
             "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
@@ -1107,20 +1107,14 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
@@ -1250,20 +1244,14 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])

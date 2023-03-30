@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
@@ -318,5 +318,5 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):
         # only support Linux now
-        exit()
+        sys.exit()
     unittest.main()

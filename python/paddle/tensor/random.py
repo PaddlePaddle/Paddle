@@ -187,7 +187,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     if in_dygraph_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
+        check_variable_and_dtype(
+            x, "x", ["uint16", "float16", "float32", "float64"], "multinomial"
+        )
 
         helper = LayerHelper("multinomial", **locals())
         out = helper.create_variable_for_type_inference(
@@ -660,7 +662,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         check_type(min, 'min', (float, int, Variable), 'uniform/rand')
         check_type(max, 'max', (float, int, Variable), 'uniform/rand')
 
-        inputs = dict()
+        inputs = {}
         attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand'
@@ -807,7 +809,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
                 "high = {1}".format(low, high)
             )
 
-        inputs = dict()
+        inputs = {}
         attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='randint'

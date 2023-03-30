@@ -17,7 +17,7 @@ import unittest
 from hybrid_parallel_mp_model import TestDistMPTraning
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 
 class TestMPFP16(TestDistMPTraning):

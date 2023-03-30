@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define random api
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 __all__ = []

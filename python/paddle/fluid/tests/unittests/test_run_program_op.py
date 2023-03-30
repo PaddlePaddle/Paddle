@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -176,14 +175,9 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if global_var._in_eager_mode_:
-                var = core.eager.Tensor(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
-            else:
-                var = core.VarBase(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
+            var = core.eager.Tensor(
+                value=np_value, name=name, place=place, zero_copy=True
+            )
             var.stop_gradient = stop_gradient
             return var
 
