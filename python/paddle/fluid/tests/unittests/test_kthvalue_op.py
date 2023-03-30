@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTestt, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -59,7 +59,7 @@ class TestKthvalueOp(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 class TestKthvalueOpWithKeepdim(OpTest):
@@ -86,7 +86,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 class TestKthvalueOpKernels(unittest.TestCase):
@@ -237,7 +237,7 @@ class TestKthvalueBP16Op(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, set(['X']), 'Out')
+        self.check_grad_with_place(place, {'X'}, 'Out')
 
 
 if __name__ == '__main__':
