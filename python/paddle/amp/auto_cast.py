@@ -811,10 +811,10 @@ def decorate(
 
 def is_float16_supported(place=None):
     """
-    Determine whether the current place supports float16 in the auto-mixed-precision scenario
+    Determine whether the current place supports float16 in the auto-mixed-precision training.
 
     Args:
-         place (fluid.CPUPlace|fluid.CUDAPlace|None, optional): the device. Default:None.
+        place (Place, optional): Specify the running device, such as paddle.CPUPlace(), Paddle.CUDAPlace() etc.
 
     Examples:
 
@@ -837,10 +837,10 @@ def is_float16_supported(place=None):
 
 def is_bfloat16_supported(place=None):
     """
-    Determine whether the current place supports bfloat16 in the auto-mixed-precision scenario
+    Determine whether the current place supports bfloat16 in the auto-mixed-precision training.
 
     Args:
-         place (fluid.CPUPlace|fluid.CUDAPlace|None, optional): the device. Default:None.
+        place (Place, optional): Specify the running device, such as paddle.CPUPlace(), Paddle.CUDAPlace() etc.
 
     Examples:
 

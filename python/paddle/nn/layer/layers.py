@@ -2169,7 +2169,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
             Layer: self
@@ -2197,15 +2197,18 @@ class Layer:
 
         '''
 
-        assert (
-            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        excluded_layers = (
+            [nn.BatchNorm] if excluded_layers is None else excluded_layers
         )
-        if excluded_layers is None:
-            excluded_layers = [nn.BatchNorm]
-        elif isinstance(excluded_layers, list):
-            excluded_layers.append(nn.BatchNorm)
-        else:
-            excluded_layers = [excluded_layers, nn.BatchNorm]
+
+        assert isinstance(
+            excluded_layers, (type, list)
+        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
+            type(excluded_layers).__name__
+        )
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float32, excluded_layers)
@@ -2217,7 +2220,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float16`` data type.
 
         Parameters:
-           excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+           excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
             Layer: self
@@ -2245,15 +2248,18 @@ class Layer:
 
         '''
 
-        assert (
-            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        excluded_layers = (
+            [nn.BatchNorm] if excluded_layers is None else excluded_layers
         )
-        if excluded_layers is None:
-            excluded_layers = [nn.BatchNorm]
-        elif isinstance(excluded_layers, list):
-            excluded_layers.append(nn.BatchNorm)
-        else:
-            excluded_layers = [excluded_layers, nn.BatchNorm]
+
+        assert isinstance(
+            excluded_layers, (type, list)
+        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
+            type(excluded_layers).__name__
+        )
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float16, excluded_layers)
@@ -2265,7 +2271,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``bfloat16`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list||None, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
 
         Returns:
             Layer: self
@@ -2293,15 +2299,18 @@ class Layer:
 
         '''
 
-        assert (
-            isinstance(excluded_layers, (list, type)) or excluded_layers is None
+        excluded_layers = (
+            [nn.BatchNorm] if excluded_layers is None else excluded_layers
         )
-        if excluded_layers is None:
-            excluded_layers = [nn.BatchNorm]
-        elif isinstance(excluded_layers, list):
-            excluded_layers.append(nn.BatchNorm)
-        else:
-            excluded_layers = [excluded_layers, nn.BatchNorm]
+
+        assert isinstance(
+            excluded_layers, (type, list)
+        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
+            type(excluded_layers).__name__
+        )
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)

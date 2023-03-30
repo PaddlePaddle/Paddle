@@ -38,6 +38,9 @@ class MyModel(paddle.nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+)
 class TestDtypeConvert(unittest.TestCase):
     def setUp(self):
         self.batch_size, self.input_size, self.hidden_size = 128, 128, 256
@@ -57,11 +60,11 @@ class TestDtypeConvert(unittest.TestCase):
             if 'linear' in name:
                 self.assertEqual(para.dtype, corrected_dtype)
             elif 'batchnorm' in name:
-                self.assertEqual(para.dtype, paddle.float32)
+                if excluded_layers is None:
+                    self.assertEqual(para.dtype, paddle.float32)
+                else:
+                    self.assertEqual(para.dtype, paddle.float16)
 
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
-    )
     def test_excluded_layers(self):
         self.verify_trans_dtype(
             test_type='float16',
@@ -74,23 +77,15 @@ class TestDtypeConvert(unittest.TestCase):
             corrected_dtype=paddle.float32,
         )
 
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
-    )
     def test_float16(self):
         self.verify_trans_dtype(
             test_type='float16',
-            excluded_layers=None,
             corrected_dtype=paddle.float16,
         )
 
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
-    )
     def test_bfloat16(self):
         self.verify_trans_dtype(
             test_type='bfloat16',
-            excluded_layers=None,
             corrected_dtype=paddle.bfloat16,
         )
 
@@ -98,18 +93,25 @@ class TestDtypeConvert(unittest.TestCase):
         paddle.set_default_dtype('float16')
         self.verify_trans_dtype(
             test_type='float32',
-            excluded_layers=None,
             corrected_dtype=paddle.float32,
         )
         paddle.set_default_dtype('float32')
+
+    def test_excluded_layers_type_error(self):
+
+        self.assertRaises(
+            AssertionError, self.verify_trans_dtype, excluded_layers=111
+        )
 
 
 class TestSupportedTypeInfo(unittest.TestCase):
     @unittest.skipIf(core.is_compiled_with_cuda(), "Require compiled with CPU.")
     def test_cpu(self):
-        res = paddle.amp.is_float16_supported()
+        place = fluid.CPUPlace()
+        res = paddle.amp.is_float16_supported(place)
         self.assertEqual(res, False)
-        res = paddle.amp.is_bfloat16_supported()
+        place = fluid.CPUPlace()
+        res = paddle.amp.is_bfloat16_supported(place)
         self.assertEqual(res, True)
 
     @unittest.skipIf(
@@ -148,7 +150,7 @@ class TestSupportedTypeInfo(unittest.TestCase):
             core.is_compiled_with_cuda()
             and paddle.device.cuda.get_device_capability()[0] >= 5.3
         ),
-        "run test when gpu is availble and gpu's compute capability is at least 5.3.",
+        "run test when gpu is availble and maximum gpu's compute capability is 5.3.",
     )
     def test_gpu_fp16_unsupported(self):
         res = paddle.amp.is_float16_supported()
@@ -163,7 +165,7 @@ class TestSupportedTypeInfo(unittest.TestCase):
             core.is_compiled_with_cuda()
             and paddle.device.cuda.get_device_capability()[0] >= 8.0
         ),
-        "run test when gpu is availble and gpu's compute capability is at least 8.0.",
+        "run test when gpu is availble and maximum gpu's compute capability is 8.0.",
     )
     def test_gpu_bf16_unsupported(self):
         res = paddle.amp.is_bfloat16_supported()
