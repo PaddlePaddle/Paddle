@@ -252,7 +252,7 @@ class DistPassTestBase(unittest.TestCase):
 
             results = []
             for i in range(num_gpus):
-                dump_file = '{0}/{1}.bin'.format(output_dir, i)
+                dump_file = '{}/{}.bin'.format(output_dir, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
                     "Pass test failed with apply_pass = {}, please view log in {}".format(

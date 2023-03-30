@@ -110,7 +110,7 @@ def create_flatten_bf16_test_classes(parent):
                 user_defined_grad_outputs=[self.dout],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Flatten2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Flatten2_BF16")
     TestFlatten2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestFlatten2BF16OneDNNOp
 
@@ -145,7 +145,7 @@ def create_flatten_bf16_test_classes(parent):
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Flatten_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Flatten_BF16")
     TestFlattenBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestFlattenBF16OneDNNOp
 

@@ -1739,7 +1739,7 @@ class TestBook(LayerTest):
         for i in range(window_size):
             words.append(
                 self._get_data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'
+                    name='word_{}'.format(i), shape=[1], dtype='int64'
                 )
             )
 

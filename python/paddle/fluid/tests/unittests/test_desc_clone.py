@@ -125,10 +125,10 @@ def operator_equal(a, b):
             v1 = sorted(b.__dict__[k].items(), key=lambda x: x[0])
 
             if v0 != v1:
-                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+                raise ValueError("In operator_equal not equal:{}\n".format(k))
 
         elif v != b.__dict__[k]:
-            raise ValueError("In operator_equal not equal:{0}\n".format(k))
+            raise ValueError("In operator_equal not equal:{}\n".format(k))
 
     return True
 
@@ -143,15 +143,15 @@ def block_equal(a, b):
             assert len(a.ops) == len(b.ops)
             for i in range(0, len(a.ops)):
                 if not operator_equal(a.ops[i], b.ops[i]):
-                    raise ValueError("In block_equal not equal:{0}\n".format(k))
+                    raise ValueError("In block_equal not equal:{}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
             for key, value in v.items():
                 if str(value) != str(b.__dict__[k][key]):
-                    raise ValueError("In block_equal not equal:{0}\n".format(k))
+                    raise ValueError("In block_equal not equal:{}\n".format(k))
 
         elif v != b.__dict__[k]:
-            raise ValueError("In block_equal not equal:{0}\n".format(k))
+            raise ValueError("In block_equal not equal:{}\n".format(k))
 
     return True
 
@@ -165,14 +165,14 @@ def program_equal(a, b):
             for i in range(0, len(a.blocks)):
                 if not block_equal(a.blocks[i], b.blocks[i]):
                     raise ValueError(
-                        "In operator_equal not equal:{0}\n".format(k)
+                        "In operator_equal not equal:{}\n".format(k)
                     )
                     return False
             assert len(a.blocks) == len(b.blocks)
         elif k == '_auto_checkpoint_name':
             continue
         elif v != b.__dict__[k]:
-            raise ValueError("In program_equal not equal:{0}\n".format(k))
+            raise ValueError("In program_equal not equal:{}\n".format(k))
 
     return True
 

@@ -47,7 +47,7 @@ def create_test_class(op_type, typename, callback):
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
-    cls_name = "{0}_{1}".format(op_type, typename)
+    cls_name = "{}_{}".format(op_type, typename)
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 

@@ -170,7 +170,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _input(self, inputs_in):
         inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input in".format(self.layer_type)
+            raise "{} layer only takes one input in".format(self.layer_type)
         return inputs[0]
 
     def _multiple_param_attr(self, length, param_attr_in=None):

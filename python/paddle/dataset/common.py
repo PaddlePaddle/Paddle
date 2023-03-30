@@ -91,7 +91,7 @@ def download(url, module_name, md5sum, save_name=None):
             retry += 1
         else:
             raise RuntimeError(
-                "Cannot download {0} within retry limit {1}".format(
+                "Cannot download {} within retry limit {}".format(
                     url, retry_limit
                 )
             )

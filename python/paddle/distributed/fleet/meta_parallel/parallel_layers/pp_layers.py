@@ -800,7 +800,7 @@ class PipelineLayer(nn.Layer):
                     pos_offset = self._start_poss[local_chunk_id]
                 layer_idx = idx + pos_offset
                 layer_save_path = os.path.join(
-                    path, 'layer_{0:0>2d}'.format(layer_idx)
+                    path, 'layer_{:0>2d}'.format(layer_idx)
                 )
                 if self._num_virtual_pipeline_stages > 1:
                     # add virtual pipeline info to the path

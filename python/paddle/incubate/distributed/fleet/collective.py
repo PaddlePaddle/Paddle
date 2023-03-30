@@ -494,8 +494,9 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def raiseOptimizeError(self, strategy_name, optimize_name):
         raise ValueError(
-            "can not use {0} when you set DistStrategy.{1} "
-            "as True".format(optimize_name, strategy_name)
+            "can not use {} when you set DistStrategy.{} as True".format(
+                optimize_name, strategy_name
+            )
         )
 
     def minimize(

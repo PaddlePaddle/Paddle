@@ -193,7 +193,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             file_name = data_urls[0].split('/')[-1]
             zip_path = os.path.join(self.cache_folder, file_name)
 
-        print('Data is downloaded at {0}'.format(zip_path))
+        print('Data is downloaded at {}'.format(zip_path))
         self.cache_unzipping(data_cache_folder, zip_path)
         return data_cache_folder
 
@@ -253,7 +253,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             cnt += len(data)
 
             if (batch_id + 1) % 100 == 0:
-                print("{0} images,".format(batch_id + 1))
+                print("{} images,".format(batch_id + 1))
                 sys.stdout.flush()
             if (batch_id + 1) == iterations:
                 break
@@ -339,7 +339,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
         print(
-            "Start FP32 inference for {0} on {1} images ...".format(
+            "Start FP32 inference for {} on {} images ...".format(
                 model, infer_iterations * batch_size
             )
         )
@@ -368,7 +368,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {0} on {1} images ...".format(
+            "Start INT8 inference for {} on {} images ...".format(
                 model, infer_iterations * batch_size
             )
         )
@@ -382,12 +382,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.".format(
+            "FP32 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.".format(
                 model, batch_size, fp32_throughput, fp32_latency, fp32_acc1
             )
         )
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n".format(
+            "INT8 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.\n".format(
                 model, batch_size, int8_throughput, int8_latency, int8_acc1
             )
         )

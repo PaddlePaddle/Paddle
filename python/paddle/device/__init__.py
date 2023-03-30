@@ -847,7 +847,7 @@ class Stream:
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={0} stream={1:#x}>'.format(
+        return '<paddle.device.Stream device={} stream={:#x}>'.format(
             self.device, self._as_parameter_.value
         )
 

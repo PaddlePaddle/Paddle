@@ -290,14 +290,13 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                    'latency: {3:.4f} ms, fps: {4:.2f}'.format(
+                    'batch {}{}, acc1: {:.4f}, acc5: {:.4f}, latency: {:.4f} ms, fps: {:.2f}'.format(
                         iters,
+                        appx,
                         batch_acc1,
                         batch_acc5,
                         batch_time / batch_size,
                         fps,
-                        appx,
                     )
                 )
 
@@ -318,14 +317,14 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
     def _print_performance(self, title, fps, lat):
         _logger.info(
-            '{0}: avg fps: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, fps, lat
             )
         )
 
     def _print_accuracy(self, title, acc1, acc5):
         _logger.info(
-            '{0}: avg top1 accuracy: {1:.4f}, avg top5 accuracy: {2:.4f}'.format(
+            '{}: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 title, acc1, acc5
             )
         )
@@ -347,7 +346,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc1, int8_acc1):
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
+            'Accepted top1 accuracy drop threshold: {}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
                 threshold
             )
         )

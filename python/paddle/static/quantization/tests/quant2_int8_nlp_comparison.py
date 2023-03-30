@@ -240,8 +240,8 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{4}, acc: {1:.4f}, latency: {2:.4f} ms, predictions per sec: {3:.2f}'.format(
-                        iters, batch_acc, latency, pps, appx
+                    'batch {}{}, acc: {:.4f}, latency: {:.4f} ms, predictions per sec: {:.2f}'.format(
+                        iters, appx, batch_acc, latency, pps
                     )
                 )
 
@@ -261,13 +261,13 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _print_performance(self, title, pps, lat):
         _logger.info(
-            '{0}: avg predictions per sec: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg predictions per sec: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, pps, lat
             )
         )
 
     def _print_accuracy(self, title, acc):
-        _logger.info('{0}: avg accuracy: {1:.6f}'.format(title, acc))
+        _logger.info('{}: avg accuracy: {:.6f}'.format(title, acc))
 
     def _summarize_performance(self, int8_pps, int8_lat, fp32_pps, fp32_lat):
         _logger.info('--- Performance summary ---')
@@ -284,7 +284,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc, int8_acc):
         _logger.info(
-            'Accepted accuracy drop threshold: {0}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
+            'Accepted accuracy drop threshold: {}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
                 threshold
             )
         )

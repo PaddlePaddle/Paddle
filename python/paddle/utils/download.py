@@ -36,10 +36,10 @@ except:
         def update(self, n):
             self.n += n
             if self.total is None:
-                sys.stderr.write("\r{0:.1f} bytes".format(self.n))
+                sys.stderr.write("\r{:.1f} bytes".format(self.n))
             else:
                 sys.stderr.write(
-                    "\r{0:.1f}%".format(100 * self.n / float(self.total))
+                    "\r{:.1f}%".format(100 * self.n / float(self.total))
                 )
             sys.stderr.flush()
 

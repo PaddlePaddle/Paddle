@@ -35,7 +35,7 @@ def get_place(target):
         return fluid.CPUPlace()
     else:
         raise ValueError(
-            "Target `{0}` is not on the support list: `cuda`, `xpu` and `cpu`.".format(
+            "Target `{}` is not on the support list: `cuda`, `xpu` and `cpu`.".format(
                 target
             )
         )
@@ -169,7 +169,7 @@ def train(
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")
 
-        raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
+        raise AssertionError("Cost is too large {:2.2}".format(avg_cost_np[0]))
 
     if is_local:
         train_loop(fluid.default_main_program())
@@ -339,7 +339,7 @@ class W2VTest(unittest.TestCase):
 def inject_test_method(
     target, is_sparse, is_parallel, use_bf16=False, pure_bf16=False
 ):
-    fn_name = "test_{0}_{1}_{2}{3}".format(
+    fn_name = "test_{}_{}_{}{}".format(
         target,
         "sparse" if is_sparse else "dense",
         "parallel" if is_parallel else "normal",
