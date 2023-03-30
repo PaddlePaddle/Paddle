@@ -2040,3 +2040,10 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: sigmoid_cross_entropy_with_logits
+  backward: sigmoid_cross_entropy_with_logits_grad
+  inputs :
+    {x: X, label: Label}
+  outputs :
+    out : Out
