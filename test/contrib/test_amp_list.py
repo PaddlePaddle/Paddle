@@ -29,8 +29,9 @@ class TestAMPList(unittest.TestCase):
         ]
         self.custom_white_list = [
             'lookup_table',
-            'lookup_table_v2',]
-    
+            'lookup_table_v2',
+        ]
+
     def check_if_op_in_list(self, op_list, amp_list):
         for op in op_list:
             self.assertTrue(op in amp_list)
@@ -40,23 +41,34 @@ class TestAMPList(unittest.TestCase):
             self.assertTrue(op not in amp_list)
 
     def test_static(self):
-        amp_list = AutoMixedPrecisionLists(custom_white_list=self.custom_white_list)
+        amp_list = AutoMixedPrecisionLists(
+            custom_white_list=self.custom_white_list
+        )
         self.check_if_op_in_list(self.default_black_list, amp_list.black_list)
         self.check_if_op_in_list(self.custom_white_list, amp_list.white_list)
-        self.check_if_op_not_in_list(self.custom_white_list, amp_list.black_list)
-        self.check_if_op_not_in_list(self.custom_white_list, amp_list.unsupported_list)
+        self.check_if_op_not_in_list(
+            self.custom_white_list, amp_list.black_list
+        )
+        self.check_if_op_not_in_list(
+            self.custom_white_list, amp_list.unsupported_list
+        )
 
     def test_eager(self):
         white_list = paddle.amp.white_list()
         black_list = paddle.amp.black_list()
-        self.check_if_op_in_list(self.default_black_list, black_list["float16"]["O2"])
+        self.check_if_op_in_list(
+            self.default_black_list, black_list["float16"]["O2"]
+        )
         self.check_if_op_not_in_list(['log', 'elementwise_add'], white_list)
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             out1 = paddle.rand([2, 3]) + paddle.rand([2, 3])
-            out2 = paddle.log(out1)
+            out2 = out1.mean()
+            out3 = paddle.log(out2)
         self.check_if_op_not_in_list(['log', 'elementwise_add'], white_list)
         self.assertEqual(out1.dtype, paddle.float16)
-        self.assertEqual(out1.dtype, paddle.float32) 
+        self.assertEqual(out2.dtype, paddle.float32)
+        self.assertEqual(out3.dtype, paddle.float32)
+
 
 if __name__ == "__main__":
     unittest.main()

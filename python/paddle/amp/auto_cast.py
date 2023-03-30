@@ -19,7 +19,8 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-from .amp_lists import white_list, black_list
+
+from .amp_lists import black_list, white_list
 
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
@@ -67,6 +68,10 @@ def _update_list(
     """
     Update black and white list according to users' custom list.
     """
+    if level == 'O0':
+        _white_list = set()
+        _black_list = set()
+        return _white_list, _black_list
     _white_list = copy.copy(white_list()[dtype][level])
     _black_list = copy.copy(black_list()[dtype][level])
     if custom_white_list and custom_black_list:

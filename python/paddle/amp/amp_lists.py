@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
 FP16_WHITE_LIST = {
@@ -32,7 +46,7 @@ FP16_BLACK_LIST = {
     'pow',
     'square',
     'reduce_sum',
-    'mean'
+    'mean',
     'reduce_mean',
     'reduce_prod',
     'cumprod',
@@ -76,17 +90,21 @@ FP16_EXTRA_BLACK_LIST = {
 BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = set()
 
+
 def white_list():
     white_list = {
-    "float16": {"O1": FP16_WHITE_LIST, "O2": FP16_WHITE_LIST},
-    "bfloat16": {"O1": BF16_WHITE_LIST, "O2": BF16_WHITE_LIST}
+        "float16": {"O1": FP16_WHITE_LIST, "O2": FP16_WHITE_LIST},
+        "bfloat16": {"O1": BF16_WHITE_LIST, "O2": BF16_WHITE_LIST},
     }
     return white_list
 
+
 def black_list():
     black_list = {
-        "float16": {"O1": FP16_BLACK_LIST | FP16_EXTRA_BLACK_LIST, "O2": FP16_EXTRA_BLACK_LIST},
-        "bfloat16":{"O1": BF16_BLACK_LIST, "O2": set()}
+        "float16": {
+            "O1": FP16_BLACK_LIST | FP16_EXTRA_BLACK_LIST,
+            "O2": FP16_EXTRA_BLACK_LIST,
+        },
+        "bfloat16": {"O1": BF16_BLACK_LIST, "O2": set()},
     }
     return black_list
-        
