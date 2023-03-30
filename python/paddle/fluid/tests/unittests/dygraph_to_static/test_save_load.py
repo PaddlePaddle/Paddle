@@ -20,7 +20,7 @@ import numpy as np
 from test_fetch_feed import Linear
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.optimizer import AdamOptimizer
 
 np.random.seed(2020)

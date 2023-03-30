@@ -17,7 +17,7 @@ import functools
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 SEED = 1
@@ -114,9 +114,7 @@ def operator_equal(a, b):
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in a.__dict__.items():
-        if isinstance(v, fluid.framework.Program) or isinstance(
-            v, fluid.framework.Block
-        ):
+        if isinstance(v, (fluid.framework.Program, fluid.framework.Block)):
             continue
 
         elif isinstance(v, core.OpDesc):
@@ -137,13 +135,10 @@ def operator_equal(a, b):
 
 def block_equal(a, b):
     for k, v in a.__dict__.items():
-        if (
-            isinstance(v, core.ProgramDesc)
-            or isinstance(v, fluid.framework.Program)
-            or isinstance(v, core.BlockDesc)
+        if isinstance(
+            v, (core.ProgramDesc, fluid.framework.Program, core.BlockDesc)
         ):
             continue
-
         elif k == "ops":
             assert len(a.ops) == len(b.ops)
             for i in range(0, len(a.ops)):

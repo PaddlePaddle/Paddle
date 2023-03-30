@@ -14,8 +14,7 @@
 
 # TODO: define loss functions of neural network
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, fluid, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils import deprecated
 
@@ -1105,7 +1104,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        out, residual = _C_ops.huber_loss(input, label, delta)
+        out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'smooth_l1_loss'

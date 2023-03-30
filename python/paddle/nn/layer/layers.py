@@ -22,8 +22,7 @@ import weakref
 import numpy as np
 
 import paddle
-import paddle.profiler as profiler
-import paddle.utils.deprecated as deprecated
+from paddle import profiler
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -45,6 +44,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -1860,7 +1860,7 @@ class Layer:
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
-            if isinstance(state, dict) or isinstance(state, list):
+            if isinstance(state, (dict, list)):
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
@@ -1896,7 +1896,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+                warnings.warn("Skip loading for {}. ".format(key) + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 
 class TestKronOp(OpTest):

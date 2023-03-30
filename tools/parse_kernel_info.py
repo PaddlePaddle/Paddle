@@ -63,11 +63,11 @@ class KernelRegistryStatistics:
         }
 
     def update(self, supported_dtypes):
-        for dtype in self.num_ops_for_dtypes.keys():
-            if dtype in ["float", "float32"]:
-                self.num_ops_for_dtypes["float32"] += 1
-            elif dtype in supported_dtypes:
+        for dtype in supported_dtypes:
+            if dtype in self.num_ops_for_dtypes.keys():
                 self.num_ops_for_dtypes[dtype] += 1
+            elif dtype == "float":
+                self.num_ops_for_dtypes["float32"] += 1
         self.num_ops_for_dtypes["all"] += 1
 
     def __str__(self):

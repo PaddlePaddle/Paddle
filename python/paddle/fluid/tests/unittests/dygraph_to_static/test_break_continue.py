@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
@@ -204,7 +204,7 @@ def test_optim_break_in_while(x):
 
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
-        self.input = np.zeros((1)).astype('int64')
+        self.input = np.zeros(1).astype('int64')
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()

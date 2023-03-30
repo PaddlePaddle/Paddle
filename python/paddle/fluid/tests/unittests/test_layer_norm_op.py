@@ -20,10 +20,9 @@ import numpy as np
 from eager_op_test import _set_use_system_allocator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 paddle.enable_static()
@@ -473,7 +472,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         )
 
         def assert_equal(x, y):
-            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.1)
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=3e-2)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)

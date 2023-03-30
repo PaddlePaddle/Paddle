@@ -28,7 +28,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def adamw_step(inputs, attributes):
@@ -484,30 +484,22 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     out = linear1(x)
                     out = linear2(out)
 
-                    fc1_w_mon1 = np.zeros((linear1.weight.shape)).astype(
+                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
                         "float32"
                     )
-                    fc1_w_mon2 = np.zeros((linear1.weight.shape)).astype(
+                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
                         "float32"
                     )
-                    fc1_b_mon1 = np.zeros((linear1.bias.shape)).astype(
+                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
-                    fc1_b_mon2 = np.zeros((linear1.bias.shape)).astype(
+                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
-                    fc2_w_mon1 = np.zeros((linear2.weight.shape)).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2 = np.zeros((linear2.weight.shape)).astype(
-                        "float32"
-                    )
-                    fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype(
-                        "float32"
-                    )
-                    fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype(
-                        "float32"
-                    )
+                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
 
                     cost = paddle.nn.functional.square_error_cost(
                         input=out, label=y
