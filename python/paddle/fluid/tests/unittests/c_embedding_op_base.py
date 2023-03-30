@@ -37,9 +37,7 @@ class TestCEmbeddingCPU(OpTest):
     def setUp(self):
         self.init_dtype()
         self.initcase()
-        if core.is_compiled_with_npu():
-            self.__class__.use_npu = True
-        elif core.is_compiled_with_xpu():
+        if core.is_compiled_with_xpu():
             self.__class__.use_xpu = True
         elif core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True
@@ -98,9 +96,6 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
         if core.is_compiled_with_cuda():
             self.dtype = "float64"
             self.ids_dtype = "int64"
-        elif core.is_compiled_with_npu():
-            self.dtype = "float32"
-            self.ids_dtype = "int32"
         elif core.is_compiled_with_xpu():
             self.dtype = "float32"
             self.ids_dtype = "int64"
@@ -129,9 +124,7 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
         self.outputs = {'Out': np_out.reshape((2, 4, 64))}
         self.attrs = {'start_index': self.start_index}
 
-        if core.is_compiled_with_npu():
-            self.__class__.use_npu = True
-        elif core.is_compiled_with_xpu():
+        if core.is_compiled_with_xpu():
             self.__class__.use_xpu = True
         elif core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True

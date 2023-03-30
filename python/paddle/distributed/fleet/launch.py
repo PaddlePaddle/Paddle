@@ -64,7 +64,7 @@ import time
 from argparse import REMAINDER, ArgumentParser
 
 from paddle import framework
-from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
+from paddle.distributed.fleet import cloud_utils, launch_utils
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (
     DeviceMode,
@@ -154,16 +154,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu.",
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
-
-    if framework.core.is_compiled_with_npu():
-        base_group.add_argument(
-            "--npus",
-            type=str,
-            default=None,
-            help="It's for xpu training. For example: "
-            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu.",
-        )
-        base_group.add_argument("--selected_npus", dest="npus")
 
     if framework.core.is_compiled_with_mlu():
         base_group.add_argument(
@@ -417,13 +407,6 @@ def get_cluster_info(args):
             args.ips, device_mode, devices_per_proc, start_port
         )
         logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port,
-        )
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(
@@ -503,8 +486,6 @@ def infer_backend(args):
         return
     if framework.core.is_compiled_with_cuda():
         args.backend = 'nccl'
-    elif framework.core.is_compiled_with_npu():
-        args.backend = 'unknown'
     elif framework.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
     elif framework.core.is_compiled_with_mlu():
@@ -557,8 +538,6 @@ def which_distributed_mode(args):
 
     if framework.core.is_compiled_with_cuda():
         accelerators = framework.core.get_cuda_device_count()
-    elif framework.core.is_compiled_with_npu():
-        accelerators = framework.core.get_npu_device_count()
     elif framework.core.is_compiled_with_xpu():
         accelerators = framework.core.get_xpu_device_count()
     elif framework.core.is_compiled_with_mlu():
@@ -593,7 +572,7 @@ def which_distributed_mode(args):
         ):
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu or npu or mlu. "
+                    "Not found distinct arguments and not compiled with cuda or xpu or mlu. "
                     "But found args.servers not empty, default use ps mode"
                 )
                 return DistributeMode.PS
@@ -601,7 +580,7 @@ def which_distributed_mode(args):
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu or npu or mlu. "
+                "Not found distinct arguments and compiled with cuda or xpu or mlu. "
                 "Default use collective mode"
             )
             return DistributeMode.COLLECTIVE

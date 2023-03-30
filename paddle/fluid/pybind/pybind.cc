@@ -154,12 +154,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_profiler.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -285,14 +279,6 @@ bool IsCompiledWithAscend() {
 
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithNPU() {
-#ifndef PADDLE_WITH_ASCEND_CL
   return false;
 #else
   return true;
@@ -1628,18 +1614,6 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::MLUDeviceContext(place);
 #endif
           })
-      .def_static(
-          "create",
-          [](paddle::platform::NPUPlace &place)
-              -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_ASCEND_CL
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with NPU support."));
-#else
-                return new paddle::platform::NPUDeviceContext(place);
-#endif
-          })
       .def_static("create",
                   [](paddle::platform::CustomPlace &place)
                       -> paddle::platform::DeviceContext * {
@@ -1806,13 +1780,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const platform::XPUPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::NPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2034,7 +2001,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
-  m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
@@ -2370,39 +2336,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() {
-    platform::HCCLCommContext::Instance().ReleaseHCCLComms();
-
-    auto &pool = platform::DeviceContextPool::Instance();
-    auto devices = platform::GetSelectedNPUDevices();
-    for (size_t i = 0; i < devices.size(); ++i) {
-      platform::NPUDeviceGuard guard(devices[i]);
-      pool.Get(platform::NPUPlace(devices[i]))->Wait();
-    }
-    platform::AclInstance::Instance().Finalize();
-  });
-
-  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
-
-  m.def("npu_prof_init", platform::NPUProfilerInit);
-  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStart(c.ptr());
-  });
-  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStop(c.ptr());
-  });
-  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
-  m.def("npu_prof_create_config", []() {
-    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
-  });
-
-  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerDestroyConfig(c.ptr());
-  });
 #endif
 
 #ifdef PADDLE_WITH_IPU

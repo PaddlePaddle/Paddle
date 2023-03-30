@@ -2132,7 +2132,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
+            if core.is_compiled_with_custom_device('npu'):
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'InMemoryDataset'
                 )
@@ -2309,7 +2309,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
+            if core.is_compiled_with_custom_device('npu'):
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'InMemoryDataset'
                 )

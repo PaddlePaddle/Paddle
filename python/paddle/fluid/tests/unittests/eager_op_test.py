@@ -338,10 +338,7 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        if paddle.is_compiled_with_npu():
-            cls._use_system_allocator = _set_use_system_allocator(False)
-        else:
-            cls._use_system_allocator = _set_use_system_allocator(True)
+        cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -375,9 +372,6 @@ class OpTest(unittest.TestCase):
 
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
-
-        def is_npu_op_test():
-            return hasattr(cls, "use_npu") and cls.use_npu
 
         def is_mlu_op_test():
             return hasattr(cls, "use_mlu") and cls.use_mlu
@@ -414,7 +408,6 @@ class OpTest(unittest.TestCase):
                 and not is_xpu_op_test()
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
-                and not is_npu_op_test()
                 and not is_mlu_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
@@ -1970,7 +1963,6 @@ class OpTest(unittest.TestCase):
         # Currently not support ParallelExecutor on XPUPlace.
         if (
             not paddle.is_compiled_with_xpu()
-            and not paddle.is_compiled_with_npu()
             and not paddle.is_compiled_with_mlu()
             and not isinstance(place, core.CustomPlace)
         ):

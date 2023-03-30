@@ -26,23 +26,17 @@ class PlaceType:
     CUDA = 1
     CUDA_PINNED = 2
     XPU = 3  # unsupport for now
-    NPU = 4
-    NPU_PINNED = 5
 
     @staticmethod
     def default_device():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU
         return PlaceType.CPU
 
     @staticmethod
     def default_pinned():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA_PINNED
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU_PINNED
         return PlaceType.CPU
 
 

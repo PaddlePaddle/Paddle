@@ -59,7 +59,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
-    'is_compiled_with_npu',
     'Variable',
     'require_version',
     'device_guard',
@@ -225,7 +224,7 @@ def _in_eager_without_dygraph_check():
     return global_var._in_eager_mode_
 
 
-# FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
+# FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
 
@@ -728,15 +727,6 @@ def _xpu_ids():
     return device_ids
 
 
-def _npu_ids():
-    npus_env = os.getenv("FLAGS_selected_npus")
-    if npus_env:
-        device_ids = [int(s) for s in npus_env.split(",")]
-    else:
-        device_ids = range(core.get_npu_device_count())
-    return device_ids
-
-
 def _custom_device_ids(device_type):
     custom_devices_env = os.getenv("FLAGS_selected_" + device_type + "s")
     if custom_devices_env:
@@ -768,21 +758,6 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
-
-
-def is_compiled_with_npu():
-    """
-    Whether this whl package can be used to run the model on NPU.
-
-    Returns (bool): support npu or not.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            support_npu = fluid.is_compiled_with_npu()
-    """
-    return core.is_compiled_with_npu()
 
 
 def disable_signal_handler():
@@ -941,47 +916,6 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
-
-
-def npu_places(device_ids=None):
-    """
-
-    Note:
-        For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
-
-    This function creates a list of :code:`paddle.NPUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_npus` would be checked first. For example, if
-    :code:`FLAGS_selected_npus=0,1,2`, the returned list would
-    be [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
-    If :code:`FLAGS_selected_npus` is not set, all visible
-    npu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be
-    [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
-
-    Parameters:
-        device_ids (list or tuple of int, optional): list of NPU device ids.
-    Returns:
-        list of paddle.NPUPlace: Created NPU place list.
-    Examples:
-        .. code-block:: python
-
-            # required: npu
-
-            import paddle
-            import paddle.static as static
-
-            paddle.enable_static()
-            npu_places = static.npu_places()
-    """
-    assert core.is_compiled_with_npu(), "Not compiled with NPU"
-    if device_ids is None:
-        device_ids = _npu_ids()
-    elif not isinstance(device_ids, (list, tuple)):
-        device_ids = [device_ids]
-    return [core.NPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
@@ -2641,10 +2575,6 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
-        elif p.is_npu_place():
-            p = core.Place()
-            p.set_place(t._place())
-            place = core.NPUPlace(p.npu_device_id())
         elif p.is_mlu_place():
             p = core.Place()
             p.set_place(t._place())
@@ -7574,9 +7504,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', 'xpu', 'mlu', '', None]:
+    if device not in ['cpu', 'gpu', 'xpu', 'mlu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' 'xpu' 'mlu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'xpu' 'mlu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:
@@ -7705,7 +7635,6 @@ def _get_paddle_place(place):
             core.CPUPlace,
             core.CUDAPinnedPlace,
             core.CUDAPlace,
-            core.NPUPlace,
             core.IPUPlace,
             core.MLUPlace,
             core.CustomPlace,
@@ -7756,19 +7685,6 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.XPUPlace(device_id)
 
-    # NPU
-    avaliable_npu_place = re.match(r'npu:\d+', place)
-    if avaliable_npu_place:
-        if not core.is_compiled_with_npu():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with NPU".format(avaliable_npu_place.group())
-            )
-        place_info_list = place.split(':', 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.NPUPlace(device_id)
-
     # IPU
     avaliable_ipu_place = re.match(r'ipu:\d+', place)
     if avaliable_ipu_place:
@@ -7796,7 +7712,7 @@ def _get_paddle_place(place):
         return core.MLUPlace(device_id)
 
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace, MLUPlace and NPUPlace, but received {}.".format(
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlac and MLUPlace but received {}.".format(
             place
         )
     )

@@ -721,9 +721,6 @@ class ParallelEnv:
             elif core.is_compiled_with_xpu():
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
-            elif core.is_compiled_with_npu():
-                selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-                self._device_id = int(selected_npus[0])
             elif core.is_compiled_with_mlu():
                 selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
                 self._device_id = int(selected_mlus[0])
@@ -892,11 +889,10 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl']
+        backend in ['auto', 'nccl', 'bkcl', 'heter', 'cncl']
         and (
             core.is_compiled_with_cuda()
             or core.is_compiled_with_xpu()
-            or core.is_compiled_with_npu()
             or core.is_compiled_with_mlu()
         )
     ) or backend == 'xccl':
@@ -998,7 +994,6 @@ def init_parallel_env():
         is_cpu_only
         or core.is_compiled_with_cuda()
         or core.is_compiled_with_xpu()
-        or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
         or backend == "xccl"
     ):
@@ -1018,9 +1013,6 @@ def init_parallel_env():
         elif not is_cpu_only and core.is_compiled_with_xpu():
             _check_var_exists('FLAGS_selected_xpus')
             backend = "bkcl" if backend == "auto" else backend
-        elif not is_cpu_only and core.is_compiled_with_npu():
-            _check_var_exists('FLAGS_selected_npus')
-            backend = "hccl" if backend == "auto" else backend
         elif not is_cpu_only and core.is_compiled_with_mlu():
             _check_var_exists('FLAGS_selected_mlus')
             backend = "cncl" if backend == "auto" else backend
@@ -1046,8 +1038,6 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_npu():
-        place = core.NPUPlace(parallel_env.device_id)
     elif core.is_compiled_with_mlu():
         place = core.MLUPlace(parallel_env.device_id)
 
@@ -1146,7 +1136,7 @@ def init_parallel_env():
     strategy.current_endpoint = parallel_env.current_endpoint
     strategy.nrings = parallel_env.nrings
 
-    # init nccl or hccl or bkcl or heter context
+    # init nccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
             core.GLOOParallelContext(strategy, place)
@@ -1162,10 +1152,6 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place)
-        )
-    elif core.is_compiled_with_npu():
-        parallel_helper._set_parallel_ctx(
-            core.HCCLParallelContext(strategy, place)
         )
     elif core.is_compiled_with_mlu():
         parallel_helper._set_parallel_ctx(

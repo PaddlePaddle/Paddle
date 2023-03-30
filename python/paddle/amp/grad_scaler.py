@@ -106,11 +106,10 @@ class AmpScaler:
             tracer._expected_place.is_gpu_place()
             or tracer._expected_place.is_xpu_place()
             or tracer._expected_place.is_mlu_place()
-            or tracer._expected_place.is_npu_place()
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace and CustomPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place
             )
             enable = False
@@ -327,7 +326,7 @@ class AmpScaler:
                     if param.dtype == core.VarDesc.VarType.FP32
                 ]
         self._found_inf = self._temp_found_inf_value_false
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)
 

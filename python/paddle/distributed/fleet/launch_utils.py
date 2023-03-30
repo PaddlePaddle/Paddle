@@ -55,7 +55,6 @@ class DeviceMode:
     GPU = 1
     KUNLUN = 2
     XPU = 2
-    ASCEND_NPU = 3
     UNKNOWN = 3
     MLU = 4
 
@@ -308,11 +307,7 @@ def get_cluster(
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if (
-                device_mode == DeviceMode.GPU
-                or device_mode == DeviceMode.ASCEND_NPU
-                or device_mode == DeviceMode.MLU
-            ):
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.MLU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                     pod.accelerators.extend(devices_per_proc[i])
@@ -555,13 +550,6 @@ def start_local_trainers(
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators]
             )
-
-        elif (
-            len(t.accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU
-        ):
-            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
-                [str(g) for g in t.accelerators]
-            )
         elif len(t.accelerators) > 0 and pod.device_mode == DeviceMode.MLU:
             proc_env["FLAGS_selected_mlus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators]
@@ -773,40 +761,6 @@ def get_xpus(xpus):
     return res_xpus
 
 
-def get_npus(npus):
-    if npus is None:
-        npus_num = framework.core.get_npu_device_count()
-        res_npus = [str(x) for x in range(0, npus_num)]
-    else:
-        npu_visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        if npu_visible_devices is None or npu_visible_devices == "":
-            res_npus = [x.strip() for x in npus.split(',')]
-        else:
-            # change npus into relative values
-            # e.g. ASCEND_VISIBLE_DEVICES=4,5,6,7; args.npus=4,5,6,7;
-            # therefore npus=0,1,2,3
-            npu_visible_devices_list = npu_visible_devices.split(',')
-            for x in npus.split(','):
-                assert x in npu_visible_devices_list, (
-                    "Can't find "
-                    "your npus %s in ASCEND_VISIBLE_DEVICES[%s]."
-                    % (x, npu_visible_devices)
-                )
-            res_npus = [
-                npu_visible_devices_list.index(x.strip())
-                for x in npus.split(',')
-            ]
-            logger.info(
-                "Change selected_npus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "ASCEND_VISIBLE_DEVICES:{}".format(
-                    npus, res_npus, npu_visible_devices_list
-                )
-            )
-
-    return res_npus
-
-
 def get_mlus(mlus):
     if mlus is None:
         mlus_num = framework.core.get_mlu_device_count()
@@ -856,16 +810,6 @@ def get_device_mode(backend):
         ):
             print("launch train in heter mode with XPU device.")
             return DeviceMode.XPU
-        if (
-            framework.core.is_compiled_with_npu()
-            and framework.core.get_npu_device_count() > 0
-        ):
-            print("launch train in heter mode with NPU device.")
-            return DeviceMode.ASCEND_NPU
-
-    if backend == 'hccl' and framework.core.get_npu_device_count() > 0:
-        print("launch train in ascend npu mode!")
-        return DeviceMode.ASCEND_NPU
 
     if backend == 'nccl' and framework.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
@@ -905,19 +849,6 @@ def get_device_proc_info(args):
             devices_per_proc = [gpus[i : i + n] for i in range(0, len(gpus), n)]
         else:
             devices_per_proc = gpus
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        npus = get_npus(args.npus)
-        if args.nproc_per_node is not None:
-            assert (
-                len(npus) % int(args.nproc_per_node)
-            ) == 0, "npus' number:{} mod args.nproc_per_node:{} must == 0".format(
-                len(npus), args.nproc_per_node
-            )
-
-            n = int(len(npus) / int(args.nproc_per_node))
-            devices_per_proc = [npus[i : i + n] for i in range(0, len(npus), n)]
-        else:
-            devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
@@ -2144,12 +2075,6 @@ def check_backend(backend):
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
         )
 
-    if backend == 'hccl' and not framework.core.is_compiled_with_npu():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with npu but you assign 'hccl' as backend."
-        )
-
     if backend == 'cncl' and not framework.core.is_compiled_with_mlu():
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -2176,9 +2101,6 @@ def get_backend_by_compile_flag():
 
     if framework.core.is_compiled_with_xpu():
         return 'bkcl'
-
-    if framework.core.is_compiled_with_npu():
-        return 'hccl'
 
     if framework.core.is_compiled_with_mlu():
         return 'cncl'

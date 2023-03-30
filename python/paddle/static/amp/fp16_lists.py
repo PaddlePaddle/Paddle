@@ -182,7 +182,7 @@ if core.is_compiled_with_xpu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'XPU', core.VarDesc.VarType.FP16
     )
-elif core.is_compiled_with_npu():
+elif core.is_compiled_with_custom_device('npu'):
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'NPU', core.VarDesc.VarType.FP16
     )

@@ -18,8 +18,6 @@ import site
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
-from paddle.fluid import core
-
 
 # refer: https://note.qidong.name/2018/03/setup-warning-strict-prototypes
 # Avoid a gcc warning below:
@@ -40,8 +38,6 @@ paddle_extra_compile_args = [
     '-Wno-parentheses',
     '-DPADDLE_WITH_CUSTOM_KERNEL',
 ]
-if core.is_compiled_with_npu():
-    paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
 
 # include path
 site_packages_path = site.getsitepackages()

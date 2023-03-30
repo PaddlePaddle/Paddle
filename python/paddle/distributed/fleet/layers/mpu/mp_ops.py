@@ -536,7 +536,9 @@ def _parallel_linear(
 
     # NOTE: npu linear function use matmul_v2 but linear use matmul
     linear_function = (
-        _linear if core.is_compiled_with_npu() else paddle.nn.functional.linear
+        _linear
+        if core.is_compiled_with_custom_device('npu')
+        else paddle.nn.functional.linear
     )
     linear_out = linear_function(
         x,
