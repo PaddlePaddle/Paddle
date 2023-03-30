@@ -412,3 +412,13 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+
+cc_library(
+  init_phi
+  SRCS init_phi.cc
+  DEPS init)
+
+cc_test(
+  init_phi_test
+  SRCS init_phi_test.cc
+  DEPS phi_tensor init_phi)

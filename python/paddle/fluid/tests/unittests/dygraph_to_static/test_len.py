@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import Call
 from paddle.nn import clip
 
@@ -35,7 +35,7 @@ def len_with_tensor(x):
 def len_with_lod_tensor_array(x):
     x = fluid.dygraph.to_variable(x)
 
-    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
     arr = paddle.tensor.array_write(x, i=i)
     arr_len = len(arr)
 
@@ -62,7 +62,7 @@ class TestLen(unittest.TestCase):
             else:
                 out = self.func(self.x_data)
 
-            if isinstance(out, fluid.core.VarBase):
+            if isinstance(out, fluid.core.eager.Tensor):
                 out = out.numpy()
             return out
 

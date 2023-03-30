@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -89,7 +89,7 @@ def for_loop_dyfunc(max_len):
 
 def for_loop_dyfunc2(max_len):
     # Test case: a variable is used and created in loop, but used before created
-    x = fluid.layers.fill_constant(shape=[1, 2], dtype="int32", value=1)
+    x = paddle.tensor.fill_constant(shape=[1, 2], dtype="int32", value=1)
 
     for i in range(max_len):
         if i > 1:
@@ -97,7 +97,7 @@ def for_loop_dyfunc2(max_len):
         a = 1
         q, _ = x.shape  # test var x.shape only used but not created in loop
 
-    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s + q)
+    ret = paddle.tensor.fill_constant(shape=[1], dtype="int32", value=s + q)
     return ret
 
 
@@ -189,7 +189,7 @@ def for_loop_class_var(max_len):
     foo = Foo()
 
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    max_len = fluid.layers.fill_constant(
+    max_len = paddle.tensor.fill_constant(
         shape=[1], value=max_len, dtype="int32"
     )
 
@@ -206,8 +206,8 @@ def var_create_in_for_loop(max_len):
 
 
 def nested_for_loop_dyfunc():
-    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
-    three = fluid.layers.fill_constant(shape=[1], value=3, dtype="int32")
+    two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
+    three = paddle.tensor.fill_constant(shape=[1], value=3, dtype="int32")
     for j in range(two):
         for i in range(10):
             a = 2 + j
@@ -238,12 +238,12 @@ class TestNameVisitor(unittest.TestCase):
             for_loop_dufunc_with_listcomp,
         ]
         self.loop_var_names = [
-            set(["i", "x"]),
-            set(["i", "ret", "max_len"]),
-            set(["i", "x"]),
-            set(["j", "array", "res", "x"]),
+            {"i", "x"},
+            {"i", "ret", "max_len"},
+            {"i", "x"},
+            {"j", "array", "res", "x"},
         ]
-        self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
+        self.create_var_names = [set(), {"ret"}, set(), {"res", "x"}]
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
@@ -269,11 +269,11 @@ class TestNameVisitor(unittest.TestCase):
         name_visitor = NameVisitor(gast_root)
 
         self.loop_var_names = [
-            set(["j", "two"]),
-            set(["i", "three", "b"]),
-            set(["i"]),
+            {"j", "two"},
+            {"i", "three", "b"},
+            {"i"},
         ]
-        self.create_var_names = [set(), set(["b"]), set()]
+        self.create_var_names = [set(), {"b"}, set()]
 
         i = 0
         for node in gast.walk(gast_root):
@@ -320,7 +320,7 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            # Set the input of dyfunc to VarBase
+            # Set the input of dyfunc to Tensor
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(tensor_x)

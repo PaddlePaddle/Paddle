@@ -19,7 +19,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
 
@@ -261,7 +261,9 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(x, (paddle.fluid.Variable, paddle.fluid.core.VarBase)):
+        if isinstance(
+            x, (paddle.fluid.Variable, paddle.fluid.core.eager.Tensor)
+        ):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]

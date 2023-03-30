@@ -207,7 +207,7 @@ class ETCDMaster(Master):
         while not self.ctx.status.is_done():
             self.client.put(path, value.encode('latin-1'))
 
-            result = [i for i in self.client.get_prefix(prefix)]
+            result = list(self.client.get_prefix(prefix))
             result = copy.deepcopy(result)
             self.ctx.logger.debug("sync peers {}".format(result))
 

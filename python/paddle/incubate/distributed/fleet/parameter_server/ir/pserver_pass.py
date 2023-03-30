@@ -178,9 +178,7 @@ def _append_pserver_ops(
         merged_vars = []
         merged_ordervars = []
 
-        param_vars = [
-            p for p in config.param_grad_ep_mapping[endpoint]["params"]
-        ]
+        param_vars = list(config.param_grad_ep_mapping[endpoint]["params"])
 
         for var in param_vars:
             name = var.name
@@ -1066,7 +1064,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
 def add_geo_optimizer_pass(program, config):
     endpoint = config.get_ps_endpoint()
-    params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
+    params = list(config.param_grad_ep_mapping[endpoint]["params"])
 
     sparse_tablenames = get_sparse_tablenames(
         config.get_origin_main_program(), False

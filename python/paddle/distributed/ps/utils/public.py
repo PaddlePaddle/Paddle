@@ -194,7 +194,7 @@ class TrainerRuntimeConfig:
                     'communicator_send_queue_size'
                 ] = num_threads
 
-        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+        return {key: str(self.runtime_configs[key]) for key in need_keys}
 
 
 def get_lr_ops(program):
@@ -1698,7 +1698,7 @@ def add_send_op(program, block, _vars):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 

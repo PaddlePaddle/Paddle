@@ -19,12 +19,12 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static.nn as nn
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.static import nn
 
 
 def multiclass_nms(
@@ -218,10 +218,10 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            boxes = fluid.data(
+            boxes = paddle.static.data(
                 name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32'
             )
-            scores = fluid.data(
+            scores = paddle.static.data(
                 name='scores',
                 shape=[-1, self.num_classes, self.num_boxes],
                 dtype='float32',

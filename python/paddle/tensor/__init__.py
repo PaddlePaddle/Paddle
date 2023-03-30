@@ -26,6 +26,7 @@ from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
+from .creation import fill_constant  # noqa: F401
 from .creation import ones  # noqa: F401
 from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
@@ -245,6 +246,8 @@ from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
+from .math import trapezoid  # noqa: F401
+from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
 from .math import sigmoid_  # noqa: F401
 
@@ -530,6 +533,8 @@ tensor_method_func = [  # noqa
     'bucketize',
     'sgn',
     'frexp',
+    'trapezoid',
+    'cumulative_trapezoid',
     'polar',
     'sigmoid',
     'sigmoid_',

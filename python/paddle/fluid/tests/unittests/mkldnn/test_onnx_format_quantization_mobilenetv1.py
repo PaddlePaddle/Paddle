@@ -22,7 +22,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 

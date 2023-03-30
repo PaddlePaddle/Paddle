@@ -20,9 +20,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -121,7 +119,7 @@ class TestPadOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            data = fluid.data(name='data', shape=[4], dtype='float16')
+            data = paddle.static.data(name='data', shape=[4], dtype='float16')
             paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 

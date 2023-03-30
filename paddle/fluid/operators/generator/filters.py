@@ -30,6 +30,32 @@ from type_mapping import (
 )
 
 
+def get_infer_var_type_func(op_name):
+    if op_name == "assign":
+        return f"""
+ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SyncTypeAndDataType("X", "Out");
+  }}
+}};
+"""
+    elif op_name == "merge_selected_rows":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType
+        : public framework::PassInDtypeAndVarTypeToOutput {{
+    protected:
+    std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+        const override {{
+        static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
+        return m;
+    }}
+    }};
+    """
+    else:
+        return None
+
+
 def quote(s):
     return '"{}"'.format(s)
 
@@ -63,6 +89,25 @@ def to_dense_input_type(s, optional=False):
         return dense_input_types_map[s]
     else:
         return dense_optional_input_types_map[s]
+
+
+def assert_dense_or_sr(input_type):
+    return (
+        "ctx.IsSelectedRowsInput"
+        if input_type == "selected_rows"
+        else "ctx.IsDenseTensorInput"
+    )
+
+
+def find_optinal_inputs_name(inputs):
+    optional_inputs_name = [
+        input["fluid_name"] for input in inputs if input["optional"] is True
+    ]
+    return optional_inputs_name
+
+
+def delete_last_underline(op_name):
+    return op_name if op_name[-1] != '_' else op_name[:-1]
 
 
 # ------------------------------ output  ----------------------------------

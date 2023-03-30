@@ -17,24 +17,33 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestScaleOp(OpTest):
     def setUp(self):
+        self.init_shape()
         self.op_type = "scale"
-        self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
+        self.inputs = {'X': np.random.random(self.shape).astype(np.float32)}
         self.attrs = {'scale': -2.3, 'use_mkldnn': True, 'bias': 0.2}
         self.use_mkldnn = True
         self.outputs = {
             'Out': (self.inputs['X'] * self.attrs['scale']) + self.attrs['bias']
         }
 
+    def init_shape(self):
+        self.shape = [10, 10]
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
+
+
+class TestScaleOp_ZeroDim(TestScaleOp):
+    def init_shape(self):
+        self.shape = []
 
 
 class TestScaleOpBiasNotAfterScale(OpTest):
@@ -56,7 +65,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestScaleOpScaleTensor(OpTest):
@@ -71,10 +80,10 @@ class TestScaleOpScaleTensor(OpTest):
         self.outputs = {'Out': self.inputs['X'] * self.scale}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
@@ -92,10 +101,10 @@ class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 if __name__ == "__main__":

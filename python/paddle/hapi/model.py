@@ -24,9 +24,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
@@ -58,10 +58,10 @@ def to_list(value):
 
 def to_numpy(var):
     assert isinstance(
-        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
+        var, (Variable, fluid.core.eager.Tensor)
     ), "not a variable"
-    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
-        return var.numpy()
+    if isinstance(var, fluid.core.eager.Tensor):
+        return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
 
@@ -1514,7 +1514,7 @@ class Model:
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
+                        "Skip loading for {}. ".format(key) + str(err)
                     )
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
@@ -2324,9 +2324,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 

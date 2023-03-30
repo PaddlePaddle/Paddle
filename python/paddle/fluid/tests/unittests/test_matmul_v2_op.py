@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -33,14 +33,14 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
             Y = Y.reshape((Y.size,))
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -414,7 +414,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['X'],
                 'Out',
-                no_grad_set=set(['Y']),
+                no_grad_set={'Y'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -425,7 +425,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['Y'],
                 'Out',
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -464,8 +464,12 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+            input_x = paddle.static.data(
+                name="input_x", shape=[4, 3], dtype="float32"
+            )
+            input_y = paddle.static.data(
+                name="input_y", shape=[3, 4], dtype="float32"
+            )
 
             result = paddle.matmul(input_x, input_y)
 

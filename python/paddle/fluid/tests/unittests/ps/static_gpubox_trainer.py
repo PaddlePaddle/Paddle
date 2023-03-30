@@ -19,7 +19,7 @@ import sys
 import time
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
@@ -51,7 +51,7 @@ def get_dataset(inputs, config):
     return dataset
 
 
-class Main(object):
+class Main:
     def __init__(self):
         self.metrics = {}
         self.input_data = None

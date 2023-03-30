@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestOpNameConflict(unittest.TestCase):
@@ -27,8 +27,8 @@ class TestOpNameConflict(unittest.TestCase):
         startup = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                x = fluid.data(name="x", shape=[1], dtype='float32')
-                y = fluid.data(name="y", shape=[1], dtype='float32')
+                x = paddle.static.data(name="x", shape=[1], dtype='float32')
+                y = paddle.static.data(name="y", shape=[1], dtype='float32')
 
                 m = paddle.log2(x, name="log2")
                 n = paddle.log2(y, name="log2")

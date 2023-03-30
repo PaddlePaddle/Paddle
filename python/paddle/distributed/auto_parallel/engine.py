@@ -23,8 +23,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed.auto_parallel.utils as auto_utils
-import paddle.utils as utils
-from paddle import static
+from paddle import static, utils
 from paddle.distributed import fleet
 from paddle.fluid.executor import _to_name_str
 from paddle.framework import IrGraph
@@ -267,7 +266,7 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+            elif isinstance(item, (Variable, core.eager.Tensor)):
                 spec = InputSpec.from_tensor(item, name)
                 _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
@@ -385,13 +384,13 @@ class Engine:
         if data is not None:
             if isinstance(data, (list, tuple)):
                 if len(data) == 1 and isinstance(data[0], dict):
-                    for name, data in data[0].items():
-                        feeds[name] = data
+                    for name, value in data[0].items():
+                        feeds[name] = value
                 else:
                     raise ValueError("Unsupported data {}".format(data))
             elif isinstance(data, dict):
-                for name, data in data.items():
-                    feeds[name] = data
+                for name, value in data.items():
+                    feeds[name] = value
             else:
                 raise ValueError("Unsupported data {}".format(data))
         if user_feeds is not None:
@@ -1557,6 +1556,19 @@ class Engine:
         cur_dist_attr = auto_utils.get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
+        for name, param in program.state_dict().items():
+            param_array = np.array(param)
+            if name not in state_dict:
+                continue
+            if param_array.dtype != state_dict[name].dtype:
+                self._logger.info(
+                    "cast {}'s dtype from '{}' to '{}'".format(
+                        name,
+                        str(state_dict[name].dtype),
+                        str(param_array.dtype),
+                    )
+                )
+                state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
 
     def save(self, path, training=True):

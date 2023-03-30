@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestConcatAxis0OneDNNOp(OpTest):
@@ -47,12 +47,12 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
+        self.check_grad(['x1'], 'Out', check_dygraph=False)
+        self.check_grad(['x2'], 'Out', check_dygraph=False)
 
     def init_test_data(self):
         self.x0 = np.random.random(self.x0_shape).astype(np.float32)
