@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -160,7 +160,7 @@ class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x1", np.ones((1)).astype('int32') * 2))
+            starts_tensor.append(("x1", np.ones(1).astype('int32') * 2))
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
 
     def config(self):

@@ -122,24 +122,16 @@ inline phi::DataType GetAmpDestDtype(
   auto amp_setting_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
-  if (amp_level == paddle::imperative::AmpLevel::O1) {
-    if (paddle::imperative::AmpOperators::Instance()
-            .GetMutableAllowOps()
-            ->count(op_name)) {
-      dst_type = amp_setting_dtype;
-    } else if (paddle::imperative::AmpOperators::Instance()
-                   .GetMutableBlockOps()
-                   ->count(op_name)) {
-      dst_type = phi::DataType::FLOAT32;
-    } else {
-      dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
-    }
-  } else if (amp_level == paddle::imperative::AmpLevel::O2) {
-    if (paddle::imperative::AmpOperators::Instance()
-            .GetMutableBlockOps()
-            ->count(op_name)) {
-      dst_type = phi::DataType::FLOAT32;
-    }
+
+  if (paddle::imperative::AmpOperators::Instance().GetMutableAllowOps()->count(
+          op_name)) {
+    dst_type = amp_setting_dtype;
+  } else if (paddle::imperative::AmpOperators::Instance()
+                 .GetMutableBlockOps()
+                 ->count(op_name)) {
+    dst_type = phi::DataType::FLOAT32;
+  } else {
+    dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
   }
 
   if (dst_type == amp_setting_dtype &&

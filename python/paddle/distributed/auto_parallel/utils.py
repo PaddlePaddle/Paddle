@@ -1172,7 +1172,7 @@ def _get_split_indices(
             split_indices_list = partition_index
     split_indices_list = list(
         map(
-            lambda x, y: list(set(x) - set([y]) - set([0])),
+            lambda x, y: list(set(x) - {y} - {0}),
             split_indices_list,
             complete_shape,
         )
@@ -1684,7 +1684,7 @@ def get_standalone_cost_data(distributed_programs):
                 shape = info[
                     shape_left_boundary + 1 : shape_right_boundary
                 ].split(",")
-                shape = list(map(lambda x: int(x.strip()), shape))
+                shape = [int(x.strip()) for x in shape]
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
                 if op.type == "c_embedding":

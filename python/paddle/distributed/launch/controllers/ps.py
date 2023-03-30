@@ -47,8 +47,8 @@ class PSController(Controller):
         else:
             host = self.ctx.node.ip
 
-        server_endpoints = [s for s in self.ctx.args.servers.split(",")]
-        trainer_endpoints = [s for s in self.ctx.args.trainers.split(",")]
+        server_endpoints = list(self.ctx.args.servers.split(","))
+        trainer_endpoints = list(self.ctx.args.trainers.split(","))
         servers = [
             s for s in self.ctx.args.servers.split(",") if s.startswith(host)
         ]

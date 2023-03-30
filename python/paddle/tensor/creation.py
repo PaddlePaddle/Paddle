@@ -570,7 +570,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
-            # convert core.Tensor/core.LoDTensor to VarBase first
+            # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
             if in_dygraph_mode():
                 data = core.eager.Tensor(data)
@@ -881,7 +881,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+            if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(int(value))
                 attrs['value'] = int(value)
             else:
@@ -904,6 +904,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
                 'uint8',
                 'int16',
                 'int32',
@@ -2022,12 +2023,12 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
+    # NOTE(Aurelius84): Why we judge core.Tensor?
+    # In case of @to_static, a Tensor can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
+    # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2045,6 +2046,7 @@ def assign(x, output=None):
                     'int32',
                     'int64',
                     'uint8',
+                    'int8',
                     'bool',
                 ],
                 'assign',
@@ -2206,7 +2208,7 @@ def _memcpy(input, place=None, output=None):
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         check_dtype(
             input.dtype,
             'input',
@@ -2218,6 +2220,7 @@ def _memcpy(input, place=None, output=None):
                 'int32',
                 'int64',
                 'uint8',
+                'int8',
                 'bool',
             ],
             'memcpy',
