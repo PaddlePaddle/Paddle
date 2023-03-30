@@ -82,8 +82,15 @@ function(kernel_declare TARGET_LIST)
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
+      # some gpu kernel can run on cuda, but not support jetson, so we add this branch
+      if(WITH_NV_JETSON)
+        string(FIND "${first_registry}" "decode_jpeg" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM OR WITH_NV_JETSON)
+      if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()

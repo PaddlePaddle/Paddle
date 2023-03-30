@@ -115,7 +115,7 @@ class Choice(TunableVariable):
                 default = bool(default)
         else:
             self._is_unknown_type = True
-            self._indices = [i for i in range(len(values))]
+            self._indices = list(range(len(values)))
         self.values = values
 
         if default is not None and default not in values:

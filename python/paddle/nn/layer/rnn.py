@@ -593,7 +593,7 @@ class RNNCellBase(Layer):
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if isinstance(seq, list) or isinstance(seq, tuple):
+            if isinstance(seq, (list, tuple)):
                 if reduce(
                     lambda flag, x: isinstance(x, int) and flag, seq, True
                 ):

@@ -744,8 +744,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 ]
 
                 program_configs[program_id] = {
-                    "pull_sparse": [t_index for t_index in sparse_table_index],
-                    "push_sparse": [t_index for t_index in sparse_table_index],
+                    "pull_sparse": list(sparse_table_index),
+                    "push_sparse": list(sparse_table_index),
                 }
 
                 params_grads = prog_id_to_param_grads[program_id]

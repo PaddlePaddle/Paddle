@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/imperative/type_defs.h"
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
@@ -59,7 +60,9 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<double>,
                                   VarDesc*,
                                   std::vector<VarDesc*>,
-                                  double>;
+                                  double,
+                                  paddle::experimental::Scalar,
+                                  std::vector<paddle::experimental::Scalar>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
