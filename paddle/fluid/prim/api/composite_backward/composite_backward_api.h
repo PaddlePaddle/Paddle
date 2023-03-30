@@ -942,51 +942,25 @@ void layer_norm_grad(const Tensor& x,
     }
   }
 
-  if (bias_grad) {
-    if (bias_ptr) {
-      auto bias_grad_tmp =
-          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-      bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
-      set_output<T>(bias_grad_tmp, bias_grad);
-    } else {
-      bias_grad = nullptr;
-    }
-  }
-
   auto x_sub_mean = x_cast - mean_;          // M,N
   auto tmp = (1.0 / (variance_ + epsilon));  // M,1
   auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
-  if (scale_grad) {
-    if (scale_ptr) {
-      auto scale_grad_tmp =
-          (x_sub_mean * sqrt_var_1 * out_grad_cast)
-              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-      scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
-      set_output<T>(scale_grad_tmp, scale_grad);
-    } else {
-      scale_grad = nullptr;
-    }
-  }
+  auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
 
   if (x_grad) {
     auto out_grad_scale = out_grad_cast;  // M,N
     if (scale_ptr) {
       out_grad_scale = out_grad_cast * scale_cast;  // M,N * 1,N = M,N
     }
-    // out_grad_scale = out_grad_scale.sum(std::vector<int64_t>({1}),
-    // x_cast.dtype(), true);//M,1
-    auto dx_end =
-        (sqrt_var_1 * out_grad_scale);  // M,1 * M,N = M,N. -> M,1 * M,1 = M,1
-    auto d_mean =
-        (dx_end).sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
-    // auto d_mean_0 = dx_end//M,1
 
-    // auto d_mean = d_mean_0;// M,1
+    auto dx_end = sqrt_var_1 * out_grad_scale;
+    auto d_mean =
+        dx_end.sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+
     auto d_std_1 =
         (tmp * x_sub_mean * out_grad_scale)
             .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
-    auto d_std_2 = sqrt_var_1 * x_sub_mean;  // M,1 * M,N = M,N
-    auto d_std = d_std_1 * d_std_2;          // M,1 * M,N = M,N
+    auto d_std = d_std_1 * x_sub_mean_mul_sqrt_var_1;  // M,1 * M,N = M,N
 
     auto d_mean_d_std = (1.0 / shape_2) * (d_mean + d_std);
     auto x_grad_tmp = dx_end - d_mean_d_std;  // M,N - M,1 - M,N
@@ -996,6 +970,29 @@ void layer_norm_grad(const Tensor& x,
       x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
     }
     set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (scale_grad) {
+    if (scale_ptr) {
+      auto scale_grad_tmp =
+          (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
+              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+      set_output<T>(scale_grad_tmp, scale_grad);
+    } else {
+      scale_grad = nullptr;
+    }
+  }
+
+  if (bias_grad) {
+    if (bias_ptr) {
+      auto bias_grad_tmp =
+          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+      set_output<T>(bias_grad_tmp, bias_grad);
+    } else {
+      bias_grad = nullptr;
+    }
   }
 
   // if(x_grad){
