@@ -303,22 +303,10 @@ void DivideGradKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* dx,
                       DenseTensor* dy) {
-    const auto& onednn_engine = dev_ctx.GetEngine();
-  // oneDNN's binary is optimized for broadcasting y into x, so in other case
-  // we have to swap tensors to achieve optimal performance
-  bool swap_x_y = false;
-  auto* non_const_x = &x;
+  const auto& onednn_engine = dev_ctx.GetEngine();
   auto* non_const_y = &y;
-  if (x.numel() < y.numel()) {
-    std::swap(non_const_x, non_const_y);
-    std::swap(dx, dy);
-    swap_x_y = true;
-  }
 
   float scale{1.0};
-  if (swap_x_y) {
-    scale = -1;
-  }
 
   auto tz = phi::vectorize<int64_t>(dout.dims());
 
@@ -384,13 +372,7 @@ void DivideGradKernel(const Context& dev_ctx,
   }
 
   if (dy) {
-    std::unordered_map<int, dnnl::memory> args;
-    std::shared_ptr<dnnl::binary> binary_prim;
-    std::shared_ptr<dnnl::memory> post_op_memory;
-    std::shared_ptr<dnnl::memory> src_0_memory;
-    std::shared_ptr<dnnl::memory> src_1_memory;
-
-    funcs::BinaryOneDNNHandler<T> post_op_binary_handler(
+    funcs::BinaryOneDNNHandler<T> y_handler(
         dnnl::algorithm::binary_div,
         axis,
         onednn_engine,
@@ -403,13 +385,13 @@ void DivideGradKernel(const Context& dev_ctx,
         1.0f,
         false);
 
-    post_op_memory = post_op_binary_handler.AcquireSrcMemory(non_const_y);
+    const auto y_memory = y_handler.AcquireSrcMemory(non_const_y);
 
     dnnl::post_ops po;
     po.append_binary(dnnl::algorithm::binary_div,
-                     post_op_memory->get_desc());
+                     y_memory->get_desc());
 
-    funcs::BinaryOneDNNHandler<T> binary_handler =
+    funcs::BinaryOneDNNHandler<T> handler =
         funcs::BinaryOneDNNHandler<T>(dnnl::algorithm::binary_mul,
                                       axis,
                                       onednn_engine,
@@ -423,26 +405,23 @@ void DivideGradKernel(const Context& dev_ctx,
                                       false,
                                       po);
 
-    src_1_memory = binary_handler.AcquireSecondSrcMemory(&out);
-    src_0_memory = binary_handler.AcquireSrcMemory(&dout);
+    const auto src_dout_memory = handler.AcquireSrcMemory(&dout);
+    const auto src_out_memory = handler.AcquireSecondSrcMemory(&out);
 
     const auto dst_dy_memory = (dout.dims() == dy->dims())
-                                   ? binary_handler.AcquireDstMemory(dy)
-                                   : binary_handler.AcquireDstMemory();
+                                   ? handler.AcquireDstMemory(dy)
+                                   : handler.AcquireDstMemory();
 
-    binary_prim = binary_handler.AcquireForwardPrimitive();
-    args = {{DNNL_ARG_SRC_0, *src_0_memory},
-            {DNNL_ARG_SRC_1, *src_1_memory},
-            {DNNL_ARG_DST, *dst_dy_memory},
-            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
-            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
-
-    args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-                 *post_op_memory});
+    const auto binary_prim = handler.AcquireForwardPrimitive();
+    const std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC_0, *src_dout_memory},
+        {DNNL_ARG_SRC_1, *src_out_memory},
+        {DNNL_ARG_DST, *dst_dy_memory},
+        {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, *y_memory},
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales_mem},
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, scales_mem}};
 
     binary_prim->execute(astream, args);
-    broadcast_src_memory = dst_dy_memory;
-    dst_memory = dst_dy_memory;
     astream.wait();
 
     if (dout.dims() != dy->dims()) {
@@ -455,7 +434,7 @@ void DivideGradKernel(const Context& dev_ctx,
                                    {scale},
                                    false);
     } else {
-      dy->set_mem_desc(dst_memory->get_desc());
+      dy->set_mem_desc(dst_dy_memory->get_desc());
     }
   }
 }
