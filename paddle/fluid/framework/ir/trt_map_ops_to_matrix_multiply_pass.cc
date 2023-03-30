@@ -95,7 +95,6 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   patterns::MulMatmulMatmulV2 mul_matmul_matmul_v2(gpd.mutable_pattern(),
                                                    name_scope);
   mul_matmul_matmul_v2(ops_type);
-
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
