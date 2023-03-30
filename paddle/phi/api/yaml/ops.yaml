@@ -1256,6 +1256,15 @@
     func : renorm
   backward : renorm_grad
 
+- op : reverse
+  args : (Tensor x, IntArray axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  backward : reverse_grad
+
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
   output : Tensor(out)

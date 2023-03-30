@@ -1565,6 +1565,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op: reverse
+  backward: reverse_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : roll
   backward : roll_grad
   inputs :

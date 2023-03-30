@@ -1290,15 +1290,6 @@
   intermediate : xshape
   backward: reshape_grad
 
-- op : reverse
-  args : (Tensor x, IntArray axis)
-  output : Tensor
-  infer_meta :
-    func : ReverseInferMeta
-  kernel :
-    func : reverse
-  backward : reverse_grad
-
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon, float decay, float momentum, bool centered, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_out)

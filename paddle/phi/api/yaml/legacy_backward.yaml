@@ -948,12 +948,6 @@
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : reverse_grad
-  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
-  args : (Tensor out_grad, IntArray axis)
-  output : Tensor(x_grad)
-  invoke : reverse(out_grad, axis)
-
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
   args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor dropout_state_out, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
