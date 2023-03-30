@@ -24,8 +24,13 @@ namespace ir {
 class Graph;
 
 void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  std::unordered_set<std::string> op_list = {
-      "matrix_multiply", "depthwise_conv2d", "conv2d", "conv2d_transpose"};
+  std::unordered_set<std::string> op_list = {"matrix_multiply",
+                                             "matmul_v2",
+                                             "matmul",
+                                             "mul",
+                                             "depthwise_conv2d",
+                                             "conv2d",
+                                             "conv2d_transpose"};
   PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr),
                     true,
                     platform::errors::InvalidArgument(
