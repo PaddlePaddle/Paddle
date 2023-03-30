@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestSequenceReverseBase(OpTest):

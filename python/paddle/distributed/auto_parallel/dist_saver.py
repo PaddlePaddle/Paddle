@@ -170,8 +170,8 @@ class DistributedSaver:
         global_block = dist_main_prog.global_block()
 
         ops = global_block.ops
-        feed_vars_names = list(map(lambda x: x.name, feed_vars))
-        fetch_vars_names = list(map(lambda x: x.name, fetch_vars))
+        feed_vars_names = [x.name for x in feed_vars]
+        fetch_vars_names = [x.name for x in fetch_vars]
 
         last_idx = -1
         for idx, op in enumerate(ops):

@@ -128,9 +128,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
-        sizes = paddle.to_tensor(
-            np.array(list(map(lambda x: int(x.shape[axis]), input)))
-        )
+        sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
@@ -335,7 +333,7 @@ def slice(input, axes, starts, ends):
             ]
         elif isinstance(starts, tmp_tensor_type):
             tensor_t = starts.numpy(False)
-            starts = [ele for ele in tensor_t]
+            starts = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
@@ -345,7 +343,7 @@ def slice(input, axes, starts, ends):
             ]
         elif isinstance(ends, tmp_tensor_type):
             tensor_t = ends.numpy(False)
-            ends = [ele for ele in tensor_t]
+            ends = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
 
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
@@ -2048,12 +2046,10 @@ def split(x, num_or_sections, axis=0, name=None):
                     len(num_or_sections) <= input_shape[dim]
                 ), 'len(num_or_sections) must not be more than input.shape[dim].'
             num = len(num_or_sections)
-            attrs['sections'] = list(
-                map(
-                    lambda ele: -1 if isinstance(ele, Variable) else ele,
-                    num_or_sections,
-                )
-            )
+            attrs['sections'] = [
+                -1 if isinstance(ele, Variable) else ele
+                for ele in num_or_sections
+            ]
             if paddle.utils._contain_var(num_or_sections):
                 inputs['SectionsTensorList'] = _get_SectionsTensorList(
                     num_or_sections
@@ -2907,7 +2903,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         check_variable_and_dtype(
             x,
             'dtype',
-            ['float32', 'float64', 'float16', 'int32', 'int64'],
+            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
             'scatter',
         )
         check_type(overwrite, 'overwrite', bool, 'scatter')
@@ -4758,5 +4754,4 @@ __METHODS = {
     'tolist': tolist,
 }
 for name, func in __METHODS.items():
-    setattr(core.VarBase, name, func)
     setattr(core.eager.Tensor, name, func)

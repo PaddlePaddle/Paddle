@@ -1684,7 +1684,7 @@ def get_standalone_cost_data(distributed_programs):
                 shape = info[
                     shape_left_boundary + 1 : shape_right_boundary
                 ].split(",")
-                shape = list(map(lambda x: int(x.strip()), shape))
+                shape = [int(x.strip()) for x in shape]
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
                 if op.type == "c_embedding":
