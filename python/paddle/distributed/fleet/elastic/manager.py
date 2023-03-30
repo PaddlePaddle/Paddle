@@ -338,7 +338,7 @@ class ElasticManager:
                 ip = endpoints
                 port = start_port
 
-            ports = [x for x in range(port, port + len(devices_per_proc))]
+            ports = list(range(port, port + len(devices_per_proc)))
             endpoint_list.extend(["%s:%d" % (ip, port) for port in ports])
 
         dist_endpoints = ','.join(endpoint_list)
@@ -360,7 +360,7 @@ class ElasticManager:
             self.etcd.cancel_watch(watch)
         self.etcd.delete(self.host_path)
 
-        hosts = [i for i in self.etcd.get_prefix(self.node_prefix)]
+        hosts = list(self.etcd.get_prefix(self.node_prefix))
         if len(hosts) == 0:
             self.etcd.delete_prefix(self.prefix)
 

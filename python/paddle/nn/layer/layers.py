@@ -1069,9 +1069,7 @@ class Layer:
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not (
-            type(tensor) == core.VarBase or type(tensor) == core.eager.Tensor
-        ):
+        elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a Paddle.Tensor, but received {}.".format(
                     type(tensor).__name__
@@ -1524,7 +1522,7 @@ class Layer:
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if isinstance(value, (core.VarBase, core.eager.Tensor)):
+                if isinstance(value, core.eager.Tensor):
                     if _buffers is None:
                         raise ValueError(
                             "super().__init__() should be called first"
@@ -1559,14 +1557,14 @@ class Layer:
                             )
                         elif (
                             _buffers[name] is None
-                            or type(getattr(self, name)) == core.VarBase
+                            or type(getattr(self, name)) == core.eager.Tensor
                         ):
                             _buffers[name] = assign(value)
                         else:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'".format(
+                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
                                 name, type(value).__name__
                             )
                         )
@@ -1896,7 +1894,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+                warnings.warn("Skip loading for {}. ".format(key) + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)

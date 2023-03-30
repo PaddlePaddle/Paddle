@@ -21,13 +21,13 @@ import paddle
 
 
 def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(((-1.0) * x)))
+    return 1.0 / (1.0 + np.exp((-1.0) * x))
 
 
 def YoloBox(x, img_size, attrs):
     (n, c, h, w) = x.shape
     anchors = attrs['anchors']
-    an_num = int((len(anchors) // 2))
+    an_num = int(len(anchors) // 2)
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
     downsample = attrs['downsample_ratio']
@@ -93,11 +93,37 @@ def YoloBox(x, img_size, attrs):
     return (pred_box, pred_score.reshape((n, (-1), class_num)))
 
 
+def yolo_box_wrapper(
+    X,
+    ImgSize,
+    anchors=[],
+    class_num=0,
+    conf_thresh=0.01,
+    downsample_ratio=32,
+    clip_bbox=True,
+    scale_x_y=1.0,
+    iou_aware=False,
+    iou_aware_factor=0.5,
+):
+    return paddle._C_ops.yolo_box(
+        X,
+        ImgSize,
+        anchors,
+        class_num,
+        conf_thresh,
+        downsample_ratio,
+        clip_bbox,
+        scale_x_y,
+        iou_aware,
+        iou_aware_factor,
+    )
+
+
 class TestYoloBoxOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolo_box'
-        self.python_api = paddle.vision.ops.yolo_box
+        self.python_api = yolo_box_wrapper
         x = np.random.random(self.x_shape).astype('float32')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
         self.attrs = {
@@ -119,7 +145,7 @@ class TestYoloBoxOp(OpTest):
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -140,7 +166,7 @@ class TestYoloBoxOp(OpTest):
 class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -161,7 +187,7 @@ class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
 class TestYoloBoxOpScaleXY(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -182,7 +208,7 @@ class TestYoloBoxOpScaleXY(TestYoloBoxOp):
 class TestYoloBoxOpIoUAware(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -269,7 +295,7 @@ class TestYoloBoxStatic(unittest.TestCase):
 class TestYoloBoxOpHW(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5

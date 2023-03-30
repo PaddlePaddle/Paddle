@@ -472,7 +472,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         )
 
         def assert_equal(x, y):
-            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.1)
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=3e-2)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)

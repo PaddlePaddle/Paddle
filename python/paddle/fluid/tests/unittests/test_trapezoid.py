@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrapezoidAPI(unittest.TestCase):
@@ -61,9 +60,6 @@ class TestTrapezoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out, self.output, rtol=1e-05)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.func_dygraph()
         self.setUp()
         self.func_dygraph()
 
@@ -148,7 +144,7 @@ class TestTrapezoidWithOutDxX(TestTrapezoidAPI):
 class TestTrapezoidBroadcast(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.random.random((3, 3, 4)).astype('float32')
-        self.x = np.random.random((3)).astype('float32')
+        self.x = np.random.random(3).astype('float32')
         self.dx = None
         self.axis = 1
 
@@ -267,8 +263,6 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
             out = self.paddle_api(y=y, x=x)
 
     def test_fp16_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 
