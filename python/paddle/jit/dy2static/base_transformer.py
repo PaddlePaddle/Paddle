@@ -205,7 +205,7 @@ class ForNodeVisitor:
 
     In this process, the semantics of for does not change.
 
-    Now only can parse 3 type statements (Here var is VarBase(Tensor) or python variable):
+    Now only can parse 3 type statements (Here var is Tensor(Tensor) or python variable):
         1). for x in range(var[*]|var.numpy()[*])
         2). for x in var|var.numpy()
         3). for i, x enumerate(var|var.numpy())

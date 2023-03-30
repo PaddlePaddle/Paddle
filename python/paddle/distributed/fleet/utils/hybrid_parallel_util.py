@@ -156,7 +156,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
     for v in inputs:
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
                 if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
@@ -167,7 +167,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             logger.warning("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
                 if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
