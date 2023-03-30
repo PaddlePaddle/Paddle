@@ -196,8 +196,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = sqrt(var_tmp3)
-    saved_variance = 1 / sqrt_var
+    sqrt_var = pow(var_tmp3, 0.5)
     out = difference / sqrt_var
 
     if scale is not None:
@@ -208,6 +207,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
         out = out + bias_tile
 
     mean_ = reshape(mean_, [-1])
+    saved_variance = 1 / sqrt_var
     saved_variance = reshape(saved_variance, [-1])
     return out, mean_, saved_variance
 

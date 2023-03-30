@@ -231,9 +231,9 @@ if paddle.is_compiled_with_cuda():
             places,
             'float32',
             [
-                [5e-5, 5e-5, 5e-5],  # cpu thresholds
-                [1e-4, 1e-4, 1e-4],
-            ],  # gpu thresholds
+                [1e-5],  # cpu thresholds for static
+                [1e-5],  # gpu thresholds for static
+            ],
             None,
         ),
         (
@@ -244,10 +244,23 @@ if paddle.is_compiled_with_cuda():
             places,
             'float32',
             [
-                [5e-5, 5e-5, 5e-5],  # cpu thresholds
-                [1e-4, 1e-4, 1e-4],
-            ],  # gpu thresholds
+                [1e-5],  # cpu thresholds for static
+                [1e-5],  # gpu thresholds for static
+            ],
             None,
+        ),
+        (
+            'testbigdata_fp32',
+            (8, 32, 32, 64),
+            1e-5,
+            'NCHW',
+            places,
+            'float32',
+            [
+                [1e-5],  # cpu thresholds for static
+                [1e-5],  # gpu thresholds for static
+            ],  # gpu thresholds
+            [2e-2, 2e-2],  # special grad threshold for scale
         ),
         (
             'test0_fp64',
@@ -258,13 +271,11 @@ if paddle.is_compiled_with_cuda():
             'float64',
             [
                 [
-                    5e-14,
-                    5e-14,
-                    5e-14,
-                ],  # cpu thresholds
-                [1e-13, 1e-13, 1e-13],
-            ],  # gpu thresholds
-            None,
+                    1e-14,
+                ],  # cpu thresholds for static
+                [1e-14],  # gpu thresholds for static
+            ],
+            [1e-13, 1e-13],
         ),
         (
             'test1_fp64',
@@ -275,13 +286,24 @@ if paddle.is_compiled_with_cuda():
             'float64',
             [
                 [
-                    5e-14,
-                    5e-14,
-                    5e-14,
-                ],  # cpu thresholds
-                [1e-13, 1e-13, 1e-13],
+                    1e-14,
+                ],  # cpu thresholds for static
+                [1e-14],  # gpu thresholds for static
+            ],
+            [1e-13, 1e-13],
+        ),
+        (
+            'testbigdata_fp64',
+            (8, 32, 32, 64),
+            1e-5,
+            'NCHW',
+            places,
+            'float64',
+            [
+                [1e-14],  # cpu thresholds
+                [1e-14],
             ],  # gpu thresholds
-            None,
+            [3e-11, 3e-11],  # for X_grad
         ),
     ),
 )
