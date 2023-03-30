@@ -658,7 +658,7 @@ gpuStream_t GraphGpuWrapper::get_local_stream(int gpuid) {
       ->get_local_stream(gpuid);
 }
 
-void GraphGpuWrapper::init_service(const std::vector<int>& dev_ids) {
+void GraphGpuWrapper::init_service() {
   table_proto.set_task_pool_size(64);
   table_proto.set_shard_num(1000);
   table_proto.set_build_sampler_on_cpu(false);
@@ -696,12 +696,12 @@ void GraphGpuWrapper::init_service(const std::vector<int>& dev_ids) {
 
 #ifdef PADDLE_WITH_CUDA
   if (multi_node_) {
-    int dev_size = dev_ids.size();
+    int dev_size = device_id_mapping.size();
     // init inner comm
     inner_comms_.resize(dev_size);
     inter_ncclids_.resize(dev_size);
     platform::dynload::ncclCommInitAll(
-            &(inner_comms_[0]), dev_size, &dev_ids[0]);
+            &(inner_comms_[0]), dev_size, &device_id_mapping[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
     inter_comms_.resize(dev_size);
@@ -723,7 +723,7 @@ void GraphGpuWrapper::init_service(const std::vector<int>& dev_ids) {
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
     for (int i = 0; i < dev_size; ++i) {
-      platform::CUDADeviceGuard guard(dev_ids[i]);
+      platform::CUDADeviceGuard guard(device_id_mapping[i]);
       platform::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
     }
