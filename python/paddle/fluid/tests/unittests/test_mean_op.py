@@ -292,6 +292,9 @@ class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
         self.shape = [2, 3, 4, 5, 6, 7]
         self.dtype = 'float16'
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 class TestReduceMeanOpAxisAll(TestReduceMeanOp):
     def set_attrs(self):

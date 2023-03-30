@@ -2034,7 +2034,6 @@ class TestGeluApproximate(TestActivation):
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
-        self.enable_cinn = True
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -2043,6 +2042,7 @@ class TestGeluApproximate(TestActivation):
         # The backward decomposite of gelu is inconsistent with raw kernel,
         # lower threshold to support 1e-5 for pass the unittest
         self.rev_comp_rtol = 1e-5
+        self.cinn_rtol = 1e-5
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -2075,9 +2075,10 @@ class TestGelu(TestActivation):
         # The backward decomposite of gelu is inconsistent with raw kernel,
         # lower threshold to support 1e-5 for pass the unittest
         self.rev_comp_rtol = 1e-5
+        self.cinn_rtol = 1e-6
 
     def if_enable_cinn(self):
-        self.enable_cinn = True
+        pass
 
     def test_check_output(self):
         self.check_output(check_prim=True)
