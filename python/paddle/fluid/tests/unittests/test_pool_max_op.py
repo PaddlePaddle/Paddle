@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -129,6 +131,19 @@ def max_pool2D_forward_naive(
     return out, mask
 
 
+def max_pool3d_with_index_wapper(
+    x,
+    kernel_size=[],
+    strides=[],
+    paddings=[],
+    global_pooling=False,
+    adaptive=False,
+):
+    return paddle._C_ops.max_pool3d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
+
+
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
         self.init_test_case()
@@ -167,6 +182,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
+        self.python_api = max_pool3d_with_index_wapper
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
@@ -188,6 +204,7 @@ class TestCase1(TestMaxPoolWithIndex_Op):
 class TestCase2(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
+        self.python_api = max_pool3d_with_index_wapper
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
@@ -204,9 +221,25 @@ class TestCase3(TestCase2):
 
 
 # ----------------max_pool2d_with_index----------------
+
+
+def max_pool2d_with_index_wapper(
+    x,
+    kernel_size=[],
+    strides=[],
+    paddings=[],
+    global_pooling=False,
+    adaptive=False,
+):
+    return paddle._C_ops.max_pool2d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
+
+
 class TestCase4(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wapper
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -225,6 +258,7 @@ class TestCase5(TestCase4):
 class TestCase6(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wapper
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]

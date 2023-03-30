@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
@@ -391,9 +391,36 @@ def create_test_cudnn_padding_VALID_class(parent):
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 
 
+def conv2d_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    padding_algorithm="EXPLICIT",
+    dilation=1,
+    groups=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv2d(
+        x,
+        weight,
+        stride,
+        padding,
+        padding_algorithm,
+        dilation,
+        groups,
+        data_format,
+    )
+
+
 class TestConv2DOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
@@ -732,6 +759,7 @@ class TestConv2DOpError(unittest.TestCase):
 class TestConv2DOp_v2(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False

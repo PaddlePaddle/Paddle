@@ -62,7 +62,7 @@ struct XPUContext::Impl {
     std::string cur_thread_name = phi::GetCurrentThreadName();
     VLOG(3) << "XPU Dataloader: current thread at Get Context = "
             << phi::GetCurrentThreadName();
-    bool is_dataloader_thread = (cur_thread_name.substr(0, 10) == "Dataloader");
+    bool is_dataloader_thread = (cur_thread_name != "MainThread");
     return is_dataloader_thread;
   }
 
@@ -146,6 +146,11 @@ struct XPUContext::Impl {
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
+    xpu::Context* ctx_t = GetXdlCtx();
+    if (ctx_t) {
+      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+      xpu_wait(ctx_t->xpu_stream);
+    }
   }
 
   void Init() {
