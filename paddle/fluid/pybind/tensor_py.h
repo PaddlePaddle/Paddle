@@ -284,7 +284,8 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
     auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self.place())) {
+  } else if (platform::is_gpu_place(self.place()) ||
+             platform::is_cuda_pinned_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
     auto p = self.place();
@@ -334,7 +335,8 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self->place())) {
+  } else if (platform::is_gpu_place(self->place()) ||
+             platform::is_cuda_pinned_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
