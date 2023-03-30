@@ -28,7 +28,7 @@
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
-template <typename T, int BlockDim>
+template <typename T, typename AccT, int BlockDim>
 static __global__ void GradComputeDX(const T *dy,
                                      const BatchNormParamType<T> *scale,
                                      const BatchNormParamType<T> *mean,
@@ -41,22 +41,25 @@ static __global__ void GradComputeDX(const T *dy,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  BatchNormParamType<T> mean_val = mean[ncid];
-  BatchNormParamType<T> inv_var_val = variance[ncid];
-  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
+  BatchNormParamType<AccT> mean_val =
+      static_cast<BatchNormParamType<AccT>>(mean[ncid]);
+  BatchNormParamType<AccT> inv_var_val =
+      static_cast<BatchNormParamType<AccT>>(variance[ncid]);
+  typedef cub::BlockReduce<BatchNormParamType<AccT>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage dy_storage;
   __shared__ typename BlockReduce::TempStorage dy_x_sub_mean_storage;
-  __shared__ BatchNormParamType<T> dy_sum_val;
-  __shared__ BatchNormParamType<T> dy_x_sub_mean_sum_val;
-  BatchNormParamType<T> dy_sum = static_cast<BatchNormParamType<T>>(0);
-  BatchNormParamType<T> dy_x_sub_mean_sum =
-      static_cast<BatchNormParamType<T>>(0);
+  __shared__ BatchNormParamType<AccT> dy_sum_val;
+  __shared__ BatchNormParamType<AccT> dy_x_sub_mean_sum_val;
+  BatchNormParamType<AccT> dy_sum = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<AccT> dy_x_sub_mean_sum =
+      static_cast<BatchNormParamType<AccT>>(0);
 
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
-    BatchNormParamType<T> dy_i = static_cast<BatchNormParamType<T>>(dy[i]);
+    BatchNormParamType<AccT> dy_i =
+        static_cast<BatchNormParamType<AccT>>(dy[i]);
     dy_sum += dy_i;
     dy_x_sub_mean_sum +=
-        dy_i * (static_cast<BatchNormParamType<T>>(x[i]) - mean_val);
+        dy_i * (static_cast<BatchNormParamType<AccT>>(x[i]) - mean_val);
   }
   dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
   dy_x_sub_mean_sum =
@@ -67,12 +70,13 @@ static __global__ void GradComputeDX(const T *dy,
   }
   __syncthreads();
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
-    dx[i] =
-        (static_cast<BatchNormParamType<T>>(dy[i]) -
-         dy_sum_val / static_cast<BatchNormParamType<T>>(sample_size) -
-         (static_cast<BatchNormParamType<T>>(x[i]) - mean_val) *
+    AccT tmp =
+        (static_cast<BatchNormParamType<AccT>>(dy[i]) -
+         dy_sum_val / static_cast<BatchNormParamType<AccT>>(sample_size) -
+         (static_cast<BatchNormParamType<AccT>>(x[i]) - mean_val) *
              dy_x_sub_mean_sum_val * inv_var_val * inv_var_val / sample_size) *
-        scale[c] * inv_var_val;
+        static_cast<BatchNormParamType<AccT>>(scale[c]) * inv_var_val;
+    dx[i] = static_cast<T>(dx[i]);
   }
 }
 
@@ -303,6 +307,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                             DenseTensor *d_x,
                             DenseTensor *d_scale,
                             DenseTensor *d_bias) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   const auto *scale_ptr = scale.get_ptr();
 
@@ -480,7 +485,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 #endif
   } else {
     if (d_x) {
-      GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
+      GradComputeDX<T, AccT, block><<<NxC, block, 0, dev_ctx.stream()>>>(
           d_y.data<T>(),
           scale_tmp.data<BatchNormParamType<T>>(),
           saved_mean_data,
@@ -632,14 +637,12 @@ PD_REGISTER_KERNEL(instance_norm_grad,
                    phi::InstanceNormGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::InstanceNormDoubleGradKernel,
                    float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   double) {}
 #endif

@@ -139,7 +139,7 @@ class TestInstanceNormFP32OP(OpTest):
             'momentum': 0.9,
             'data_format': "NCHW",
         }
-        self.outputs = {'Out': self.compute_output(self.value)}
+        self.outputs = {'Y': self.compute_output(self.value)}
 
     def compute_output(self, x):
         mean = np.mean(x, axis=(2, 3), keepdims=True)
@@ -151,12 +151,10 @@ class TestInstanceNormFP32OP(OpTest):
         return x_norm
 
     def test_check_output(self):
-        self.check_output(check_eager=True, atol=self.atol)
+        self.check_output(atol=self.atol)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=self.max_relative_error
-        )
+        self.check_grad(['X'], 'Y', max_relative_error=self.max_relative_error)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -165,7 +163,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.shape = [4, 10, 4, 4]
 
     def init_value(self):
-        self.value = np.random.random(self.shape).asytpe(self.dtype)
+        self.value = np.random.random(self.shape).astype(self.dtype)
 
 
 class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
@@ -175,11 +173,22 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
 
 class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
     def setUp(self):
+        self.op_type = "instance_norm"
+        self.python_api = paddle.nn.functional.instance_norm
+        self.eps = 1e-5
+        self.init_dtype()
+        self.init_shape()
+        self.init_value()
         self.atol = 1e-2
         self.max_relative_error = 1e-2
         self.inputs = {'X': convert_float_to_uint16(self.value)}
+        self.attrs = {
+            'epsilon': self.eps,
+            'momentum': 0.9,
+            'data_format': "NCHW",
+        }
         self.outputs = {
-            'Out': convert_float_to_uint16(self.compute_output(self.value))
+            'Y': convert_float_to_uint16(self.compute_output(self.value))
         }
 
 
