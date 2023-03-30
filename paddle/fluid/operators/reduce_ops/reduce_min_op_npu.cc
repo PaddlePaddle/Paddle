@@ -118,7 +118,7 @@ REGISTER_OP_NPU_KERNEL(
     reduce_min,
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, plat::float16>,
-#ifdef PADDLE_WITH_ASCEND_INT64
+
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, int64_t>,
 #endif
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, int>);

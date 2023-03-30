@@ -152,7 +152,7 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(elementwise_add,
                        ops::ElementwiseAddNPUKernel<float>,
-#ifdef PADDLE_WITH_ASCEND_INT64
+
                        ops::ElementwiseAddNPUKernel<int64_t>,
 #endif
                        ops::ElementwiseAddNPUKernel<plat::float16>);

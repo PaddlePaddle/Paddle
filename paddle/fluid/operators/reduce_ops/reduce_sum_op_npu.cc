@@ -155,7 +155,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     reduce_sum,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, float>,
-#ifdef PADDLE_WITH_ASCEND_INT64
+
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
 #endif
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int>,
@@ -164,7 +164,7 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     reduce_sum_grad,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-#ifdef PADDLE_WITH_ASCEND_INT64
+
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
 #endif
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
