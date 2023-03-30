@@ -796,11 +796,11 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                         ['Filter'],
                         'Output',
                         max_relative_error=0.02,
-                        no_grad_set=set(['Input']),
+                        no_grad_set={'Input'},
                     )
             else:
                 self.check_grad(
-                    ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
     def test_check_grad_no_filter(self):
@@ -813,11 +813,11 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                         ['Input'],
                         'Output',
                         max_relative_error=0.02,
-                        no_grad_set=set(['Filter']),
+                        no_grad_set={'Filter'},
                     )
             else:
                 self.check_grad(
-                    ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
     def test_check_grad(self):
@@ -827,13 +827,13 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                 if core.is_float16_supported(place):
                     self.check_grad_with_place(
                         place,
-                        set(['Input', 'Filter']),
+                        {'Input', 'Filter'},
                         'Output',
                         max_relative_error=0.02,
                     )
             else:
                 self.check_grad(
-                    set(['Input', 'Filter']), 'Output', max_relative_error=0.02
+                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
                 )
 
 
@@ -980,7 +980,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
             ['Filter'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             user_defined_grads=[numeric_grads],
         )
 
@@ -992,7 +992,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             user_defined_grads=[numeric_grads],
         )
 

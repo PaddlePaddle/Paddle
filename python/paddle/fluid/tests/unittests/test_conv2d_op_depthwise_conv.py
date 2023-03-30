@@ -416,14 +416,14 @@ def create_test_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
@@ -464,7 +464,7 @@ def create_test_bf16_class(parent, atol=1e-2):
                 place,
                 ['Input'],
                 'Output',
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -475,7 +475,7 @@ def create_test_bf16_class(parent, atol=1e-2):
                 place,
                 ['Filter'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -503,14 +503,14 @@ def create_test_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_data_format(self):
