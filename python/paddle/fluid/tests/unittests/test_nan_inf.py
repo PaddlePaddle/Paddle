@@ -182,6 +182,13 @@ class TestNanInfCheckResult(unittest.TestCase):
         paddle.fluid.core.check_numerics("check_numerics", x)
         paddle.fluid.core.check_numerics("check_numerics", y)
 
+    def test_check_nan_inf_level_for_dump(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 4}
+        )
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
 
 if __name__ == '__main__':
     unittest.main()
