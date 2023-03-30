@@ -18,7 +18,7 @@ import numpy as np
 from test_fetch_feed import Linear
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -116,9 +116,7 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
-            if isinstance(
-                dy_var, (fluid.core.VarBase, fluid.core.eager.Tensor)
-            ):
+            if isinstance(dy_var, fluid.core.eager.Tensor):
                 np.testing.assert_allclose(
                     dy_var.numpy(), st_var.numpy(), rtol=1e-05
                 )

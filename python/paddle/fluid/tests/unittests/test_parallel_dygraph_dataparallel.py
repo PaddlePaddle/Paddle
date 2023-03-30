@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -102,7 +102,6 @@ def start_local_trainers(
     pod,
     training_script,
     training_script_args,
-    eager_mode=True,
     allocator_strategy="auto_growth",
     log_dir=None,
 ):
@@ -158,7 +157,6 @@ class TestMultipleGpus(unittest.TestCase):
     def run_mnist_2gpu(
         self,
         target_file_name,
-        eager_mode=True,
         allocator_strategy="auto_growth",
     ):
         if (
@@ -176,7 +174,6 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
-            eager_mode=eager_mode,
             allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],

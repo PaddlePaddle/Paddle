@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -118,7 +117,7 @@ def get_info_file_lines(info_file, diff_file):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        exit()
+        sys.exit()
 
     info_file = sys.argv[1]
     diff_file = sys.argv[2]

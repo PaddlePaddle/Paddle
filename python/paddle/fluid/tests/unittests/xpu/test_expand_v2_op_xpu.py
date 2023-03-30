@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -118,7 +118,7 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             expand_shapes_tensor = []
             for index, ele in enumerate(self.expand_shape):
                 expand_shapes_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {

@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -161,13 +161,13 @@ class TestPartialProgramRaiseError(unittest.TestCase):
 
             concrete_program.parameters = params[0]
             # TypeError: Type of self._params should be list or tuple,
-            # but received <class 'paddle.fluid.framework.ParamBase'>.
+            # but received <class 'paddle.fluid.framework.EagerParamBase'>.
             with self.assertRaises(TypeError):
                 partial_program_from(concrete_program)
 
             params[0] = "linear.w.0"
             concrete_program.parameters = params
-            # TypeError: Type of self._params[0] should be framework.ParamBase,
+            # TypeError: Type of self._params[0] should be framework.EagerParamBase,
             # but received <type 'str'>.
             with self.assertRaises(TypeError):
                 partial_program_from(concrete_program)

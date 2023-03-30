@@ -32,7 +32,7 @@ class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
         self._nccl_comm_num = 3
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

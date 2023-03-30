@@ -55,7 +55,6 @@ message HybridConfig {
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
   optional int32 sharding_degree = 4 [ default = 1 ];
-  repeated string order = 5 ;
 }
 
 message AMPConfig {

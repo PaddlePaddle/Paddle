@@ -25,15 +25,15 @@ from copy import copy
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import unique_name
+from paddle import fluid
+from paddle.fluid import core, unique_name
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
+    canonicalize_attrs,
 )
 from paddle.fluid.op import Operator
 
@@ -842,7 +842,7 @@ class OpTest(unittest.TestCase):
                 ), "Duplicable {} should be set as list".format(name)
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[name]:
+                for (name, np_value) in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -970,7 +970,7 @@ class OpTest(unittest.TestCase):
                 self.op_type,
                 dygraph_tensor_inputs,
                 dygraph_tensor_outputs,
-                attrs_outputs,
+                canonicalize_attrs(attrs_outputs, op_proto),
             )
             if not kernel_sig or (
                 len(kernel_sig[0]) == 0

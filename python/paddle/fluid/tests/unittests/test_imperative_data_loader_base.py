@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid.reader import use_pinned_memory
 
 
