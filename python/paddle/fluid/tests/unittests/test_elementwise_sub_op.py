@@ -61,7 +61,6 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseFP16OP(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = sub_wrapper()
         self.dtype = np.float16
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
