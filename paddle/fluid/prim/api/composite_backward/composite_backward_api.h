@@ -994,29 +994,6 @@ void layer_norm_grad(const Tensor& x,
       bias_grad = nullptr;
     }
   }
-
-  // if(x_grad){
-
-  //   auto x_hat =  x_sub_mean * sqrt_var_1;
-  //   auto grad_x_hat = out_grad_cast;
-  //   if(scale_ptr){
-  //     grad_x_hat = grad_x_hat * scale_cast;
-  //   }
-  //   auto a = (grad_x_hat * shape_2).sum(std::vector<int64_t>({1}),
-  //   x_cast.dtype(), true); auto b = grad_x_hat.sum(std::vector<int64_t>({1}),
-  //   x_cast.dtype(), true); auto c = grad_x_hat * x_hat; c =
-  //   c.sum(std::vector<int64_t>({1}), x_cast.dtype(), true); c = x_hat * c;
-  //   auto inner = a - b - c;
-
-  //   auto x_grad_tmp = (sqrt_var_1 / shape_2) * inner;
-  //   x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
-
-  //   if (x.dtype() == phi::DataType::FLOAT16) {
-  //     x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
-  //   }
-  //   set_output<T>(x_grad_tmp, x_grad);
-
-  // }
 }
 
 template <typename T>
