@@ -314,9 +314,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
 
-        free_ports = [
-            x for x in range(start_port, start_port + len(devices_per_proc))
-        ]
+        free_ports = list(range(start_port, start_port + len(devices_per_proc)))
 
     trainer_endpoints = []
     for ip in node_ips:

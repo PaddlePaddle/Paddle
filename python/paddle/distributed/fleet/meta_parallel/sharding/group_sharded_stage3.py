@@ -335,7 +335,7 @@ class GroupShardedStage3(nn.Layer):
             buffer_size[param.dtype] += param._numel() + p_align
 
         # Create unslice_params'grad
-        for param in sorted(list(self._unslice_params), key=lambda p: p.name):
+        for param in sorted(self._unslice_params, key=lambda p: p.name):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],

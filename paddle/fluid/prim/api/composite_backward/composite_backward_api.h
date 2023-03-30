@@ -126,6 +126,26 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
+void tanh_double_grad(const Tensor& out,
+                      const Tensor& grad_out,
+                      const Tensor& grad_x_grad,
+                      Tensor* out_grad,
+                      Tensor* grad_out_grad) {
+  // tanh grad grad : ddout = (1 - out^2) * ddx, dout = - (dout_old * 2 * out *
+  // ddx)
+  auto out_m_grad_x_grad = out * grad_x_grad;
+  if (out_grad) {
+    auto out_grad_tmp = -2 * grad_out * out_m_grad_x_grad;
+    set_output<T>(out_grad_tmp, out_grad);
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = grad_x_grad - out * out_m_grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
   if (grad_x) {
     auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x.dims()));
@@ -1206,6 +1226,27 @@ void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void scatter_grad(const Tensor& index,
+                  const Tensor& updates,
+                  const Tensor& out_grad,
+                  bool overwrite,
+                  Tensor* x_grad,
+                  Tensor* updates_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(phi::vectorize(updates.dims()), 0.0, updates.dtype());
+    auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
+    set_output<T>(tmp_grad, x_grad);
+  }
+
+  if (updates_grad) {
+    Scalar tmp_zero = 0;
+    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+    set_output<T>(tmp_updates_grad, updates_grad);
+  }
+}
+
+template <typename T>
 void batch_norm_grad(const Tensor& x,
                      const Tensor& scale,
                      const Tensor& bias,
@@ -1282,7 +1323,7 @@ void batch_norm_grad(const Tensor& x,
 
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
   auto dtype = x_data.dtype();
 
   switch (data_layout_) {

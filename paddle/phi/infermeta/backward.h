@@ -344,6 +344,11 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  const std::string& data_format,
                                  MetaTensor* x_grad);
 
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy);
+
 void OverlapAddGradInferMeta(const MetaTensor& x,
                              const MetaTensor& out_grad,
                              int hop_length,

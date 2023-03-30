@@ -490,7 +490,7 @@ def interpolate(
         else:
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
-                    out_shape = list(out_shape.numpy())
+                    out_shape = list(out_shape.numpy(False))
                 else:
                     out_shape = list(out_shape)
 
@@ -1598,6 +1598,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             "pad",
         )

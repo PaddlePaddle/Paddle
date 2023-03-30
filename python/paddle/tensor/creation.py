@@ -332,7 +332,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -342,7 +342,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -350,7 +350,10 @@ def linspace(start, stop, num, dtype=None, name=None):
         if isinstance(num, Variable):
             check_dtype(num.dtype, 'num', ['int32'], 'linspace')
         check_dtype(
-            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
+            dtype,
+            'dtype',
+            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            'linspace',
         )
         if (
             (stop_dtype == "float64" or start_dtype == "float64")
@@ -570,7 +573,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
-            # convert core.Tensor/core.LoDTensor to VarBase first
+            # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
             if in_dygraph_mode():
                 data = core.eager.Tensor(data)
@@ -2023,12 +2026,12 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
+    # NOTE(Aurelius84): Why we judge core.Tensor?
+    # In case of @to_static, a Tensor can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
+    # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2208,7 +2211,7 @@ def _memcpy(input, place=None, output=None):
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         check_dtype(
             input.dtype,
             'input',

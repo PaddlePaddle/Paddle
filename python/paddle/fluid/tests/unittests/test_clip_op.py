@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class TestClipOp(OpTest):
@@ -111,7 +111,31 @@ class TestCase5(TestClipOp):
         self.min = 0.5
 
 
-class TestCase6(TestClipOp):
+class TestFP16Case1(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (8, 16, 8)
+        self.max = 0.7
+        self.min = 0.0
+
+
+class TestFP16Case2(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (8, 16)
+        self.max = 1.0
+        self.min = 0.0
+
+
+class TestFP16Case3(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (4, 8, 16)
+        self.max = 0.7
+        self.min = 0.2
+
+
+class TestFP16Case4(TestClipOp):
     def initTestCase(self):
         self.dtype = np.float16
         self.shape = (4, 8, 8)
@@ -119,6 +143,107 @@ class TestCase6(TestClipOp):
         self.min = 0.2
         self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
         self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
+
+
+class TestFP16Case5(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (4, 8, 16)
+        self.max = 0.5
+        self.min = 0.5
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestClipBF16Op(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = paddle.clip
+
+        self.inputs = {}
+        self.initTestCase()
+
+        self.op_type = "clip"
+        self.attrs = {}
+        self.attrs['min'] = self.min
+        self.attrs['max'] = self.max
+        if 'Min' in self.inputs:
+            min_v = self.inputs['Min']
+        else:
+            min_v = self.attrs['min']
+
+        if 'Max' in self.inputs:
+            max_v = self.inputs['Max']
+        else:
+            max_v = self.attrs['max']
+
+        input = np.random.random(self.shape).astype(np.float32)
+        input[np.abs(input - min_v) < self.max_relative_error] = 0.5
+        input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+        self.inputs['X'] = convert_float_to_uint16(input)
+        out = np.clip(input, min_v, max_v)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            paddle.enable_static()
+            self.check_output_with_place(place)
+            paddle.disable_static()
+
+    def test_check_grad_normal(self):
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            paddle.enable_static()
+            self.check_grad_with_place(place, ['X'], 'Out')
+            paddle.disable_static()
+
+    def initTestCase(self):
+        self.shape = (4, 10, 10)
+        self.max = 0.8
+        self.min = 0.3
+        self.inputs['Max'] = np.array([0.8]).astype(np.float32)
+        self.inputs['Min'] = np.array([0.1]).astype(np.float32)
+
+
+class TestBF16Case1(TestClipBF16Op):
+    def initTestCase(self):
+        self.shape = (8, 16, 8)
+        self.max = 0.7
+        self.min = 0.0
+
+
+class TestBF16Case2(TestClipBF16Op):
+    def initTestCase(self):
+        self.shape = (8, 16)
+        self.max = 1.0
+        self.min = 0.0
+
+
+class TestBF16Case3(TestClipBF16Op):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max = 0.7
+        self.min = 0.2
+
+
+class TestBF16Case4(TestClipBF16Op):
+    def initTestCase(self):
+        self.shape = (4, 8, 8)
+        self.max = 0.7
+        self.min = 0.2
+        self.inputs['Max'] = np.array([0.8]).astype(np.float32)
+        self.inputs['Min'] = np.array([0.3]).astype(np.float32)
+
+
+class TestBF16Case5(TestClipBF16Op):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max = 0.5
+        self.min = 0.5
 
 
 class TestClipOpError(unittest.TestCase):

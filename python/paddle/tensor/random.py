@@ -187,7 +187,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     if in_dygraph_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
+        check_variable_and_dtype(
+            x, "x", ["uint16", "float16", "float32", "float64"], "multinomial"
+        )
 
         helper = LayerHelper("multinomial", **locals())
         out = helper.create_variable_for_type_inference(
