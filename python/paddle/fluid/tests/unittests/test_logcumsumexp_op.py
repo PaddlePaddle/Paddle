@@ -345,7 +345,7 @@ class TestLogcumsumexpBF16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            self.verify_output['X'],
+            ['X'],
             'Out',
             user_defined_grads=[
                 np_logcumsumexp_grad(input, 1 / input.size, **self.attrs)
