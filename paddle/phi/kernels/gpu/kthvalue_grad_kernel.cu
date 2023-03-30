@@ -77,3 +77,4 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}

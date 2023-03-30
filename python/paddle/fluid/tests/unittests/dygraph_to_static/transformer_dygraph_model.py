@@ -15,8 +15,8 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Layer, Linear
@@ -255,7 +255,7 @@ class Encoder(Layer):
 
         super().__init__()
 
-        self.encoder_layers = list()
+        self.encoder_layers = []
         for i in range(n_layer):
             self.encoder_layers.append(
                 self.add_sublayer(
@@ -449,7 +449,7 @@ class Decoder(Layer):
     ):
         super().__init__()
 
-        self.decoder_layers = list()
+        self.decoder_layers = []
         for i in range(n_layer):
             self.decoder_layers.append(
                 self.add_sublayer(

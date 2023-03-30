@@ -16,8 +16,7 @@ import os
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 from paddle.fluid import core
 
 

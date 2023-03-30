@@ -22,7 +22,11 @@ import weakref
 from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.fluid.dygraph.base import (
+    _switch_declarative_mode_guard_,
+    param_guard,
+    switch_to_static_graph,
+)
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -81,7 +85,7 @@ class FunctionCache:
         # Caches the converted static functions. {dygraph_func: static_func}
         self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
-        self._code_to_ast_caches = dict()
+        self._code_to_ast_caches = {}
         self._dygraph_to_static = DygraphToStaticAst()
 
     def convert_with_cache(self, func):
@@ -988,8 +992,6 @@ class ConcreteProgram:
         startup_program.random_seed = (
             framework.default_startup_program().random_seed
         )
-
-        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
 
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):

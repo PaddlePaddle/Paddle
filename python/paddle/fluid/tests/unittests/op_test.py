@@ -25,9 +25,8 @@ from copy import copy
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import unique_name
+from paddle import fluid
+from paddle.fluid import core, unique_name
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
@@ -38,6 +37,7 @@ from paddle.fluid.framework import (
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
     _test_eager_guard,
+    canonicalize_attrs,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
@@ -665,7 +665,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -845,7 +845,7 @@ class OpTest(unittest.TestCase):
                 ), "Duplicable {} should be set as list".format(name)
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[name]:
+                for (name, np_value) in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -965,7 +965,7 @@ class OpTest(unittest.TestCase):
                 self.op_type,
                 eager_tensor_inputs,
                 eager_tensor_outputs,
-                attrs_outputs,
+                canonicalize_attrs(attrs_outputs, op_proto),
             )
             if not kernel_sig:
                 return None
@@ -2328,9 +2328,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op():
@@ -2407,21 +2407,7 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                numeric_place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
-                output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place,
-            )
-            for input_to_check in inputs_to_check
-        ]
-
-        if self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -2431,6 +2417,20 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
             )
             self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
 
         analytic_grads = self._get_gradient(
             inputs_to_check,

@@ -131,6 +131,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assign
+  backward : assign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  manual_signature : [assign, assign_grad]
+  get_expected_kernel_type :
+    assign : GetAssignExpectedKernelType
+
 - op : atan
   inputs :
     x : X
@@ -385,6 +395,15 @@
     {x : X, y : Y}
   attrs :
     axis : dim
+  outputs :
+    out : Out
+
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
   outputs :
     out : Out
 
@@ -759,6 +778,10 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
+- op : fused_transpose
+  extra :
+    attrs : [str data_format = "AnyLayout"]
+
 - op : gather
   backward : gather_grad
   extra :
@@ -875,6 +898,13 @@
   outputs :
     out : Out
 
+- op : huber_loss
+  backward : huber_loss_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -960,6 +990,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
@@ -979,6 +1016,12 @@
     {label : X, prior_dist : PriorDist}
   outputs :
     out : Out
+
+- op : lamb_
+  inputs :
+    {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
+  outputs :
+    {param_out : ParamOut, moment1_out : Moment1Out, moment2_out : Moment2Out, beta1_pow_out : Beta1PowOut, beta2_pow_out : Beta2PowOut, master_param_outs : MasterParamOut}
 
 - op : layer_norm
   backward : layer_norm_grad
@@ -1083,6 +1126,10 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1112,6 +1159,13 @@
     {x : X, y : Pivots}
   outputs :
     {pmat : Pmat, l : L, u : U}
+
+- op : margin_cross_entropy
+  backward : margin_cross_entropy_grad
+  inputs:
+    {logits : Logits, label : Label}
+  outputs:
+    {softmax : Softmax, loss : Loss}
 
 - op : masked_select
   inputs :
@@ -1271,6 +1325,14 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : nms
+  inputs :
+    x : Boxes
+  outputs :
+    out : KeepBoxesIdxs
+  attrs :
+    threshold : iou_threshold
+
 - op : nonzero (where_index)
   inputs :
     condition : Condition
@@ -1288,6 +1350,16 @@
     x : Input
   outputs :
     size : Out
+
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
 
 - op : overlap_add
   backward : overlap_add_grad
@@ -1574,6 +1646,16 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : sgd_
+  inputs :
+    {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, master_param_out : MasterParamOut}
+  get_expected_kernel_type :
+    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+  extra :
+    attrs : [bool use_mkldnn=false]
+
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
@@ -1853,8 +1935,7 @@
     perm : axis
   extra :
     outputs : [XShape]
-    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
-              str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
