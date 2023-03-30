@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestExponentialOp1(OpTest):
@@ -402,9 +402,9 @@ class TestExponentialBP16Op(OpTest):
             ['X'],
             'Out',
             in_place=True,
-            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
+            user_defined_grads=[np.zeros([1024, 1024], dtype="float32")],
             user_defined_grad_outputs=[
-                np.random.rand(1024, 1024).astype(self.dtype)
+                np.random.rand(1024, 1024).astype("float32")
             ],
         )
 
