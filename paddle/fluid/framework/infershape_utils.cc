@@ -410,7 +410,7 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var == nullptr) return;
-    if (var->IsType<phi::SelectedRows>()) {
+    if (var->IsType<phi::SelectedRows>() && meta_tensor.is_selected_rows()) {
       auto* selected_rows = var->GetMutable<phi::SelectedRows>();
       auto& input_selected_rows =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();

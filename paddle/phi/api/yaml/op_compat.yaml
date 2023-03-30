@@ -558,6 +558,11 @@
 
 - op : embedding (lookup_table_v2)
   backward : embedding_grad (lookup_table_v2_grad)
+  inputs :
+    {x : Ids, weight : W}
+  outputs :
+    out : Out
+  manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
@@ -888,6 +893,14 @@
     input : X
   outputs :
     out : Out
+
+- op : hsigmoid_loss(hierarchical_sigmoid)
+  backward : hsigmoid_loss_grad(hierarchical_sigmoid_grad)
+  inputs :
+    {x : X, label : Label, w : W, bias : Bias, path : PathTable, code : PathCode}
+  outputs :
+    {out : Out, pre_out : PreOut, w_out : W_Out}
+  manual_signature : [hsigmoid_loss_grad]
 
 - op : imag
   backward : imag_grad

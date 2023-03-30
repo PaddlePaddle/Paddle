@@ -986,7 +986,7 @@ def hsigmoid_loss(
         )
 
     if in_dygraph_mode():
-        out, _, _ = _C_ops.hsigmoid_loss(
+        out = _C_ops.hsigmoid_loss(
             input,
             label,
             weight,

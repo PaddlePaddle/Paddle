@@ -553,17 +553,6 @@
   kernel :
     func : heaviside_grad
 
-- backward_op : hsigmoid_loss_grad
-  forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
-  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes, bool remote_prefetch, bool is_sparse)
-  output : Tensor(x_grad), Tensor(w_grad), Tensor(bias_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param : [x ,w, bias]
-  optional: path, code, bias
-  kernel :
-    func : hsigmoid_loss_grad
-
 - backward_op : huber_loss_grad
   forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
   args : (Tensor residual, Tensor out_grad, float delta)

@@ -680,6 +680,19 @@
     func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : hsigmoid_loss_grad
+  forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes=2, bool remote_prefetch=false, bool is_sparse=false) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes, bool remote_prefetch, bool is_sparse)
+  output : Tensor(x_grad), Tensor(w_grad), Tensor(bias_grad)
+  infer_meta :
+    func : HSigmoidLossGradInferMeta
+    param : [x ,w, label, path, code, bias]
+  optional: path, code, bias
+  no_need_buffer : bias
+  kernel :
+    func : hsigmoid_loss_grad
+    data_type : x
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
