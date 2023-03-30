@@ -240,6 +240,7 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -518,4 +519,8 @@ if(WITH_XPU)
     test_stack_fuse_pass
     SRCS xpu/stack_fuse_pass_test.cc
     DEPS stack_fuse_pass)
+  cc_test(
+    test_delete_cast_op_pass
+    SRCS xpu/delete_cast_op_pass_test.cc
+    DEPS delete_cast_op_pass)
 endif()
