@@ -337,7 +337,7 @@ class PlanSpace:
         vars = program.global_block().vars
 
         processes = reduce(lambda x, y: x * y, process_mesh_topology)
-        global_group = [i for i in range(processes)]
+        global_group = list(range(processes))
         global_process_mesh = None
         pipeline_process_meshes = None
 

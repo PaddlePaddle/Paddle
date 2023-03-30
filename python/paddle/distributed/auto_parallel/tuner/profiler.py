@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import pickle
+import sys
 import time
 import traceback
 
@@ -269,7 +270,7 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile done! avg speed : {} step / s.".format((avg_tput)))
+        print("profile done! avg speed : {} step / s.".format(avg_tput))
 
     except paddle.framework.core.EOFException:
         data_loader._inner_dataloader.reset()
@@ -291,7 +292,7 @@ def profiler(args):
 
         data_loader._inner_dataloader.reset()
         del data_loader._inner_dataloader
-        exit(1)
+        sys.exit(1)
 
     data_loader._inner_dataloader.reset()
     del data_loader._inner_dataloader
