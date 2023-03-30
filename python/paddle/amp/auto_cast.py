@@ -17,7 +17,6 @@ import os
 import warnings
 
 import paddle
-from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import (
     _current_expected_place,
@@ -827,12 +826,7 @@ def is_float16_supported(place=None):
     place_ = (
         _current_expected_place() if place is None else _get_paddle_place(place)
     )
-    if isinstance(place_, (fluid.XPUPlace, fluid.CUDAPlace)):
-        return core.is_float16_supported(place_)
-    elif isinstance(place_, (fluid.NPUPlace, fluid.MLUPlace)):
-        return True
-    else:  # CPU branch
-        return False
+    return core.is_float16_supported(place_)
 
 
 def is_bfloat16_supported(place=None):
@@ -854,9 +848,4 @@ def is_bfloat16_supported(place=None):
     place_ = (
         _current_expected_place() if place is None else _get_paddle_place(place)
     )
-    if isinstance(place_, fluid.CUDAPlace):
-        return core.is_bfloat16_supported(place_)
-    elif isinstance(place_, (fluid.NPUPlace, fluid.MLUPlace, fluid.XPUPlace)):
-        return False
-    else:  # CPU branch
-        return True
+    return core.is_bfloat16_supported(place_)

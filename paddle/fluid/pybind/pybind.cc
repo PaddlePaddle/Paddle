@@ -2112,6 +2112,28 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
+#if defined(PADDLE_WITH_ASCEND)
+  m.def("is_float16_supported",
+        [](const platform::NPUPlace &place) -> bool { return true; });
+  m.def("is_bfloat16_supported", [](const platform::NPUPlace &place) -> bool {
+    // Not support FP16 on NPU now.
+    return false;
+  });
+#endif
+
+#if defined(PADDLE_WITH_MLU)
+  m.def("is_float16_supported",
+        [](const platform::MLUPlace &place) -> bool { return true; });
+  m.def("is_bfloat16_supported", [](const platform::MLUPlace &place) -> bool {
+    // Not support FP16 on MLU now.
+    return false;
+  });
+#endif
+  m.def("is_float16_supported",
+        [](const platform::CPUPlace &place) -> bool { return false; });
+  m.def("is_bfloat16_supported",
+        [](const platform::CPUPlace &place) -> bool { return true; });
+
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
