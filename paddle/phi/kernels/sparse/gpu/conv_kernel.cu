@@ -154,18 +154,22 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-      GatherGemmScatterDriver(dev_ctx,
-                              x.non_zero_elements().data<T>(),
-                              tmp_kernel_ptr,
-                              out_values_ptr,
-                              out_values_ptr,
-                              M,
-                              N,
-                              K,
-                              gather_indices,
-                              scatter_indices,
-                              static_cast<T>(1.0),
-                              static_cast<T>(1.0));
+      const size_t key = autotune::GenKey(M / features_num_range, N, K);
+      GatherGemmScatterDriver<T, IntT, false, false>(
+          dev_ctx,
+          key,
+          x.non_zero_elements().data<T>(),
+          tmp_kernel_ptr,
+          out_values_ptr,
+          out_values_ptr,
+          M,
+          N,
+          K,
+          gather_indices,
+          static_cast<const IntT*>(nullptr),
+          scatter_indices,
+          static_cast<T>(1.0),
+          static_cast<T>(1.0));
     }
   } else {
 #endif
@@ -299,7 +303,4 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
-  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
 }
