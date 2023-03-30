@@ -108,6 +108,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install wheel
     pip install pyyaml
     pip install wget
+    pip install xlsxwriter
     pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
