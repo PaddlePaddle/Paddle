@@ -953,7 +953,7 @@
   backward : logsigmoid_grad
 
 - op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  args : (Tensor x, int64_t[] axis =0,  bool keepdim = false,  bool reduce_all=false)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
