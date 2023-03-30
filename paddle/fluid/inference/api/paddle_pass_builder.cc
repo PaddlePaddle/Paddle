@@ -519,6 +519,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
+      "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
       "delete_op_device_pass",
       "constant_folding_pass",

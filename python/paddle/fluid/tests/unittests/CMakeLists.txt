@@ -856,10 +856,6 @@ if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
 
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
 add_subdirectory(ir)
 
 add_subdirectory(standalone_executor)
@@ -1201,6 +1197,7 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scatter_op
     test_gather_op
     test_cast_op
     test_dropout_op

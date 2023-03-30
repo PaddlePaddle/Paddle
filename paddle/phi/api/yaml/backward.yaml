@@ -1170,6 +1170,17 @@
     func : pow_triple_grad
     data_type : x
 
+- backward_op : prelu_grad
+  forward : prelu(Tensor x, Tensor alpha, str data_format="NCHW", str mode="all") -> Tensor(out)
+  args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
+  output : Tensor(x_grad), Tensor(alpha_grad)
+  infer_meta :
+    func : PreluGradInferMeta
+    param: [x, alpha]
+  kernel :
+    func : prelu_grad
+    data_type : x
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
@@ -1307,6 +1318,7 @@
   kernel :
     func : scatter_grad
   no_need_buffer : updates
+  composite: scatter_grad(index, updates, out_grad, overwrite, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad
   forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
