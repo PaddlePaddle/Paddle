@@ -54,7 +54,7 @@ def is_base_op(op):
     return "kernel" in op and "infer_meta" in op
 
 
-def is_invoke_composite_op(op):
+def is_only_composite_op(op):
     return "composite" in op and "kernel" not in op
 
 

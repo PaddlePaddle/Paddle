@@ -41,7 +41,7 @@ class BaseAPI:
         ) = self.parse_args(self.api, api_item_yaml)
 
         self.is_base_api = True
-        self.is_invoke_composite_api = False
+        self.is_only_composite_api = False
         if 'invoke' in api_item_yaml:
             self.is_base_api = False
             self.invoke = api_item_yaml['invoke']
@@ -52,7 +52,7 @@ class BaseAPI:
                 )
             if 'composite' in api_item_yaml and 'kernel' not in api_item_yaml:
                 self.is_base_api = False
-                self.is_invoke_composite_api = True
+                self.is_only_composite_api = True
                 self.kernel = None
             else:
                 self.kernel = self.parse_kernel(api_item_yaml['kernel'])
@@ -1323,7 +1323,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
                     api_code = ""
                 api_code = api_code + self.gene_base_api_code(inplace_flag=True)
             return api_code
-        elif self.is_invoke_composite_api:
+        elif self.is_only_composite_api:
             # for composite and invoke api, dygraph use prim::xxx_grad method
             return ''
         else:
