@@ -75,9 +75,7 @@ paddlecloud environment.".format(
 
         if started_port is None:
             started_port = 6170
-        ports = [
-            x for x in range(started_port, started_port + len(devices_per_proc))
-        ]
+        ports = list(range(started_port, started_port + len(devices_per_proc)))
         trainer_endpoints = []
         for ip in node_ips:
             trainer_endpoints.append(["%s:%d" % (ip, port) for port in ports])

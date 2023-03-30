@@ -24,7 +24,7 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, _set_use_system_allocator
+from eager_op_test import OpTest, _set_use_system_allocator
 
 import paddle
 from paddle import fluid, nn

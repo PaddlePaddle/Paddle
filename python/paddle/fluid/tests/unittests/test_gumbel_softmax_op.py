@@ -186,7 +186,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         # Construct statistics z for samples and
         # z is approximately N(0,1) for unbiased count
         expected = self.probs * self.shape[0]
-        z = (self.counts - expected) / np.sqrt((expected * (1 - self.probs)))
+        z = (self.counts - expected) / np.sqrt(expected * (1 - self.probs))
         # A (lazy) approximate 99% two-sided test:
         # occurs with prob alpha~>=0.01 if unbiased
         self.assertLess(np.max(np.abs(z)).item(), 2.58)

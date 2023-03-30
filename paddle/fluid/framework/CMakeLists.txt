@@ -362,7 +362,10 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-
+cc_test(
+  op_desc_test
+  SRCS op_desc_test.cc
+  DEPS proto_desc)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -538,7 +541,8 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr)
+       dist_attr
+       scalar)
 
 cc_library(
   op_registry

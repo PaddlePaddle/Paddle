@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
@@ -96,10 +96,10 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out', check_eager=True)
+        self.check_grad({'Input'}, 'Out')
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -318,12 +318,13 @@ class TestStrideSliceOpBool6D(TestStrideSliceOpBool):
 class TestStridedSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
         self.config()
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -359,12 +360,13 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
 class TestStridedSliceOp_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
         self.config()
 
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'EndsTensorList': ends_tensor}
@@ -400,6 +402,7 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
 class TestStridedSliceOp_starts_Tensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -435,6 +438,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
 class TestStridedSliceOp_ends_Tensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -473,9 +477,10 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
 
         self.inputs = {
             'Input': self.input,
@@ -512,6 +517,7 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
 class TestStridedSliceOp_strides_Tensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
+        self.python_api = paddle.strided_slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -551,7 +557,7 @@ class TestStridedSliceAPI(unittest.TestCase):
         minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
         minus_3 = paddle.tensor.fill_constant([1], "int32", -3)
         starts = paddle.static.data(name='starts', shape=[3], dtype='int32')
-        ends = paddle.static.data(name='ends', shape=[3], dtype='int32')
+        ends = paddle.static.data(name='ends', shape=[3], dtype='int64')
         strides = paddle.static.data(name='strides', shape=[3], dtype='int32')
 
         x = paddle.static.data(
@@ -971,6 +977,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 class TestStridedSliceFloat16(unittest.TestCase):
     def init_test_case(self):
         self.op_type = 'strided_slice'
+        self.python_api = paddle.strided_slice
         self.input_shape = [3, 3, 3, 6, 7, 8]
         self.axes = [0, 1, 2, 3, 4, 5]
         self.starts = [1, 0, 0, 0, 1, 2]

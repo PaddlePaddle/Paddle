@@ -388,15 +388,6 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
-- op : cumprod
-  args : (Tensor x,  int dim)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMetaCheckAxis
-  kernel :
-    func : cumprod
-  backward : cumprod_grad
-
 - op : cumsum
   args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
@@ -834,16 +825,6 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
 
-- op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction)
-  output : Tensor(out)
-  infer_meta :
-    func : KLDivInferMeta
-  kernel :
-    func : kldiv_loss
-    data_type : x
-  backward : kldiv_loss_grad
-
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
   output : Tensor(out), Tensor(mean), Tensor(variance)
@@ -1050,14 +1031,6 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-
-- op : merge_selected_rows
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : merge_selected_rows {selected_rows -> selected_rows}
 
 - op : merged_adam_
   args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1, Scalar beta2, Scalar epsilon, bool multi_precision, bool use_global_beta_pow)
@@ -1417,15 +1390,6 @@
   data_transform:
     skip_transform : input
 
-- op : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize, int ignore_index)
-  output : Tensor
-  infer_meta :
-    func : SigmoidCrossEntropyWithLogitsInferMeta
-  kernel :
-    func : sigmoid_cross_entropy_with_logits
-  backward : sigmoid_cross_entropy_with_logits_grad
-
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor
@@ -1676,17 +1640,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : update_loss_scaling_
-  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)
-  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
-  infer_meta :
-    func : UpdateLossScalingInferMeta
-    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
-  kernel :
-    func : update_loss_scaling
-    data_type : x
-  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
 - op : warpctc
   args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times)
