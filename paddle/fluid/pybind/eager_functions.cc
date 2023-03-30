@@ -587,13 +587,15 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         size_t idx = ctx.OutputRangeAt(i).first;
         paddle::Tensor* out_tensor = ctx.MutableOutputAt(idx);
         if (!out_tensor->initialized()) {
-          PADDLE_ENFORCE(outputs.at(idx).find(paddle::kOptionalSuffix) !=
-                             std::string::npos,
-                         "Custom operator's %d-th output is not initialized. "
-                         "Please check your implementation again. If you are "
-                         "using inplace optional output, then you must use "
-                         "`paddle::Optional` to decorate this output",
-                         idx);
+          PADDLE_ENFORCE(
+              outputs.at(idx).find(paddle::kOptionalSuffix) !=
+                  std::string::npos,
+              phi::errors::InvalidArgument(
+                  "Custom operator's %d-th output is not initialized. "
+                  "Please check your implementation again. If you are "
+                  "using inplace optional output, then you must use "
+                  "`paddle::Optional` to decorate this output",
+                  idx));
           // We can also consider using `autograd_meta` to tolerant nullptr.
           out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
         }

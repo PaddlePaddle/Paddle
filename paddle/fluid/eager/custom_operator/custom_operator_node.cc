@@ -248,11 +248,12 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
       if (!out_tensor->initialized()) {
         PADDLE_ENFORCE(grad_outputs_names.at(idx).find(
                            paddle::kOptionalSuffix) != std::string::npos,
-                       "Custom operator's %d-th output is not initialized. "
-                       "Please check your implementation again. If you are "
-                       "using inplace optional outputs, then you must use "
-                       "`paddle::Optional` to decorate this output",
-                       idx);
+                       phi::errors::InvalidArgument(
+                           "Custom operator's %d-th output is not initialized. "
+                           "Please check your implementation again. If you are "
+                           "using inplace optional outputs, then you must use "
+                           "`paddle::Optional` to decorate this output",
+                           idx));
         // We can also consider using `autograd_meta` to tolerant nullptr.
         out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
       }

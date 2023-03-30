@@ -148,7 +148,7 @@ static void RunKernelFunc(
     VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {  // inputs vector<Tensor>
       std::vector<paddle::Tensor> custom_vec_in;
-      if (ctx.HasInputs(in_name)) {  // general inputs
+      if (ctx.HasInputs(in_name)) {  // general vector<Tensor> inputs
         // return const std::vector<const phi::DenseTensor*>
         auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NE(vec_x.empty(),
@@ -174,7 +174,7 @@ static void RunKernelFunc(
           custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
           custom_vec_in.emplace_back(custom_t);
         }
-      } else {  // optional inputs.
+      } else {  // optional vector<Tensor> inputs.
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
             phi::errors::NotFound("Your custom operator's KernelFunc cannot "
@@ -191,7 +191,7 @@ static void RunKernelFunc(
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
     } else {                        // inputs Tensor
-      if (ctx.HasInput(in_name)) {  // general inputs
+      if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NOT_NULL(x,
                                 platform::errors::NotFound(
@@ -215,7 +215,7 @@ static void RunKernelFunc(
 #else
         kernel_ctx.EmplaceBackInput(std::move(custom_in));
 #endif
-      } else {  // optional inputs
+      } else {  // optional Tensor inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
             phi::errors::NotFound("Your custom operator's KernelFunc cannot "
@@ -267,36 +267,34 @@ static void RunKernelFunc(
   std::vector<phi::DenseTensor*> true_out_ptrs;
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
-
-    // handle inplace optional outputs = None case
-    if (!ctx.HasOutput(out_name)) {
-      PADDLE_ENFORCE(
-          detail::IsOptionalVar(out_name) && !inplace_map.empty(),
-          phi::errors::InvalidArgument(
-              "Custom operator couldn't find custom output name for %s. If you "
-              "are using inplace optional inputs & outputs, please check your "
-              "InplaceMap and `Outputs` again and make sure %s is wrapped by "
-              "`paddle::Optional`",
-              out_name,
-              out_name));
-      VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
-              << out_name << " is None.";
-      true_out_ptrs.emplace_back(nullptr);
-      kernel_ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
-      continue;
-    }
-
-    if (detail::IsDuplicableVar(out_name)) {
+    if (detail::IsDuplicableVar(
+            out_name)) {  // general/inplace vector<Tensor> outputs
       PADDLE_ENFORCE(
           !inplace_map.empty() || (i == 0UL && outputs.size() == 1UL),
           phi::errors::PreconditionNotMet(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
-      PADDLE_ENFORCE_NE(vec_out.empty(),
-                        true,
-                        phi::errors::NotFound(
-                            "Output vector<tensor> (%s) is empty.", out_name));
+      // handle inplace optional outputs = None case
+      if (vec_out.empty()) {
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(out_name) && !inplace_map.empty(),
+            phi::errors::InvalidArgument(
+                "Custom operator couldn't find custom output for name %s. If "
+                "you "
+                "are using inplace optional inputs & outputs, please check "
+                "your "
+                "InplaceMap and `Outputs` again and make sure %s is wrapped by "
+                "`paddle::Optional`",
+                out_name,
+                out_name));
+        VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
+                << out_name << " is None.";
+        true_out_ptrs.emplace_back(nullptr);
+        kernel_ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+        continue;
+      }
+      // general/inplace vector<Tensor> outputs
       std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
         auto* out = vec_out[j];
@@ -314,6 +312,26 @@ static void RunKernelFunc(
       }
       kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
     } else {
+      // handle inplace optional outputs = None case
+      if (!ctx.HasOutput(out_name)) {
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(out_name) && !inplace_map.empty(),
+            phi::errors::InvalidArgument(
+                "Custom operator couldn't find custom output for name %s. If "
+                "you "
+                "are using inplace optional inputs & outputs, please check "
+                "your "
+                "InplaceMap and `Outputs` again and make sure %s is wrapped by "
+                "`paddle::Optional`",
+                out_name,
+                out_name));
+        VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
+                << out_name << " is None.";
+        true_out_ptrs.emplace_back(nullptr);
+        kernel_ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+        continue;
+      }
+      // general/inplace Tensor outputs
       auto* out = ctx.Output<phi::DenseTensor>(out_name);
       PADDLE_ENFORCE_NOT_NULL(out,
                               platform::errors::NotFound(
@@ -354,6 +372,7 @@ static void RunKernelFunc(
             calc_outs->size()));
     for (size_t i = 0; i < true_out_ptrs.size(); ++i) {
       auto* true_out = true_out_ptrs.at(i);
+      // handle optional inplace outputs = None case
       if (true_out == nullptr && !calc_outs->at(i).defined()) {
         continue;
       }
@@ -430,24 +449,42 @@ static void RunDefaultInferShapeFunc(
             outputs.size(),
             inplace_map.size()));
     for (auto const& pair : inplace_map) {
-      // make sure ctx has inplace optional outputs
-      if (!ctx->HasOutput(pair.second)) {
-        PADDLE_ENFORCE(
-            detail::IsOptionalVar(pair.second),
-            phi::errors::InvalidArgument(
-                "Custom operator couldn't find custom output name for %s. If "
-                "you are using inplace optional inputs & outputs, please check "
-                "your InplaceMap and `Outputs` again and make sure %s is "
-                "wrapped by `paddle::Optional`",
-                pair.second,
-                pair.second));
-        VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
-                << pair.second << " is None.";
-      }
       if (detail::IsDuplicableVar(pair.first)) {
-        ctx->SetOutputsDim(pair.second, ctx->GetInputsDim(pair.first));
+        // make sure ctx has valid inplace optional outputs
+        if (!ctx->HasOutputs(pair.second)) {
+          PADDLE_ENFORCE(
+              detail::IsOptionalVar(pair.second),
+              phi::errors::InvalidArgument(
+                  "Custom operator couldn't find custom output name for %s. If "
+                  "you are using inplace optional inputs & outputs, please "
+                  "check "
+                  "your InplaceMap and `Outputs` again and make sure %s is "
+                  "wrapped by `paddle::Optional`",
+                  pair.second,
+                  pair.second));
+          VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
+                  << pair.second << " is None.";
+        } else {
+          ctx->SetOutputsDim(pair.second, ctx->GetInputsDim(pair.first));
+        }
       } else {
-        ctx->ShareDim(pair.first, pair.second);
+        // make sure ctx has valid inplace optional outputs
+        if (!ctx->HasOutput(pair.second)) {
+          PADDLE_ENFORCE(
+              detail::IsOptionalVar(pair.second),
+              phi::errors::InvalidArgument(
+                  "Custom operator couldn't find custom output name for %s. If "
+                  "you are using inplace optional inputs & outputs, please "
+                  "check "
+                  "your InplaceMap and `Outputs` again and make sure %s is "
+                  "wrapped by `paddle::Optional`",
+                  pair.second,
+                  pair.second));
+          VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
+                  << pair.second << " is None.";
+        } else {
+          ctx->ShareDim(pair.first, pair.second);
+        }
       }
     }
   }
@@ -585,8 +622,8 @@ static void RunInferShapeFunc(
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
               "please indicate it by setting InplaceMap manully."));
-      // make sure ctx has inplace optional outputs
-      if (ctx->HasOutput(out_name)) {
+      // make sure ctx has valid inplace optional outputs
+      if (ctx->HasOutputs(out_name)) {
         auto in_name = inplace_reverse_map.at(out_name);
         ctx->SetOutputsDim(out_name, ctx->GetInputsDim(in_name));
       } else {
@@ -604,7 +641,7 @@ static void RunInferShapeFunc(
       }
     } else {
       if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
-        // make sure ctx has inplace optional outputs
+        // make sure ctx has valid inplace optional outputs
         if (ctx->HasOutput(out_name)) {
           // Share dims between inplace inputs and outputs
           ctx->ShareDim(inplace_reverse_map.at(out_name), out_name);
@@ -677,7 +714,7 @@ static void RunDefaultInferDtypeFunc(
     for (auto const& pair : inplace_map) {
       VLOG(3) << "Custom Operator: InferDtype - inplace dtype: " << pair.first
               << "->" << pair.second;
-      // make sure ctx has inplace optional outputs
+      // make sure ctx has valid inplace optional outputs
       if (!ctx->HasOutput(pair.second)) {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(pair.second),
@@ -794,7 +831,7 @@ static void RunInferDtypeFunc(
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
               "please indicate it by setting InplaceMap manully."));
       auto in_name = inplace_reverse_map.at(out_name);
-      // make sure ctx has inplace optional outputs
+      // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {
         ctx->SetOutputDataTypes(out_name, ctx->GetInputDataTypes(in_name));
       } else {
@@ -812,7 +849,7 @@ static void RunInferDtypeFunc(
       }
     } else {
       if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
-        // make sure ctx has inplace optional outputs
+        // make sure ctx has valid inplace optional outputs
         if (ctx->HasOutput(out_name)) {
           auto in_name = inplace_reverse_map.at(out_name);
           // Share dtype between inplace inputs and outputs
