@@ -26,8 +26,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -250,7 +250,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
@@ -281,9 +281,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         return var
 
     def create_lod_tensor(self, place):
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         return paddle.to_tensor(w_array)
 
     def test_w_is_selected_rows(self):

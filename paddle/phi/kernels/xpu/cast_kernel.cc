@@ -72,6 +72,13 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<bool>(out),
           numel);
       break;
+    case phi::DataType::INT8:
+      r = xpu::cast<XPUInTDType, int8_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUInTDType*>(in_data),
+          dev_ctx.template Alloc<int8_t>(out),
+          numel);
+      break;
     case phi::DataType::UINT8:
       r = xpu::cast<XPUInTDType, uint8_t>(
           dev_ctx.x_context(),
@@ -104,6 +111,7 @@ PD_REGISTER_KERNEL(cast,
                    phi::dtype::float16,
                    int64_t,
                    bool,
+                   int8_t,
                    uint8_t,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

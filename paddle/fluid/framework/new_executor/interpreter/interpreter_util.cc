@@ -56,8 +56,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "any_raw",
     "eig_grad",
     "eigh",
-    "graph_sample_neighbors",
-    "group_norm",
     "layer_norm",
     "layer_norm_grad",
     "less_equal",
@@ -335,6 +333,8 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
+      (!platform::is_xpu_place(place) ||
+       op->Attr<bool>("persist_output") == false) &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
     return OpFuncType::kGpuSync;

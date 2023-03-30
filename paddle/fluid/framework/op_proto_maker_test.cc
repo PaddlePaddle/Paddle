@@ -17,6 +17,7 @@ limitations under the License. */
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "paddle/phi/common/scalar.h"
 
 class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
@@ -48,4 +49,35 @@ TEST(ProtoMaker, DuplicatedInOut) {
   TestAttrProtoMaker proto_maker;
   ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
+}
+
+class OpProtoMakerWithScalar
+    : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddAttr<paddle::experimental::Scalar>("generic_scalar",
+                                          "generic_scalar of test op");
+    AddAttr<std::vector<paddle::experimental::Scalar>>(
+        "generic_vector", "generic_vector of test op");
+  }
+};
+
+TEST(OpProto, CanonicalizeScalarAttrs) {
+  paddle::framework::proto::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
+  OpProtoMakerWithScalar proto_maker;
+  proto_maker(&op_proto, &op_checker);
+
+  paddle::framework::AttributeMap amap;
+  amap.insert(
+      std::make_pair("generic_scalar", paddle::framework::Attribute(42.1)));
+  amap.insert(std::make_pair(
+      "generic_vector",
+      paddle::framework::Attribute(std::vector<double>{42.1, 42.2, 42.3})));
+
+  paddle::framework::CanonicalizeScalarAttrs(op_proto, &amap);
+  ASSERT_EQ(AttrTypeID(amap["generic_scalar"]),
+            paddle::framework::proto::SCALAR);
+  ASSERT_EQ(AttrTypeID(amap["generic_vector"]),
+            paddle::framework::proto::SCALARS);
 }

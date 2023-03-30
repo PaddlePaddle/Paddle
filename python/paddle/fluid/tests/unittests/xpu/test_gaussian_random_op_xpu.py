@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 from paddle.tensor import random
@@ -94,7 +94,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             shape_tensor_list = []
             for index, ele in enumerate(self.shape):
                 shape_tensor_list.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.attrs = {

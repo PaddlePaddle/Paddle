@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 from paddle.fluid import core
 
 TOLERANCE = {
