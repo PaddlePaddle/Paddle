@@ -214,7 +214,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         block = loss.block
         program = block.program
 
-        program._pipeline_opt = dict()
+        program._pipeline_opt = {}
         program._pipeline_opt['local_rank'] = self.rank
         program._pipeline_opt['global_ring_id'] = self.global_ring_id
         program._pipeline_opt['ring_id'] = self.start_pipeline_ring_id

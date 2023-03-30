@@ -144,11 +144,11 @@ def get_header_install_dir(header):
     else:
         # third_party
         install_dir = re.sub(
-            env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
+            env_dict.get("THIRD_PARTY_PATH"), 'third_party', header
         )
         patterns = [
-            'install/mkldnn/include',
-            'pybind/src/extern_pybind/include',
+            'install/mkldnn/include/',
+            'pybind/src/extern_pybind/include/',
             'third_party/xpu/src/extern_xpu/xpu/include/',
         ]
         for pattern in patterns:
@@ -1251,7 +1251,7 @@ def get_headers():
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
 
-    if env_dict.get("WITH_XDNN_API") == 'ON':
+    if env_dict.get("WITH_XPU") == 'ON':
         headers += list(
             find_files(
                 '*.h',
@@ -1485,7 +1485,7 @@ def main():
     else:
         env_dict_path = TOP_DIR + "/build/python/"
     sys.path.insert(1, env_dict_path)
-    from env_dict import env_dict as env_dict
+    from env_dict import env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir

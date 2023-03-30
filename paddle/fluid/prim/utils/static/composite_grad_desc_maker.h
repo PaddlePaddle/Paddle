@@ -103,6 +103,8 @@ class CompositeGradOpMakerBase {
     return output_grad;
   }
 
+  // TODO(Ruting): modify name to GetNullableSingleInputGrad after Large-scale
+  // development
   paddle::Tensor GetSingleInputGrad(const std::string& name) {
     framework::VarDesc* input_grad_desc = this->SingleInputGrad(name);
     if (!input_grad_desc) return paddle::Tensor();
@@ -320,7 +322,11 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleInputGrad(const std::string& name,
                                       bool drop_empty_grad = true) const {
-    auto var_name = this->SingleForwardInputVarName(name);
+    auto* var = this->SingleForwardInput(name);
+    if (!var) {
+      return nullptr;
+    }
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     if (no_grad_set_.empty() || !no_grad_set_.count(grad_var_name)) {
       (*this->grad_to_var_)[grad_var_name] = var_name;
@@ -342,7 +348,14 @@ class CompositeGradOpMakerBase {
   }
 
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
-    auto var_name = this->SingleForwardOutputVarName(name);
+    auto* var = this->SingleForwardOutput(name);
+    if (!var) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
+          "please use GetOptionalSingleOutputGrad replaced. ",
+          name));
+    }
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
@@ -551,14 +564,6 @@ class CompositeGradOpMakerBase {
           static_cast<prim::DescTensor*>(outputs[i].impl().get())->Name(),
           origin_names[i]);
     }
-  }
-
-  std::string SingleForwardInputVarName(const std::string& name) const {
-    return fwd_op_.Input(name).at(0);
-  }
-
-  std::string SingleForwardOutputVarName(const std::string& name) const {
-    return fwd_op_.Output(name).at(0);
   }
 
   std::vector<std::string> MultiForwardOutputVarName(

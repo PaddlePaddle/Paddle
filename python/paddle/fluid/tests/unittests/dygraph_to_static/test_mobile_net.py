@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import time
 import unittest
@@ -21,7 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -508,7 +509,7 @@ def train_mobilenet(args, to_static):
             print(
                 "wrong model name, please try model = MobileNetV1 or MobileNetV2"
             )
-            exit()
+            sys.exit()
 
         optimizer = create_optimizer(args=args, parameter_list=net.parameters())
 

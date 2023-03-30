@@ -40,7 +40,7 @@ from paddle.fluid import core, framework
             {'X': ['x']},
             {'Out': ['y']},
             set(),
-            tuple(),
+            (),
             (
                 'elementwise_mul',
                 'fill_constant',
@@ -48,7 +48,7 @@ from paddle.fluid import core, framework
                 'elementwise_mul',
             ),
         ),
-        ('empty', {}, {'Out': ['y']}, set(), tuple(), tuple()),
+        ('empty', {}, {'Out': ['y']}, set(), (), ()),
     ),
 )
 class TestGetGradOpDescPrimEnabled(unittest.TestCase):

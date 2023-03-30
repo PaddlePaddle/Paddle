@@ -152,8 +152,7 @@ def _yield_value(iterable):
         for key in _sorted(iterable):
             yield iterable[key]
     else:
-        for value in iterable:
-            yield value
+        yield from iterable
 
 
 def _yield_flat_nest(nest):
@@ -457,12 +456,12 @@ def convert_shape_to_list(shape):
     if isinstance(shape, (list, tuple)):
         shape = list(
             map(
-                lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
+                lambda x: x.item(0) if isinstance(x, Variable) else x,
                 shape,
             )
         )
     else:
-        shape = shape.numpy().astype(int).tolist()
+        shape = shape.astype(int).tolist()
     return shape
 
 

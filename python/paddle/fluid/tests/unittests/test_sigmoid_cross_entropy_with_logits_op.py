@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 

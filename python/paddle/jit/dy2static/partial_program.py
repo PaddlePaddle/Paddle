@@ -108,15 +108,6 @@ class LazyInitialized:
         return val
 
 
-def _change_is_test_status(program, is_test):
-    # change all `is_test` attributes
-    for block in program.blocks:
-        for op in block.ops:
-            if op.has_attr('is_test'):
-                op._set_attr('is_test', is_test)
-    return program
-
-
 class ProgramInfo:
     """
     A helper class to recoder Program information
@@ -618,8 +609,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        # make sure all status of is_test are False in train mode.
-        program = _change_is_test_status(main_program.clone(), is_test=False)
+        program = main_program.clone(for_test=False)
         if self._hooker:
             program = self._hooker.before_append_backward(program)
         targets = []
@@ -1137,8 +1127,10 @@ def add_build_strategy_for(
         )
         ir_graph = framework.IrGraph(compiled_program._graph)
         builded_program = ir_graph.to_program()
-        if hasattr(compiled_program._program, 'lr_sheduler'):
-            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+        if hasattr(compiled_program._program, 'lr_scheduler'):
+            builded_program.lr_scheduler = (
+                compiled_program._program.lr_scheduler
+            )
     else:
         # can't just create a new program, we need copy the vardesc.
         builded_program = paddle.static.Program()

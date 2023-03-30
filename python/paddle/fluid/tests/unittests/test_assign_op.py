@@ -14,19 +14,18 @@
 
 import unittest
 
+import eager_op_test
 import gradient_checker
 import numpy as np
-import op_test
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.backward import append_backward
 
 
-class TestAssignOp(op_test.OpTest):
+class TestAssignOp(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -39,16 +38,16 @@ class TestAssignOp(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
-class TestAssignFP16Op(op_test.OpTest):
+class TestAssignFP16Op(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -61,12 +60,12 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
@@ -76,7 +75,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
@@ -129,7 +128,7 @@ class TestAssignOApi(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1

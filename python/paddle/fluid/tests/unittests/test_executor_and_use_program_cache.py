@@ -18,7 +18,7 @@ import numpy as np
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestExecutor(unittest.TestCase):

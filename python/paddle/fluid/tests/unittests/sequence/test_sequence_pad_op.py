@@ -18,11 +18,10 @@ import unittest
 import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestSequencePadOp(OpTest):
@@ -71,7 +70,7 @@ class TestSequencePadOp(OpTest):
             start_idx = end_idx
 
         out_data = np.array(padded_sequences)
-        length = np.array(self.x_len_lod[0]).reshape((-1))
+        length = np.array(self.x_len_lod[0]).reshape(-1)
         self.outputs = {'Out': out_data, 'Length': length}
 
     def setUp(self):
@@ -91,7 +90,7 @@ class TestSequencePadOp2(TestSequencePadOp):
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = np.random.random((10))
+        self.pad_value = np.random.random(10)
         self.padded_length = -1
         self.dtype = 'float64'
 
@@ -109,7 +108,7 @@ class TestSequencePadOp4(TestSequencePadOp):
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = np.random.random((10))
+        self.pad_value = np.random.random(10)
         self.padded_length = 7
         self.dtype = 'float64'
 
@@ -185,7 +184,9 @@ class TestSequencePadOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_dtype)
 
     def test_length_dtype(self):
-        x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=[10, 5], dtype='float32', lod_level=1
+        )
 
         pad_value = paddle.assign(np.array([0.0], dtype=np.float32))
         out, length = paddle.static.nn.sequence_lod.sequence_pad(

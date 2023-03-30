@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 BATCH_SIZE = 20
 

@@ -76,6 +76,11 @@ inline static bool IsDuplicableVar(const std::string& var_name) {
   return var_name.rfind(suffix) != std::string::npos;
 }
 
+inline static bool IsOptionalVar(const std::string& var_name) {
+  std::string suffix = kOptionalSuffix;
+  return var_name.rfind(suffix) != std::string::npos;
+}
+
 inline static std::string NoGrad(const std::string& var_name,
                                  bool is_double_grad = false) {
   std::string suffix = kGradVarSuffix;
@@ -141,57 +146,85 @@ static void RunKernelFunc(
   paddle::CustomOpKernelContext kernel_ctx;
   for (auto& in_name : inputs) {
     VLOG(3) << "Custom Operator: input name - " << in_name;
-    if (detail::IsDuplicableVar(in_name)) {
-      // return const std::vector<const phi::DenseTensor*>
-      auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
-      PADDLE_ENFORCE_NE(vec_x.empty(),
-                        true,
-                        platform::errors::NotFound(
-                            "Input vector<tensor> (%s) is empty.", in_name));
+    if (detail::IsDuplicableVar(in_name)) {  // inputs vector<Tensor>
       std::vector<paddle::Tensor> custom_vec_in;
-      for (size_t i = 0; i < vec_x.size(); ++i) {
-        auto* x = vec_x[i];
-        PADDLE_ENFORCE_NOT_NULL(
-            x,
-            platform::errors::NotFound(
-                "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
-                i,
-                in_name));
-        PADDLE_ENFORCE_EQ(x->IsInitialized(),
+      if (ctx.HasInputs(in_name)) {  // general inputs
+        // return const std::vector<const phi::DenseTensor*>
+        auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
+        PADDLE_ENFORCE_NE(vec_x.empty(),
                           true,
-                          platform::errors::InvalidArgument(
-                              "The %d-th tensor in input vector<tensor> (%s) "
-                              "is not initialized.",
-                              i,
-                              in_name));
-        paddle::Tensor custom_t;
-        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
-        custom_vec_in.emplace_back(custom_t);
+                          platform::errors::NotFound(
+                              "Input vector<tensor> (%s) is empty.", in_name));
+        for (size_t i = 0; i < vec_x.size(); ++i) {
+          auto* x = vec_x[i];
+          PADDLE_ENFORCE_NOT_NULL(
+              x,
+              platform::errors::NotFound(
+                  "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
+                  i,
+                  in_name));
+          PADDLE_ENFORCE_EQ(x->IsInitialized(),
+                            true,
+                            platform::errors::InvalidArgument(
+                                "The %d-th tensor in input vector<tensor> (%s) "
+                                "is not initialized.",
+                                i,
+                                in_name));
+          paddle::Tensor custom_t;
+          custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
+          custom_vec_in.emplace_back(custom_t);
+        }
+      } else {  // optional inputs.
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                  "find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: KernelFunc's vector input " << in_name
+                << " is optional dtype with None input";
+        // NOTE(HongyuJia): In dygraph mode, we can not distinguish Tensor and
+        // vector<Tensor> when user inputs None, so dygraph mode appends one
+        // un-initialized Tensor to CustomOpKernelContext. To be compatible with
+        // dygraph mode, `custom_vec_in` also emplace_back one un-initialized
+        // tensor here.
+        custom_vec_in.emplace_back(paddle::Tensor());
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
-    } else {
-      auto* x = ctx.Input<phi::DenseTensor>(in_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          x,
-          platform::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
-      PADDLE_ENFORCE_EQ(x->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Input tensor (%s) is not initialized.", in_name));
-      paddle::Tensor custom_in;
-      custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+    } else {                        // inputs Tensor
+      if (ctx.HasInput(in_name)) {  // general inputs
+        auto* x = ctx.Input<phi::DenseTensor>(in_name);
+        PADDLE_ENFORCE_NOT_NULL(x,
+                                platform::errors::NotFound(
+                                    "Input tensor (%s) is nullptr.", in_name));
+        PADDLE_ENFORCE_EQ(
+            x->IsInitialized(),
+            true,
+            platform::errors::InvalidArgument(
+                "Input tensor (%s) is not initialized.", in_name));
+        paddle::Tensor custom_in;
+        custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (custom_in.is_gpu_pinned()) {
-        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
-        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
-        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
-        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
-      } else {
-        kernel_ctx.EmplaceBackInput(std::move(custom_in));
-      }
+        if (custom_in.is_gpu_pinned()) {
+          VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+          auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+          auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+          kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+        } else {
+          kernel_ctx.EmplaceBackInput(std::move(custom_in));
+        }
 #else
-      kernel_ctx.EmplaceBackInput(std::move(custom_in));
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
 #endif
+      } else {  // optional inputs
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                  "find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: KernelFunc's input " << in_name
+                << " is optional dtype with None input";
+        kernel_ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+      }
     }
   }
 
@@ -235,15 +268,15 @@ static void RunKernelFunc(
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
-      PADDLE_ENFORCE(i == 0UL && outputs.size() == 1UL,
-                     platform::errors::PreconditionNotMet(
-                         "If custom operator's outputs contains `paddle::Vec("
-                         ")` type, "
-                         "it only can hold one output."));
+      PADDLE_ENFORCE(
+          !inplace_map.empty() || (i == 0UL && outputs.size() == 1UL),
+          phi::errors::PreconditionNotMet(
+              "If custom operator's outputs contains `paddle::Vec()` type "
+              "without setting InplaceMap, it only can hold one output."));
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
       PADDLE_ENFORCE_NE(vec_out.empty(),
                         true,
-                        platform::errors::NotFound(
+                        phi::errors::NotFound(
                             "Output vector<tensor> (%s) is empty.", out_name));
       std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
@@ -326,32 +359,108 @@ static void RunKernelFunc(
   }
 }
 
-static void RunInferShapeFunc(framework::InferShapeContext* ctx,
-                              const paddle::InferShapeFunc& func,
-                              const std::vector<std::string>& inputs,
-                              const std::vector<std::string>& outputs,
-                              const std::vector<std::string>& attrs) {
+static void RunDefaultInferShapeFunc(
+    framework::InferShapeContext* ctx,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
+  if (inplace_map.empty()) {  // general case, assure single input and output
+    PADDLE_ENFORCE_EQ(
+        inputs.size(),
+        1UL,
+        phi::errors::Unavailable(
+            "Your custom operator contains multiple inputs. "
+            "We only allow a custom operator that contains only one input "
+            "and only one output without setting the InferShapeFn. "
+            "At this time, the input shape will be directly set to "
+            "the output shape.\n"
+            "Please set the InferShapeFn of custom "
+            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        1UL,
+        phi::errors::Unavailable(
+            "Your custom operator contains multiple outputs. "
+            "We only allow a custom operator that contains only one input "
+            "and only one output without setting the InferShapeFn. "
+            "At this time, the input shape will be directly set to "
+            "the output shape.\n"
+            "Please set the InferShapeFn of custom "
+            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
+
+    VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
+    ctx->ShareDim(inputs[0], outputs[0]);
+  } else {  // inplace case
+    PADDLE_ENFORCE_EQ(
+        inplace_map.size(),
+        outputs.size(),
+        phi::errors::Unavailable(
+            "Your custom operator uses `SetInplaceMap` without setting the "
+            "InferShapeFn. However, `Outputs` size = %d does not match the "
+            "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
+            "the InferShapeFn of custom operator by "
+            "`.SetInferShapeFn(PD_INFER_SHAPE(...)`)",
+            outputs.size(),
+            inplace_map.size()));
+    for (auto const& pair : inplace_map) {
+      if (detail::IsDuplicableVar(pair.first)) {
+        ctx->SetOutputsDim(pair.second, ctx->GetInputsDim(pair.first));
+      } else {
+        ctx->ShareDim(pair.first, pair.second);
+      }
+    }
+  }
+}
+
+static void RunInferShapeFunc(
+    framework::InferShapeContext* ctx,
+    const paddle::InferShapeFunc& func,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs,
+    const std::unordered_map<std::string, std::string>& inplace_map,
+    const std::unordered_map<std::string, std::string>& inplace_reverse_map) {
   std::vector<std::vector<int64_t>> input_shapes;
   std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
 
   VLOG(3) << "Custom Operator: InferShape - get input ddim.";
   for (auto& in_name : inputs) {
     if (detail::IsDuplicableVar(in_name)) {
-      OP_INOUT_CHECK(ctx->HasInputs(in_name), "Input", in_name, "Custom");
-      auto vec_ddim = ctx->GetInputsDim(in_name);
       std::vector<std::vector<int64_t>> vec_shape;
-      vec_shape.reserve(vec_ddim.size());
-      std::transform(vec_ddim.begin(),
-                     vec_ddim.end(),
-                     std::back_inserter(vec_shape),
-                     [&](const DDim& ddim) -> std::vector<int64_t> {
-                       return phi::vectorize(ddim);
-                     });
+      if (ctx->HasInputs(in_name)) {  // general inputs
+        auto vec_ddim = ctx->GetInputsDim(in_name);
+        vec_shape.reserve(vec_ddim.size());
+        std::transform(vec_ddim.begin(),
+                       vec_ddim.end(),
+                       std::back_inserter(vec_shape),
+                       [&](const DDim& ddim) -> std::vector<int64_t> {
+                         return phi::vectorize(ddim);
+                       });
+
+      } else {  // optional inputs, `vec_shape` is empty
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferShapeFunc "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: InferShapeFunc's vector input " << in_name
+                << " is optional dtype with None input";
+      }
       vec_input_shapes.emplace_back(vec_shape);
     } else {
-      OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
-      auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(phi::vectorize(ddim));
+      if (ctx->HasInput(in_name)) {  // general inputs
+        auto ddim = ctx->GetInputDim(in_name);
+        input_shapes.emplace_back(phi::vectorize(ddim));
+      } else {  // optional inputs
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferShapeFunc "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        input_shapes.emplace_back(std::vector<int64_t>());
+        VLOG(3) << "Custom Operator: InferShapeFunc's input " << in_name
+                << " is optional dtype with None input";
+      }
     }
   }
 
@@ -397,22 +506,220 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
 
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   auto output_shapes = func(input_shapes, vec_input_shapes, custom_attrs);
+  if (inplace_map.empty()) {
+    PADDLE_ENFORCE_EQ(outputs.size(),
+                      output_shapes.size(),
+                      phi::errors::InvalidArgument(
+                          "Your custom operator has set the InferShapeFn. "
+                          "However, `Outputs` size = %d does not match the "
+                          "returned vector size of InferShapeFn = %d. Please "
+                          "check InferShapeFn again.",
+                          outputs.size(),
+                          output_shapes.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        output_shapes.size() + inplace_map.size(),
+        phi::errors::InvalidArgument(
+            "Your custom operator uses `SetInplaceMap` and sets the "
+            "InferShapeFn. However, `Outputs` size = %d does not match the "
+            "`InplaceMap size + InferShapeFn output size` = %d. Please check "
+            "InplaceMap and InferShapeFn again",
+            outputs.size(),
+            output_shapes.size() + inplace_map.size()));
+  }
 
-  VLOG(3) << "Custom Operator: InferShape - set output ddim.";
+  VLOG(3)
+      << "Custom Operator: InferShape - set output ddim: inplace_map.size() = "
+      << inplace_map.size()
+      << ", output_shapes.size() = " << output_shapes.size();
+  size_t output_shape_idx = 0;
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
-      std::vector<DDim> vec_ddim;
-      vec_ddim.reserve(output_shapes.size());
-      std::transform(output_shapes.begin(),
-                     output_shapes.end(),
-                     std::back_inserter(vec_ddim),
-                     [&](const std::vector<int64_t>& shape) -> DDim {
-                       return phi::make_ddim(shape);
-                     });
-      ctx->SetOutputsDim(out_name, vec_ddim);
+      PADDLE_ENFORCE(
+          inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+          phi::errors::InvalidArgument(
+              "Custom operator only supports `paddle::Vec(...)` inputs and "
+              "cannot support `paddle::Vec(...)` output without setting "
+              "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+              "please indicate it by setting InplaceMap manully."));
+      auto in_name = inplace_reverse_map.at(out_name);
+      ctx->SetOutputsDim(out_name, ctx->GetInputsDim(in_name));
     } else {
-      ctx->SetOutputDim(out_name, phi::make_ddim(output_shapes[i]));
+      if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+        // Share dims between inplace inputs and outputs
+        ctx->ShareDim(inplace_reverse_map.at(out_name), out_name);
+      } else {
+        // Set output dims by the output of InferShapeFn
+        ctx->SetOutputDim(out_name,
+                          phi::make_ddim(output_shapes[output_shape_idx++]));
+      }
+    }
+  }
+}
+
+static void RunDefaultInferDtypeFunc(
+    framework::InferVarTypeContext* ctx,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
+  if (inplace_map.empty()) {  // general case, assure single input and output
+    PADDLE_ENFORCE_EQ(
+        inputs.size(),
+        1UL,
+        platform::errors::Unavailable(
+            "Your custom operator contains multiple inputs. "
+            "We only allow a custom operator that contains only one input "
+            "and only one output without setting the InferDtypeFn. "
+            "At this time, the input dtype will be directly set to "
+            "the output dtype.\n"
+            "Please set the InferDtypeFn of custom "
+            "operator by `.SetInferDtypeFn(PD_INFER_DTYPE(...))`"));
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        1UL,
+        platform::errors::Unavailable(
+            "Your custom operator contains multiple outputs. "
+            "We only allow a custom operator that contains only one input "
+            "and only one output without setting the InferDtypeFn. "
+            "At this time, the input dtype will be directly set to "
+            "the output dtype.\n"
+            "Please set the InferDtypeFn of custom "
+            "operator by `.SetInferDtypeFn(PD_INFER_DTYPE(...))`"));
+
+    VLOG(3) << "Custom Operator: InferDtype - share dtype.";
+    auto dtype = ctx->GetInputDataType(inputs[0]);
+    ctx->SetOutputDataType(outputs[0], dtype);
+  } else {  // inplace case
+    PADDLE_ENFORCE_EQ(
+        inplace_map.size(),
+        outputs.size(),
+        phi::errors::Unavailable(
+            "Your custom operator uses `SetInplaceMap` without setting the "
+            "InferDtypeFn. However, `Outputs` size = %d does not match the "
+            "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
+            "the InferDtypeFn of custom operator by "
+            "`.SetInferDtypeFn(PD_INFER_DTYPE(...))`",
+            outputs.size(),
+            inplace_map.size()));
+    for (auto const& pair : inplace_map) {
+      VLOG(3) << "Custom Operator: InferDtype - inplace dtype: " << pair.first
+              << "->" << pair.second;
+      if (detail::IsDuplicableVar(pair.first)) {
+        size_t size = ctx->InputSize(pair.first);
+        for (size_t i = 0; i < size; ++i) {
+          auto dtype = ctx->GetInputDataType(pair.first, i);
+          ctx->SetOutputDataType(pair.second, dtype, i);
+        }
+      } else {
+        auto dtype = ctx->GetInputDataType(pair.first);
+        ctx->SetOutputDataType(pair.second, dtype);
+      }
+    }
+  }
+}
+
+static void RunInferDtypeFunc(
+    framework::InferVarTypeContext* ctx,
+    const paddle::InferDtypeFunc& func,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map,
+    const std::unordered_map<std::string, std::string>& inplace_reverse_map) {
+  std::vector<DataType> input_dtypes;
+  std::vector<std::vector<DataType>> vec_input_dtypes;
+
+  VLOG(3) << "Custom Operator: InferDtype - get input dtype.";
+  for (auto& in_name : inputs) {
+    if (detail::IsDuplicableVar(in_name)) {
+      std::vector<DataType> vec_custom_dtype;
+      if (ctx->HasInput(in_name)) {  // general inputs
+        for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
+          auto dtype = ctx->GetInputDataType(in_name, i);
+          vec_custom_dtype.emplace_back(
+              paddle::framework::TransToPhiDataType(dtype));
+        }
+      } else {  // optional inputs, `vec_custom_dtype` is empty
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferDtypeFn "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        VLOG(3) << "Custom Operator: InferDtypeFn's vector input " << in_name
+                << " is optional dtype with None input";
+      }
+      vec_input_dtypes.emplace_back(vec_custom_dtype);
+    } else {
+      if (ctx->HasInput(in_name)) {  // general inputs
+        auto dtype = ctx->GetInputDataType(in_name);
+        input_dtypes.emplace_back(paddle::framework::TransToPhiDataType(dtype));
+      } else {  // optional inputs
+        PADDLE_ENFORCE(
+            detail::IsOptionalVar(in_name),
+            phi::errors::NotFound("Your custom operator's InferDtypeFn "
+                                  "cannot find input parameter `%s`",
+                                  in_name));
+        input_dtypes.emplace_back(DataType::UNDEFINED);
+        VLOG(3) << "Custom Operator: InferDtypeFn's input " << in_name
+                << " is optional dtype with None input";
+      }
+    }
+  }
+
+  VLOG(3) << "Custom Operator: InferDtype - infer output dtype.";
+  auto output_dtypes = func(input_dtypes, vec_input_dtypes);
+  if (inplace_map.empty()) {
+    PADDLE_ENFORCE_EQ(outputs.size(),
+                      output_dtypes.size(),
+                      phi::errors::InvalidArgument(
+                          "Your custom operator has set the InferDtypeFn. "
+                          "However, `Outputs` size = %d does not match the "
+                          "returned vector size of InferDtypeFn = %d. Please "
+                          "check InferDtypeFn again.",
+                          outputs.size(),
+                          output_dtypes.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        output_dtypes.size() + inplace_map.size(),
+        phi::errors::InvalidArgument(
+            "Your custom operator uses `SetInplaceMap` and sets the "
+            "InferDtypeFn. However, `Outputs` size = %d does not match the "
+            "`InplaceMap size + InferDtypeFn output size` = %d. Please check "
+            "InplaceMap and InferDtypeFn again",
+            outputs.size(),
+            output_dtypes.size() + inplace_map.size()));
+  }
+
+  VLOG(3)
+      << "Custom Operator: InferDtype - set output dtype: inplace_map.size() = "
+      << inplace_map.size()
+      << ", output_dtypes.size() = " << output_dtypes.size();
+  size_t output_dtype_idx = 0;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    auto out_name = outputs[i];
+    if (detail::IsDuplicableVar(out_name)) {
+      PADDLE_ENFORCE(
+          inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+          phi::errors::InvalidArgument(
+              "Custom operator only supports `paddle::Vec(...)` inputs and "
+              "cannot support `paddle::Vec(...)` output without setting "
+              "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+              "please indicate it by setting InplaceMap manully."));
+      auto in_name = inplace_reverse_map.at(out_name);
+      ctx->SetOutputDataTypes(out_name, ctx->GetInputDataTypes(in_name));
+    } else {
+      if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+        auto in_name = inplace_reverse_map.at(out_name);
+        // Share dtype between inplace inputs and outputs
+        ctx->SetOutputDataType(out_name, ctx->GetInputDataType(in_name));
+      } else {
+        // Set output dtype by the output of InferDtypeFn
+        ctx->SetOutputDataType(out_name,
+                               paddle::framework::TransToProtoVarType(
+                                   output_dtypes[output_dtype_idx++]));
+      }
     }
   }
 }
@@ -468,11 +775,13 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
 
   void Make() override {
     for (auto& in_name : inputs_) {
+      auto input_var_builder =
+          AddInput(in_name, "The input " + in_name + "of Custom operator.");
       if (detail::IsDuplicableVar(in_name)) {
-        AddInput(in_name, "The input " + in_name + "of Custom operator.")
-            .AsDuplicable();
-      } else {
-        AddInput(in_name, "The input " + in_name + "of Custom operator.");
+        input_var_builder.AsDuplicable();
+      }
+      if (detail::IsOptionalVar(in_name)) {
+        input_var_builder.AsDispensable();
       }
     }
     for (auto& out_name : outputs_) {
@@ -767,6 +1076,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
   auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(base_op_meta);
+  auto& op_inplace_reverse_map =
+      OpMetaInfoHelper::GetInplaceReverseMap(base_op_meta);
   auto& kernel_fn = OpMetaInfoHelper::GetKernelFn(base_op_meta);
   auto& infer_shape_func = OpMetaInfoHelper::GetInferShapeFn(base_op_meta);
   auto& infer_dtype_func = OpMetaInfoHelper::GetInferDtypeFn(base_op_meta);
@@ -818,113 +1129,47 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // InferShape
   if (infer_shape_func == nullptr) {
     // use default InferShape
-    info.infer_shape_ = [op_inputs, op_outputs](InferShapeContext* ctx) {
-      PADDLE_ENFORCE_EQ(
-          op_inputs.size(),
-          1UL,
-          platform::errors::Unavailable(
-              "Your custom operator contains multiple inputs. "
-              "We only allow a custom operator that contains only one input "
-              "and only one output without setting the InferShapeFn. "
-              "At this time, the input shape will be directly set to "
-              "the output shape.\n"
-              "Please set the InferShapeFn of custom "
-              "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
-      PADDLE_ENFORCE_EQ(
-          op_outputs.size(),
-          1UL,
-          platform::errors::Unavailable(
-              "Your custom operator contains multiple outputs. "
-              "We only allow a custom operator that contains only one input "
-              "and only one output without setting the InferShapeFn. "
-              "At this time, the input shape will be directly set to "
-              "the output shape.\n"
-              "Please set the InferShapeFn of custom "
-              "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
-
-      VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-      ctx->ShareDim(op_inputs[0], op_outputs[0]);
-    };
+    info.infer_shape_ =
+        [op_inputs, op_outputs, op_inplace_map](InferShapeContext* ctx) {
+          RunDefaultInferShapeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
+        };
   } else {
-    info.infer_shape_ = [op_inputs, op_outputs, op_attrs, infer_shape_func](
-                            InferShapeContext* ctx) {
-      RunInferShapeFunc(ctx, infer_shape_func, op_inputs, op_outputs, op_attrs);
+    info.infer_shape_ = [op_inputs,
+                         op_outputs,
+                         op_attrs,
+                         op_inplace_map,
+                         op_inplace_reverse_map,
+                         infer_shape_func](InferShapeContext* ctx) {
+      RunInferShapeFunc(ctx,
+                        infer_shape_func,
+                        op_inputs,
+                        op_outputs,
+                        op_attrs,
+                        op_inplace_map,
+                        op_inplace_reverse_map);
     };
   }
 
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
     // use default InferDtype
-    info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
-      PADDLE_ENFORCE_EQ(
-          op_inputs.size(),
-          1UL,
-          platform::errors::Unavailable(
-              "Your custom operator contains multiple inputs. "
-              "We only allow a custom operator that contains only one input "
-              "and only one output without setting the InferDtypeFn. "
-              "At this time, the input dtype will be directly set to "
-              "the output dtype.\n"
-              "Please set the InferDtypeFn of custom "
-              "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-      PADDLE_ENFORCE_EQ(
-          op_outputs.size(),
-          1UL,
-          platform::errors::Unavailable(
-              "Your custom operator contains multiple outputs. "
-              "We only allow a custom operator that contains only one input "
-              "and only one output without setting the InferDtypeFn. "
-              "At this time, the input dtype will be directly set to "
-              "the output dtype.\n"
-              "Please set the InferDtypeFn of custom "
-              "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-
-      VLOG(3) << "Custom Operator: InferDtype - share dtype.";
-      auto dtype = ctx->GetInputDataType(op_inputs[0]);
-      ctx->SetOutputDataType(op_outputs[0], dtype);
-    };
-  } else {
     info.infer_var_type_ =
-        [op_inputs, op_outputs, infer_dtype_func](InferVarTypeContext* ctx) {
-          std::vector<DataType> input_dtypes;
-          std::vector<std::vector<DataType>> vec_input_dtypes;
-
-          VLOG(3) << "Custom Operator: InferDtype - get input dtype.";
-          for (auto& in_name : op_inputs) {
-            if (detail::IsDuplicableVar(in_name)) {
-              std::vector<DataType> vec_custom_dtype;
-              for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-                auto dtype = ctx->GetInputDataType(in_name, i);
-                vec_custom_dtype.emplace_back(
-                    paddle::framework::TransToPhiDataType(dtype));
-              }
-              vec_input_dtypes.emplace_back(vec_custom_dtype);
-            } else {
-              auto dtype = ctx->GetInputDataType(in_name);
-              input_dtypes.emplace_back(
-                  paddle::framework::TransToPhiDataType(dtype));
-            }
-          }
-
-          VLOG(3) << "Custom Operator: InferDtype - infer output dtype.";
-          auto output_dtypes = infer_dtype_func(input_dtypes, vec_input_dtypes);
-
-          VLOG(3) << "Custom Operator: InferDtype - set output dtype.";
-          for (size_t i = 0; i < op_outputs.size(); ++i) {
-            auto out_name = op_outputs[i];
-            if (detail::IsDuplicableVar(out_name)) {
-              for (size_t j = 0; j < output_dtypes.size(); ++j) {
-                auto dtype =
-                    paddle::framework::TransToProtoVarType(output_dtypes[i]);
-                ctx->SetOutputDataType(out_name, dtype, j);
-              }
-            } else {
-              ctx->SetOutputDataType(
-                  out_name,
-                  paddle::framework::TransToProtoVarType(output_dtypes[i]));
-            }
-          }
+        [op_inputs, op_outputs, op_inplace_map](InferVarTypeContext* ctx) {
+          RunDefaultInferDtypeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
         };
+  } else {
+    info.infer_var_type_ = [op_inputs,
+                            op_outputs,
+                            op_inplace_map,
+                            op_inplace_reverse_map,
+                            infer_dtype_func](InferVarTypeContext* ctx) {
+      RunInferDtypeFunc(ctx,
+                        infer_dtype_func,
+                        op_inputs,
+                        op_outputs,
+                        op_inplace_map,
+                        op_inplace_reverse_map);
+    };
   }
 
   // Kernel func
@@ -946,6 +1191,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
     auto& grad_op_attrs = OpMetaInfoHelper::GetAttrs(cur_grad_op);
     auto& grad_op_inplace_map = OpMetaInfoHelper::GetInplaceMap(cur_grad_op);
+    auto& grad_op_inplace_reverse_map =
+        OpMetaInfoHelper::GetInplaceReverseMap(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
     auto& grad_infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(cur_grad_op);
 
@@ -1016,6 +1263,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 
+    // Inplace
+    if (!grad_op_inplace_map.empty()) {
+      grad_info.infer_inplace_ = [grad_op_inplace_map](bool use_cuda) {
+        return grad_op_inplace_map;
+      };
+    }
+
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
       grad_info.infer_shape_ = [grad_op_inputs,
@@ -1047,7 +1301,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
                       "to the output shape. Otherwise, Please set the forward "
-                      "input as the grad operator's input or  set the "
+                      "input as the grad operator's input or set the "
                       "InferShapeFn of custom grad operator by "
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);
@@ -1059,12 +1313,16 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
       grad_info.infer_shape_ = [grad_op_inputs,
                                 grad_op_outputs,
                                 grad_op_attrs,
+                                grad_op_inplace_map,
+                                grad_op_inplace_reverse_map,
                                 grad_infer_shape_fn](InferShapeContext* ctx) {
         RunInferShapeFunc(ctx,
                           grad_infer_shape_fn,
                           grad_op_inputs,
                           grad_op_outputs,
-                          grad_op_attrs);
+                          grad_op_attrs,
+                          grad_op_inplace_map,
+                          grad_op_inplace_reverse_map);
       };
     }
 

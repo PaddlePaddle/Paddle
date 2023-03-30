@@ -202,14 +202,14 @@ def _sample_rois(
     sampled_rois = sampled_boxes * im_scale
 
     # Faster RCNN blobs
-    frcn_blobs = dict(
-        rois=sampled_rois,
-        labels_int32=sampled_labels,
-        bbox_targets=bbox_targets,
-        bbox_inside_weights=bbox_inside_weights,
-        bbox_outside_weights=bbox_outside_weights,
-        max_overlap=sampled_max_overlap,
-    )
+    frcn_blobs = {
+        'rois': sampled_rois,
+        'labels_int32': sampled_labels,
+        'bbox_targets': bbox_targets,
+        'bbox_inside_weights': bbox_inside_weights,
+        'bbox_outside_weights': bbox_outside_weights,
+        'max_overlap': sampled_max_overlap,
+    }
     return frcn_blobs
 
 
@@ -525,7 +525,7 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
         is_crowd = np.zeros((gt_nums), dtype=np.int32)
         is_crowd[0] = 1
         ground_truth.append(
-            dict(gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd)
+            {'gt_classes': gt_classes, 'boxes': gt_boxes, 'is_crowd': is_crowd}
         )
         num_gts += len(gt_classes)
         gts_lod.append(num_gts)

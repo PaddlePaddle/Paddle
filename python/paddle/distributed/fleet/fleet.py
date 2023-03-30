@@ -267,7 +267,7 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
@@ -416,7 +416,9 @@ class Fleet:
         if not order:
             order = ['dp', 'pp', 'sharding', 'mp']
         if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
-            assert False, "The order of hybrid_config setting is incorrect."
+            raise AssertionError(
+                'The order of hybrid_config setting is incorrect.'
+            )
 
         hybrid_group_names = []
         dims = []
@@ -1296,7 +1298,7 @@ class Fleet:
             self.origin_main_program = loss.block.program
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
-                self.origin_main_program.distributed_info_ = dict()
+                self.origin_main_program.distributed_info_ = {}
                 self.origin_main_program.distributed_info_[
                     "dp_degree"
                 ] = self._user_defined_strategy.sharding_configs["dp_degree"]
@@ -1555,7 +1557,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1649,7 +1651,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 
