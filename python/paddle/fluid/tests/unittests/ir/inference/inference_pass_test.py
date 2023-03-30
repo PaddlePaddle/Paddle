@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
@@ -46,7 +46,7 @@ class InferencePassTest(unittest.TestCase):
         random.seed(1)
 
     def _get_place(self):
-        return set([False, core.is_compiled_with_cuda()])
+        return {False, core.is_compiled_with_cuda()}
 
     def _save_models(
         self, dirname, feeded_var_names, target_vars, executor, program, scope

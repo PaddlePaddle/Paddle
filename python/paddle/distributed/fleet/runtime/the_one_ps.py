@@ -15,12 +15,11 @@
 import os
 import warnings
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
-from paddle.fluid.parallel_executor import ParallelExecutor
 
 from ..base.private_helper_function import wait_server_ready
 from .runtime_base import RuntimeBase
@@ -820,7 +819,7 @@ class TheOnePSRuntime(RuntimeBase):
             send_ctx, dense_map, proto_txt, string_hosts, fluid.global_scope()
         )
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         info = self._communicator.get_client_info()
@@ -1362,11 +1361,6 @@ class TheOnePSRuntime(RuntimeBase):
         single file, use `filename` to specify the file name.
         """
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save() function, executor must be as Executor type"
@@ -1399,11 +1393,6 @@ class TheOnePSRuntime(RuntimeBase):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(
@@ -1456,7 +1445,7 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = self.context[
             "user_defined_strategy"
         ].trainer_desc_configs["stat_var_names"]
-        generate_vars = [var for var in generate_vars]
+        generate_vars = list(generate_vars)
         remaining_vars = list(
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),
@@ -1566,7 +1555,7 @@ class TheOnePSRuntime(RuntimeBase):
             )
         else:
             threshold = 0
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util.barrier()
         if self.role_maker._is_first_worker():

@@ -529,6 +529,9 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
+        ignore_index (long int, optional):  Specifies a target value that is ignored and
+            does not contribute to the loss. A negative value means that no label value
+            needs to be ignored. Default is -100 .
 
     Examples:
         .. code-block:: python
@@ -536,7 +539,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         loss = loss_func(img, lable)
     """
 
-    def __init__(self, mp_group=None, name=None):
+    def __init__(self, mp_group=None, name=None, ignore_index=-100):
         super().__init__()
         self.name = name
         self.model_parallel_group = (
@@ -554,9 +557,13 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             if mp_group is None
             else mp_group.rank
         )
+        self.ignore_index = ignore_index
 
     def forward(self, input, label):
         loss = mp_ops._c_softmax_with_cross_entropy(
-            input, label, group=self.model_parallel_group
+            input,
+            label,
+            group=self.model_parallel_group,
+            ignore_index=self.ignore_index,
         )
         return loss

@@ -15,8 +15,8 @@
 import os
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.test_profiler import TestProfiler
 
 # NCCL 2.7 decides to use shared memory while NCCL 2.6 didn't, hence causing the error.

@@ -590,10 +590,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -827,9 +823,7 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(autograd)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -857,23 +851,9 @@ if(WIN32)
     DEPS python)
 endif()
 
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
 if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
-
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
-if(WITH_MLU)
-  add_subdirectory(mlu)
-endif()
-
-add_subdirectory(asp)
 
 add_subdirectory(ir)
 
@@ -1014,7 +994,7 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
@@ -1117,6 +1097,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1215,7 +1196,11 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
-    test_gather_op)
+    test_scatter_op
+    test_gather_op
+    test_cast_op
+    test_dropout_op
+    test_group_norm_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

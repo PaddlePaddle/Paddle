@@ -33,16 +33,6 @@
     data_type : x
   backward : addmm_grad
 
-- op : all_gather
-  args : (Tensor X, int ring_id = 0, int nranks=0)
-  output : Tensor(Out)
-  infer_meta :
-    func : AllGatherInferMeta
-    param: [X, nranks]
-  kernel :
-    func : all_gather
-    param: [X, nranks]
-
 - op : allclose
   args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
   output : Tensor(out)
@@ -213,16 +203,6 @@
     func : bmm
   backward : bmm_grad
 
-- op : broadcast
-  args : (Tensor X, int ring_id = 0, int root = 0)
-  output : Tensor(Out)
-  infer_meta :
-    func : BroadcastBaseInferMeta
-    param: [X]
-  kernel :
-    func : broadcast
-    param: [X, root]
-
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
@@ -339,6 +319,15 @@
     func : cross
     data_type : x
   backward : cross_grad
+
+- op : cumprod
+  args : (Tensor x,  int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMetaCheckAxis
+  kernel :
+    func : cumprod
+  backward : cumprod_grad
 
 - op : det
   args : (Tensor x)
@@ -604,16 +593,6 @@
     func : frame
   backward : frame_grad
 
-- op : fused_dropout_add
-  args : (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
-  output : Tensor(out), Tensor(seed_offset)
-  infer_meta :
-    func : FusedDropoutAddInferMeta
-  kernel :
-    func : fused_dropout_add
-    data_type : x
-  backward : fused_dropout_add_grad
-
 - op : gather_nd
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -700,6 +679,16 @@
     func : HistogramInferMeta
   kernel :
     func : histogram
+
+- op : huber_loss
+  args : (Tensor input, Tensor label, float delta)
+  output : Tensor(out), Tensor(residual)
+  infer_meta :
+    func : HuberLossInferMeta
+  kernel :
+    func : huber_loss
+  intermediate : residual
+  backward : huber_loss_grad
 
 - op : imag
   args : (Tensor x)
@@ -794,6 +783,16 @@
   kernel :
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
+
+- op : kldiv_loss
+  args : (Tensor x, Tensor label, str reduction = "mean")
+  output : Tensor(out)
+  infer_meta :
+    func : KLDivInferMeta
+  kernel :
+    func : kldiv_loss
+    data_type : x
+  backward : kldiv_loss_grad
 
 - op : kron
   args : (Tensor x, Tensor y)
@@ -924,6 +923,16 @@
     func : log_loss
   backward : log_loss_grad
 
+- op : log_softmax
+  args : (Tensor x, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMetaCheckAxis
+  kernel :
+    func : log_softmax
+    data_type : x
+  backward : log_softmax_grad
+
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor
@@ -953,6 +962,16 @@
     data_type : x
   backward : lu_unpack_grad
 
+- op : margin_cross_entropy
+  args : (Tensor logits, Tensor label, bool return_softmax = false, int ring_id = 0, int rank = 0, int nranks = 1, float margin1 = 1.0f, float margin2 = 0.5f, float margin3 = 0.0f, float scale = 64.0f)
+  output : Tensor(softmax), Tensor(loss)
+  infer_meta :
+    func : MarginCrossEntropyInferMeta
+  kernel :
+    func : margin_cross_entropy
+    data_type : logits
+  backward : margin_cross_entropy_grad
+
 - op : masked_select
   args : (Tensor x, Tensor mask)
   output : Tensor (out)
@@ -980,6 +999,25 @@
   kernel :
     func : maxout
   backward : maxout_grad
+
+- op : memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test)
+  output : Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
+  infer_meta :
+    func : MemoryEfficientAttentionInferMeta
+  kernel :
+    func : memory_efficient_attention
+    data_type : query
+  optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
+  backward : memory_efficient_attention_grad
+
+- op : merge_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : merge_selected_rows {selected_rows -> selected_rows}
 
 - op : meshgrid
   args : (Tensor[] inputs)
@@ -1147,6 +1185,16 @@
     func : pow
     data_type : x
   backward : pow_grad
+
+- op : prelu
+  args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
+  output : Tensor(out)
+  infer_meta :
+    func : PReluInferMeta
+  kernel :
+    func : prelu
+    data_type : x
+  backward : prelu_grad
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
@@ -1356,6 +1404,16 @@
   inplace : (x -> out)
   backward : sigmoid_grad
 
+- op : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithLogitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+  inplace : (x -> out)
+  backward : sigmoid_cross_entropy_with_logits_grad
+
 - op : sign
   args : (Tensor x)
   output : Tensor(out)
@@ -1440,6 +1498,16 @@
     func : solve
     data_type : x
   backward : solve_grad
+
+- op : spectral_norm
+  args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
+  output : Tensor
+  infer_meta :
+    func : SpectralNormInferMeta
+  kernel :
+    func : spectral_norm
+    data_type : weight
+  backward : spectral_norm_grad
 
 - op : sqrt
   args : (Tensor x)
@@ -1632,6 +1700,19 @@
   kernel :
     func : unstack
   backward : unstack_grad
+
+- op : update_loss_scaling_
+  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update=false)
+  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta :
+    func : UpdateLossScalingInferMeta
+    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
+    data_type : x
+  data_transform :
+    skip_transform : found_infinite
+  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)

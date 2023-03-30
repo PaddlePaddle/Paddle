@@ -16,6 +16,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 
 
 def check_path_exists(path):
@@ -153,7 +154,7 @@ def update_api_info_file(fail_case_list, api_info_file):
 
 
 def summary_results(check_results, api_info_file):
-    """Summary results and return exit code."""
+    """Summary results and return sys.exit code."""
     for case_name in check_results["speed"]:
         logging.error("Check speed result with case \"%s\" failed." % case_name)
 
@@ -217,4 +218,4 @@ if __name__ == "__main__":
             case_name, develop_result, pr_result, check_results
         )
 
-    exit(summary_results(check_results, args.api_info_file))
+    sys.exit(summary_results(check_results, args.api_info_file))

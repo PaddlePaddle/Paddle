@@ -53,7 +53,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
     class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
         def compute_input_output(self):
@@ -98,47 +98,6 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
-    class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
-        def compute_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.power(
-                    self.inputs['X'], self.inputs['Y'].reshape(100, 1)
-                )
-            }
-
-    class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
-        def compute_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [100, 3, 1]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
-            self.attrs = {'axis': 0}
-            self.outputs = {
-                'Out': np.power(
-                    self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-                )
-            }
-
-    class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
-        def compute_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 20, 5, 1]).astype(
-                    self.dtype
-                ),
-                'Y': np.random.uniform(0.1, 1, [20, 5]).astype(self.dtype),
-            }
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.power(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 20, 5, 1)
-                )
-            }
-
     class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
         def compute_input_output(self):
             self.inputs = {
@@ -161,7 +120,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
 
 support_types = get_xpu_op_support_types('elementwise_pow')

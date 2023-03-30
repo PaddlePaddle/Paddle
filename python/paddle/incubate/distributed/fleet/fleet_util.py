@@ -24,7 +24,7 @@ import time
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.log_helper import get_logger
 
