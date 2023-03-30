@@ -70,8 +70,8 @@ class alignas(8) ValueImpl {
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
   ///
   explicit ValueImpl(ir::Type type, uint32_t index) {
-    assert((void("The value of index must not exceed 6"),
-            index <= OUTLINE_OP_RESULT_INDEX));
+    assert(index <= OUTLINE_OP_RESULT_INDEX &&
+           "The value of index must not exceed 6");
     type_ = type;
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(nullptr) + index);
@@ -169,6 +169,8 @@ class OpOperandImpl {
   ir::Operation *owner() const { return owner_; }
 
   ir::detail::OpOperandImpl *next_user() { return next_user_; }
+
+  friend ir::Operation;
 
  private:
   OpOperandImpl(ir::detail::ValueImpl *source, ir::Operation *owner)
