@@ -1482,20 +1482,20 @@ def poisson_nll_loss(
 ):
     r"""Poisson negative log likelihood loss.
     See more detail in :ref:`PoissonNLLLoss <api_paddle_nn_PoissonNLLLoss>` .
-    Parameters::
 
+    Parameters::
          input (Tensor):
             Input tensor, expectation of underlying Poisson distribution.
             The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
             It's data type should be float32, float64.
          label (Tensor):
-            Label tensor, random sampled from Poisson distribution :math:`target \sim \text{Poisson}(input)`.
+            Label tensor, random sampled from Poisson distribution :math:`label \sim \text{Poisson}(input)`.
             The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
             It's data type should be float32, float64.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
-            If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{target} * \text{input}`.
-            If ``False`` then loss is :math:`\text{input} - \text{target} * \log(\text{input}+\text{epsilon})`.
+            If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{label} * \text{input}`.
+            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})`.
             Default: ``True``.
          full (bool, optional):
             Whether to compute full loss.
@@ -1516,14 +1516,17 @@ def poisson_nll_loss(
 
     Examples::
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
+
             input = paddle.randn([5, 2], dtype=paddle.float32)
-            target = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = F.poisson_nll_loss(input, target, log_input=True, reduction='None')
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='None')
             print(loss)
-            loss = F.poisson_nll_loss(input, target, reduction='mean')
+            loss = F.poisson_nll_loss(input, label, reduction='mean')
             print(loss)
+
     """
     # check parameter values
     if epsilon <= 0:

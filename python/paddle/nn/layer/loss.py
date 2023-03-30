@@ -886,27 +886,22 @@ class PoissonNLLLoss(Layer):
     r"""Generate a callable object of 'PoissonNLLLoss' to calculate the
     Poisson negative log likelihood loss between Input(input) and
     Input(label). Notes that Input(input) is the expectation of underlying
-    Poisson distribution and Input(Target) is the random samples from the
+    Poisson distribution and Input(label) is the random samples from the
     Poisson distribution
 
 
     Poisson negative log likelihood loss is calculated as follows:
+
     .. math::
         \text{loss}(\text{input}, \text{label}) = \text{input} - \text{label} * \log(\text{label}) + \log(\text{label!})
-    The last term can be omitted or approximated with Stirling formula.
-    The approximation is used for label values more than 1. For labels less or
-    equal to 1 zeros are added to the loss. This approximation term can be omitted unless :attr:`full` is ``True``.
+    The last term can be approximated with Stirling formula. This approximation term is used when :attr:`full` is ``True``.
+    The approximation is added when label values are more than 1 and omitted when the labels are less than or equal to 1.
 
     Parameters:
-         input (Tensor):
-            Input tensor, expectation of underlying Poisson distribution.
-         label (Tensor):
-            Label tensor, random sampled from Poisson distribution :math:`target \sim \text{Poisson}(input)`.
-            The shape of label tensor should be the same as input tensor.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
-            If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{target} * \text{input}`.
-            If ``False`` then loss is :math:`\text{input} - \text{target} * \log(\text{input}+\text{epsilon})`.
+            If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
+            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})` .
             Default: ``True``.
          full (bool, optional):
             Whether to compute full loss.
@@ -914,7 +909,7 @@ class PoissonNLLLoss(Layer):
             If ``False``, the Stirling approximation is dropped.
             Default: ``False``.
          epsilon (float, optional):
-            A small value to avoid evaluation of :math:`\log(0)` when `log_input`\ =\ ``False``. ``epsilon > 0``.
+            A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
             Default: 1e-8.
          reduction (str, optional):
             Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -932,11 +927,14 @@ class PoissonNLLLoss(Layer):
 
     Examples::
         .. code-block:: python
+
             import paddle
+
             poisson_nll_loss = paddle.nn.loss.PoissonNLLLoss()
             input = paddle.randn([5, 2], dtype=paddle.float32)
-            target = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = poisson_nll_loss(input, target)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            loss = poisson_nll_loss(input, label)
+
     """
 
     def __init__(
