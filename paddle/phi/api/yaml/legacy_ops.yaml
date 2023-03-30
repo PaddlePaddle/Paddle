@@ -1649,17 +1649,6 @@
     data_type: x
   backward: unpool3d_grad
 
-- op : update_loss_scaling_
-  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)
-  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
-  infer_meta :
-    func : UpdateLossScalingInferMeta
-    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
-  kernel :
-    func : update_loss_scaling
-    data_type : x
-  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
-
 - op : warpctc
   args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times)
   output :  Tensor(loss), Tensor(warpctcgrad)
