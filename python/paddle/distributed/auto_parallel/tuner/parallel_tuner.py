@@ -290,7 +290,7 @@ class ParallelTuner:
             return self._cached_dims_mapping_candidates[key]
         candidates = []
         dims_mapping = [-1 for i in range(dims_mapping_len)]
-        dims_list = [i for i in range(process_mesh_len)]
+        dims_list = list(range(process_mesh_len))
         visited = [False for i in range(process_mesh_len)]
         self._generate_dims_mapping_candidates_helper(
             dims_mapping, dims_list, 0, visited, candidates

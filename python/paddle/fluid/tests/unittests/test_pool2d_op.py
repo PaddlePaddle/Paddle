@@ -778,7 +778,7 @@ class TestCase4_AsyPadding(TestCase4):
         self.shape = [2, 3, 7, 7]
 
 
-class TestCase5_AsyPadding((TestCase5)):
+class TestCase5_AsyPadding(TestCase5):
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
