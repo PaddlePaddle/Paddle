@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def conv3d_forward_naive(
@@ -380,7 +380,7 @@ class TestConv3DOp(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -394,7 +394,7 @@ class TestConv3DOp(OpTest):
             ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -694,7 +694,7 @@ class TestConv3DOp_2(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
         )
 
     def test_check_grad_no_input(self):
@@ -706,7 +706,7 @@ class TestConv3DOp_2(OpTest):
             ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
         )
 
     def init_test_case(self):

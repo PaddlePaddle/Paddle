@@ -29,8 +29,8 @@ def huber_loss_forward(val, delta):
 
 
 def huber_loss_wraper(x, y, delta):
-    a, b = paddle._C_ops.huber_loss(x, y, delta)
-    return a, b
+    a = paddle._C_ops.huber_loss(x, y, delta)
+    return a
 
 
 class TestHuberLossOp(OpTest):

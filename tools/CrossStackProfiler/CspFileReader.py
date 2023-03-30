@@ -139,7 +139,7 @@ class FileReader:
 
         self._checkArgsKey("dataPath", str)
         if not os.path.exists(self._dataPath):
-            raise IOError(
+            raise OSError(
                 "input data path [%s] not existed!" % (self._dataPath)
             )
 
@@ -220,7 +220,7 @@ class FileReader:
             )
 
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not a valid file!" % (fileName))
+            raise OSError("[%s] is not a valid file!" % (fileName))
 
         try:
             prefix_str = fileName.split(sed)[-1]
@@ -298,7 +298,7 @@ class FileReader:
     def getDict(self, name, groupId, gpuId, tmpPath="./tmp"):
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not existed!" % fileName)
+            raise OSError("[%s] is not existed!" % fileName)
 
         data = {}
         with open(fileName, "r") as rf:

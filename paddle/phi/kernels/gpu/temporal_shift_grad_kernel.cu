@@ -146,4 +146,5 @@ PD_REGISTER_KERNEL(temporal_shift_grad,
                    phi::TemporalShiftGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -16,7 +16,6 @@ import warnings
 from functools import partial, reduce
 
 import paddle
-import paddle.fluid.core as core
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
@@ -24,6 +23,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
+from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
@@ -329,7 +329,7 @@ class While:
             if inner_var:
                 out_vars.append(inner_var)
 
-        x_name_list |= set(map(lambda x: x.name, out_vars))
+        x_name_list |= {x.name for x in out_vars}
         # NOTE(dev): cond_var has been contained in Input('Condition'), so
         # we remove it from Input('X')
         x_name_list -= {self.cond_var.name}
@@ -368,7 +368,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):

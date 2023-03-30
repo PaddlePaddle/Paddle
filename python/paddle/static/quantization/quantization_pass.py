@@ -417,7 +417,7 @@ class QuantizationTransformPass:
             ):
                 _quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
@@ -1407,13 +1407,12 @@ class QuantizationFreezePass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)
 
     def _original_var_name(self, var_name):
@@ -1438,12 +1437,7 @@ class QuantizationFreezePass:
         return "%s.dequantized" % (var_name)
 
     def _is_float(self, v):
-        return (
-            isinstance(v, float)
-            or isinstance(v, np.float16)
-            or isinstance(v, np.float32)
-            or isinstance(v, np.float64)
-        )
+        return isinstance(v, (float, np.float16, np.float32, np.float64))
 
 
 class ConvertToInt8Pass:
@@ -1529,13 +1523,12 @@ class ConvertToInt8Pass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)
 
 
@@ -2724,7 +2717,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             ):
                 self._quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
-        graph.out_node_mapping_table = dict()
+        graph.out_node_mapping_table = {}
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         with tqdm(
@@ -3229,13 +3222,12 @@ class QuantWeightPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)
 
     def _load_var(self, name):

@@ -19,7 +19,7 @@ import warnings
 from functools import reduce
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.framework import core
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
@@ -93,7 +93,7 @@ def delete_optimizer_pass(program, config):
     optimizer_ops.extend(lr_ops)
     _delete_optimizer_op_and_vars(program, optimizer_ops)
 
-    if hasattr(config.origin_main_program, 'lr_sheduler'):
+    if hasattr(config.origin_main_program, 'lr_scheduler'):
         _add_lr_var(program, config)
 
     return program
@@ -179,7 +179,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -2087,7 +2087,7 @@ def find_op_input_output(program, block, op):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 
