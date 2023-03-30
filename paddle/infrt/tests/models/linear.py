@@ -16,8 +16,8 @@
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.optimizer as opt
+from paddle import nn
 
 BATCH_SIZE = 16
 BATCH_NUM = 4

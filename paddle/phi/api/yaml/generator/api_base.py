@@ -1335,4 +1335,5 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             else:
                 invoke_code = self.invoke
                 params_code = self.get_define_args()
+
             return self.gene_invoke_code(invoke_code, params_code)

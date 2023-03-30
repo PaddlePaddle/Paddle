@@ -143,7 +143,7 @@ class TestElementwiseMulUnsqueeze2OneDNNFusePass(PassAutoScanTest):
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],
         )
-        yield config, ["elementwise_mul"], (1e-5, 1e-5)
+        yield config, ["fused_elementwise_mul"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
