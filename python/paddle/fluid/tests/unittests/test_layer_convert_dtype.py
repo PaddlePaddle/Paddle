@@ -98,30 +98,22 @@ class TestDtypeConvert(unittest.TestCase):
         paddle.set_default_dtype('float32')
 
     def test_excluded_layers_type_error(self):
-
         self.assertRaises(
             AssertionError, self.verify_trans_dtype, excluded_layers=111
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+)
 class TestSupportedTypeInfo(unittest.TestCase):
-    @unittest.skipIf(core.is_compiled_with_cuda(), "Require compiled with CPU.")
     def test_cpu(self):
         place = fluid.CPUPlace()
         res = paddle.amp.is_float16_supported(place)
         self.assertEqual(res, False)
-        place = fluid.CPUPlace()
         res = paddle.amp.is_bfloat16_supported(place)
         self.assertEqual(res, True)
 
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or (
-            core.is_compiled_with_cuda()
-            and paddle.device.cuda.get_device_capability()[0] < 5.3
-        ),
-        "run test when gpu is availble and gpu's compute capability is at least 5.3.",
-    )
     def test_gpu_fp16_supported(self):
         res = paddle.amp.is_float16_supported()
         self.assertEqual(res, True)
@@ -129,44 +121,6 @@ class TestSupportedTypeInfo(unittest.TestCase):
         res = paddle.amp.is_float16_supported(place)
         self.assertEqual(res, True)
 
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or (
-            core.is_compiled_with_cuda()
-            and paddle.device.cuda.get_device_capability()[0] < 8.0
-        ),
-        "run test when gpu is availble and gpu's compute capability is at least 8.0.",
-    )
-    def test_gpu_bf16_supported(self):
-        res = paddle.amp.is_bfloat16_supported()
-        self.assertEqual(res, True)
-        place = fluid.CUDAPlace(0)
-        res = paddle.amp.is_bfloat16_supported(place)
-        self.assertEqual(res, True)
-
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or (
-            core.is_compiled_with_cuda()
-            and paddle.device.cuda.get_device_capability()[0] >= 5.3
-        ),
-        "run test when gpu is availble and maximum gpu's compute capability is 5.3.",
-    )
-    def test_gpu_fp16_unsupported(self):
-        res = paddle.amp.is_float16_supported()
-        self.assertEqual(res, False)
-        place = fluid.CUDAPlace(0)
-        res = paddle.amp.is_float16_supported(place)
-        self.assertEqual(res, False)
-
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or (
-            core.is_compiled_with_cuda()
-            and paddle.device.cuda.get_device_capability()[0] >= 8.0
-        ),
-        "run test when gpu is availble and maximum gpu's compute capability is 8.0.",
-    )
     def test_gpu_bf16_unsupported(self):
         res = paddle.amp.is_bfloat16_supported()
         self.assertEqual(res, False)

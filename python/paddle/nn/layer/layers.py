@@ -2167,6 +2167,7 @@ class Layer:
     def float(self, excluded_layers=None):
         '''
         Casts all floating point parameters and buffers to ``float`` data type.
+        Note: `nn.BatchNorm` does not support FP16 weights, and does not convert to `nn.BatchNorm` by default.
 
         Parameters:
             excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
@@ -2218,6 +2219,7 @@ class Layer:
     def float16(self, excluded_layers=None):
         '''
         Casts all floating point parameters and buffers to ``float16`` data type.
+        Note: `nn.BatchNorm` does not support FP16 weights, and does not convert to `nn.BatchNorm` by default.
 
         Parameters:
            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
@@ -2269,6 +2271,7 @@ class Layer:
     def bfloat16(self, excluded_layers=None):
         '''
         Casts all floating point parameters and buffers to ``bfloat16`` data type.
+        Note: `nn.BatchNorm` does not support FP16 weights, and does not convert to `nn.BatchNorm` by default.
 
         Parameters:
             excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
