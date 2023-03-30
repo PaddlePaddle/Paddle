@@ -1655,6 +1655,7 @@
     param : [out, out]
   kernel :
     func : tanh_double_grad
+  composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
   backward : tanh_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 

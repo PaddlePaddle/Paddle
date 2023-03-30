@@ -97,6 +97,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : arange(range)
+  inputs :
+    {start : Start, end : End, step : Step}
+  outputs :
+    out : Out
+
 - op : argsort
   inputs :
     x : X
@@ -1081,6 +1087,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
+
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)
   inputs :
@@ -1652,7 +1664,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+    sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
 
@@ -1992,6 +2004,18 @@
     x : X
   outputs :
     out : Y
+
+- op : update_loss_scaling_
+  inputs :
+    {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
+  outputs :
+    {out : Out, loss_scaling : LossScaling, out_good_steps : OutGoodSteps, out_bad_steps : OutBadSteps}
+  scalar :
+    stop_update :
+      data_type : bool
+      tensor_name : StopUpdate
+  get_expected_kernel_type :
+    update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
 
 - op : viterbi_decode
   inputs :
