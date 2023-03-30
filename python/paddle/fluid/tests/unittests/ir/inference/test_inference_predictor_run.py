@@ -109,7 +109,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         [input0_tensor, input1_tensor] = self.get_inputs()
 
-        # disorder
+        # inorder
         inputs = [input0_tensor, input1_tensor]
         outputs = predictor.run(inputs)
 
