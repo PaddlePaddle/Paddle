@@ -35,7 +35,7 @@ struct DiagFunctor {
   T* output_;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class DiagKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
