@@ -150,6 +150,11 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
                                               const ScatterOptions& opts,
                                               bool sync_op) override;
 
+  std::shared_ptr<ProcessGroup::Task> Gather(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const GatherOptions& opts,
+                                             bool sync_op) override;
+
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& inputs,
@@ -200,6 +205,11 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
+
+  std::shared_ptr<ProcessGroup::Task> Gather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const GatherOptions&) override;
 
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }

@@ -204,6 +204,29 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(tensor_y, out2)
         print("test scatter api ok\n")
 
+        # test Gather
+        def test_gather(root):
+            in_shape = list(self.shape)
+            in_shape[0] *= 2
+            x = np.random.random(in_shape).astype(self.dtype)
+            y_1 = np.random.random(self.shape).astype(self.dtype)
+            y_2 = np.random.random(self.shape).astype(self.dtype)
+            tensoer_x = paddle.to_tensor(x)
+            tensor_y_1 = paddle.to_tensor(y_1)
+            tensor_y_2 = paddle.to_tensor(y_2)
+            gather_result = paddle.concat([tensor_y_1, tensor_y_2])
+            if pg.rank() == root:
+                task = pg.gather(tensoer_x, tensor_y_1, root)
+                task.wait()
+                assert np.array_equal(tensoer_x, gather_result)
+            else:
+                task = pg.gather(tensor_x, tensor_y_2, root)
+                task.wait()
+
+        test_gather(0)
+        test_gather(1)
+        print("test gather api ok\n")
+
 
 if __name__ == "__main__":
     unittest.main()

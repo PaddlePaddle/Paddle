@@ -497,6 +497,35 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "gather",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_out_tensor,
+                 py::handle py_in_tensor,
+                 int src,
+                 bool sync_op) {
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                auto *out_dense = p_out_tensor.get();
+
+                auto in_tensor =
+                    CastPyArg2VectorOfTensor(py_in_tensor.ptr(), 0);
+                Tensor stack_in_tensor = paddle::stack(in_tensor, 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    stack_in_tensor.impl());
+                auto in_dense = *p_in_tensor;
+
+                distributed::GatherOptions opts{src};
+
+                return self.Gather(out_dense, in_dense, opts, sync_op);
+              },
+              py::arg("out"),
+              py::arg("in"),
+              py::arg("src"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "scatter_tensor",
               [](distributed::ProcessGroup &self,
                  py::handle py_out_tensor,

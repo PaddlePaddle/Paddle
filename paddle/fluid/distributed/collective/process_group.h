@@ -198,6 +198,16 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Gather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const GatherOptions& opts,
+      bool sync_op) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroup%s does not support gather with sync_op flag.",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
                                                    bool sync_op) {
@@ -466,6 +476,14 @@ class ProcessGroup {
       const ScatterOptions&) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "ProcessGroup%s does not support scatter", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Gather(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      const GatherOptions&) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "ProcessGroup%s does not support gather", GetBackendName()));
   }
 
  protected:
