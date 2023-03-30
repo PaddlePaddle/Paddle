@@ -175,7 +175,8 @@ static size_t workspace_size =
           {static_cast<const cutlass_type>(static_cast<const float>(alpha)),  \
            static_cast<const cutlass_type>(static_cast<const float>(beta))}); \
       status = reduction_op.initialize(reduction_args);                       \
-      status = reduction_op(dev_ctx.stream());                                \
+      GATHER_GEMM_SCATTER_CHECK(status);                                      \
+      reduction_op(dev_ctx.stream());                                         \
     }                                                                         \
   }
 
