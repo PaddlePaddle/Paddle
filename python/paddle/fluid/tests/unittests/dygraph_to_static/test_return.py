@@ -265,7 +265,7 @@ def test_return_nested(x):
 
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
-        self.input = np.ones((1)).astype('int32')
+        self.input = np.ones(1).astype('int32')
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
@@ -282,7 +282,7 @@ class TestReturnBase(unittest.TestCase):
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
                 return tuple(r.numpy() for r in res)
-            elif isinstance(res, (core.VarBase, core.eager.Tensor)):
+            elif isinstance(res, core.eager.Tensor):
                 return res.numpy()
             return res
 

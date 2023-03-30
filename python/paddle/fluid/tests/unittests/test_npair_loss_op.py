@@ -128,7 +128,7 @@ class TestNpairLossOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             anchor_np = np.random.random((2, 4)).astype("float32")
             positive_np = np.random.random((2, 4)).astype("float32")
-            labels_np = np.random.random((2)).astype("float32")
+            labels_np = np.random.random(2).astype("float32")
             anchor_data = paddle.static.data(
                 name='anchor', shape=[2, 4], dtype='float32'
             )
