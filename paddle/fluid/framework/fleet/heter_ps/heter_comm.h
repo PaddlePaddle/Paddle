@@ -590,7 +590,6 @@ class HeterComm {
   void scatter_inter_vals_by_all2all_common(
           const int& gpu_id,
           const size_t& len,
-          const size_t& fea_size,
           const size_t& value_bytes,
           const T* d_in_vals,
           T* d_out_vals,
