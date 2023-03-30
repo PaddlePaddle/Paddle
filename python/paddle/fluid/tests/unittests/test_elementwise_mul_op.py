@@ -1,4 +1,4 @@
-#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,174 +18,111 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
 from paddle.fluid import core
 
 
-def broadcast_wrapper(shape=[1, 10, 12, 1]):
-    def mul_wrapper(x, y, axis=-1):
-        return paddle.multiply(x, y.reshape(shape))
-
-    return mul_wrapper
-
-
 class ElementwiseMulOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
         self.python_api = paddle.multiply
         self.public_python_api = paddle.multiply
-        self.prim_op_type = "prim"
-        self.init_args()
+        self.dtype = np.float64
+        self.axis = -1
         self.init_dtype()
-        self.init_shape()
-        self.if_check_prim()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
         self.if_enable_cinn()
 
-        x = self.gen_data(self.x_shape).astype(self.val_dtype)
-        y = self.gen_data(self.y_shape).astype(self.val_dtype)
-        out = self.compute_output(x, y).astype(self.val_dtype)
-        grad_out = np.ones(out.shape).astype(self.val_dtype)
-        grad_x = self.compute_gradient_x(grad_out, y).astype(self.val_dtype)
-        grad_y = self.compute_gradient_y(grad_out, x).astype(self.val_dtype)
-
-        # Convert np.float32 data to np.uint16 for bfloat16 Paddle OP
-        if self.dtype == np.uint16:
-            x = convert_float_to_uint16(x)
-            y = convert_float_to_uint16(y)
-            out = convert_float_to_uint16(out)
-            grad_out = convert_float_to_uint16(grad_out)
-            grad_x = convert_float_to_uint16(grad_x)
-            grad_y = convert_float_to_uint16(grad_y)
-
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': out}
-        self.grad_out = grad_out
-        self.grad_x = grad_x
-        self.grad_y = grad_y
-
-    def if_enable_cinn(self):
-        self.enable_cinn = True
-
-    def init_args(self):
-        self.check_dygraph = True
-        self.place = None
-
-    def init_dtype(self):
-        self.dtype = np.float64
-        self.val_dtype = np.float64
-
-    def init_shape(self):
-        self.x_shape = [13, 17]
-        self.y_shape = [13, 17]
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def gen_data(self, shape):
-        return np.random.uniform(0.1, 1, shape)
-
-    def compute_output(self, x, y):
-        return x * y
-
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y
-
-    def compute_gradient_y(self, grad_out, x):
-        return grad_out * x
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        if self.place is None:
-            self.check_output()
-        else:
-            self.check_output_with_place(self.place)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(not self.use_mkldnn))
 
-    def test_check_gradient(self):
-        check_list = []
-        check_list.append(
-            {
-                'grad': ['X', 'Y'],
-                'no_grad': None,
-                'val_grad': [self.grad_x, self.grad_y],
-            }
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
         )
-        check_list.append(
-            {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
-        )
-        check_list.append(
-            {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
-        )
-        for check_option in check_list:
-            check_args = [check_option['grad'], 'Out']
-            check_kwargs = {
-                'no_grad_set': check_option['no_grad'],
-                'user_defined_grads': check_option['val_grad'],
-                'user_defined_grad_outputs': [self.grad_out],
-                'check_dygraph': self.check_dygraph,
-                'check_prim': self.check_prim,
-            }
-            if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
-            else:
-                check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
 
+    def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
 
-class TestElementwiseMulPrimOpFP32(ElementwiseMulOp):
+    def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
     def init_dtype(self):
-        self.dtype = np.float32
-        self.val_dtype = np.float32
+        pass
+
+    def init_axis(self):
+        pass
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = []
-        self.y_shape = []
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
 
     def if_enable_cinn(self):
         self.enable_cinn = False
 
 
 class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [13, 17]
-        self.y_shape = []
-
-    def compute_output(self, x, y):
-        return x * y.reshape([1, 1])
-
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y.reshape([1, 1])
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x)
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
 
     def if_enable_cinn(self):
         self.enable_cinn = False
 
 
 class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = []
-        self.y_shape = [13, 17]
-
-    def compute_output(self, x, y):
-        return x.reshape([1, 1]) * y
-
-    def compute_gradient_x(self, grad_out, y):
-        return np.sum(grad_out * y)
-
-    def compute_gradient_y(self, grad_out, x):
-        return grad_out * x
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
 
     def if_enable_cinn(self):
         self.enable_cinn = False
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
 class TestBF16ElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
@@ -213,11 +150,11 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output(atol=2e-2)
+        self.check_output(atol=1e-2)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=True, max_relative_error=2e-2
+            ['X', 'Y'], 'Out', check_prim=True, max_relative_error=1e-2
         )
 
     def test_check_grad_ingore_x(self):
@@ -226,7 +163,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            max_relative_error=2e-2,
+            max_relative_error=1e-2,
         )
 
     def test_check_grad_ingore_y(self):
@@ -235,7 +172,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            max_relative_error=2e-2,
+            max_relative_error=1e-2,
         )
 
     def if_enable_cinn(self):
@@ -245,277 +182,277 @@ class TestBF16ElementwiseMulOp(OpTest):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
-class TestElementwiseMulOpScalar(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [10, 3, 4]
-        self.y_shape = [1]
+class TestElementwiseMulOp_scalar(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.inputs = {
+            'X': np.random.rand(10, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1).astype(np.float64),
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
-    def compute_gradient_y(self, grad_out, x):
-        return np.array([np.sum(grad_out * x)])
+
+class TestElementwiseMulOp_Vector(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.inputs = {
+            'X': np.random.random((100,)).astype("float64"),
+            'Y': np.random.random((100,)).astype("float64"),
+        }
+        self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.init_kernel_type()
 
 
-class TestElementwiseMulOpVector(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [100]
-        self.y_shape = [100]
+class ElementwiseMulOp_broadcast(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
 
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.init_dtype()
+        self.init_kernel_type()
+        self.init_axis()
+        self.init_input_attr_output()
+        self.if_check_prim()
+        self.if_check_dygraph()
 
-class TestElementwiseMulOpNoPrim(ElementwiseMulOp):
-    def test_check_gradient(self):
-        check_list = []
-        check_list.append(
-            {
-                'grad': ['X', 'Y'],
-                'no_grad': None,
-                'val_grad': [self.grad_x, self.grad_y],
-            }
+    def test_check_output(self):
+        self.check_output(
+            check_dygraph=self.check_dygraph, check_prim=self.check_prim
         )
-        check_list.append(
-            {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
         )
-        check_list.append(
-            {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
         )
-        for check_option in check_list:
-            check_args = [check_option['grad'], 'Out']
-            check_kwargs = {
-                'no_grad_set': check_option['no_grad'],
-                'user_defined_grads': check_option['val_grad'],
-                'user_defined_grad_outputs': [self.grad_out],
-                'check_dygraph': self.check_dygraph,
-            }
-            if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
-            else:
-                check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
+        )
+
+    def init_input_attr_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17, 1]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [17, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_axis(self):
+        self.axis = -1
+
+    def if_check_prim(self):
+        self.check_prim = self.axis == -1
+
+    def if_check_dygraph(self):
+        self.check_dygraph = (not self.use_mkldnn) and (self.axis == -1)
 
 
-class TestElementwiseMulOpBroadcast0(TestElementwiseMulOpNoPrim):
-    def init_shape(self):
-        self.x_shape = [100, 3, 4]
-        self.y_shape = [100]
-        self.attrs = {'axis': 0}
-        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
+class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x * self.y.reshape(100, 1, 1)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
-    def compute_output(self, x, y):
-        return x * y.reshape(100, 1, 1)
-
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y.reshape(100, 1, 1)
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(1, 2))
-
-
-class TestElementwiseMulOpBroadcast1(TestElementwiseMulOpNoPrim):
-    def init_shape(self):
-        self.x_shape = [2, 100, 4]
-        self.y_shape = [100]
-        self.attrs = {'axis': 1}
-        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
-
-    def compute_output(self, x, y):
-        return x * y.reshape(1, 100, 1)
-
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y.reshape(1, 100, 1)
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(0, 2))
+    def init_axis(self):
+        self.axis = 0
 
 
-class TestElementwiseMulOpBroadcast2(TestElementwiseMulOpNoPrim):
-    def init_shape(self):
-        self.x_shape = [2, 3, 100]
-        self.y_shape = [100]
-        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
+class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.inputs = {
+            'X': np.random.rand(2, 100, 3).astype(np.float64),
+            'Y': np.random.rand(100).astype(np.float64),
+        }
 
-    def compute_output(self, x, y):
-        return x * y.reshape(1, 1, 100)
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 100, 1)
+        }
 
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y.reshape(1, 1, 100)
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(0, 1))
-
-
-class TestElementwiseMulOpBroadcast3(TestElementwiseMulOpNoPrim):
-    def init_shape(self):
-        self.x_shape = [2, 10, 12, 5]
-        self.y_shape = [10, 12]
-        self.attrs = {'axis': 1}
-        self.python_api = broadcast_wrapper(shape=[1, 10, 12, 1])
-
-    def compute_output(self, x, y):
-        return x * y.reshape(1, 10, 12, 1)
-
-    def compute_gradient_x(self, grad_out, y):
-        return grad_out * y.reshape(1, 10, 12, 1)
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(0, 3))
+    def init_axis(self):
+        self.axis = 1
 
 
-class TestElementwiseMulOpBroadcast4(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [2, 3, 50]
-        self.y_shape = [2, 1, 50]
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(1)).reshape(2, 1, 50)
-
-
-class TestElementwiseMulOpBroadcast5(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [2, 3, 4, 20]
-        self.y_shape = [2, 3, 1, 20]
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(2)).reshape(2, 3, 1, 20)
+class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.inputs = {
+            'X': np.random.rand(2, 3, 100).astype(np.float64),
+            'Y': np.random.rand(100).astype(np.float64),
+        }
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 100)
+        }
 
 
-class TestElementwiseMulOpCommonuse1(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [2, 3, 100]
-        self.y_shape = [1, 1, 100]
+class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.inputs = {
+            'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
+            'Y': np.random.rand(10, 12).astype(np.float64),
+        }
 
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(0, 1)).reshape(1, 1, 100)
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
+        }
 
-
-class TestElementwiseMulOpCommonuse2(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [30, 3, 1, 5]
-        self.y_shape = [30, 1, 4, 1]
-
-    def compute_gradient_x(self, grad_out, y):
-        return np.sum(grad_out * y, axis=(2)).reshape(30, 3, 1, 5)
-
-    def compute_gradient_y(self, grad_out, x):
-        return np.sum(grad_out * x, axis=(1, 3)).reshape(30, 1, 4, 1)
+    def init_axis(self):
+        self.axis = 1
 
 
-class TestElementwiseMulOpXsizeLessThanYsize(ElementwiseMulOp):
-    def init_shape(self):
-        self.x_shape = [10, 12]
-        self.y_shape = [2, 3, 10, 12]
+class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.inputs = {
+            'X': np.random.rand(10, 2, 11).astype(np.float64),
+            'Y': np.random.rand(10, 1, 11).astype(np.float64),
+        }
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
+        self.inputs = {
+            'X': np.random.rand(10, 4, 2, 3).astype(np.float64),
+            'Y': np.random.rand(10, 4, 1, 3).astype(np.float64),
+        }
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseMulOpFp16(ElementwiseMulOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def if_enable_cinn(self):
+        pass
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(not self.use_mkldnn), atol=1e-3)
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            max_relative_error=1e-3,
+        )
+
+    def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            max_relative_error=1e-3,
+        )
+
+    def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            max_relative_error=1e-3,
+        )
+
+
+class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.inputs = {
+            'X': np.random.rand(2, 3, 100).astype(np.float64),
+            'Y': np.random.rand(1, 1, 100).astype(np.float64),
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.inputs = {
+            'X': np.random.rand(30, 3, 1, 5).astype(np.float64),
+            'Y': np.random.rand(30, 1, 4, 1).astype(np.float64),
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.inputs = {
+            'X': np.random.rand(10, 10).astype(np.float64),
+            'Y': np.random.rand(2, 2, 10, 10).astype(np.float64),
+        }
+
         self.attrs = {'axis': 2}
 
-    def compute_gradient_x(self, grad_out, y):
-        return np.sum(grad_out * y, axis=(0, 1))
-
-
-class TestElementwiseMulOpInt(ElementwiseMulOp):
-    def init_dtype(self):
-        self.dtype = np.int32
-        self.val_dtype = np.int32
-
-    def gen_data(self, shape):
-        return np.random.randint(1, 5, size=shape)
-
-    def compute_output(self, x, y):
-        return x * y
-
-
-def create_test_fp16_class(parent, max_relative_error=2e-3):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestElementwiseMulFP16Op(parent):
-        def init_dtype(self):
-            self.dtype = np.float16
-            self.val_dtype = np.float16
-
-        def if_enable_cinn(self):
-            self.enable_cinn = True
-
-        def test_check_gradient(self):
-            check_list = []
-            check_list.append(
-                {
-                    'grad': ['X', 'Y'],
-                    'no_grad': None,
-                    'val_grad': [self.grad_x, self.grad_y],
-                }
-            )
-            check_list.append(
-                {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
-            )
-            check_list.append(
-                {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
-            )
-            for check_option in check_list:
-                check_args = [check_option['grad'], 'Out']
-                check_kwargs = {
-                    'no_grad_set': check_option['no_grad'],
-                    'user_defined_grads': check_option['val_grad'],
-                    'user_defined_grad_outputs': [self.grad_out],
-                    'check_dygraph': self.check_dygraph,
-                    'max_relative_error': max_relative_error,
-                }
-                if self.place is None:
-                    self.check_grad(*check_args, **check_kwargs)
-                else:
-                    check_args.insert(0, self.place)
-                    self.check_grad_with_place(*check_args, **check_kwargs)
-
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16")
-    TestElementwiseMulFP16Op.__name__ = cls_name
-    globals()[cls_name] = TestElementwiseMulFP16Op
-
-
-create_test_fp16_class(ElementwiseMulOp)
-create_test_fp16_class(TestElementwiseMulOp_ZeroDim1)
-create_test_fp16_class(TestElementwiseMulOp_ZeroDim2)
-create_test_fp16_class(TestElementwiseMulOp_ZeroDim3)
-create_test_fp16_class(TestElementwiseMulOpScalar)
-create_test_fp16_class(TestElementwiseMulOpVector)
-create_test_fp16_class(TestElementwiseMulOpBroadcast0)
-create_test_fp16_class(TestElementwiseMulOpBroadcast1)
-create_test_fp16_class(TestElementwiseMulOpBroadcast2)
-create_test_fp16_class(TestElementwiseMulOpBroadcast3)
-create_test_fp16_class(TestElementwiseMulOpBroadcast4)
-create_test_fp16_class(TestElementwiseMulOpBroadcast5)
-create_test_fp16_class(TestElementwiseMulOpCommonuse1)
-create_test_fp16_class(TestElementwiseMulOpCommonuse2)
-create_test_fp16_class(TestElementwiseMulOpXsizeLessThanYsize)
-
-
-class TestElementwiseMulBroadcast(unittest.TestCase):
-    def test_shape_with_batch_sizes(self):
-        with fluid.program_guard(fluid.Program()):
-            x_var = paddle.static.data(
-                name='x', dtype='float32', shape=[None, 3, None, None]
-            )
-            one = 2.0
-            out = one * x_var
-            exe = fluid.Executor(fluid.CPUPlace())
-            x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
-            (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
-            self.assertEqual((out_result == (2 * x)).all(), True)
-
-
-class TestMulOp(unittest.TestCase):
-    def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
-
-            y_1 = paddle.multiply(x, y, name='mul_res')
-            self.assertEqual(('mul_res' in y_1.name), True)
-
-    def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
-            z = paddle.multiply(x, y)
-            np_z = z.numpy()
-            z_expected = np.array([2.0, 15.0, 8.0])
-            self.assertEqual((np_z == z_expected).all(), True)
+        self.outputs = {
+            'Out': self.inputs['X'].reshape(1, 1, 10, 10) * self.inputs['Y']
+        }
+        self.init_kernel_type()
 
 
 class TestComplexElementwiseMulOp(OpTest):
