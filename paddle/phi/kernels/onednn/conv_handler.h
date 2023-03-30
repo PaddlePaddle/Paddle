@@ -397,65 +397,6 @@ class ConvOneDNNHandlerT
     }
   }
 
-  // Currently, 4 kind of onednn scales are supported: src scales, weight
-  // scales, post-sum scales and dst scales. This function is used to convert
-  // paddle scales to onednn scales
-  std::tuple<std::vector<float>,  // src scales
-             std::vector<float>,  // wei scales
-             std::vector<float>,  // post-sum scales
-             std::vector<float>>  // dst scales
-  get_dnnl_scales(const DenseTensor* filter,
-                  int groups,
-                  bool force_fp32_output,
-                  bool fuse_residual_conn,
-                  const std::string& fuse_activation) const {
-    const auto& weights_tz = phi::vectorize(filter->dims());
-    groups = std::max(groups, 1);
-
-    const auto& scale_weights_data =
-        this->dev_ctx_.HasDnnAttr("Scale_weights")
-            ? PADDLE_GET_CONST(std::vector<float>,
-                               this->dev_ctx_.GetDnnAttr("Scale_weights"))
-            : std::vector<float>{1.0f};
-    const auto& scale_in_data =
-        this->dev_ctx_.HasDnnAttr("Scale_in")
-            ? PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr("Scale_in"))
-            : 1.0f;
-    const auto& scale_in_eltwise_data =
-        this->dev_ctx_.HasDnnAttr("Scale_in_eltwise")
-            ? PADDLE_GET_CONST(float,
-                               this->dev_ctx_.GetDnnAttr("Scale_in_eltwise"))
-            : 1.0f;
-    const auto& scale_out =
-        this->dev_ctx_.HasDnnAttr("Scale_out")
-            ? PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr("Scale_out"))
-            : 1.0f;
-
-    std::vector<float> dnnl_src_scales = {1.f / scale_in_data};
-    size_t count = scale_weights_data.size();
-    std::vector<float> dnnl_wei_scales(count);
-#pragma omp parallel for if (count > 50)
-    for (size_t i = 0; i < count; i++) {
-      dnnl_wei_scales[i] = 1.f / scale_weights_data[i];
-    }
-    std::vector<float> dnnl_psum_scales = {1.f / scale_in_eltwise_data};
-    std::vector<float> dnnl_dst_scales = {1.f / scale_out};
-
-    return std::make_tuple(
-        dnnl_src_scales, dnnl_wei_scales, dnnl_psum_scales, dnnl_dst_scales);
-  }
-
-  dnnl::memory& GetScalesMem(int arg) {
-    if (arg == DNNL_ARG_SRC) {
-      return src_scales_mem_;
-    } else if (arg == DNNL_ARG_WEIGHTS) {
-      return wei_scales_mem_;
-    } else if (arg == DNNL_ARG_DST) {
-      return dst_scales_mem_;
-    } else {
-    }
-  }
-
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,
                                        int groups,
                                        bool force_fp32_output,
@@ -468,62 +409,19 @@ class ConvOneDNNHandlerT
     float activation_scale = 1.0f;
     std::vector<float> output_shift_scale;
     if (funcs::is_int8<T>()) {
-      if (this->dev_ctx_.HasDnnAttr("Sum_scale")) {
-        sum_scale =
-            PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr("Sum_scale"));
-        activation_scale =
-            this->dev_ctx_.HasDnnAttr("Activation_scale")
-                ? PADDLE_GET_CONST(
-                      float, this->dev_ctx_.GetDnnAttr("Activation_scale"))
-                : activation_scale;
-        output_shift_scale =
-            this->dev_ctx_.HasDnnAttr("Output_shift_scale")
-                ? PADDLE_GET_CONST(
-                      std::vector<float>,
-                      this->dev_ctx_.GetDnnAttr("Output_shift_scale"))
-                : output_shift_scale;
-      }
-
-      std::vector<float> src_scales, wei_scales, psum_scales, dst_scales;
-      std::tie(src_scales, wei_scales, psum_scales, dst_scales) =
-          get_dnnl_scales(filter,
-                          groups,
-                          force_fp32_output,
-                          fuse_residual_conn,
-                          fuse_activation);
-
       conv_attr.set_scales_mask(DNNL_ARG_SRC, 0);
 
-      dnnl::memory::desc src_scales_md(
-          {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-      src_scales_mem_ = dnnl::memory(src_scales_md, this->engine_);
-      memcpy(src_scales_mem_.get_data_handle(),
-             src_scales.data(),
-             src_scales.size() * sizeof(float));
-
-      int mask = wei_scales.size() > 1 ? 1 << 1 : 0;
+      auto wei_scales = ConvertToDNNLScales("Scale_weights");
+      int mask = wei_scales.size() == 1
+                     ? 0
+                     : (groups > 1 ? (1 << 0 + 1 << 1) : 1 << 0);
       conv_attr.set_scales_mask(DNNL_ARG_WEIGHTS, mask);
-
-      dnnl::memory::desc wei_scales_md(
-          {static_cast<int64_t>(wei_scales.size())},
-          dnnl::memory::data_type::f32,
-          dnnl::memory::format_tag::x);
-      wei_scales_mem_ = dnnl::memory(wei_scales_md, this->engine_);
-      memcpy(wei_scales_mem_.get_data_handle(),
-             wei_scales.data(),
-             wei_scales.size() * sizeof(float));
 
       if (!force_fp32_output) {
         conv_attr.set_scales_mask(DNNL_ARG_DST, 0);
-
-        dnnl::memory::desc dst_scales_md(
-            {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-        dst_scales_mem_ = dnnl::memory(dst_scales_md, this->engine_);
-        memcpy(dst_scales_mem_.get_data_handle(),
-               dst_scales.data(),
-               dst_scales.size() * sizeof(float));
       }
 
+      auto psum_scales = ConvertToDNNLScales("Scale_in_eltwise");
       sum_scale = psum_scales[0];
     }
 
@@ -742,21 +640,68 @@ class ConvOneDNNHandlerT
     return dst_memory_p;
   }
 
-  void SetScalesIfNeeded(std::unordered_map<int, dnnl::memory>* args) {
-    if (src_scales_mem_.get_desc().is_zero() != true) {
-      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, src_scales_mem_});
-      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, wei_scales_mem_});
+  // Currently, 4 kind of onednn scales are supported: src scales, weight
+  // scales, post-sum scales and dst scales. This function is used to convert
+  // paddle scales to onednn scales
+  std::vector<float> ConvertToDNNLScales(const std::string& attr_name) {
+    std::vector<float> paddle_scales;
+    // weight scales is vector but other scales are scalar
+    if (attr_name == "Scale_weights") {
+      paddle_scales =
+          this->dev_ctx_.HasDnnAttr(attr_name)
+              ? PADDLE_GET_CONST(std::vector<float>,
+                                 this->dev_ctx_.GetDnnAttr(attr_name))
+              : std::vector<float>{1.0f};
+    } else {
+      float scale =
+          this->dev_ctx_.HasDnnAttr(attr_name)
+              ? PADDLE_GET_CONST(float, this->dev_ctx_.GetDnnAttr(attr_name))
+              : 1.0f;
+      paddle_scales = std::vector<float>{scale};
     }
-    // dst scales may be empty when force fp32 output
-    if (dst_scales_mem_.get(true)) {
-      args->insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, dst_scales_mem_});
+
+    size_t count = paddle_scales.size();
+    std::vector<float> dnnl_scales(count);
+#pragma omp parallel for if (count > 50)
+    for (size_t i = 0; i < count; i++) {
+      dnnl_scales[i] = 1.f / paddle_scales[i];
     }
+    return dnnl_scales;
   }
 
- private:
-  dnnl::memory src_scales_mem_;
-  dnnl::memory wei_scales_mem_;
-  dnnl::memory dst_scales_mem_;
+  std::shared_ptr<dnnl::memory> AcquireScalesMemory(int dnnl_arg) {
+    // <dnnl_arg, {cache_key_suffix, attr_name}>
+    std::unordered_map<int, std::pair<std::string, std::string>> map = {
+        {DNNL_ARG_SRC, {"@src_scales", "Scale_in"}},
+        {DNNL_ARG_WEIGHTS, {"@wei_scales", "Scale_weights"}},
+        {DNNL_ARG_DST, {"@dst_scales", "Scale_out"}},
+    };
+
+    std::string cache_key_suffix, attr_name;
+    std::tie(cache_key_suffix, attr_name) = map.at(dnnl_arg);
+
+    // first look up the cache
+    auto dnnl_scales_mem = this->AcquireMemory(cache_key_suffix);
+
+    if (!dnnl_scales_mem) {
+      // cache miss, so construct scales memory from the paddle scales
+      // attributes
+      auto dnnl_scales = ConvertToDNNLScales(attr_name);
+      dnnl::memory::desc dnnl_scales_md(
+          {static_cast<int64_t>(dnnl_scales.size())},
+          dnnl::memory::data_type::f32,
+          dnnl::memory::format_tag::x);
+      dnnl_scales_mem =
+          std::make_shared<dnnl::memory>(dnnl_scales_md, this->engine_);
+      memcpy(dnnl_scales_mem->get_data_handle(),
+             dnnl_scales.data(),
+             dnnl_scales.size() * sizeof(float));
+      // cache the constructed memory
+      this->CacheMemory(cache_key_suffix, dnnl_scales_mem);
+    }
+
+    return dnnl_scales_mem;
+  }
 };
 
 }  // namespace onednn

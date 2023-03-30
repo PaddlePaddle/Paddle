@@ -471,8 +471,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");
     passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
-    passes_.push_back("int8_scale_calculation_mkldnn_pass");
-    passes_.push_back("params_quantization_mkldnn_pass");
     passes_.push_back("constant_folding_pass");
   }
   use_mkldnn_int8_ = true;

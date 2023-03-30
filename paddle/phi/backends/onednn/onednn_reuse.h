@@ -505,6 +505,13 @@ class OneDNNHandlerT {
     return std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(local_key));
   }
 
+  void CacheMemory(const std::string& suffix,
+                   const std::shared_ptr<dnnl::memory>& mem_p) {
+    const auto local_key = key_ + suffix;
+    dev_ctx_.SetBlob(local_key, mem_p);
+    return;
+  }
+
   const OneDNNContext& dev_ctx_;
   dnnl::engine engine_;
   Place place_;

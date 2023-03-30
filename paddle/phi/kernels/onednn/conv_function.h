@@ -245,8 +245,20 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
         }
 
+        auto src_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_SRC);
+        args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *src_scales_memory});
+
+        auto wei_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_WEIGHTS);
+        args.insert(
+            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, *wei_scales_memory});
+
+        if (!force_fp32_output) {
+          auto dst_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_DST);
+          args.insert(
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, *dst_scales_memory});
+        }
+
         auto& astream = OneDNNContext::tls().get_stream();
-        handler.SetScalesIfNeeded(&args);
         conv_p->execute(astream, args);
         astream.wait();
 

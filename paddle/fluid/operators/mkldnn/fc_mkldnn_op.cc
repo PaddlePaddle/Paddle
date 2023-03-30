@@ -149,7 +149,7 @@ class FCMKLDNNHandler
              src_scales.data(),
              src_scales.size() * sizeof(float));
 
-      int mask = wei_scales.size() > 1 ? 1 << 1 : 0;
+      int mask = wei_scales.size() > 1 ? 1 << 0 : 0;
       attributes.set_scales_mask(DNNL_ARG_WEIGHTS, mask);
 
       dnnl::memory::desc wei_scales_md(
