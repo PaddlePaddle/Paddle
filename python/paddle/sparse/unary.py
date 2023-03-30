@@ -709,7 +709,7 @@ def isnan(x, name=None):
     Return whether every element of input tensor is `NaN` or not, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor (SparseCooTensor or SparseCsrTensor), it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
