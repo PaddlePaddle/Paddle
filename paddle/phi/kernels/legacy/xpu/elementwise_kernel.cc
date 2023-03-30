@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaximumWithAxisKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out) {
+void MaximumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -39,11 +39,11 @@ void MaximumWithAxisKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MinimumWithAxisKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out) {
+void MinimumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -58,11 +58,11 @@ void MinimumWithAxisKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void RemainderWithAxisKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out) {
+void RemainderRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        int axis,
+                        DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -77,11 +77,11 @@ void RemainderWithAxisKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FloorDivideWithAxisKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& y,
-                               int axis,
-                               DenseTensor* out) {
+void FloorDivideRawKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -96,11 +96,11 @@ void FloorDivideWithAxisKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwisePowWithAxisKernel(const Context& dev_ctx,
-                                  const DenseTensor& x,
-                                  const DenseTensor& y,
-                                  int axis,
-                                  DenseTensor* out) {
+void ElementwisePowRawKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int axis,
+                             DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -116,35 +116,35 @@ void ElementwisePowWithAxisKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(floor_divide_with_axis,
+PD_REGISTER_KERNEL(floor_divide_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::FloorDivideWithAxisKernel,
+                   phi::FloorDivideRawKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(maximum_with_axis,
+PD_REGISTER_KERNEL(maximum_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MaximumWithAxisKernel,
+                   phi::MaximumRawKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(minimum_with_axis,
+PD_REGISTER_KERNEL(minimum_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MinimumWithAxisKernel,
+                   phi::MinimumRawKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(remainder_with_axis,
+PD_REGISTER_KERNEL(remainder_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::RemainderWithAxisKernel,
+                   phi::RemainderRawKernel,
                    float,
                    phi::dtype::float16,
                    int32_t,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_with_axis,
+PD_REGISTER_KERNEL(elementwise_pow_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::ElementwisePowWithAxisKernel,
+                   phi::ElementwisePowRawKernel,
                    float,
                    phi::dtype::float16) {}
