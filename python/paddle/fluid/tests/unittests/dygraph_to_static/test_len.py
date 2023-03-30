@@ -62,7 +62,7 @@ class TestLen(unittest.TestCase):
             else:
                 out = self.func(self.x_data)
 
-            if isinstance(out, fluid.core.VarBase):
+            if isinstance(out, fluid.core.eager.Tensor):
                 out = out.numpy()
             return out
 

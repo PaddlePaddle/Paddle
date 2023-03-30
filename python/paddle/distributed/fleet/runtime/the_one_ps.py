@@ -1445,7 +1445,7 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = self.context[
             "user_defined_strategy"
         ].trainer_desc_configs["stat_var_names"]
-        generate_vars = [var for var in generate_vars]
+        generate_vars = list(generate_vars)
         remaining_vars = list(
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),
