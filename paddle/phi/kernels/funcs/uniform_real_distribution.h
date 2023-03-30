@@ -46,4 +46,16 @@ inline void UniformRealDistribution(phi::dtype::bfloat16 *data,
   }
 }
 
+template <>
+inline void UniformRealDistribution(phi::dtype::float16 *data,
+                                    const int64_t &size,
+                                    const float &min,
+                                    const float &max,
+                                    std::shared_ptr<std::mt19937_64> engine) {
+  std::uniform_real_distribution<float> dist(min, max);
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = static_cast<phi::dtype::float16>(dist(*engine));
+  }
+}
+
 }  // namespace phi

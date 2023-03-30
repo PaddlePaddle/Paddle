@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import textwrap
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -30,7 +31,6 @@ import sys
 import logging
 
 from .proto import framework_pb2, data_feed_pb2
-
 
 from . import core
 from . import unique_name
@@ -72,6 +72,7 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
 
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
@@ -126,6 +127,48 @@ _dy2st_enable_standalone_executor_ = os.environ.get(
 _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
+
+# special_op_attrs, extra_op_attrs are prepared for printing warnings
+# when turning on FLAGS_print_extra_attrs
+special_op_attrs = {
+    "elementwise_add": [{"axis": -1}],
+    "elementwise_sub": [{"axis": -1}],
+    "elementwise_mul": [{"axis": -1}],
+    "elementwise_div": [{"axis": -1}],
+    "elementwise_max": [{"axis": -1}],
+    "elementwise_min": [{"axis": -1}],
+    "elementwise_pow": [{"axis": -1}],
+    "elementwise_mod": [{"axis": -1}],
+    "elementwise_floordiv": [{"axis": -1}],
+    "less_than": [{"axis": -1}],
+    "less_equal": [{"axis": -1}],
+    "greater_than": [{"axis": -1}],
+    "greater_equal": [{"axis": -1}],
+    "equal": [{"axis": -1}],
+    "not_equal": [{"axis": -1}],
+    "amax": [{"reduce_all": False}],
+    "amin": [{"reduce_all": False}],
+    "any": [{"reduce_all": False}],
+    "frobenius_norm": [{"reduce_all": False}],
+    "logsumexp": [{"reduce_all": False}],
+    "reduce_max": [{"reduce_all": False}],
+    "reduce_min": [{"reduce_all": False}],
+    "reduce_mean": [{"reduce_all": False}],
+    "reduce_prod": [{"reduce_all": False}],
+    "reduce_sum": [{"reduce_all": False}],
+}
+
+extra_op_attrs = {
+    "gather": ["overwrite"],
+    "graph_reindex": ["flag_buffer_hashtable"],
+    "graph_sample_neighbors": ["flag_perm_buffer"],
+    "relu6": ["threshold"],
+    "swish": ["beta"],
+    "hsigmoid_loss": ["remote_prefetch"],
+    "max_pool2d_with_index": ["global_pooling"],
+    "uniform": ["diag_num"],
+    "unique": ["is_sorted"],
+}
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -399,7 +442,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
         return wrapper
 
-    from .dygraph.layers import Layer
+    from paddle.nn import Layer
 
     if not isinstance(call_func, Layer):
         if callable(call_func):
@@ -730,7 +773,7 @@ def _var_base_to_np(var_base):
         "paddle.fluid.framework._var_base_to_np is deprecated, please use var_base.numpy() instead of _var_base_to_np(var_base)."
     )
 
-    return var_base.numpy()
+    return var_base.numpy(False)
 
 
 def _cpu_num():
@@ -1381,6 +1424,101 @@ def _all_is_type(vals, expected_type):
     return all(isinstance(v, expected_type) for v in vals)
 
 
+def wrap_as_scalar(number):
+    """Wrap a number(either python scalar or numpy scalar) as core.Scalar if
+    it is not a scalar.
+
+
+    Args:
+        number (Number): number
+
+    Returns:
+        Scalar: A Scalar that contains the value.
+    """
+    if isinstance(number, core.Scalar):
+        return number
+    if isinstance(number, (bool, int, float, complex)):
+        return core.Scalar(number)
+    if isinstance(number, np.number):
+        # it is a numpy scalar
+        return core.Scalar(number.item())
+    else:
+        raise TypeError("Cannot wrap {} as core.Scalar".format(number))
+
+
+def wrap_as_scalars(array):
+    """This function is used to convert flat list, or numpy array(not
+    necesarily flat) to list of core.Scalar, which correspond to
+    std::vector<paddle::experimental::Scalar> in operator runtime.
+
+    Args:
+        array (List | np.ndarray): array of numbers
+
+    Returns:
+        List: list of core.Scalar, of which each element is a Scalar containing
+          the corresponding value.
+    """
+    if isinstance(array, np.ndarray):
+        array = array.ravel().tolist()
+    return [wrap_as_scalar(item) for item in array]
+
+
+def extract_plain_list(array):
+    """extract value from a list of core.Scalar.
+
+    Args:
+        array (list): Scalars
+
+    Returns:
+        list: values extracted from the scalars.
+    """
+    return [item.value() for item in array]
+
+
+def canonicalize_attrs(attrs, op_proto):
+    """This function is used to canonicalize attributes(as a string->any dict)
+    according to the type specification in the OpProto. This is especially
+    important for operators that has any attributes of type Scalar or Scalars.
+
+    Though various frontends of phi kernels & paddle operators can wrap variables
+    of concrete types into Scalars(a tagged union of several numeric types) or
+    vector of Scalars. Paddle operator requires strict type matching.
+
+    Args:
+        attrs (Dict[str, Any]): attribute dict intended to pass to an operator.
+        op_proto (OpProto): Proto (signature) of the operator.
+
+    Returns:
+        Dict[str, Any]: canonicalized attributes.
+    """
+    canonicalized_attrs = attrs.copy()  # shallow copy is enough here
+    for attr in op_proto.attrs:
+        attr_name = attr.name
+        type_index = attr.type
+        if (attr_name not in attrs) or (attrs[attr_name] is None):
+            continue
+
+        attr_val = attrs[attr_name]
+
+        # VAR and VARS should be skipped
+        if isinstance(attr_val, Variable):
+            continue
+        if isinstance(attr_val, list) and _all_is_type(attr_val, Variable):
+            continue
+
+        # wrap
+        if type_index == core.AttrType.SCALAR:
+            canonicalized_attrs[attr_name] = core.Scalar(attr_val)
+        elif type_index == core.AttrType.SCALARS:
+            # it should be a list (or a numpy array)
+            if len(attr_val) > 0:
+                attr_val = np.array(attr_val).ravel().tolist()
+                attr_val = [core.Scalar(x) for x in attr_val]
+                canonicalized_attrs[attr_name] = attr_val
+
+    return canonicalized_attrs
+
+
 class VariableMetaClass(type):
     @classmethod
     def __instancecheck__(cls, instance):
@@ -2029,9 +2167,9 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
 
-          x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
+          x = paddle.static.data(name="x", shape=[-1, 23, 48], dtype='float32')
           print(x.grad_name) # output is ``x@GRAD``
 
         """
@@ -3064,6 +3202,11 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
+                    if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                        warnings.warn(
+                            "op %s use extra_attr: %s" % (type, attr_name)
+                        )
+
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
                     ):
@@ -3072,6 +3215,34 @@ class Operator:
                         )
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
+
+                if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                    if type in extra_op_attrs:
+                        attrs = extra_op_attrs.get(type, [])
+                        for attr in attrs:
+                            if attr in op_attrs.keys():
+                                warnings.warn(
+                                    "op %s use extra_attr: %s" % (type, attr)
+                                )
+
+                    if type in special_op_attrs:
+                        attrs = special_op_attrs.get(type, [])
+                        for attr in attrs:
+                            a_name = list(attr.keys())[0]
+                            default_value = list(attr.values())[0]
+                            if (
+                                a_name in op_attrs.keys()
+                                and default_value != op_attrs[a_name]
+                            ):
+                                warnings.warn(
+                                    "op %s's attr %s = %s is not the default value: %s"
+                                    % (
+                                        type,
+                                        a_name,
+                                        op_attrs[a_name],
+                                        default_value,
+                                    )
+                                )
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -3430,7 +3601,12 @@ class Operator:
             return
 
         type_index = self._attr_types[name]
-        if type_index == core.AttrType.BOOL:
+        # if the required attribute is a SCALAR, pass as-is
+        if type_index == core.AttrType.SCALAR:
+            desc._set_scalar_attr(name, wrap_as_scalar(val))
+        elif type_index == core.AttrType.SCALARS:
+            desc._set_scalars_attr(name, wrap_as_scalars(val))
+        elif type_index == core.AttrType.BOOL:
             desc._set_bool_attr(name, val)
         elif type_index == core.AttrType.INT:
             desc._set_int32_attr(name, val)
@@ -3438,8 +3614,8 @@ class Operator:
             desc._set_int64_attr(name, val)
         elif type_index == core.AttrType.FLOAT:
             desc._set_float32_attr(name, val)
-        # elif type_index == core.AttrType.FLOAT64:
-        #     desc._set_float64_attr(name, val)
+        elif type_index == core.AttrType.FLOAT64:
+            desc._set_float64_attr(name, val)
         elif type_index == core.AttrType.STRING:
             desc._set_str_attr(name, val)
         elif type_index == core.AttrType.BOOLS:
@@ -3675,7 +3851,6 @@ class Block:
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self._to_readable_code()
@@ -3998,6 +4173,9 @@ class Block:
             param = EagerParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+        # NOTE(Aurelius84): we deliver stop_gradient in append_op, so we
+        # need recorde it state and reset it back after calling this API
+        stop_gradient = param.stop_gradient
 
         if 'initializer' in kwargs:
 
@@ -4033,6 +4211,7 @@ class Block:
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = stop_gradient
         return param
 
     def append_op(self, *args, **kwargs):
@@ -4042,10 +4221,10 @@ class Block:
         Returns:
             Operator: the append Operator.
         """
+        op_type = kwargs.get("type", None)
         if _non_static_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
-            type = kwargs.get("type", None)
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4055,7 +4234,7 @@ class Block:
             op = Operator(
                 block=self,
                 desc=None,
-                type=type,
+                type=op_type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs,
@@ -4067,7 +4246,7 @@ class Block:
             # currently, we only support stop_gradient in dygraph mode.
 
             _dygraph_tracer().trace_op(
-                type,
+                op_type,
                 kwargs.get("inputs", {}),
                 kwargs.get("outputs", {}),
                 attrs if attrs else {},
@@ -4076,18 +4255,43 @@ class Block:
             )
         else:
             from paddle.fluid.dygraph.base import param_guard
+            from paddle.utils import flatten
+
+            def pass_stop_gradient(ins, outs):
+                """
+                Set out.stop_gradient = True if all inputs stop_gradient is True.
+                """
+                need_reset = True
+                for var in flatten(ins):
+                    if getattr(var, 'stop_gradient', None) is False:
+                        need_reset = False
+                        break
+                if need_reset:
+                    for var in flatten(outs):
+                        if isinstance(var, Variable):
+                            var.stop_gradient = True
 
             op_desc = self.desc.append_op()
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
             # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
-            inputs = kwargs.get("inputs", None)
-            outputs = kwargs.get("outputs", None)
+            ignore_ops = {
+                'conditional_block',
+                'conditional_block_grad',
+                'recurrent',
+                'recurrent_grad',
+                'while',
+                'while_grad',
+            }
+            if op_type not in ignore_ops:
+                pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
                 op = Operator(
                     block=self,
                     desc=op_desc,
-                    type=kwargs.get("type", None),
+                    type=op_type,
                     inputs=inputs,
                     outputs=outputs,
                     attrs=kwargs.get("attrs", None),
@@ -5976,8 +6180,8 @@ class Program:
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
-            if hasattr(self, 'lr_sheduler'):
-                p.lr_sheduler = self.lr_sheduler
+            if hasattr(self, 'lr_scheduler'):
+                p.lr_scheduler = self.lr_scheduler
 
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.

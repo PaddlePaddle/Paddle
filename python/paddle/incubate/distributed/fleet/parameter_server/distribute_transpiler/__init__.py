@@ -28,10 +28,9 @@ from paddle.static import (
     Executor,
 )
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
 )
 
@@ -40,6 +39,9 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
+    DistributedAdam,
+)
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
@@ -72,13 +74,13 @@ from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
 )
 from paddle.incubate.distributed.fleet.parameter_server.ir import (
-    public as public,
+    public,
 )
 
 
 class FleetTranspiler(Fleet):
     """
-    A subclass for compatibility with fluid.transpiler.DistributeTranspiler.
+    A subclass for compatibility with distributed.transpiler.DistributeTranspiler.
     """
 
     def __init__(self):
@@ -426,11 +428,6 @@ class FleetTranspiler(Fleet):
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save_inference_model() function, executor must be as Executor type"
@@ -762,11 +759,6 @@ class FleetTranspiler(Fleet):
 
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(

@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -201,7 +201,7 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
 
 
 class TestSqueezeDoubleGradCheck(unittest.TestCase):
-    def squeeze_warpper(self, x):
+    def squeeze_wrapper(self, x):
         axes = [0, 2]
         return paddle.squeeze(x[0], axes)
 
@@ -221,7 +221,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
             [x], out, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
-            self.squeeze_warpper, [x], out, x_init=x_arr, place=place
+            self.squeeze_wrapper, [x], out, x_init=x_arr, place=place
         )
 
     def test_grad(self):
@@ -349,6 +349,7 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
         x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
+        x.stop_gradient = False
         out = paddle.nn.functional.pad(x, pad)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 

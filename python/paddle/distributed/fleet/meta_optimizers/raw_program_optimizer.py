@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.static as static
+from paddle import static
 from paddle.fluid import core
 from paddle.utils import unique_name
 
@@ -40,9 +40,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 0
 
     def _set_basic_info(
@@ -65,6 +63,10 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
+            return False
+        if self.user_defined_strategy.tensor_parallel:
+            return False
+        if self.user_defined_strategy.sharding:
             return False
 
         if self.without_graph_optimization:

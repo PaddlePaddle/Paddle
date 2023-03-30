@@ -550,7 +550,7 @@ class Completer:
         def _find_nodes_related_to_cond(source_node):
             related_nodes = []
             visited = set()
-            frontier = list()
+            frontier = []
             frontier.append(source_node)
             # BFS
             while len(frontier) != 0:
@@ -723,6 +723,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.inputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
             # Step 4: set the process meshes of the outputs in while_op to the process meshes of the outside output nodes
             while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
@@ -749,6 +757,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.outputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
         # Amend the process meshes related to array
         for array_node_list in self._array_nodes.values():
@@ -901,28 +917,20 @@ class Completer:
                     self._array_nodes[array_var_name].append(node.outputs[0])
             if node.is_var() and node.var() is not None:
                 if node.node.graph_id() != 0:
-                    for before_node in reversed(all_nodes[:idx]):
-                        if (
-                            before_node.is_var()
-                            and before_node.var() is not None
-                            and before_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and before_node.var().name() == node.var().name()
-                        ):
+                    parent_nodes = (
+                        self._dist_context._tensor_nodes_with_same_name[
+                            node.node.graph_id() - 1
+                        ].get(node.var().name(), None)
+                    )
+                    if parent_nodes is not None:
+                        sorted_parent_nodes = sorted(
+                            parent_nodes, key=lambda x: x[0]
+                        )
+                        for _, parent_node in sorted_parent_nodes:
                             self._node_pairs_between_graphs.append(
-                                (before_node, node)
+                                (parent_node, node)
                             )
-                    for after_node in all_nodes[idx + 1 :]:
-                        if (
-                            after_node.is_var()
-                            and after_node.var() is not None
-                            and after_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and after_node.var().name() == node.var().name()
-                        ):
-                            self._node_pairs_between_graphs.append(
-                                (after_node, node)
-                            )
+
         self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):

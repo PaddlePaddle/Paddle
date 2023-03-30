@@ -40,7 +40,6 @@ class XPUTestAtanOp(XPUOpTestWrapper):
         def setUp(self):
             self.set_xpu()
             self.op_type = "atan"
-            self.eager_mode = True
 
             # override
             self.init_input_shape()
@@ -62,9 +61,7 @@ class XPUTestAtanOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', check_eager=self.eager_mode
-            )
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class Test1x1(TestAtanOp):
         def init_input_shape(self):

@@ -35,9 +35,6 @@ size_t constexpr max_in_channels = 256;
 size_t constexpr max_out_channels = 256;
 static size_t workspace_size =
     sizeof(float) * max_splitk_slices * max_in_channels * max_out_channels;
-#if 0
-static cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
-#endif
 
 #define TYPEDEF_KERNEL_POINTER(kernel, dtype)        \
   typedef void (*kernel)(dtype const alpha,          \

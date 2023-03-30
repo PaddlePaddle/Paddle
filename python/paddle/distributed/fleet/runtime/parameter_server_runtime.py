@@ -20,7 +20,6 @@ from paddle.framework import core
 from paddle.static import (
     CompiledProgram,
     Executor,
-    ParallelExecutor,
     Program,
     Variable,
     default_main_program,
@@ -109,7 +108,6 @@ class ParameterServerRuntime(RuntimeBase):
             assert isinstance(each_var, Variable)
 
             origin_varname, _, _ = _get_varname_parts(each_var.name)
-
             new_var = paddle.static.io._clone_var_in_block(load_block, each_var)
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
@@ -698,11 +696,6 @@ class ParameterServerRuntime(RuntimeBase):
         single file, use `filename` to specify the file name.
         """
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save_persistables() function, executor must be as Executor type"
@@ -733,11 +726,6 @@ class ParameterServerRuntime(RuntimeBase):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(

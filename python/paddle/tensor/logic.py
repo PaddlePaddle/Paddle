@@ -45,7 +45,16 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
+            [
+                "bool",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "float16",
+                "float32",
+                "float64",
+            ],
             op_name,
         )
         if y is not None:
@@ -58,6 +67,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                     "int16",
                     "int32",
                     "int64",
+                    "float16",
                     "float32",
                     "float64",
                 ],
@@ -105,8 +115,8 @@ def logical_and(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -147,8 +157,8 @@ def logical_or(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -191,8 +201,8 @@ def logical_xor(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -237,7 +247,7 @@ def logical_not(x, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float16, float32, or float64.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -357,13 +367,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     .. math::
         \left| x - y \right| \leq atol + rtol \times \left| y \right|
 
-    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
-    operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
     two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float32, float64..
-        y(Tensor): The input tensor, it's data type should be float32, float64..
+        x(Tensor): The input tensor, it's data type should be float16, float32, float64..
+        y(Tensor): The input tensor, it's data type should be float16, float32, float64..
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): ${equal_nan_comment}.
@@ -402,8 +411,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     if in_dygraph_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
-        check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
-        check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
+        check_variable_and_dtype(
+            x, "input", ['float16', 'float32', 'float64'], 'allclose'
+        )
+        check_variable_and_dtype(
+            y, "input", ['float16', 'float32', 'float64'], 'allclose'
+        )
         check_type(rtol, 'rtol', float, 'allclose')
         check_type(atol, 'atol', float, 'allclose')
         check_type(equal_nan, 'equal_nan', bool, 'allclose')
@@ -465,13 +478,29 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         helper = LayerHelper("equal", **locals())
@@ -495,8 +524,8 @@ def greater_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -518,13 +547,29 @@ def greater_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         helper = LayerHelper("greater_equal", **locals())
@@ -548,8 +593,8 @@ def greater_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -571,13 +616,29 @@ def greater_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         helper = LayerHelper("greater_than", **locals())
@@ -601,8 +662,8 @@ def less_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -625,13 +686,29 @@ def less_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         helper = LayerHelper("less_equal", **locals())
@@ -655,8 +732,8 @@ def less_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -679,13 +756,29 @@ def less_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         helper = LayerHelper("less_than", **locals())
@@ -733,13 +826,29 @@ def not_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         helper = LayerHelper("not_equal", **locals())
@@ -990,8 +1099,8 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float32, float64.
-        y(Tensor): The input tensor, it's data type should be float32, float64.
+        x(Tensor): The input tensor, it's data type should be float16, float32, float64.
+        y(Tensor): The input tensor, it's data type should be float16, float32, float64.
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
@@ -1028,8 +1137,12 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     if in_dygraph_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
-        check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
-        check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
+        check_variable_and_dtype(
+            x, "input", ['float16', 'float32', 'float64'], 'isclose'
+        )
+        check_variable_and_dtype(
+            y, "input", ['float16', 'float32', 'float64'], 'isclose'
+        )
         check_type(rtol, 'rtol', float, 'isclose')
         check_type(atol, 'atol', float, 'isclose')
         check_type(equal_nan, 'equal_nan', bool, 'isclose')
