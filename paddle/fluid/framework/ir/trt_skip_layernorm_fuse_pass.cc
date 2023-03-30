@@ -105,6 +105,16 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
+
+  auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
+  if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
+          std::get<2>(trt_version) * 10 <
+      7200) {
+    VLOG(3) << "skip_layernorm oss plugin only available for trt version >= "
+               "7.2 Stop this pass";
+    return;
+  }
+
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
