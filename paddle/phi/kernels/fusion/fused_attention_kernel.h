@@ -18,6 +18,8 @@
 
 namespace phi {
 
+namespace fusion {
+
 /**
  * @brief  Fused Attention Kernel.
  * @param ctx                device context
@@ -154,4 +156,5 @@ void FusedAttentionKernel(const Context& dev_ctx,
                           DenseTensor* cache_kv_out,
                           DenseTensor* out);
 
+}  // namespace fusion
 }  // namespace phi

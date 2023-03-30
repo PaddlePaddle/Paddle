@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
+namespace fusion {
 template <typename T, typename Context>
 void FusionAttentionGradKernel(
     const Context &dev_ctx,
@@ -84,7 +84,8 @@ void FusionAttentionGradKernel(
     DenseTensor *transpose_out_2_grad,
     DenseTensor *qk_out_grad,
     DenseTensor *softmax_out_grad,
-    DenseTensor *attn_dropout_out_grad,
+    DenseTensor *attn_dropout_grad,
     DenseTensor *fmha_out_grad,
     DenseTensor *out_linear_out_grad);
+}  // namespace fusion
 }  // namespace phi

@@ -475,15 +475,10 @@ PD_REGISTER_KERNEL(fused_attention_grad,
                    phi::dtype::float16,
                    double,
                    float) {
-  phi::DataType data_type;
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-      kernel_key.dtype() == phi::DataType::FLOAT32) {
-    data_type = phi::DataType::FLOAT32;
-  } else {
-    data_type = phi::DataType::FLOAT64;
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(4).SetDataType(data_type);
-  kernel->OutputAt(5).SetDataType(data_type);
-  kernel->OutputAt(6).SetDataType(data_type);
-  kernel->OutputAt(7).SetDataType(data_type);
 }
