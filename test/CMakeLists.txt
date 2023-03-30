@@ -86,7 +86,7 @@ if(WITH_TESTING)
   # add_subdirectory(standalone_executor)
   # add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
-  # add_subdirectory(xpu)
+  add_subdirectory(xpu)
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
