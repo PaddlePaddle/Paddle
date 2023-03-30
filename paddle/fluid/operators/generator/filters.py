@@ -95,6 +95,18 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
   }}
 }};
 """
+    elif op_name == "merge_selected_rows":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType
+        : public framework::PassInDtypeAndVarTypeToOutput {{
+    protected:
+    std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+        const override {{
+        static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
+        return m;
+    }}
+    }};
+    """
     else:
         return None
 

@@ -266,7 +266,7 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+            elif isinstance(item, (Variable, core.eager.Tensor)):
                 spec = InputSpec.from_tensor(item, name)
                 _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
@@ -384,13 +384,13 @@ class Engine:
         if data is not None:
             if isinstance(data, (list, tuple)):
                 if len(data) == 1 and isinstance(data[0], dict):
-                    for name, data in data[0].items():
-                        feeds[name] = data
+                    for name, value in data[0].items():
+                        feeds[name] = value
                 else:
                     raise ValueError("Unsupported data {}".format(data))
             elif isinstance(data, dict):
-                for name, data in data.items():
-                    feeds[name] = data
+                for name, value in data.items():
+                    feeds[name] = value
             else:
                 raise ValueError("Unsupported data {}".format(data))
         if user_feeds is not None:
