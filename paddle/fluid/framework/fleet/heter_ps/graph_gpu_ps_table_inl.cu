@@ -1899,7 +1899,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
   // all2all mode finish, scatter sample values by all2all
   scatter_inter_vals_by_all2all_common(gpu_id,
                                  len,
-                                 pull_size, // the number of sample keys
                                  sizeof(uint64_t), //value_bytes
                                  reinterpret_cast<const uint64_t*>(result.val), // in
                                  reinterpret_cast<uint64_t*>(final.val), // out
@@ -1910,7 +1909,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
   // all2all mode finish, scatter sample sizes of every node by all2all
   scatter_inter_vals_by_all2all_common(gpu_id,
                                  len,
-                                 pull_size, // the number of sample keys
                                  sizeof(int), //value_bytes
                                  reinterpret_cast<const int*>(result.actual_sample_size), // in
                                  reinterpret_cast<int*>(final.actual_sample_size), // out
