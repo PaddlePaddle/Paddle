@@ -211,16 +211,17 @@ class TestProcessGroupFp32(unittest.TestCase):
             x = np.random.random(in_shape).astype(self.dtype)
             y_1 = np.random.random(self.shape).astype(self.dtype)
             y_2 = np.random.random(self.shape).astype(self.dtype)
-            tensoer_x = paddle.to_tensor(x)
-            tensor_y_1 = paddle.to_tensor(y_1)
-            tensor_y_2 = paddle.to_tensor(y_2)
-            gather_result = paddle.concat([tensor_y_1, tensor_y_2])
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = []
+            tensor_y.append(paddle.to_tensor(y_1))
+            tensor_y.append(paddle.to_tensor(y_2))
+            gather_result = paddle.concat(tensor_y)
             if pg.rank() == root:
-                task = pg.gather(tensoer_x, tensor_y_1, root)
+                task = pg.gather(tensor_x, tensor_y[root], root, True)
                 task.wait()
-                assert np.array_equal(tensoer_x, gather_result)
+                assert np.array_equal(tensor_x, gather_result)
             else:
-                task = pg.gather(tensor_x, tensor_y_2, root)
+                task = pg.gather(tensor_x, tensor_y[1 - root], root, True)
                 task.wait()
 
         test_gather(0)
