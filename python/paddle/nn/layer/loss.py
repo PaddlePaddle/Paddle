@@ -1960,10 +1960,10 @@ class SoftMarginLoss(Layer):
 class GaussianNLLLoss(Layer):
     r"""Gaussian negative log likelihood loss.
 
-    The targets are treated as samples from Gaussian distributions with
-    expectations and variances predicted by the neural network. For a
+    TThe ``label`` is treated as samples from Gaussian distributions with
+    expectations ``input`` and ``variance`` predicted by the neural network. For a
     ``label`` tensor modelled as having Gaussian distribution with a tensor
-    of expectations ``input`` and a tensor of positive ``variance`` the loss is:
+    of expectations ``input`` and a tensor of positive  ``variance`` the loss is:
 
     .. math::
         \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
