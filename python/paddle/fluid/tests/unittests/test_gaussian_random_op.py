@@ -67,6 +67,49 @@ class TestGaussianRandomOp(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
+class TestGaussianRandomFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.python_api = paddle.normal
+        self.set_attrs()
+        self.inputs = {}
+        self.use_mkldnn = False
+        self.attrs = {
+            "shape": [123, 92],
+            "mean": self.mean,
+            "std": self.std,
+            "seed": 10,
+            "dtype": paddle.fluid.core.VarDesc.VarType.FP16,
+            "use_mkldnn": self.use_mkldnn,
+        }
+        paddle.seed(10)
+
+        self.outputs = {'Out': np.zeros((123, 92), dtype='float16')}
+
+    def set_attrs(self):
+        self.mean = 1.0
+        self.std = 2.0
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(
+            self.verify_output, place=core.CUDAPlace(0)
+        )
+
+    def verify_output(self, outs):
+        self.assertEqual(outs[0].shape, (123, 92))
+        hist, _ = np.histogram(outs[0], range=(-3, 5))
+        hist = hist.astype("float16")
+        hist /= float(outs[0].size)
+        data = np.random.normal(size=(123, 92), loc=1, scale=2)
+        hist2, _ = np.histogram(data, range=(-3, 5))
+        hist2 = hist2.astype("float16")
+        hist2 /= float(outs[0].size)
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.015)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
