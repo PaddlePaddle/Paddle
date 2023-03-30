@@ -121,8 +121,8 @@ def operator_equal(a, b):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(v.items()), key=lambda x: x[0])
-            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
+            v0 = sorted(v.items(), key=lambda x: x[0])
+            v1 = sorted(b.__dict__[k].items(), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))

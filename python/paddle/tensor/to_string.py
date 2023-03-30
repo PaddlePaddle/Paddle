@@ -115,8 +115,8 @@ def _to_summary(var):
     else:
         # recursively handle all dimensions
         if var.shape[0] > 2 * edgeitems:
-            begin = [x for x in var[:edgeitems]]
-            end = [x for x in var[(-1 * edgeitems) :]]
+            begin = list(var[:edgeitems])
+            end = list(var[(-1 * edgeitems) :])
             return np.stack([_to_summary(x) for x in (begin + end)])
         else:
             return np.stack([_to_summary(x) for x in var])

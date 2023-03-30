@@ -91,5 +91,5 @@ class TestCustomKernelDotC(unittest.TestCase):
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):
         # only support Linux now
-        exit()
+        sys.exit()
     unittest.main()

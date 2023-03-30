@@ -122,14 +122,10 @@ cases = {
 for _op_type in ['tril', 'triu']:
     for _expected, _params in cases.items():
         for _Xshape, _diaglist in _params.items():
-            list(
-                map(
-                    lambda _diagonal: case_generator(
-                        _op_type, _Xshape, _diagonal, _expected
-                    ),
-                    _diaglist,
-                )
-            )
+            [
+                case_generator(_op_type, _Xshape, _diagonal, _expected)
+                for _diagonal in _diaglist
+            ]
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):

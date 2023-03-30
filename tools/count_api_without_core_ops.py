@@ -54,7 +54,7 @@ def split_with_and_without_core_ops(member, cur_name):
         return
 
     if (
-        cur_name.find('ParamBase') != -1
+        cur_name.find('EagerParamBase') != -1
         or cur_name.find('Parameter') != -1
         or cur_name.find('Variable') != -1
         or cur_name.find('control_flow') != -1

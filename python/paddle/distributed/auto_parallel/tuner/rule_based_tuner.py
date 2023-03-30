@@ -1631,13 +1631,12 @@ class RuleBasedTuner:
         Most of the logic is the same as the update completion in the completer.
         """
         world_ranks = ProcessMesh(
-            [
-                i
-                for i in range(
+            list(
+                range(
                     self._cluster.get_num_machines()
                     * self._cluster._num_devices_per_machine
                 )
-            ]
+            )
         )
         dist_tensors = sub_program_dist_context._dist_tensors_for_program
 
@@ -1958,10 +1957,9 @@ class RuleBasedTuner:
             self.device_meshes_list.append([])
             for device_mesh in device_meshes:
                 devices = reduce(lambda x, y: x * y, device_mesh)
-                processes = [
-                    i
-                    for i in range(has_used_devices, has_used_devices + devices)
-                ]
+                processes = list(
+                    range(has_used_devices, has_used_devices + devices)
+                )
                 device_mesh_shape = (
                     device_mesh
                     if device_mesh[0] != 1

@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -83,8 +80,10 @@ class CEmbeddingGradOpXPUKernel : public framework::OpKernel<T> {
     auto table_grad_t =
         context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
-    T* table_grad_data =
-        table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
+    table_grad_t->Resize(table_t->dims());
+    dev_ctx.template Alloc(table_grad_t, table_t->dtype());
+    T* table_grad_data = static_cast<T*>(table_grad_t->data());
 
     size_t table_t_mem_size =
         table_t->numel() * phi::SizeOf(table_grad_t->dtype());
@@ -98,9 +97,8 @@ class CEmbeddingGradOpXPUKernel : public framework::OpKernel<T> {
              << ", table_grad_t memory_size:" << table_grad_t_mem_size
              << ", start_index:" << start_idx;
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::constant(
-        dev_ctx.x_context(), table_grad_data, table_grad_t_mem_size, (T)0);
+        dev_ctx.x_context(), table_grad_data, table_grad_t->numel(), (T)0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     const T* d_output_data = d_output_t->data<T>();
 
@@ -132,6 +130,7 @@ class CEmbeddingGradOpXPUKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::Unavailable(
           "XPU c_embedding ids only support int32 or int64."));
     }
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
   }
 };
 

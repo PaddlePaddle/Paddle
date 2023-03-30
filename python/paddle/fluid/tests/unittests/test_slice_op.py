@@ -172,7 +172,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int64') * ele)
+                ("x" + str(index), np.ones(1).astype('int64') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -212,7 +212,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -379,7 +379,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("y" + str(index), np.ones((1)).astype('int32') * ele)
+                ("y" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
