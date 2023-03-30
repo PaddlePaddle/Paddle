@@ -60,6 +60,8 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
 
 std::set<std::string> StaticBuildBlackList = {
     "batch_norm" /*: to handle reserve_space output*/,
+    "cinn_instruction_run" /*: to handle subgraph infermeta*/,
+    "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
@@ -130,7 +132,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
          << ", need_set_dtype = " << (item.second & 1) << "]\n";
     }
-    VLOG(0) << ss.str();
+    VLOG(1) << ss.str();
   }
 
   return invalid_ops.empty();
@@ -159,6 +161,11 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   }
 
   if (op_type == "coalesce_tensor" && parameter_name == "Output") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
+  }
+
+  if (op_type == "dgc" && parameter_name == "k") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
   }
