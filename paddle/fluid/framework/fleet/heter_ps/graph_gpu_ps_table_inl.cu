@@ -2004,6 +2004,117 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   return result;
 }
 
+NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage(
+    int gpu_id,
+    int edge_type_len,
+    uint64_t* key,
+    int sample_size,
+    int len,
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted,
+    bool return_weight) {
+  if (multi_node_ && FLAGS_enable_graph_multi_node_sampling) {
+    // multi node mode
+    auto result = graph_neighbor_sample_sage_all2all(
+        gpu_id,
+        edge_type_len,
+        key,
+        sample_size,
+        len,
+        edge_type_graphs,
+        weighted,
+        return_weight);
+    return result;
+  } else {
+    auto result = graph_neighbor_sample_all_edge_type(
+        gpu_id,
+        edge_type_len,
+        key,
+        sample_size,
+        len,
+        edge_type_graphs,
+        weighted,
+        return_weight);
+    return result;
+  }
+}
+
+NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
+    int gpu_id,
+    int edge_type_len,
+    uint64_t* d_keys,
+    int sample_size,
+    int len,
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted,
+    bool return_weight) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto &loc = storage_[gpu_id];
+  auto stream = resource_->local_stream(gpu_id, 0);
+
+  loc.alloc(len, sizeof(uint64_t) * edge_type_len * sample_size);
+
+  // all2all mode begins, init resource, partition keys, pull vals by all2all.
+  auto pull_size = gather_inter_keys_by_all2all(gpu_id, len, d_keys, stream);
+
+  // do single-node multi-card sampling
+  auto result = graph_neighbor_sample_all_edge_type(gpu_id,
+                                                    edge_type_len,
+                                                    loc.d_merged_keys,
+                                                    sample_size,
+                                                    pull_size,
+                                                    edge_type_graphs,
+                                                    weighted,
+                                                    return_weight,
+                                                    for_all2all=true);
+  VLOG(0) << "graph_neighbor_sample_all_edge_type local finish"
+          << ", gpu_id=" << gpu_id
+          << ", pull_size=" << pull_size
+          << ", total_sample_size=" << result.total_sample_size;
+
+  // init neighbor result
+  NeighborSampleResultV2 final;
+  final.set_stream(stream);
+  result.initialize(sample_size, len, edge_type_len, return_weight,
+                    resource_->dev_id(gpu_id));
+
+  // all2all mode finish, scatter sample values by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                       len,
+                                       pull_size,
+                                       sizeof(uint64_t) * edge_type_len * sample_size,
+                                       reinterpret_cast<const uint64_t*>(result.val),
+                                       reinterpret_cast<uint64_t*>(final.val),
+                                       reinterpret_cast<uint64_t*>(loc.d_merged_vals),
+                                       stream);
+  VLOG(0) << "scatter_inter_vals_by_all2all sage val finish" << " gpu_id=" << gpu_id;
+
+  // all2all mode finish, scatter sample sizes of every node by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                       len,
+                                       pull_size,
+                                       sizeof(int) * edge_type_len,
+                                       reinterpret_cast<const int*>(result.actual_sample_size),
+                                       reinterpret_cast<int*>(final.actual_sample_size),
+                                       reinterpret_cast<int*>(loc.d_merged_vals),
+                                       stream);
+  VLOG(0) << "scatter_inter_vals_by_all2all sage actual_sample_size finish" << " gpu_id=" << gpu_id;
+
+  if (return_weight) {
+    scatter_inter_vals_by_all2all_common(gpu_id,
+                                         len,
+                                         pull_size,
+                                         sizeof(float) * edge_type_len * sample_size,
+                                         reinterpret_cast<const float*>(result.weight),
+                                         reinterpret_cast<float*>(final.weight),
+                                         reinterpret_cast<float*>(loc.d_merged_vals),
+                                         stream);
+    VLOG(0) << "scatter_inter_vals_by_all2all sage weight finish" << " gpu_id=" << gpu_id;
+  }
+
+  return final;
+}
+
 // only for graphsage
 NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     int gpu_id,
@@ -2013,7 +2124,8 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     int len,
     std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
     bool weighted,
-    bool return_weight) {
+    bool return_weight,
+    bool for_all2all) {
   NeighborSampleResultV2 result;
   auto stream = resource_->local_stream(gpu_id, 0);
   result.set_stream(stream);
