@@ -28,62 +28,6 @@ namespace ir {
 
 class Node;
 
-TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() {
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsType<bool>()
-      .End()
-      .AddAttr("trans_y")
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()
-      .End()
-      .AddAttr("transpose_X")
-      .IsType<bool>()
-      .End()
-      .AddAttr("transpose_Y")
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumGE(1)
-      .End();
-}
-
 void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
