@@ -196,12 +196,8 @@ struct ${operation_name} {
                 operation.tile_description.math_instruction.math_operation
             ],
             'gather_a': 'true',
-            'gather_b': (lambda layout: str(layout == 'tn').lower())(
-                operation.layout_name()
-            ),
-            'scatter_d': (lambda layout: str(layout != 'tn').lower())(
-                operation.layout_name()
-            ),
+            'gather_b': str(operation.layout_name() == 'tn').lower(),
+            'scatter_d': str(operation.layout_name() != 'tn').lower(),
         }
 
         return SubstituteTemplate(gemm_template, values)
