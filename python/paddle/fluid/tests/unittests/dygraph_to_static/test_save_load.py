@@ -129,15 +129,26 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.assertNotIn("batch_norm", comp_op_type_list)
             self.assertNotIn("relu", comp_op_type_list)
             self.assertNotIn("pow", comp_op_type_list)
+            self.assertNotIn("expand_v2", comp_op_type_list)
+            self.assertNotIn("unsqueeze2", comp_op_type_list)
+            self.assertNotIn("reduce_mean", comp_op_type_list)
             self.assertNotIn("batch_norm_grad", comp_op_type_list)
             self.assertNotIn("relu_grad", comp_op_type_list)
+            self.assertNotIn("pow_grad", comp_op_type_list)
+            self.assertNotIn("expand_v2_grad", comp_op_type_list)
+            self.assertNotIn("unsqueeze2_grad", comp_op_type_list)
+            self.assertNotIn("reduce_mean_grad", comp_op_type_list)
+
             paddle.jit.save(static_net, self.model_path)
             load_func = paddle.jit.load(self.model_path)
             load_program = load_func.program()
+            print("load_program:", load_program)
             load_op_type_list = [op.type for op in load_program.block(0).ops]
             new_res = load_func(self.x)
+            self.assertIn("conv2d", load_op_type_list)
             self.assertIn("batch_norm", load_op_type_list)
             self.assertIn("relu", load_op_type_list)
+            self.assertIn("pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
 
