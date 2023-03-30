@@ -110,6 +110,9 @@ class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
             'Num': np.array([11]).astype('int32'),
         }
 
+    def test_check_output(self):
+        return self.check_output_with_place(core.CUDAPlace(0))
+
 
 class TestLinspaceOpReverseCaseBF16(TestLinspaceOpCommonCaseBF16):
     def _set_data(self):
