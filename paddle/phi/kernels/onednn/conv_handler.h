@@ -414,7 +414,7 @@ class ConvOneDNNHandlerT
       auto wei_scales = ConvertToDNNLScales("Scale_weights");
       int mask = wei_scales.size() == 1
                      ? 0
-                     : (groups > 1 ? (1 << 0 + 1 << 1) : 1 << 0);
+                     : (groups > 1 ? ((1 << 0) + (1 << 1)) : 1 << 0);
       conv_attr.set_scales_mask(DNNL_ARG_WEIGHTS, mask);
 
       if (!force_fp32_output) {
