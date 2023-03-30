@@ -2422,7 +2422,7 @@ class TransposeGradParser(AscendParserBase):
 
         x_shape = self.op.block.var(self.op.input_arg_names[1]).shape[1:]
         out_grad_shape = self.op.block.var(self.op.input_arg_names[0]).shape
-        assert list(map(lambda x: out_grad_shape[x], perm)) == list(x_shape)
+        assert [out_grad_shape[x] for x in perm] == list(x_shape)
 
         x_grad = (
             core.GEOperatorFactory.create_operator(

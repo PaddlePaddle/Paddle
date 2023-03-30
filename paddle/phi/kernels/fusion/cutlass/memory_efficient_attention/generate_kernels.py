@@ -59,7 +59,7 @@ def find_arch_range(min_arch, max_arch):
 
 
 def find_max_arch(arch):
-    arch = list(sorted(arch))
+    arch = sorted(arch)
     idx = DEFAULT_ARCH.index(arch[-1])
     if idx == len(DEFAULT_ARCH) - 1:
         return MAX_ARCH
