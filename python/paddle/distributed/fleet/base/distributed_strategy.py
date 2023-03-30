@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 import google.protobuf
 import google.protobuf.text_format
 
@@ -24,9 +26,9 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 protobuf_version = google.protobuf.__version__
 if protobuf_version >= "4.21.0":
-    import google._upb._message as _message
+    from google._upb import _message
 else:
-    import google.protobuf.pyext._message as _message
+    from google.protobuf.pyext import _message
 
 __all__ = []
 
@@ -149,6 +151,7 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
@@ -543,7 +546,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
@@ -1691,8 +1694,13 @@ class DistributedStrategy:
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
+        hybrid_config = copy.deepcopy(configs)
+        if "order" in hybrid_config:
+            self.hybrid_parallel_order = hybrid_config["order"]
+            hybrid_config.pop('order')
+
         check_configs_key(
-            self.strategy.hybrid_configs, configs, "hybrid_configs"
+            self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
         assign_configs_value(self.strategy.hybrid_configs, configs)
 

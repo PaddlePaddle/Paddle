@@ -44,5 +44,6 @@
 - sin
 - cos
 - where
-- reshape
 - split
+- erf
+- tanh

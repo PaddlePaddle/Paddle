@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
@@ -29,23 +28,11 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  using XPUType = typename XPUTypeTrait<T>::Type;
-
-  auto f = [](xpu::Context* ctx,
-              const T* x,
-              T* y,
-              const std::vector<int>& xdims,
-              const std::vector<int>& reduce_dims) {
-    return xpu::reduce_sum<XPUType>(ctx,
-                                    reinterpret_cast<const XPUType*>(x),
-                                    reinterpret_cast<XPUType*>(y),
-                                    xdims,
-                                    reduce_dims);
-  };
-  int r = XPUReduce<Context, T>(
-      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
+  XPUReduce<Context, T, phi::SumFunctor>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out_dtype, out);
 }
 
 }  // namespace phi

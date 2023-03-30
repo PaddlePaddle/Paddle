@@ -338,7 +338,7 @@ class ElasticManager:
                 ip = endpoints
                 port = start_port
 
-            ports = [x for x in range(port, port + len(devices_per_proc))]
+            ports = list(range(port, port + len(devices_per_proc)))
             endpoint_list.extend(["%s:%d" % (ip, port) for port in ports])
 
         dist_endpoints = ','.join(endpoint_list)
@@ -360,7 +360,7 @@ class ElasticManager:
             self.etcd.cancel_watch(watch)
         self.etcd.delete(self.host_path)
 
-        hosts = [i for i in self.etcd.get_prefix(self.node_prefix)]
+        hosts = list(self.etcd.get_prefix(self.node_prefix))
         if len(hosts) == 0:
             self.etcd.delete_prefix(self.prefix)
 
@@ -530,7 +530,7 @@ class ElasticManager:
         #   10.10.10.0 is removed
         #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
         #   In this case, the rank of 10.10.10.1 and 10.10.10.2 remains unchanged, while the rank of 10.10.10.3 is set to rank0
-        endpoints_dict = dict()
+        endpoints_dict = {}
         unsorted_endpoints = []
         for id, host_port in enumerate(self.hosts):
             idx = host_endpoints.index(host_port)

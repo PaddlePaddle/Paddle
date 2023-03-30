@@ -20,7 +20,7 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -111,7 +111,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
             repeat_times_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {

@@ -309,7 +309,7 @@ class Optimizer:
                     self._learning_rate.step_num = global_step[0]
                 else:
                     raise RuntimeError(
-                        "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                        "Type not supprt, value in state dict must be [Tensor, Variable, numpy], the type is ",
                         type(global_step),
                     )
 
@@ -320,7 +320,7 @@ class Optimizer:
             load_para = state_dict[param.name]
             if isinstance(load_para, Variable):
                 load_para_np = load_para.numpy()
-            elif isinstance(load_para, core.VarBase):
+            elif isinstance(load_para, core.eager.Tensor):
                 load_para_np = load_para.numpy()
             elif isinstance(load_para, np.ndarray):
                 load_para_np = load_para
@@ -389,7 +389,7 @@ class Optimizer:
                     dtype='float32' if self._dtype is None else self._dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
                 self._learning_rate_map[
                     framework.default_main_program()
