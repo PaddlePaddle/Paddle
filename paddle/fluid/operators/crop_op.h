@@ -110,7 +110,7 @@ void CropFunction(const framework::ExecutionContext& context) {
       place, out_tensor, x_tensor, e_offsets, e_shape);
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -175,7 +175,7 @@ void CropGradFunction(const framework::ExecutionContext& context) {
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CropGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
