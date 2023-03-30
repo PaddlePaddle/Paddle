@@ -1600,6 +1600,15 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
+- op : temporal_shift
+  args : (Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format_str = "NCHW")
+  output : Tensor
+  infer_meta :
+    func : TemporalShiftInferMeta
+  kernel :
+    func : temporal_shift
+  backward : temporal_shift_grad
+
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)
   output : Tensor

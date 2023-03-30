@@ -1923,6 +1923,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op: temporal_shift
+  backward: temporal_shift_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : thresholded_relu
   inputs :
     x : X

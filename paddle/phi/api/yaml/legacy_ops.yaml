@@ -1477,15 +1477,6 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
 
-- op : temporal_shift
-  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor
-  infer_meta :
-    func : TemporalShiftInferMeta
-  kernel :
-    func : temporal_shift
-  backward : temporal_shift_grad
-
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)

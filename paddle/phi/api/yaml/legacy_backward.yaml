@@ -1148,16 +1148,6 @@
     data_type : out_grad
   optional : reserve_space
 
-- backward_op : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
-  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : temporal_shift_grad
-
 - backward_op : tile_double_grad
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray repeat_times)
