@@ -35,7 +35,7 @@ void ExponentialKernel(const Context& dev_ctx,
   phi::funcs::exponential_transform<T> trans(lambda);
 
   for (int64_t i = 0; i < out->numel(); ++i) {
-    out_data[i] = static_cast<T>(trans(uniform(*engine)));
+    out_data[i] = trans(uniform(*engine));
   }
 }
 
@@ -47,5 +47,4 @@ PD_REGISTER_KERNEL(exponential,
                    phi::ExponentialKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
