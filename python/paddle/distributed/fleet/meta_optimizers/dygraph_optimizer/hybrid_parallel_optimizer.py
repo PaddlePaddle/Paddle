@@ -249,11 +249,17 @@ class HybridParallelOptimizer:
             fleet.fleet._user_defined_strategy.hybrid_configs.mp_configs
         )
 
-        if mp_group.nranks > 1 and mp_configs.sync_grad:
+        if (
+            mp_configs.sync_param
+            or mp_configs.sync_grad
+            or mp_configs.sync_moment
+        ):
             sync_param = sorted(
                 [p for p in parameters_list if self._filter_fn(p)],
                 key=lambda p: p.name,
             )
+
+        if mp_group.nranks > 1 and mp_configs.sync_grad:
             for p in sync_param:
                 if p.grad is None:
                     continue
@@ -270,34 +276,35 @@ class HybridParallelOptimizer:
                 )
 
         if mp_group.nranks > 1 and mp_configs.sync_moment:
-            # support opt state of adam and adamw to broadcast now.
-            if isinstance(
-                self._inner_opt,
-                (paddle.optimizer.Adam, paddle.optimizer.AdamW),
-            ):
-                if (
-                    self._inner_opt._multi_precision
-                    and p.name in self._master_weights
+            for p in sync_param:
+                # support opt state of adam and adamw to broadcast now.
+                if isinstance(
+                    self._inner_opt,
+                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
                 ):
-                    paddle.distributed.broadcast(
-                        self._inner_opt._master_weights[p.name],
-                        src=src_rank,
-                        group=mp_group,
-                        sync_op=True,
-                    )
+                    if (
+                        self._inner_opt._multi_precision
+                        and p.name in self._master_weights
+                    ):
+                        paddle.distributed.broadcast(
+                            self._inner_opt._master_weights[p.name],
+                            src=src_rank,
+                            group=mp_group,
+                            sync_op=True,
+                        )
 
-                moment1 = self._inner_opt._get_accumulator(
-                    self._inner_opt._moment1_acc_str, p
-                )
-                moment2 = self._inner_opt._get_accumulator(
-                    self._inner_opt._moment2_acc_str, p
-                )
-                paddle.distributed.broadcast(
-                    moment1, src=src_rank, group=mp_group, sync_op=True
-                )
-                paddle.distributed.broadcast(
-                    moment2, src=src_rank, group=mp_group, sync_op=True
-                )
+                    moment1 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment1_acc_str, p
+                    )
+                    moment2 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment2_acc_str, p
+                    )
+                    paddle.distributed.broadcast(
+                        moment1, src=src_rank, group=mp_group, sync_op=True
+                    )
+                    paddle.distributed.broadcast(
+                        moment2, src=src_rank, group=mp_group, sync_op=True
+                    )
 
     @no_grad()
     @framework.dygraph_only
