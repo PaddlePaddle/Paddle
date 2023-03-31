@@ -14,6 +14,7 @@
 
 # For op in NO_FP64_CHECK_GRAD_OP_LIST, the op test requires check_grad with fp64 precision
 NO_FP64_CHECK_GRAD_OP_LIST = [
+    'instance_norm',
     'affine_grid',
     'clip',
     'conv2d',

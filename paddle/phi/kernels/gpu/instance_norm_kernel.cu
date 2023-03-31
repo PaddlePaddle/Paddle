@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
@@ -38,6 +39,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -118,10 +120,10 @@ void InstanceNormKernel(const Context &dev_ctx,
 
   DenseTensor scale_tmp;
   scale_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&scale_tmp);
+  dev_ctx.template Alloc<AccT>(&scale_tmp);
   DenseTensor bias_tmp;
   bias_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&bias_tmp);
+  dev_ctx.template Alloc<AccT>(&bias_tmp);
 
   const int n = x.numel();
   const int block = 512;
@@ -131,14 +133,14 @@ void InstanceNormKernel(const Context &dev_ctx,
 
   phi::funcs::SetConstant<GPUContext, T> set_constant;
   if (scale_ptr) {
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale_ptr->data<T>(), scale_tmp.data<T>(), N, C);
+    repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+        scale_ptr->data<AccT>(), scale_tmp.data<AccT>(), N, C);
   } else {
     set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
   }
   if (bias_ptr) {
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        bias_ptr->data<T>(), bias_tmp.data<T>(), N, C);
+    repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+        bias_ptr->data<AccT>(), bias_tmp.data<AccT>(), N, C);
   } else {
     set_constant(dev_ctx, &bias_tmp, static_cast<T>(0));
   }
@@ -210,8 +212,8 @@ void InstanceNormKernel(const Context &dev_ctx,
           data_desc_,
           y->template data<T>(),
           in_param_desc_,
-          scale_tmp.template data<BatchNormParamType<T>>(),
-          bias_tmp.template data<BatchNormParamType<T>>(),
+          scale_tmp.template data<BatchNormParamType<AccT>>(),
+          bias_tmp.template data<BatchNormParamType<AccT>>(),
           0,
           nullptr,
           nullptr,

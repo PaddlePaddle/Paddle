@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -133,18 +133,21 @@ class TestInstanceNormFP32OP(OpTest):
         self.init_dtype()
         self.init_shape()
         self.init_value()
-        self.atol = 1e-3
-        self.max_relative_error = 5e-3
+        self.set_err_thre()
         self.inputs = {'X': self.value, 'Scale': self.scale, 'Bias': self.bias}
         self.attrs = {
             'epsilon': self.eps,
-            'momentum': 1.0,
+            'momentum': 0.9,
             'data_format': self.data_format,
         }
         y, mean, variance = self.compute_output(
             self.value, self.scale, self.bias, self.eps, self.data_format
         )
-        self.outputs = {'Y': y, 'SavedMean': mean, 'SavedVariance': variance}
+        self.outputs = {
+            'Y': y,
+            'SavedMean': mean,
+            'SavedVariance': 1.0 / variance,
+        }
 
     def compute_output(self, x, scale, bias, epsilon, data_format):
         if data_format == "NHWC":
@@ -152,8 +155,8 @@ class TestInstanceNormFP32OP(OpTest):
         N, C, H, W = x.shape
         mean = np.mean(x, axis=(2, 3), keepdims=True)
         variance = np.var(x, axis=(2, 3), keepdims=True)
-        std = np.sqrt(variance)
-        x_norm = (x - mean) / (std + epsilon)
+        std = np.sqrt(variance) + epsilon
+        x_norm = (x - mean) / std
         scale = scale.reshape([1, C, 1, 1])
         bias = bias.reshape([1, C, 1, 1])
         x_norm = scale * x_norm + bias
@@ -178,44 +181,64 @@ class TestInstanceNormFP32OP(OpTest):
 
     def init_value(self):
         np.random.seed(0)
-        paddle.seed(0)
         self.value = np.random.random(self.shape).astype(self.dtype)
-        print('x: ', self.value[0, 0, 0, 0])
-        self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
-        self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        self.scale = np.random.random([self.shape[1]]).astype(np.float32)
+        self.bias = np.random.random([self.shape[1]]).astype(np.float32)
+
+    def set_err_thre(self):
+        self.atol = 1e-3
+        self.max_relative_error = 5e-3
 
 
-#
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_float16_supported(core.CUDAPlace(0)),
-#     "core is not compiled with CUDA or not support the bfloat16",
-# )
-#
-# class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
-#     def init_dtype(self):
-#         self.dtype = np.float16
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_err_thre(self):
+        self.atol = 0.03125
+        self.max_relative_error = 5e-3
 
 
-# class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
-#     def setUp(self):
-#         self.op_type = "instance_norm"
-#         self.python_api = paddle.nn.functional.instance_norm
-#         self.eps = 1e-5
-#         self.init_dtype()
-#         self.init_shape()
-#         self.init_value()
-#         self.atol = 1e-2
-#         self.max_relative_error = 1e-2
-#         self.inputs = {'X': convert_float_to_uint16(self.value)}
-#         self.attrs = {
-#             'epsilon': self.eps,
-#             'momentum': 0.9,
-#             'data_format': "NCHW",
-#         }
-#         self.outputs = {
-#             'Y': convert_float_to_uint16(self.compute_output(self.value))
-#         }
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
+    def setUp(self):
+        self.op_type = "instance_norm"
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.nn.functional.instance_norm
+        self.eps = 1e-5
+        self.data_format = "NCHW"
+        self.init_dtype()
+        self.init_shape()
+        self.init_value()
+        self.atol = 1e-2
+        self.max_relative_error = 1e-2
+        self.inputs = {
+            'X': convert_float_to_uint16(self.value),
+            'Scale': convert_float_to_uint16(self.scale),
+            'Bias': convert_float_to_uint16(self.bias),
+        }
+        self.attrs = {
+            'epsilon': self.eps,
+            'momentum': 0.9,
+            'data_format': self.data_format,
+        }
+        y, mean, variance = self.compute_output(
+            self.value, self.scale, self.bias, self.eps, self.data_format
+        )
+        self.outputs = {
+            'Y': convert_float_to_uint16(y),
+            'SavedMean': convert_float_to_uint16(mean),
+            'SavedVariance': convert_float_to_uint16(1.0 / variance),
+        }
 
 
 if __name__ == '__main__':
