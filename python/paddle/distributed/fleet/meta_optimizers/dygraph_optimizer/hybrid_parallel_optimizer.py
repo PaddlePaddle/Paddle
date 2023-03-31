@@ -308,9 +308,7 @@ class HybridParallelOptimizer:
         src_rank = self._hcg.get_model_parallel_group_src_rank()
         sync_param = None
 
-        mp_configs = (
-            fleet.fleet._user_defined_strategy.hybrid_configs.mp_configs
-        )
+        mp_configs = fleet.fleet._user_defined_strategy.mp_configs
 
         if (
             mp_configs.sync_param

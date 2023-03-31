@@ -190,11 +190,11 @@ class TestDistMPSyncTraning(unittest.TestCase):
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
             "pp_degree": 1,
-            "mp_configs": {
-                "sync_param": False,
-                "sync_grad": False,
-                "sync_moment": False,
-            },
+        }
+        strategy.mp_configs = {
+            "sync_param": False,
+            "sync_grad": False,
+            "sync_moment": False,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -233,9 +233,9 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
         strategy = fleet.fleet._user_defined_strategy
-        strategy.hybrid_configs.mp_configs.sync_param = mp_sync_param
-        strategy.hybrid_configs.mp_configs.sync_grad = mp_sync_grad
-        strategy.hybrid_configs.mp_configs.sync_moment = mp_sync_moment
+        strategy.mp_configs.sync_param = mp_sync_param
+        strategy.mp_configs.sync_grad = mp_sync_grad
+        strategy.mp_configs.sync_moment = mp_sync_moment
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)

@@ -62,7 +62,6 @@ message HybridConfig {
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
   optional int32 sharding_degree = 4 [ default = 1 ];
-  optional MpConfig mp_configs = 5; 
 }
 
 message AMPConfig {
@@ -375,6 +374,7 @@ message DistributedStrategy {
   repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
   optional QatConfig qat_configs = 117;
+  optional MpConfig mp_configs = 118;
 
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
