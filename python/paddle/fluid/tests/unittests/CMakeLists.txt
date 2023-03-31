@@ -821,7 +821,6 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
 
@@ -849,10 +848,6 @@ if(WIN32)
     cc_imp_py_test
     SRCS cc_imp_py_test.cc
     DEPS python)
-endif()
-
-if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
 endif()
 
 add_subdirectory(ir)
