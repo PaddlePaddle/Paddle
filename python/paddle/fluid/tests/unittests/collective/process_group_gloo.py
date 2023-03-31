@@ -113,15 +113,15 @@ class TestProcessGroupFp32(unittest.TestCase):
         send_recv_result_1 = paddle.assign(tensor_x)
         send_recv_result_2 = paddle.assign(tensor_y_2)
         if pg.rank() == 0:
-            task = pg.send(tensor_x, 1, True)
-        else:
+            task = pg.send(tensor_x, pg.size() - 1, True)
+        elif pg.rank() == pg.size() - 1:
             task = pg.recv(tensor_y_1, 0, True)
             assert np.array_equal(send_recv_result_1, tensor_y_1)
 
         if pg.rank() == 0:
-            task = pg.recv(tensor_x, 1, True)
+            task = pg.recv(tensor_x, pg.size() - 1, True)
             assert np.array_equal(send_recv_result_2, tensor_x)
-        else:
+        elif pg.rank() == pg.size() - 1:
             task = pg.send(tensor_y_2, 0, True)
         print("test send_recv api ok")
 
@@ -207,25 +207,26 @@ class TestProcessGroupFp32(unittest.TestCase):
         # test Gather
         def test_gather(root):
             in_shape = list(self.shape)
-            in_shape[0] *= 2
+            in_shape[0] *= pg.size()
             x = np.random.random(in_shape).astype(self.dtype)
-            y_1 = np.random.random(self.shape).astype(self.dtype)
-            y_2 = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
-            tensor_y = []
-            tensor_y.append(paddle.to_tensor(y_1))
-            tensor_y.append(paddle.to_tensor(y_2))
+            tensor_y = [
+                paddle.to_tensor(
+                    np.random.random(self.shape).astype(self.dtype)
+                )
+                for _ in range(pg.size())
+            ]
             gather_result = paddle.concat(tensor_y)
             if pg.rank() == root:
                 task = pg.gather(tensor_x, tensor_y[root], root, True)
                 task.wait()
                 assert np.array_equal(tensor_x, gather_result)
             else:
-                task = pg.gather(tensor_x, tensor_y[1 - root], root, True)
+                task = pg.gather(tensor_x, tensor_y[pg.rank()], root, True)
                 task.wait()
 
         test_gather(0)
-        test_gather(1)
+        test_gather(pg.size() - 1)
         print("test gather api ok\n")
 
 
