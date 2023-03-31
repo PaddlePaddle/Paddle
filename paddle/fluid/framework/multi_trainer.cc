@@ -146,6 +146,9 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         }
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
+        if (place == root_tensor->place()) {
+          continue;
+        }
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
@@ -221,6 +224,8 @@ void MultiTrainer::Run() {
   for (auto& th : wait_futures) {
     th.get();
   }
+  // merge worker vars
+  MergeWorkerVars();
 }
 
 #ifdef PADDLE_WITH_HETERPS
@@ -270,18 +275,13 @@ void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
   }
   TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
 }
-
-void MultiTrainer::Finalize() {
-  if (need_dump_field_ || need_dump_param_) {
-    FinalizeDumpEnv();
-  }
+void MultiTrainer::MergeWorkerVars(void) {
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;
     }
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
-
     for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
@@ -308,10 +308,14 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
+}
+void MultiTrainer::Finalize() {
+  if (need_dump_field_ || need_dump_param_) {
+    FinalizeDumpEnv();
+  }
 #ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
 #endif
-
 #if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first
@@ -328,6 +332,25 @@ void MultiTrainer::Finalize() {
 #endif
   root_scope_->DropKids();
 }
+#ifdef PADDLE_WITH_HETERPS
+void MultiTrainer::ResetDataset(Dataset* dataset) {
+  SetDataset(dataset);
+  const std::vector<paddle::framework::DataFeed*> readers =
+      dataset->GetReaders();
+  VLOG(3) << "readers num: " << readers.size();
+  // change thread num is not supported
+  PADDLE_ENFORCE_EQ(thread_num_,
+                    readers.size(),
+                    platform::errors::InvalidArgument(
+                        "change Dataset thread_num is not supported"));
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetPlace(places_[i]);
+    workers_[i]->SetReaderPlace(places_[i]);
+    workers_[i]->BindingDataFeedMemory();
+  }
+}
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

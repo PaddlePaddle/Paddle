@@ -112,7 +112,9 @@ class MultiTrainer : public TrainerBase {
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual std::string GetDumpPath(int tid);
-
+#ifdef PADDLE_WITH_HETERPS
+  virtual void ResetDataset(Dataset* dataset_ptr);
+#endif
   template <typename T>
   void MergeToRootScope(phi::DenseTensor* root_tensor,
                         phi::DenseTensor* thread_tensor);
@@ -120,6 +122,8 @@ class MultiTrainer : public TrainerBase {
 
   void MergeDenseParam();
 #endif
+ protected:
+  void MergeWorkerVars(void);
 
  protected:
   int thread_num_;
