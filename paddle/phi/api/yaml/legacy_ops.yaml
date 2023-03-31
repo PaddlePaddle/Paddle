@@ -10,15 +10,6 @@
     func : abs
   backward : abs_grad
 
-- op : accuracy
-  args : (Tensor x, Tensor indices, Tensor label)
-  output : Tensor(accuracy), Tensor(correct), Tensor(total)
-  infer_meta :
-    func : AccuracyInferMeta
-  kernel :
-    func : accuracy
-    data_type : x
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)

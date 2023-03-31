@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {out : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
