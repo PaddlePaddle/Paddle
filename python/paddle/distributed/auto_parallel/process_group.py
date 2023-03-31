@@ -49,14 +49,15 @@ def clear_all_process_groups():
     _g_process_group_map[0] = ProcessGroup(1000, [])
 
 
-def new_process_group(ranks, group_id=None):
+def new_process_group(ranks, group_id=None, force_new_group=False):
     global _g_process_group_map
-    # A key constructed from ranks is used for avoiding duplication
-    new_key = ''.join(map(str, ranks))
-    for pg_id, pg in _g_process_group_map.items():
-        cur_key = ''.join(map(str, pg.ranks))
-        if pg_id != 0 and new_key == cur_key:
-            return pg
+    if not force_new_group:
+        # A key constructed from ranks is used for avoiding duplication
+        new_key = ''.join(map(str, ranks))
+        for pg_id, pg in _g_process_group_map.items():
+            cur_key = ''.join(map(str, pg.ranks))
+            if pg_id != 0 and new_key == cur_key:
+                return pg
     # If not matching the existing one, construt a new process group
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation

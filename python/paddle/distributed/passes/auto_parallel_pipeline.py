@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from logging import exception
 import os
 
 from paddle.fluid import core
@@ -20,6 +19,10 @@ from .pass_base import PassBase, register_pass
 from paddle.fluid.framework import Program, Parameter
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.process_group import (
+    get_process_group,
+    new_process_group,
+)
 
 from paddle.distributed.auto_parallel.utils import (
     is_forward_op,
@@ -36,6 +39,8 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+__g_read_ops__ = ['create_py_reader', 'create_double_buffer_reader', 'read']
 
 
 @register_pass("auto_parallel_pipeline")
@@ -57,6 +62,7 @@ class PipelinePass(PassBase):
         self._acc_steps = self.get_attr("accumulate_steps")
         self._mode = self.get_attr("schedule_mode")
         self._gen_bsz = self.get_attr("generation_batch_size")
+        self._num_of_carrier = self.get_attr("num_of_carrier")
         self._program = main_program
 
         if self._mode == "1F1B":
@@ -200,6 +206,7 @@ class PipelinePass(PassBase):
         pp_stages = len(self._dist_context.process_meshes)
         cur_pp_stage = self._get_pp_stage(cur_rank)
 
+        read_prog = Program()
         start_prog = Program()
         cond_prog = Program()
         end_prog = Program()
@@ -209,10 +216,12 @@ class PipelinePass(PassBase):
         cond_var_name = None
         send_vars_name = set()
         recv_vars_name = dict()
+        process_groups = dict()
         for ib, src_block in enumerate(self._program.blocks):
             if ib == 0:
                 strat_block = start_prog.block(0)
                 end_block = end_prog.block(0)
+                read_block = read_prog.block(0)
 
                 is_after_while_op = False
                 for op in src_block.ops:
@@ -221,8 +230,16 @@ class PipelinePass(PassBase):
                         cond_var_name = op.input('Condition')[0]
                         is_after_while_op = True
                         continue
+                    if op.has_attr('ring_id'):
+                        ring_id = op.attr('ring_id')
+                        group = get_process_group(ring_id)
+                        process_groups[ring_id] = group
 
-                    if not is_after_while_op:
+                    if op.type in __g_read_ops__:
+                        self._create_program(
+                            src_block, read_block, op, force_create=True
+                        )
+                    elif not is_after_while_op:
                         self._create_program(
                             src_block, strat_block, op, force_create=True
                         )
@@ -237,6 +254,11 @@ class PipelinePass(PassBase):
                 is_after_send_op = False
                 is_after_recv_op = False
                 for op in src_block.ops:
+                    if op.has_attr('ring_id'):
+                        ring_id = op.attr('ring_id')
+                        group = get_process_group(ring_id)
+                        process_groups[ring_id] = group
+
                     if op.type == "send_v2" and not is_after_send_op:
                         is_after_send_op = True
                         if cur_pp_stage == pp_stages - 1:
@@ -368,10 +390,11 @@ class PipelinePass(PassBase):
             else:
                 raise Exception("Only support generation condition.")
 
+        read_prog._sync_with_cpp()
         start_prog._sync_with_cpp()
-        end_prog._sync_with_cpp()
         send_prog._sync_with_cpp()
         recv_prog._sync_with_cpp()
+        end_prog._sync_with_cpp()
 
         assert cond_var_name is not None
 
@@ -405,231 +428,297 @@ class PipelinePass(PassBase):
             vars_to_dtype = recv_task_node_var_dtype
             vars_to_shape = recv_task_node_var_shape
 
-        start_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            node_type="Start",
-            task_id=int(cur_rank * num_of_functionality + 0),
-            program=start_prog,
-            lazy_initialize=True,
-        )
-        cond_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            node_type="Cond",
-            task_id=int(cur_rank * num_of_functionality + 1),
-            program=cond_prog,
-            cond_var_name=cond_var_name,
-            lazy_initialize=True,
-        )
-        send_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            node_type="Compute",
-            task_id=int(cur_rank * num_of_functionality + 2),
-            program=send_prog,
-            lazy_initialize=True,
-        )
-        recv_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            node_type="Compute",
-            task_id=int(cur_rank * num_of_functionality + 3),
-            program=recv_prog,
-            lazy_initialize=True,
-            vars_to_dtype=vars_to_dtype,
-            vars_to_shape=vars_to_shape,
-        )
-        end_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            node_type="Compute",
-            task_id=int(cur_rank * num_of_functionality + 4),
-            program=end_prog,
-            lazy_initialize=True,
-        )
+        all_tasks = []
+        all_task_id_to_rank = []
+        for ci in range(self._num_of_carrier):
+            start_task_node = TaskNode(
+                rank=cur_rank,
+                max_run_times=self._acc_steps,
+                node_type="Start",
+                task_id=int(
+                    (cur_rank + ci * pp_stages) * num_of_functionality + 0
+                ),
+                program=start_prog,
+                lazy_initialize=True,
+            )
+            cond_task_node = TaskNode(
+                rank=cur_rank,
+                max_run_times=self._acc_steps,
+                node_type="Cond",
+                task_id=int(
+                    (cur_rank + ci * pp_stages) * num_of_functionality + 1
+                ),
+                program=cond_prog,
+                cond_var_name=cond_var_name,
+                lazy_initialize=True,
+            )
+            send_task_node = TaskNode(
+                rank=cur_rank,
+                max_run_times=self._acc_steps,
+                node_type="Compute",
+                task_id=int(
+                    (cur_rank + ci * pp_stages) * num_of_functionality + 2
+                ),
+                program=send_prog,
+                lazy_initialize=True,
+            )
+            recv_task_node = TaskNode(
+                rank=cur_rank,
+                max_run_times=self._acc_steps,
+                node_type="Compute",
+                task_id=int(
+                    (cur_rank + ci * pp_stages) * num_of_functionality + 3
+                ),
+                program=recv_prog,
+                lazy_initialize=True,
+                vars_to_dtype=vars_to_dtype,
+                vars_to_shape=vars_to_shape,
+            )
+            end_task_node = TaskNode(
+                rank=cur_rank,
+                max_run_times=self._acc_steps,
+                node_type="Compute",
+                task_id=int(
+                    (cur_rank + ci * pp_stages) * num_of_functionality + 4
+                ),
+                program=end_prog,
+                lazy_initialize=True,
+            )
 
-        # add dependencies for task nodes intra stage
-        inf = -1
-        pp_buff_size = int(pp_stages - cur_pp_stage)
-        start_task_node.add_downstream_task(
-            cond_task_node.task_id(), self._gen_bsz
-        )
-        print(
-            "Task ",
-            start_task_node.task_id(),
-            "'s downstream is:",
-            cond_task_node.task_id(),
-            ", buffer size is:",
-            self._gen_bsz,
-        )
-        cond_task_node.add_upstream_task(
-            start_task_node.task_id(), self._gen_bsz
-        )
-        print(
-            "Task ",
-            cond_task_node.task_id(),
-            "'s upstream is:",
-            start_task_node.task_id(),
-            ", buffer size is:",
-            self._gen_bsz,
-        )
-        cond_task_node.add_downstream_task(send_task_node.task_id(), inf)
-        print(
-            "Task ",
-            cond_task_node.task_id(),
-            "'s downstream is:",
-            send_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
-        send_task_node.add_upstream_task(cond_task_node.task_id(), inf)
-        print(
-            "Task ",
-            send_task_node.task_id(),
-            "'s upstream is:",
-            cond_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
-        send_task_node.add_downstream_task(
-            recv_task_node.task_id(), pp_buff_size
-        )
-        print(
-            "Task ",
-            send_task_node.task_id(),
-            "'s downstream is:",
-            recv_task_node.task_id(),
-            ", buffer size is:",
-            pp_buff_size,
-        )
-        recv_task_node.add_upstream_task(send_task_node.task_id(), pp_buff_size)
-        print(
-            "Task ",
-            recv_task_node.task_id(),
-            "'s upstream is:",
-            send_task_node.task_id(),
-            ", buffer size is:",
-            pp_buff_size,
-        )
-        recv_task_node.add_downstream_task(
-            cond_task_node.task_id(), inf, core.DependType.LOOP
-        )
-        print(
-            "Task ",
-            recv_task_node.task_id(),
-            "'s downstream is:",
-            cond_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
-        cond_task_node.add_upstream_task(
-            recv_task_node.task_id(), inf, core.DependType.LOOP
-        )
-        print(
-            "Task ",
-            cond_task_node.task_id(),
-            "'s upstream is:",
-            recv_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
-        cond_task_node.add_downstream_task(
-            end_task_node.task_id(), inf, core.DependType.STOP_LOOP
-        )
-        print(
-            "Task ",
-            cond_task_node.task_id(),
-            "'s downstream is:",
-            end_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
-        end_task_node.add_upstream_task(
-            cond_task_node.task_id(), inf, core.DependType.STOP_LOOP
-        )
-        print(
-            "Task ",
-            end_task_node.task_id(),
-            "'s upstream is:",
-            cond_task_node.task_id(),
-            ", buffer size is:",
-            inf,
-        )
+            # add dependencies for task nodes intra stage
+            inf = -1
+            pp_buff_size = int(pp_stages - cur_pp_stage)
+            start_task_node.add_downstream_task(
+                cond_task_node.task_id(), self._gen_bsz
+            )
+            print(
+                "Task ",
+                start_task_node.task_id(),
+                "'s downstream is:",
+                cond_task_node.task_id(),
+                ", buffer size is:",
+                self._gen_bsz,
+            )
+            cond_task_node.add_upstream_task(
+                start_task_node.task_id(), self._gen_bsz
+            )
+            print(
+                "Task ",
+                cond_task_node.task_id(),
+                "'s upstream is:",
+                start_task_node.task_id(),
+                ", buffer size is:",
+                self._gen_bsz,
+            )
+            cond_task_node.add_downstream_task(send_task_node.task_id(), inf)
+            print(
+                "Task ",
+                cond_task_node.task_id(),
+                "'s downstream is:",
+                send_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
+            send_task_node.add_upstream_task(cond_task_node.task_id(), inf)
+            print(
+                "Task ",
+                send_task_node.task_id(),
+                "'s upstream is:",
+                cond_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
+            send_task_node.add_downstream_task(
+                recv_task_node.task_id(), pp_buff_size
+            )
+            print(
+                "Task ",
+                send_task_node.task_id(),
+                "'s downstream is:",
+                recv_task_node.task_id(),
+                ", buffer size is:",
+                pp_buff_size,
+            )
+            recv_task_node.add_upstream_task(
+                send_task_node.task_id(), pp_buff_size
+            )
+            print(
+                "Task ",
+                recv_task_node.task_id(),
+                "'s upstream is:",
+                send_task_node.task_id(),
+                ", buffer size is:",
+                pp_buff_size,
+            )
+            recv_task_node.add_downstream_task(
+                cond_task_node.task_id(), inf, core.DependType.LOOP
+            )
+            print(
+                "Task ",
+                recv_task_node.task_id(),
+                "'s downstream is:",
+                cond_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
+            cond_task_node.add_upstream_task(
+                recv_task_node.task_id(), inf, core.DependType.LOOP
+            )
+            print(
+                "Task ",
+                cond_task_node.task_id(),
+                "'s upstream is:",
+                recv_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
+            cond_task_node.add_downstream_task(
+                end_task_node.task_id(), inf, core.DependType.STOP_LOOP
+            )
+            print(
+                "Task ",
+                cond_task_node.task_id(),
+                "'s downstream is:",
+                end_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
+            end_task_node.add_upstream_task(
+                cond_task_node.task_id(), inf, core.DependType.STOP_LOOP
+            )
+            print(
+                "Task ",
+                end_task_node.task_id(),
+                "'s upstream is:",
+                cond_task_node.task_id(),
+                ", buffer size is:",
+                inf,
+            )
 
-        # add dependencies for task nodes inter stage
-        # get upstream ranks and downstream ranks of cur_rank
-        up_down_streams = self._dist_context.up_down_streams
-        pp_upstream_ranks = up_down_streams.ups(cur_rank)
-        pp_downstream_ranks = up_down_streams.downs(cur_rank)
+            # add dependencies for task nodes inter stage
+            # get upstream ranks and downstream ranks of cur_rank
+            up_down_streams = self._dist_context.up_down_streams
+            pp_upstream_ranks = up_down_streams.ups(cur_rank)
+            pp_downstream_ranks = up_down_streams.downs(cur_rank)
 
-        for upstream_rank in pp_upstream_ranks:
-            upstream_pp_stage = self._get_pp_stage(upstream_rank)
-            if upstream_pp_stage < pp_stages - 1:
-                upstream_task_id = int(upstream_rank * num_of_functionality + 2)
-                send_task_node.add_upstream_task(upstream_task_id)
-                print(
-                    "Task ",
-                    send_task_node.task_id(),
-                    "'s upstream is:",
-                    upstream_task_id,
-                    ", buffer size is:",
-                    2,
-                )
-            else:
-                upstream_task_id = int(upstream_rank * num_of_functionality + 3)
-                recv_task_node.add_upstream_task(upstream_task_id)
-                print(
-                    "Task ",
-                    recv_task_node.task_id(),
-                    "'s upstream is:",
-                    upstream_task_id,
-                    ", buffer size is:",
-                    2,
-                )
-        for downstream_rank in pp_downstream_ranks:
-            if cur_pp_stage < pp_stages - 1:
-                downstream_task_id = int(
-                    downstream_rank * num_of_functionality + 2
-                )
-                send_task_node.add_downstream_task(downstream_task_id)
-                print(
-                    "Task ",
-                    send_task_node.task_id(),
-                    "'s downstream is:",
-                    downstream_task_id,
-                    ", buffer size is:",
-                    2,
-                )
-            else:
-                downstream_task_id = int(
-                    downstream_rank * num_of_functionality + 3
-                )
-                recv_task_node.add_downstream_task(downstream_task_id)
-                print(
-                    "Task ",
-                    recv_task_node.task_id(),
-                    "'s downstream is:",
-                    downstream_task_id,
-                    ", buffer size is:",
-                    2,
-                )
+            for upstream_rank in pp_upstream_ranks:
+                upstream_pp_stage = self._get_pp_stage(upstream_rank)
+                if upstream_pp_stage < pp_stages - 1:
+                    upstream_task_id = int(
+                        (upstream_rank + ci * pp_stages) * num_of_functionality
+                        + 2
+                    )
+                    send_task_node.add_upstream_task(upstream_task_id)
+                    print(
+                        "Task ",
+                        send_task_node.task_id(),
+                        "'s upstream is:",
+                        upstream_task_id,
+                        ", buffer size is:",
+                        2,
+                    )
+                else:
+                    upstream_task_id = int(
+                        (upstream_rank + ci * pp_stages) * num_of_functionality
+                        + 3
+                    )
+                    recv_task_node.add_upstream_task(upstream_task_id)
+                    print(
+                        "Task ",
+                        recv_task_node.task_id(),
+                        "'s upstream is:",
+                        upstream_task_id,
+                        ", buffer size is:",
+                        2,
+                    )
+            for downstream_rank in pp_downstream_ranks:
+                if cur_pp_stage < pp_stages - 1:
+                    downstream_task_id = int(
+                        (downstream_rank + ci * pp_stages)
+                        * num_of_functionality
+                        + 2
+                    )
+                    send_task_node.add_downstream_task(downstream_task_id)
+                    print(
+                        "Task ",
+                        send_task_node.task_id(),
+                        "'s downstream is:",
+                        downstream_task_id,
+                        ", buffer size is:",
+                        2,
+                    )
+                else:
+                    downstream_task_id = int(
+                        (downstream_rank + ci * pp_stages)
+                        * num_of_functionality
+                        + 3
+                    )
+                    recv_task_node.add_downstream_task(downstream_task_id)
+                    print(
+                        "Task ",
+                        recv_task_node.task_id(),
+                        "'s downstream is:",
+                        downstream_task_id,
+                        ", buffer size is:",
+                        2,
+                    )
 
-        task_id_to_rank = {}
-        for i in range(nrank):
-            for j in range(num_of_functionality):
-                task_id_to_rank[int(i * num_of_functionality + j)] = i
-        self._program._pipeline_opt = {
-            "fleet_opt": {
-                'tasks': [
+            task_id_to_rank = {}
+            for i in range(nrank):
+                for j in range(num_of_functionality):
+                    task_id_to_rank[
+                        int((i + ci * pp_stages) * num_of_functionality + j)
+                    ] = i
+            all_tasks.append(
+                [
                     start_task_node,
                     cond_task_node,
                     send_task_node,
                     recv_task_node,
                     end_task_node,
-                ],
-                'task_id_to_rank': task_id_to_rank,
+                ]
+            )
+            all_task_id_to_rank.append(task_id_to_rank)
+
+            if self._num_of_carrier > 1:
+                start_prog = self._clone(start_prog, process_groups)
+                cond_prog = self._clone(cond_prog, process_groups)
+                send_prog = self._clone(send_prog, process_groups)
+                recv_prog = self._clone(recv_prog, process_groups)
+                end_prog = self._clone(end_prog, process_groups)
+
+        print("all_tasks:", all_tasks)
+        print("all_task_id_to_rank:", all_task_id_to_rank)
+        print("read_prog:", read_prog)
+        self._program._pipeline_opt = {
+            "fleet_opt": {
+                'tasks': all_tasks,
+                'task_id_to_rank': all_task_id_to_rank,
                 'num_micro_batches': self._acc_steps,
                 'inference_generation': True,
+                'source_program': read_prog,
+                'num_of_carrier': self._num_of_carrier,
+                "program_list": [self._program, self._program.clone()],
             }
         }
+
+    def _clone(self, prog, process_groups):
+        clone_prog = prog.clone()
+        clone_process_groups = dict()
+        for block in clone_prog.blocks:
+            for op in block.ops:
+                if (
+                    op.has_attr('ring_id')
+                    and op.attr('ring_id') in process_groups
+                ):
+                    if op.attr('ring_id') not in clone_process_groups:
+                        group = process_groups[op.attr('ring_id')]
+                        new_group = new_process_group(
+                            group.ranks, force_new_group=True
+                        )
+                        op._set_attr('ring_id', new_group.id)
+                        clone_process_groups[op.attr('ring_id')] = new_group
+                    else:
+                        new_group = clone_process_groups[op.attr('ring_id')]
+                        op._set_attr('ring_id', new_group.id)
+        return clone_prog

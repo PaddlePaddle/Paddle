@@ -103,6 +103,7 @@ set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
 set_field_default_config(PIPELINE, "micro_batch_size", 1)
 set_field_default_config(PIPELINE, "accumulate_steps", 1)
 set_field_default_config(PIPELINE, "generation_batch_size", 1)
+set_field_default_config(PIPELINE, "num_of_carrier", 1)
 
 #########################################
 # quantization configuration
@@ -115,9 +116,9 @@ set_field_default_config(QAT, "activation_bits", 8)
 set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
 
-# #########################################
+#########################################
 # auto tuning configuration
-# #########################################
+#########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
 set_field_default_config(TUNING, "batch_size", 1)
