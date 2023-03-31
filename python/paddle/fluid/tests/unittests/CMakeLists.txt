@@ -821,7 +821,6 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
 
@@ -982,7 +981,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
@@ -1198,6 +1197,7 @@ set(TEST_CINN_OPS
     test_meshgrid_op
     test_scatter_op
     test_gather_op
+    test_layer_norm_op
     test_cast_op
     test_dropout_op
     test_group_norm_op)

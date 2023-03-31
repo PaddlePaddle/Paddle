@@ -30,7 +30,7 @@ file = '{}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'.format(
     get_build_directory()
 )
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.

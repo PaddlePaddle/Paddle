@@ -219,7 +219,7 @@ def profiler(args):
     # load ctx
     if not os.path.isfile(args.ctx_filename):
         raise ValueError(
-            "There is no profile context named {}.".format(args.ctx_filename)
+            f"There is no profile context named {args.ctx_filename}."
         )
     with open(args.ctx_filename, 'rb') as f:
         profile_ctx = pickle.load(f, encoding='latin1')
@@ -270,7 +270,7 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile done! avg speed : {} step / s.".format(avg_tput))
+        print(f"profile done! avg speed : {avg_tput} step / s.")
 
     except paddle.framework.core.EOFException:
         data_loader._inner_dataloader.reset()
@@ -286,7 +286,7 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile failed with error: [{}]".format(error_type))
+        print(f"profile failed with error: [{error_type}]")
         print(e)
         print(traceback.format_exc())
 

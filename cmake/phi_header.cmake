@@ -17,25 +17,27 @@ set(PADDLE_INFERENCE_INSTALL_DIR
 
 function(phi_header_path_compat TARGET_PATH)
   message(STATUS "phi header path compat processing: ${TARGET_PATH}")
-  # string(FIND ${TARGET_PATH} "experimental" pos)
-  # if(pos GREATER 1)
   file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
   foreach(header ${HEADERS})
     if(${header} MATCHES ".*.h$")
       file(READ ${header} HEADER_CONTENT)
       string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/"
                      HEADER_CONTENT "${HEADER_CONTENT}")
+      string(REPLACE "paddle/fluid/platform/"
+                     "paddle/include/experimental/phi/" HEADER_CONTENT
+                     "${HEADER_CONTENT}")
       string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/"
                      HEADER_CONTENT "${HEADER_CONTENT}")
       file(WRITE ${header} "${HEADER_CONTENT}")
       message(STATUS "phi header path compat processing complete: ${header}")
     endif()
   endforeach()
-  # endif()
 endfunction()
 
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi)
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
 phi_header_path_compat(
