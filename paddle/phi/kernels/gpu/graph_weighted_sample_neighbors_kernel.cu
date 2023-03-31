@@ -22,12 +22,13 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+#include <hipcub/hipcub.hpp>
 #else
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
+#include "cub/cub.cuh"
 #endif
 
-#include "cub/cub.cuh"
 #include "math.h"  // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/block_radix_topk.cuh"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/random.cuh"
