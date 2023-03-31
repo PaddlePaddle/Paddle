@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 np.random.seed(10)
 
@@ -59,7 +59,7 @@ class TestVanderAPI(unittest.TestCase):
 
     def test_api(self):
         self.api_case()
-        N = [i for i in range(9)]
+        N = list(range(9))
         for n in N:
             self.api_case(n)
             self.api_case(n, increasing=True)
