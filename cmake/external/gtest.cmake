@@ -28,7 +28,7 @@ set(GTEST_INCLUDE_DIR
     CACHE PATH "gtest include directory." FORCE)
 set(GTEST_REPOSITORY ${GIT_URL}/google/googletest.git)
 set(GTEST_TAG release-1.8.1)
-
+set(GTEST_SOURCE_DIR ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 include_directories(${GTEST_INCLUDE_DIR})
 
 if(WIN32)
@@ -63,7 +63,12 @@ if(WITH_MKLML)
   # wait for mklml downloading completed
   set(GTEST_DEPENDS ${MKLML_PROJECT})
 endif()
-
+if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+  file(TO_NATIVE_PATH
+       ${PADDLE_SOURCE_DIR}/patches/gtest/gtest-death-test.cc.patch native_src)
+  set(GTEST_PATCH_COMMAND patch -d ${GTEST_SOURCE_DIR}/googletest/src <
+                          ${native_src})
+endif()
 ExternalProject_Add(
   extern_gtest
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
