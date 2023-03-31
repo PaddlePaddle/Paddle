@@ -1633,7 +1633,7 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
                                     std::vector<int> &edges_split_num,
                                     int64_t *neighbor_len) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_all_edge_type(
+  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_sage(
       gpuid_,
       edge_to_id_len_,
       reinterpret_cast<uint64_t *>(uniq_nodes),

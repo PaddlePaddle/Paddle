@@ -722,193 +722,6 @@ __global__ void unweighted_sample_kernel(GpuPsCommGraph graph,
   }
 }
 
-// almost the same as walking kernel
-__global__ void unweighted_sample_large_kernel(GpuPsCommGraph graph,
-                                               GpuPsNodeInfo* node_info_list,
-                                               uint64_t* res,
-                                               int* actual_size,
-                                               int n,
-                                               int sample_len,
-                                               unsigned long long random_seed,
-                                               float* weight_array,
-                                               bool return_weight) {
-  int i = blockIdx.x;
-  if (i >= n) return;
-  int gidx = threadIdx.x + blockIdx.x * blockDim.x;
-  RandomNumGen rng(gidx, random_seed);
-  rng.NextValue();
-  int neighbor_len = node_info_list[i].neighbor_size;
-  uint32_t data_offset = node_info_list[i].neighbor_offset;
-  int offset = i * sample_len;
-  uint64_t* data = graph.neighbor_list;
-  float* weight = graph.weight_list;
-  if (neighbor_len <= sample_len) {  // directly copy
-    actual_size[i] = neighbor_len;
-    for (int j = threadIdx.x; j < neighbor_len; j += blockDim.x) {
-      res[offset + j] = data[data_offset + j];
-      if (return_weight) {
-        weight_array[offset + j] = weight[data_offset + j];
-      }
-    }
-  } else {
-    actual_size[i] = sample_len;
-    for (int j = threadIdx.x; j < sample_len; j += blockDim.x) {
-      res[offset + j] = j;
-    }
-    __syncthreads();
-    for (int j = sample_len + threadIdx.x; j < neighbor_len; j += blockDim.x) {
-      const int rand_num = rng.RandomMod(j + 1);
-      if (rand_num < sample_len) {
-        atomicMax(reinterpret_cast<unsigned int*>(res + offset + rand_num),
-                    static_cast<unsigned int>(j));
-      }
-    }
-    __syncthreads();
-    for (int j = threadIdx.x; j < sample_len; j += blockDim.x) {
-      const int64_t perm_idx = res[offset + j] + data_offset;
-      res[offset + j] = data[perm_idx];
-    }
-  }
-}
-
-__device__ __forceinline__ int Log2UpCUDA(int x) {
-  if (x <= 2) return x - 1;
-  return 32 - __clz(x - 1);
-}
-
-template <int BLOCK_DIM, int ITEMS_PER_THREAD>
-__global__ void unweighted_sample_kernel(GpuPsCommGraph graph,
-                                         GpuPsNodeInfo* node_info_list,
-                                         uint64_t* res,
-                                         int* actual_size,
-                                         int n,
-                                         int sample_len,
-                                         unsigned long long random_seed,
-                                         float* weight_array,
-                                         bool return_weight) {
-  int i = blockIdx.x;
-  if (i >= n) return;
-  int gidx = threadIdx.x + blockIdx.x * blockDim.x;
-  RandomNumGen rng(gidx, random_seed);
-  rng.NextValue();
-  int neighbor_len = node_info_list[i].neighbor_size;
-  uint32_t data_offset = node_info_list[i].neighbor_offset;
-  int offset = i * sample_len;
-  uint64_t* data = graph.neighbor_list;
-  float* weight = graph.weight_list;
-
-  if (neighbor_len <= sample_len) {
-    actual_size[i] = neighbor_len;
-    for (int j = threadIdx.x; j < neighbor_len; j += blockDim.x) {
-      res[offset + j] = data[data_offset + j];
-      if (return_weight) {
-        weight_array[offset + j] = weight[data_offset + j];
-      }
-    }
-  } else {
-    actual_size[i] = sample_len;
-    uint64_t sa_p[ITEMS_PER_THREAD];
-    int M = sample_len;
-    int N = neighbor_len;
-    typedef cub::BlockRadixSort<uint64_t, BLOCK_DIM, ITEMS_PER_THREAD> BlockRadixSort;
-    struct IntArray {
-      int value[BLOCK_DIM * ITEMS_PER_THREAD];
-    };
-    struct SampleSharedData {
-      IntArray s;
-      IntArray p;
-      IntArray q;
-      IntArray chain;
-      IntArray last_chain_tmp;
-    };
-    __shared__ union {
-      typename BlockRadixSort::TempStorage temp_storage;
-      SampleSharedData sample_shared_data;
-    } shared_data;
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      uint32_t idx = j * BLOCK_DIM + threadIdx.x;
-      uint32_t r = idx < M ? rng.RandomMod(N - idx) : N;
-      sa_p[j] = ((uint64_t) r << 32UL) | idx;
-    }
-    __syncthreads();
-    BlockRadixSort(shared_data.temp_storage).SortBlockedToStriped(sa_p);
-    __syncthreads();
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_DIM + threadIdx.x;
-      int s = (int) (sa_p[j] >> 32UL);
-      shared_data.sample_shared_data.s.value[idx] = s;
-      int p = sa_p[j] & 0xFFFFFFFF;
-      shared_data.sample_shared_data.p.value[idx] = p;
-      if (idx < M) shared_data.sample_shared_data.q.value[p] = idx;
-      shared_data.sample_shared_data.chain.value[idx] = idx;
-    }
-    __syncthreads();
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_DIM + threadIdx.x;
-      int si = shared_data.sample_shared_data.s.value[idx];
-      int si1 = shared_data.sample_shared_data.s.value[idx + 1];
-      if (idx < M && (idx == M - 1 || si != si1) && si >= N - M) {
-        shared_data.sample_shared_data.chain.value[N - si - 1] = shared_data.sample_shared_data.p.value[idx];
-      }
-    }
-    __syncthreads();
-    for (int step = 0; step < Log2UpCUDA(M); ++step) {
-#pragma unroll
-      for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-        int idx = j * BLOCK_DIM + threadIdx.x;
-        shared_data.sample_shared_data.last_chain_tmp.value[idx] = shared_data.sample_shared_data.chain.value[idx];
-      }
-      __syncthreads();
-#pragma unroll
-      for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-        int idx = j * BLOCK_DIM + threadIdx.x;
-        if (idx < M) {
-          shared_data.sample_shared_data.chain.value[idx] =
-              shared_data.sample_shared_data.last_chain_tmp.value[shared_data.sample_shared_data.last_chain_tmp.value[idx]];
-        }
-      }
-      __syncthreads();
-    }
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_DIM + threadIdx.x;
-      shared_data.sample_shared_data.last_chain_tmp.value[idx] = N - shared_data.sample_shared_data.chain.value[idx] - 1;
-    }
-    __syncthreads();
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_DIM + threadIdx.x;
-      int ai;
-      if (idx < M) {
-        int qi = shared_data.sample_shared_data.q.value[idx];
-        if (idx == 0 || qi == 0
-            || shared_data.sample_shared_data.s.value[qi] != shared_data.sample_shared_data.s.value[qi - 1]) {
-          ai = shared_data.sample_shared_data.s.value[qi];
-        } else {
-          int prev_i = shared_data.sample_shared_data.p.value[qi - 1];
-          ai = shared_data.sample_shared_data.last_chain_tmp.value[prev_i];
-        }
-        sa_p[j] = ai;
-      }
-    }
-    // Output
-#pragma unroll
-    for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_DIM + threadIdx.x;
-      int ai = sa_p[j];
-      if (idx < M) {
-        res[offset + idx] = data[data_offset + ai];
-        if (return_weight) {
-          weight_array[offset + idx] = weight[data_offset + ai];
-        }
-      }
-    }
-  }
-}
-
 void GpuPsGraphTable::weighted_sample(
     GpuPsCommGraph& graph,
     GpuPsNodeInfo* node_info_list,
@@ -1427,6 +1240,34 @@ __global__ void fill_dvalues_with_edge_type(uint64_t* d_shard_vals,
     int a = i % mod, b = i - i % mod;
     d_actual_sample_size[b + idx[a]] = d_shard_actual_sample_size[i];
     size_t offset1 = (b + idx[a]) * sample_size;
+    size_t offset2 = i * sample_size;
+    for (int j = 0; j < d_shard_actual_sample_size[i]; j++) {
+      d_vals[offset1 + j] = d_shard_vals[offset2 + j];
+      if (return_weight) {
+        d_weights[offset1 + j] = d_shard_weights[offset2 + j];
+      }
+    }
+  }
+}
+
+__global__ void fill_dvalues_with_edge_type_for_all2all(
+    uint64_t* d_shard_vals,
+    uint64_t* d_vals,
+    int* d_shard_actual_sample_size,
+    int* d_actual_sample_size,
+    float* d_shard_weights,
+    float* d_weights,
+    int* idx,
+    int sample_size,
+    int n,    // len * edge_type_len
+    int len,
+    int edge_type_len,
+    bool return_weight) {  // len
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    int pos = idx[i % len] * edge_type_len + (int)i / len;  // pos: real position
+    d_actual_sample_size[pos] = d_shard_actual_sample_size[i];
+    size_t offset1 = pos * sample_size;
     size_t offset2 = i * sample_size;
     for (int j = 0; j < d_shard_actual_sample_size[i]; j++) {
       d_vals[offset1 + j] = d_shard_vals[offset2 + j];
@@ -2061,7 +1902,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                        d_left_ptr,
                        d_right_ptr,
                        gpu_id,
-		       stream);
+               stream);
 
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, key, d_idx_ptr, len, stream);
@@ -2387,6 +2228,31 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage(
   }
 }
 
+__global__ void rearange_neighbor_result(uint64_t* val,
+                                         uint64_t* new_val,
+                                         int* ac,
+                                         int* new_ac,
+                                         float* weight,
+                                         float* new_weight,
+                                         int sample_size,
+                                         int len,
+                                         int edge_type_len,
+                                         int n,
+                                         bool return_weight) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    int a = i % len, b = a * edge_type_len + (int)i / edge_type_len;
+    new_ac[b] = ac[i];
+    size_t offset1 = b * sample_size, offset2 = i * sample_size;
+    for (int j = 0; j < ac[i]; j++) {
+      new_val[offset1 + j] = val[offset2 + j];
+      if (return_weight) {
+        new_weight[offset1 + j] = weight[offset2 + j];
+      }
+    }
+  }
+}
+
 NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
     int gpu_id,
     int edge_type_len,
@@ -2414,22 +2280,20 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
                                                     edge_type_graphs,
                                                     weighted,
                                                     return_weight,
-                                                    for_all2all=true);
+                                                    true);
   VLOG(0) << "graph_neighbor_sample_all_edge_type local finish"
           << ", gpu_id=" << gpu_id
-          << ", pull_size=" << pull_size
-          << ", total_sample_size=" << result.total_sample_size;
+          << ", pull_size=" << pull_size;
 
   // init neighbor result
   NeighborSampleResultV2 final;
   final.set_stream(stream);
-  result.initialize(sample_size, len, edge_type_len, return_weight,
-                    resource_->dev_id(gpu_id));
-
+  final.initialize(sample_size, len, edge_type_len, return_weight,
+                   resource_->dev_id(gpu_id));
+  
   // all2all mode finish, scatter sample values by all2all
   scatter_inter_vals_by_all2all_common(gpu_id,
                                        len,
-                                       pull_size,
                                        sizeof(uint64_t) * edge_type_len * sample_size,
                                        reinterpret_cast<const uint64_t*>(result.val),
                                        reinterpret_cast<uint64_t*>(final.val),
@@ -2440,7 +2304,6 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
   // all2all mode finish, scatter sample sizes of every node by all2all
   scatter_inter_vals_by_all2all_common(gpu_id,
                                        len,
-                                       pull_size,
                                        sizeof(int) * edge_type_len,
                                        reinterpret_cast<const int*>(result.actual_sample_size),
                                        reinterpret_cast<int*>(final.actual_sample_size),
@@ -2451,7 +2314,6 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
   if (return_weight) {
     scatter_inter_vals_by_all2all_common(gpu_id,
                                          len,
-                                         pull_size,
                                          sizeof(float) * edge_type_len * sample_size,
                                          reinterpret_cast<const float*>(result.weight),
                                          reinterpret_cast<float*>(final.weight),
@@ -2460,7 +2322,27 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
     VLOG(0) << "scatter_inter_vals_by_all2all sage weight finish" << " gpu_id=" << gpu_id;
   }
 
-  return final;
+  loc.reset();
+  // Rearange neighbor result.
+  NeighborSampleResultV2 final2;
+  final2.set_stream(stream);
+  final2.initialize(sample_size, len, edge_type_len, return_weight,
+                    resource_->dev_id(gpu_id));
+  int grid_size_e = (len * edge_type_len - 1) / block_size_ + 1;
+  rearange_neighbor_result<<<grid_size_e, block_size_, 0, stream>>>(
+      reinterpret_cast<uint64_t*>(final.val),
+      reinterpret_cast<uint64_t*>(final2.val),
+      reinterpret_cast<int*>(final.actual_sample_size),
+      reinterpret_cast<int*>(final2.actual_sample_size),
+      reinterpret_cast<float*>(final.weight),
+      reinterpret_cast<float*>(final2.weight),
+      sample_size,
+      len,
+      edge_type_len,
+      len * edge_type_len,
+      return_weight);
+
+  return final2;
 }
 
 // only for graphsage
@@ -2735,18 +2617,37 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
                                           return_weight);
 
   int grid_size_e = (len * edge_type_len - 1) / block_size_ + 1;
-  fill_dvalues_with_edge_type<<<grid_size_e, block_size_, 0, stream>>>(
-      d_shard_vals_ptr,
-      val,
-      d_shard_actual_sample_size_ptr,
-      actual_sample_size,
-      d_shard_weight_ptr,
-      weight,
-      d_idx_ptr,
-      sample_size,
-      len * edge_type_len,
-      len,
-      return_weight);
+  if (!for_all2all) {
+    // vals: [e1, e2, e3], where e1 means all the sample res of len for edge_type 1.
+    fill_dvalues_with_edge_type<<<grid_size_e, block_size_, 0, stream>>>(
+        d_shard_vals_ptr,
+        val,
+        d_shard_actual_sample_size_ptr,
+        actual_sample_size,
+        d_shard_weight_ptr,
+        weight,
+        d_idx_ptr,
+        sample_size,
+        len * edge_type_len,
+        len,
+        return_weight);
+  } else {
+    // different fill mode for all2all
+    // vals: [node1, node2, node3], where node1 means all the sample res of node1, including all edge_types.
+    fill_dvalues_with_edge_type_for_all2all<<<grid_size_e, block_size_, 0, stream>>>(
+        d_shard_vals_ptr,
+        val,
+        d_shard_actual_sample_size_ptr,
+        actual_sample_size,
+        d_shard_weight_ptr,
+        weight,
+        d_idx_ptr,
+        sample_size,
+        len * edge_type_len,
+        len,
+        edge_type_len,
+        return_weight); 
+  }
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
   for (int i = 0; i < total_gpu; i++) {
