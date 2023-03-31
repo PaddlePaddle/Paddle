@@ -28,6 +28,8 @@ namespace ir {
 
 class Node;
 
+TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() {}
+
 void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -42,10 +44,6 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "TrtMapOpsToMatrixMultiplyPass in op compat failed.";
-      return;
-    }
     bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
     if (!with_dynamic_shape) {
       VLOG(3) << "TrtMapOpsToMatrixMultiplyPass need: with_dynamic_shape. Stop "
