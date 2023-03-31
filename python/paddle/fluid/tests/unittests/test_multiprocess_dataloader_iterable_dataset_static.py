@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.io import DataLoader, IterableDataset
 
 EPOCH_NUM = 2
@@ -52,10 +52,12 @@ def simple_fc_net_static():
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.data(
+            image = paddle.static.data(
                 name='image', shape=[None, IMAGE_SIZE], dtype='float32'
             )
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
             hidden = image
             param_attr = fluid.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.8)
@@ -93,18 +95,14 @@ def simple_fc_net_static():
     return startup_prog, main_prog, image, label, loss
 
 
-def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
+def prepare_places(with_cpu=False, with_gpu=True):
     places = []
     if with_cpu:
         places.append([fluid.CPUPlace()])
-        if with_data_parallel:
-            places.append([fluid.CPUPlace()] * 2)
 
     if with_gpu and fluid.core.is_compiled_with_cuda():
         tmp = fluid.cuda_places()[:2]
         assert len(tmp) > 0, "no gpu detected"
-        if with_data_parallel and len(tmp) > 1:
-            places.append(tmp)
         places.append([tmp[0]])
     return places
 
@@ -132,10 +130,6 @@ class TestStaticDataLoader(unittest.TestCase):
             exe.run(startup_prog)
 
             prog = fluid.CompiledProgram(main_prog)
-            if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places
-                )
 
             step_list = []
             loss_list = []
@@ -173,7 +167,7 @@ class TestStaticDataLoader(unittest.TestCase):
         return ret
 
     def test_main(self):
-        for p in prepare_places(True):
+        for p in prepare_places():
             for persistent_workers in [False, True]:
                 results = []
                 for num_workers in [0, 2]:
@@ -237,11 +231,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
-            if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places
-                )
+            prog = main_prog
 
             step_list = []
             loss_list = []

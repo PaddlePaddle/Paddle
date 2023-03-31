@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -40,6 +41,12 @@ extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
+AnalysisConfig::AnalysisConfig() {
+  // NOTE(liuyuanle): Why put the following code here?
+  // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
+  inference::InitGflagsFromEnv();
+}
+
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
@@ -52,6 +59,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
+    } else if (use_custom_device_) {
+      LOG(INFO) << "Create CUSTOM DEVICE IR passes";
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -201,11 +211,25 @@ void AnalysisConfig::EnableNpu(int device_id) {
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
-                                        int device_id) {
+                                        int device_id,
+                                        Precision precision_mode) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   use_custom_device_ = true;
   custom_device_id_ = device_id;
   custom_device_type_ = device_type;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_custom_device_mixed_ = true;
+    LOG(INFO) << "enable_custom_device_mixed_";
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-CustomDevice inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableCustomDevice function."));
+  }
 #else
   LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
   use_custom_device_ = false;
@@ -530,6 +554,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+  CP_MEMBER(enable_custom_device_mixed_);
 
   // JITLayer relate
   CP_MEMBER(apply_optim_);
@@ -548,6 +573,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_custom_device_) {
+    pass_builder_.reset(new CustomDevicePassStrategy(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
   } else if (use_npu_) {
     pass_builder_.reset(new NpuPassStrategy(
         *static_cast<NpuPassStrategy *>(other.pass_builder())));
@@ -672,22 +700,8 @@ void AnalysisConfig::EnableMkldnnInt8(
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
-  if (!op_list.empty()) {
-    for (auto &type : op_list) {
-      if (!quantize_enabled_op_types_.count(type)) {
-        LOG(ERROR) << "There are unsupported operators in the configured "
-                      "quantization operator list. The unsupported operator "
-                      "is: "
-                   << type;
-        use_mkldnn_int8_ = false;
-        break;
-      }
-    }
-    if (use_mkldnn_int8_) {
-      quantize_enabled_op_types_.clear();
-      quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
-    }
-  }
+  if (!op_list.empty())
+    quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;

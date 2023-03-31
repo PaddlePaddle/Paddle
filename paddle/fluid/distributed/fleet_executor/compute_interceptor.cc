@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,14 +34,18 @@ void ComputeInterceptor::PrepareDeps() {
   auto& downstream = node_->downstream();
 
   for (auto up : upstream) {
-    in_readys_.emplace(up.first, std::make_pair(up.second, 0));
+    std::map<int64_t, int64_t> ready_size_map;
+    for (int64_t i = 0; i < node_->max_run_times(); ++i) {
+      ready_size_map.emplace(i, 0);
+    }
+    in_readys_.emplace(up.first, std::make_pair(up.second, ready_size_map));
   }
   for (auto down : downstream) {
     out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
 }
 
-void ComputeInterceptor::IncreaseReady(int64_t up_id) {
+void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
   auto it = in_readys_.find(up_id);
   PADDLE_ENFORCE_NE(it,
                     in_readys_.end(),
@@ -48,8 +53,11 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id) {
                         "Cannot find upstream=%lld in in_readys.", up_id));
 
   auto max_ready_size = it->second.first;
-  auto ready_size = it->second.second;
-  ready_size += 1;
+  const auto& ready_scope_map = it->second.second;
+  int64_t ready_size = 0;
+  for (auto& scope_iter : ready_scope_map) {
+    ready_size += scope_iter.second;
+  }
   if (max_ready_size != INFINITE_BUFFER_SIZE) {
     PADDLE_ENFORCE_LE(
         ready_size,
@@ -61,7 +69,14 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id) {
             ready_size,
             max_ready_size));
   }
-  it->second.second = ready_size;
+  PADDLE_ENFORCE_NE(
+      it->second.second.find(scope_id),
+      it->second.second.end(),
+      platform::errors::OutOfRange(
+          "Interceptor %lld can not find scope %lld in upstream ready map",
+          interceptor_id_,
+          scope_id));
+  it->second.second.at(scope_id) = ready_scope_map.at(scope_id) + 1;
 }
 
 void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
@@ -83,16 +98,21 @@ void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
 }
 
 bool ComputeInterceptor::IsInputReady() {
-  for (auto& ins : in_readys_) {
-    auto ready_size = ins.second.second;
-    // not ready, return false
-    if (ready_size == 0) {
-      VLOG(3) << "Interceptor " << GetInterceptorId()
+  for (int64_t i = 0; i < node_->max_run_times(); ++i) {
+    bool flag = true;
+    for (auto& ins : in_readys_) {
+      auto ready_size_map = ins.second.second;
+      flag = flag && (ready_size_map.at(i) != 0);
+    }
+    if (flag) {
+      cur_scope_id_ = i;
+      return true;
+    } else {
+      VLOG(3) << "Interceptor " << GetInterceptorId() << " in scope " << i
               << "'s upstreams aren't all ready.";
-      return false;
     }
   }
-  return true;
+  return false;
 }
 
 bool ComputeInterceptor::CanWriteOutput() {
@@ -144,7 +164,7 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 void ComputeInterceptor::ReplyCompletedToUpStream() {
   for (auto& ins : in_readys_) {
     auto up_id = ins.first;
-    auto ready_size = ins.second.second;
+    auto ready_size = ins.second.second.at(cur_scope_id_);
     ready_size -= 1;
     PADDLE_ENFORCE_GE(
         ready_size,
@@ -153,7 +173,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
             "upstream=%lld ready_size must >= 0, but now got %lld",
             up_id,
             ready_size));
-    ins.second.second = ready_size;
+    ins.second.second[cur_scope_id_] = ready_size;
 
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Reply data_is_useless msg to " << up_id
@@ -167,31 +187,35 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  for (auto op : node_->ops()) {
+  if (!cores_.empty() || !node_->ops().empty()) {
     PADDLE_ENFORCE_LT(cur_scope_id_,
                       microbatch_scopes_.size(),
                       platform::errors::InvalidArgument(
                           "Step out of range. There are %ld "
-                          "microbatch_scopes, but recevice scope index %ld",
+                          "microbatch_scopes, but receive scope index %ld",
                           microbatch_scopes_.size(),
                           cur_scope_id_));
-    op->Run(*microbatch_scopes_[cur_scope_id_], place_);
-    if (gc_) {
-      framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
-                                     op,
-                                     node_->unused_vars(),
-                                     gc_.get());
+  }
+
+  if (!cores_.empty()) {
+    cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
+  } else {
+    for (auto op : node_->ops()) {
+      op->Run(*microbatch_scopes_[cur_scope_id_], place_);
+      if (gc_) {
+        framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
+                                       op,
+                                       node_->unused_vars(),
+                                       gc_.get());
+      }
     }
   }
 }
 
 void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput()) {
-    VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
-
-    // get the ready scope id from queue
-    cur_scope_id_ = ready_queue_.front();
-    ready_queue_.pop();
+    VLOG(0) << "id=" << GetInterceptorId()
+            << " ComputeInterceptor running in scope " << cur_scope_id_;
 
     RunOps();
 
@@ -204,10 +228,15 @@ void ComputeInterceptor::Run() {
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
-    IncreaseReady(msg.src_id());
-    ready_queue_.push(msg.scope_idx());
+    VLOG(3) << "Compute interceptor " << interceptor_id_
+            << " receive data_is_ready " << msg.src_id() << " "
+            << msg.scope_idx() << " ";
+    IncreaseReady(msg.src_id(), msg.scope_idx());
     Run();
   } else if (msg.message_type() == DATA_IS_USELESS) {
+    VLOG(3) << "Compute interceptor " << interceptor_id_
+            << " receive data_is_useless " << msg.src_id() << " "
+            << msg.scope_idx() << " ";
     DecreaseBuff(msg.src_id());
     Run();
   }

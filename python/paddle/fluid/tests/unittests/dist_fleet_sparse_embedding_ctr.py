@@ -21,7 +21,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def fake_ctr_reader():
@@ -92,7 +92,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif initializer == 2:
             init = paddle.nn.initializer.Normal()
         else:
-            raise ValueError("error initializer code: {}".format(initializer))
+            raise ValueError(f"error initializer code: {initializer}")
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
@@ -103,7 +103,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -131,8 +131,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             ),
         )
 
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )

@@ -17,7 +17,8 @@ import typing
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
+from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -36,6 +37,7 @@ from .utils import (
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
+    map_output_for_composite,
     prepare_python_api_arguments,
 )
 
@@ -541,15 +543,21 @@ def _lower(block, reverse, blacklist):
     for var_name in sorted(vars_to_remove):
         assert (
             var_name in to_bind_rev
-        ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+        ), f'var_name "{var_name}" is not in to_bind_rev.'
         if var_name != to_bind_rev[var_name]:
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
 
 
-def _lower_composite(block, blacklist=[]):
-    # Some functions which are only used in _lower.
+def _lower_composite(
+    block,
+    filter_: typing.Callable[[framework.Operator], bool] = lambda x: True,
+    start_idx=-1,
+    backward_length=-1,
+):
+    """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
+
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
             if isinstance(args[i], list):
@@ -593,52 +601,89 @@ def _lower_composite(block, blacklist=[]):
         ops_to_remove = []
         vars_to_remove = set()
 
+        # if output var of composite rule is None, this means this var is not needed
+        none_vars_to_remove = set()
+
+        change = None
+
+        # Only process required sliced block
+        # If given start_idx, only ops[start_idx:] will be processed.
+        # If given backward_length, only ops[:-backward_length] will be processed.
+        # Note, start_idx and backward_length cannot be both given, because the length of non-processed part must be kept unchanged.
+        length = len(block.ops)
+        idx_list = range(length)
+        assert (
+            -1 <= backward_length <= length
+        ), f'expect -1 <= backward_length <= {length}, but got backward_length: {backward_length}'
+        assert (
+            -1 <= start_idx <= length
+        ), f'expect -1 <= start_idx <= {length}, but got start_idx: {start_idx}'
+        assert not (
+            backward_length > -1 and start_idx > -1
+        ), f'got start_idx: {start_idx} and backward_length: {backward_length}'
+        if backward_length > -1:
+            idx_list = range(length - backward_length)
+        if start_idx > -1:
+            idx_list = range(start_idx, length)
+
         # Step2: Process all ops in the target block
-        for op_idx in range(len(block.ops)):
+        for op_idx in range(length):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
-            if lookup_fn(op.type) is not None and op.type not in blacklist:
+
+            op_name = op.type
+            do_comp = (
+                (lookup_fn(op_name) is not None)
+                and filter_(op)
+                and op_idx in idx_list
+            )
+
+            if do_comp:
+                change = True
+                prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
 
+                orig_outs = expand_nested_list(map_output_for_composite(op))
+                new_outs = expand_nested_list(
+                    as_tensors(lower_fn(op, *input_args))
+                )
+                assert len(orig_outs) == len(new_outs), (
+                    f'when replace origin op {op_name} with composite rule, num of origin outs should be equal to new outs, '
+                    f'but len(orig_outs) = {len(orig_outs)} and len(new_outs) = {len(new_outs)}'
+                )
                 for orig_out, new_out in zip(
-                    expand_nested_list(get_output_var_list(op)),
-                    expand_nested_list(as_tensors(lower_fn(op, *input_args))),
+                    orig_outs,
+                    new_outs,
                 ):
-                    assert not (orig_out is None) ^ (
-                        new_out is None
-                    ), "orig_out and new_out should match."
-                    vars_to_remove.add(new_out.name)
-                    value_table[new_out.name] = new_out
-                    to_bind[orig_out.name] = new_out.name
-                    to_bind_rev[new_out.name] = orig_out.name
+                    if orig_out is None:
+                        # to keep same as phi op definition, orig_out may receive None
+                        continue
+                    elif new_out is not None:
+                        assert orig_out.dtype == new_out.dtype, (
+                            f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
+                            f'but orig_out: {orig_out.name}.dtype={orig_out.dtype} and new_out: {new_out.name}.dtype={new_out.dtype}'
+                        )
+                        assert (
+                            -1 not in new_out.shape
+                        ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        assert orig_out.shape == new_out.shape, (
+                            f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                            f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
+                        )
+                        assert not (orig_out is None) ^ (
+                            new_out is None
+                        ), "orig_out and new_out should match."
+                        vars_to_remove.add(new_out.name)
+                        value_table[new_out.name] = new_out
+                        to_bind[orig_out.name] = new_out.name
+                        to_bind_rev[new_out.name] = orig_out.name
+                    else:
+                        none_vars_to_remove.add(orig_out.name)
             else:
-                inputs = {}
-                for i in range(len(op.input_names)):
-                    inputs[op.input_names[i]] = bind_name(
-                        op.input(op.input_names[i]), to_bind
-                    )
-
-                outputs = {}
-                for i in range(len(op.output_names)):
-                    outputs[op.output_names[i]] = op.output(op.output_names[i])
-
-                attrs = {}
-                for name in sorted(op.attr_names):
-                    attrs[name] = op.attr(name)
-                from paddle.fluid.dygraph.base import param_guard
-
-                new_op_desc = block.desc.append_op()
-                with param_guard(inputs), param_guard(outputs):
-                    op = Operator(
-                        block=block,
-                        desc=new_op_desc,
-                        type=op.type,
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=attrs,
-                    )
-                block.ops.append(op)
+                op_desc = block.desc.append_op()
+                op_desc.copy_from(op.desc)
+                block._sync_with_cpp()
 
         # Step3: Do some post-processing work
         for op_idx in reversed(ops_to_remove):
@@ -659,16 +704,35 @@ def _lower_composite(block, blacklist=[]):
         for var_name in sorted(vars_to_remove):
             assert (
                 var_name in to_bind_rev
-            ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+            ), f'var_name "{var_name}" is not in to_bind_rev.'
             if var_name != to_bind_rev[var_name]:
                 block.desc._remove_var(var_name.encode())
                 del block.vars[var_name]
         block._sync_with_cpp()
+
+        for var_name in sorted(none_vars_to_remove):
+            block.desc._remove_var(var_name.encode())
+            del block.vars[var_name]
+        block._sync_with_cpp()
+
+        # composite ops may contain other composite ops, thus, call _lower_composite again.
+        if change:
+            _lower_composite(
+                block,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item)
+            _lower_composite(
+                item,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
     else:
         raise TypeError

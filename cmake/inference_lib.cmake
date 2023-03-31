@@ -317,6 +317,10 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/init_phi.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(
@@ -439,7 +443,7 @@ copy(
   DSTS ${dst_dir}/${module}/allocation)
 
 set(module "platform")
-set(platform_lib_deps profiler_proto errors)
+set(platform_lib_deps phi_profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif()
@@ -448,10 +452,8 @@ add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(
   fluid_lib_dist
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h
-       ${src_dir}/${module}/details/*.h
-       ${PADDLE_BINARY_DIR}/paddle/fluid/platform/*.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload
-       ${dst_dir}/${module}/details ${dst_dir}/${module})
+       ${PADDLE_BINARY_DIR}/paddle/phi/api/profiler/*.pb.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module})
 
 set(module "string")
 copy(

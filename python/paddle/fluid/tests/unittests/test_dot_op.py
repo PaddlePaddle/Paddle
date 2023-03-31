@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class DotOp(OpTest):
@@ -90,6 +89,32 @@ class DotOp(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class DotOpEmptyInput(unittest.TestCase):
+    def test_1d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        np_out = np.dot(data, data)
+        pd_out = paddle.dot(x, y)
+
+        self.assertEqual(np_out, pd_out)
+
+    def test_2d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        pd_out = paddle.dot(x, y)
+
+        self.assertEqual(pd_out.shape, (0, 1))
+
+    def test_3d_input_error(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+
+        self.assertRaises(Exception, paddle.dot, x, y)
 
 
 class DotOpBatch(DotOp):

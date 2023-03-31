@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -32,7 +32,9 @@ class TestFlipOp_API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             axis = [0]
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.flip(input, axis)
             output = paddle.flip(output, -1)
             output = output.flip(0)
@@ -80,10 +82,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
@@ -194,6 +196,27 @@ class TestFlipTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestFlipError(unittest.TestCase):
+    def test_axis(self):
+        paddle.enable_static()
+
+        def test_axis_rank():
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
+            output = paddle.flip(input, axis=[[0]])
+
+        self.assertRaises(TypeError, test_axis_rank)
+
+        def test_axis_rank2():
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
+            output = paddle.flip(input, axis=[[0, 0], [1, 1]])
+
+        self.assertRaises(TypeError, test_axis_rank2)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,176 @@
+- op : all
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMetaBase
+  kernel :
+    func : all
+
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
+
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+  kernel :
+    func : arange
+  data_transform :
+    skip_transform : start, end, step
+
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  optional : x
+  inplace : (x -> out)
+  backward : assign_grad
+
+- op : broadcast
+  args : (Tensor x, int ring_id = 0, int root = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistBroadcastInferMeta
+    param: [x]
+  kernel :
+    func : broadcast
+    param: [x, root]
+
+- op : equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : frobenius_norm
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMetaBase
+  kernel :
+    func : frobenius_norm
+    param : [x, axis, keepdim, reduce_all]
+  backward : frobenius_norm_grad
+
+- op : greater_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : greater_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : greater_than
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : greater_than_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : less_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : less_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : less_than
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : less_than_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
+  kernel :
+    func : linspace
+    param: [start, stop, number, dtype]
+    data_type : dtype
+  data_transform :
+    skip_transform : start, stop, number
+
+- op : not_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : not_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : one_hot
+  args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+  output : Tensor(out)
+  infer_meta :
+    func : OneHotRawInferMeta
+  kernel :
+    func : one_hot_raw
+    data_type : x
+
+- op : reduce
+  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param: [x]
+  kernel :
+    func : reduce
+    param: [x, root_id, reduce_type]
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}

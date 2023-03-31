@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
@@ -41,8 +41,8 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         compiled_prog = fluid.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            fluid.default_main_program(), build_strategy=build_strategy
+        )
 
         image_tensor = fluid.LoDTensor()
         np_image = np.random.uniform(

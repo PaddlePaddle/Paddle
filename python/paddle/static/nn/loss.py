@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,6 +127,11 @@ def nce(
     helper = LayerHelper('nce', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')
     check_variable_and_dtype(label, 'label', ['int64'], 'nce')
+
+    if input.ndim != 2:
+        raise ValueError(
+            f'The rank of `input` must be 2, but received {input.ndim}.'
+        )
 
     dim = input.shape[1]
     num_true_class = label.shape[1]

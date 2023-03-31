@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 fluid.disable_dygraph()
 
@@ -74,7 +74,7 @@ def net(batch_size=4, lr=0.01):
             ),
             is_sparse=True,
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -90,7 +90,9 @@ def net(batch_size=4, lr=0.01):
             ),
             is_sparse=True,
         )
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
 
     with fluid.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -105,8 +107,8 @@ def net(batch_size=4, lr=0.01):
             )
             dnn_out = fc
 
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-        label = fluid.layers.cast(label, dtype="int64")
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+        label = paddle.cast(label, dtype="int64")
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )

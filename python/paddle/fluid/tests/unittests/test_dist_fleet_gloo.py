@@ -19,7 +19,7 @@ import tempfile
 import time
 import unittest
 
-# import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+# import paddle.incubate.distributed.fleet.role_maker as role_maker
 from test_dist_fleet_base import TestFleetBase
 
 # from dist_simnet_bow import train_network
@@ -102,9 +102,9 @@ class TestDistGloo_2x2(TestFleetBase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1}".format(python_path, model)
+        tr_cmd = f"{python_path} {model}"
 
-        ps_cmd = "{0} {1}".format(python_path, model)
+        ps_cmd = f"{python_path} {model}"
 
         # Run dist train to compare with local results
         env["TRAINING_ROLE"] = "PSERVER"

@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import compiler
 
 
@@ -68,9 +68,7 @@ class TestReaderReset(unittest.TestCase):
             paddle.batch(self.prepare_data(), batch_size=self.batch_size)
         )
 
-        train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
-            places=[place]
-        )
+        train_cp = compiler.CompiledProgram(main_prog)
 
         batch_id = 0
         pass_count = 0

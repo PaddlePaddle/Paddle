@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
@@ -26,7 +25,7 @@ from paddle.fluid.framework import (
 )
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class SequenceMaskTestBase(OpTest):
@@ -167,7 +166,9 @@ class TestSequenceMaskOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input must be Variable
-                fluid.layers.sequence_mask(input_data, maxlen=4)
+                paddle.static.nn.sequence_lod.sequence_mask(
+                    input_data, maxlen=4
+                )
 
             self.assertRaises(TypeError, test_Variable)
 

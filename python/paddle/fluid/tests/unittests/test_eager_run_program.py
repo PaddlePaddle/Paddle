@@ -25,7 +25,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers.utils import _hash_with_id
 
 
 def _append_backward_desc(main_program, outs):
@@ -45,7 +44,7 @@ def _append_backward_desc(main_program, outs):
 # def _set_grad_type(params, train_program):
 #     # NOTE: if user set sparse gradient mode, the param's gradient
 #     # will be SelectedRows, not LoDTensor. But tracer will just
-#     # set param grad VarBase by forward VarBase(LoDTensor)
+#     # set param grad Tensor by forward Tensor(LoDTensor)
 #     # If we don't change grad_var type here, RunProgramOp need
 #     # transform SelectedRows to LoDTensor forcibly, it may not
 #     # be user wanted result.
@@ -105,7 +104,7 @@ class TestRunProgram(unittest.TestCase):
         )
         backward_program = _add_build_strategy_for(
             program,
-            main_program.desc.block(0).op_size() + 2,
+            main_program.desc.block(0).op_size() + 1,
             program.desc.block(0).op_size(),
         )
 
@@ -134,7 +133,7 @@ class TestRunProgram(unittest.TestCase):
             'is_test',
             False,
             'program_id',
-            _hash_with_id(program),
+            paddle.utils._hash_with_id(program),
             'param_grad_names',
             ['Fake_var@GRAD'],
             'out_grad_names',

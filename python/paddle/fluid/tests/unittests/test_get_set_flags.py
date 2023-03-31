@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest as unittest
+import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestGetAndSetFlags(unittest.TestCase):

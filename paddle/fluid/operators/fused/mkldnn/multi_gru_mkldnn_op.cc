@@ -17,11 +17,11 @@ limitations under the License. */
 #include <memory>
 
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -328,7 +328,7 @@ class MultiGRUHandler {
     return out_mem;
   }
 
-  // TODO(grygielski) H0 is for now persistable
+  // H0 is for now persistable
   std::shared_ptr<dnnl::memory> AcquireH0Memory(int layer, Direction dir) {
     auto key = memory_key_;
     key.append("@h0").append(dir2str(dir)).append(std::to_string(layer));
@@ -678,7 +678,7 @@ class MultiGRUHandler {
   const std::vector<const phi::DenseTensor*> biases_;
   phi::DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const paddle::framework::Vector<size_t>& x_lod_;
+  const phi::Vector<size_t>& x_lod_;
 };
 
 template <typename T>

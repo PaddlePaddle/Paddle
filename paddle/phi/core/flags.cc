@@ -648,6 +648,23 @@ PADDLE_DEFINE_EXPORTED_uint64(
     "memory exceeds the limit even though there is available "
     "memory on the gpu card. The unit is MB and default value is 0.");
 
+/**
+ * Memory related FLAG
+ * Name: FLAGS_auto_growth_chunk_size_in_mb
+ * Since Version: 2.5.0
+ * Value Range: uint64, default=0 (MB)
+ * Example:
+ * Note: The minimal chunk size of GPU memory block in auto_growth allocator.
+ *       The real chunk size is max(request_size,
+ *       FLAGS_auto_growth_chunk_size_in_mb).
+ */
+PADDLE_DEFINE_EXPORTED_uint64(
+    auto_growth_chunk_size_in_mb,
+    0ul,
+    "The minimal chunk size of GPU memory block in auto_growth allocator.  "
+    "The real chunk size is max(request_size, "
+    "FLAGS_auto_growth_chunk_size_in_mb).");
+
 #endif
 
 /**
@@ -743,6 +760,16 @@ PADDLE_DEFINE_EXPORTED_int32(
     "gradient accumulation, if the number of gradients need to that "
     "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
     "instead of sum. Default is 0.");
+
+/**
+ * Tensor.numpy() has a hack, and this flag can close this hack
+ * [true]: set 0D Tensor to 1D Numpy
+ * [false]: not set 0D Tensor to 1D Numpy, close the hack
+ *
+ * Now, just set true by default in 2.5 transition time
+ * which will be removed in future (2.6 or 2.7) .
+ */
+PADDLE_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -1206,3 +1233,19 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
 PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
                             false,
                             "Use shm cache in mmap_allocator.");
+
+/**
+ * Tensor operants related FLAG
+ * Name: tensor_operants_mode
+ * Since Version: 2.5.0
+ * Value Range: string, {eager, phi, static}
+ * default=eager
+ * Example:
+ * Note: For switching tensor operants mode of PaddlePaddle.
+ *       - eager mode: tensor operants with dygraph autograd;
+ *       - phi mode: tensor operants with only phi forward API;
+ *       - static mode: tensor operants within static graph.
+ */
+PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
+                              "eager",
+                              "Tensor operants mode");

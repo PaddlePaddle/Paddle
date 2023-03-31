@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
@@ -81,14 +81,16 @@ class ElementwiseMulCompositeGradOpMaker
     auto y_grad = this->GetSingleInputGrad("Y");
     auto y_grad_p = this->GetOutputPtr(&y_grad);
     auto y_grad_name = this->GetOutputName(y_grad);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite mul_grad but we got: ",
+            axis));
     prim::multiply_grad<prim::DescTensor>(
-        x,
-        y,
-        out_grad,
-        static_cast<int>(this->Attr<int>("axis")),
-        x_grad_p,
-        y_grad_p);
-    VLOG(3) << "Runing mul_grad composite func";
+        x, y, out_grad, axis, x_grad_p, y_grad_p);
+    VLOG(6) << "Runing mul_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
     this->RecoverOutputName(y_grad, y_grad_name);
   }

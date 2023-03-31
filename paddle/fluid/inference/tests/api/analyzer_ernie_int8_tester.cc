@@ -29,11 +29,16 @@ void SetInt8Config(AnalysisConfig *cfg,
                    std::vector<paddle::PaddleTensor> data) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->EnableMKLDNN();
-  cfg->DisableMkldnnFcPasses();  // fc passes caused loss in accuracy
   cfg->EnableMkldnnQuantizer();
   auto pass_builder = cfg->pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
   auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(data);
+  cfg->mkldnn_quantizer_config()->SetEnabledOpTypes(
+      {"elementwise_add", "matmul", "matmul_v2", "fused_matmul"});
+  // Exclusion of several matmules that should not be quantized due to the fact
+  // that they reduce the accuracy of the model
+  cfg->mkldnn_quantizer_config()->SetExcludedOpIds(
+      {75, 172, 269, 366, 463, 560, 657, 754, 851, 948, 1045, 1142});
   cfg->mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   cfg->mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_batch_size);
   cfg->SwitchSpecifyInputNames();

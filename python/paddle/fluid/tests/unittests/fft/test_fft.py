@@ -1862,6 +1862,23 @@ class TestRfftFreq(unittest.TestCase):
 
 @place(DEVICES)
 @parameterize(
+    (TEST_CASE_NAME, 'n', 'd', 'dtype', 'expect_exception'),
+    [
+        ('test_with_0_0', 0, 0, 'float32', ValueError),
+        ('test_with_n_0', 20, 0, 'float32', ValueError),
+        ('test_with_0_d', 0, 20, 'float32', ValueError),
+    ],
+)
+class TestRfftFreqException(unittest.TestCase):
+    def test_rfftfreq2(self):
+        """Test fftfreq with d = 0"""
+        with paddle.fluid.dygraph.guard(self.place):
+            with self.assertRaises(self.expect_exception):
+                paddle.fft.rfftfreq(self.n, self.d, self.dtype)
+
+
+@place(DEVICES)
+@parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'dtype'),
     [
         ('test_1d', np.random.randn(10), (0,), 'float64'),

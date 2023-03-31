@@ -46,12 +46,9 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from .data import *
-
 from . import trainer_desc
 
 from . import io
-from . import evaluator
 from . import initializer
 from .initializer import set_global_initializer
 from . import layers
@@ -64,10 +61,7 @@ from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
-from . import transpiler
 from . import incubate
-from .input import embedding, one_hot
-from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
@@ -82,29 +76,15 @@ from .core import (
     MLUPlace,
     CustomPlace,
 )
-from .incubate import fleet
-from .transpiler import (
-    DistributeTranspiler,
-    memory_optimize,
-    release_memory,
-    DistributeTranspilerConfig,
-)
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import profiler
 from . import unique_name
-from . import parallel_executor
-from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from . import install_check
-from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
-from .io import save, load, load_program_state, set_program_state
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
-from . import generator
 from .core import _cuda_synchronize
-from .generator import Generator
 from .trainer_desc import (
     TrainerDesc,
     DistMultiTrainer,
@@ -113,7 +93,6 @@ from .trainer_desc import (
     MultiTrainer,
     HeterXpuTrainer,
 )
-from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
 Tensor = LoDTensor
@@ -124,27 +103,20 @@ __all__ = (
     framework.__all__
     + executor.__all__
     + trainer_desc.__all__
-    + transpiler.__all__
-    + parallel_executor.__all__
     + lod_tensor.__all__
     + data_feed_desc.__all__
     + compiler.__all__
     + backward.__all__
-    + generator.__all__
     + [
         'io',
         'initializer',
-        'embedding',
-        'one_hot',
         'layers',
         'contrib',
-        'data',
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
         'enable_imperative',
         'disable_imperative',
-        'transpiler',
         'nets',
         'optimizer',
         'backward',
@@ -165,9 +137,6 @@ __all__ = (
         'profiler',
         'unique_name',
         'Scope',
-        'install_check',
-        'save',
-        'load',
         '_cuda_synchronize',
     ]
 )
@@ -239,7 +208,9 @@ def __bootstrap__():
         sys.argv = [""]
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
+    core.init_memory_method()
     core.init_devices()
+    core.init_tensor_operants()
     core.init_default_kernel_signatures()
 
 

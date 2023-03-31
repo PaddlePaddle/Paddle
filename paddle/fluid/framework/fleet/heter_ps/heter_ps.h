@@ -32,7 +32,7 @@ class HeterPs : public HeterPsBase {
   HeterPs() {}
   HeterPs(size_t capacity,
           std::shared_ptr<HeterPsResource> resource,
-          const GPUAccessor& gpu_accessor);
+          GPUAccessor& gpu_accessor);  // NOLINT
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;

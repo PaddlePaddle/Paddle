@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import os
 import warnings
 
 import paddle
@@ -25,7 +24,7 @@ AMP_LEVEL = core.AmpLevel
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-WHITE_LIST = {
+FP16_WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
@@ -37,7 +36,7 @@ WHITE_LIST = {
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
-BLACK_LIST = {
+FP16_BLACK_LIST = {
     'exp',
     'square',
     'log',
@@ -73,7 +72,8 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_WHITE_LIST = set()
+PURE_FP16_WHITE_LIST = copy.copy(FP16_WHITE_LIST)
+
 PURE_FP16_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',
@@ -90,38 +90,10 @@ PURE_FP16_BLACK_LIST = {
 BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = set()
 
-PURE_BF16_WHITE_LIST = set()
+PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
 PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
-
-
-def low_precision_op_list():
-    if os.getenv("FLAGS_low_precision_op_list") is not None:
-        level = int(os.getenv("FLAGS_low_precision_op_list"))
-        print('<{:-^120}>'.format(" op list "))
-        op_list = paddle.fluid.core.get_low_precision_op_list()
-        op_count = 0
-        print(
-            '<{:-^40}'.format(" Op Name "),
-            '|',
-            '{:-^17}'.format("FP16 Calls"),
-            '|',
-            '{:-^17}'.format("BF16 Calls"),
-            '|',
-            '{:-^17}'.format('FP32 Calls'),
-            '|',
-            '{:-^17}>'.format('Other Calls'),
-        )
-        for x in op_list:
-            # fp16, bf16, fp32, other
-            called = op_list[x].split(",")
-            print(
-                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
-                % (x, called[0], called[1], called[2], called[3])
-            )
-            op_count += 1
-        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
 
 
 def amp_state():
@@ -139,8 +111,8 @@ def _update_list(
     """
     if dtype == 'float16':
         if level == 'O1':
-            _white_list = copy.copy(WHITE_LIST)
-            _black_list = copy.copy(BLACK_LIST)
+            _white_list = copy.copy(FP16_WHITE_LIST)
+            _black_list = copy.copy(FP16_BLACK_LIST)
         else:
             _white_list = copy.copy(PURE_FP16_WHITE_LIST)
             _black_list = copy.copy(PURE_FP16_BLACK_LIST)
@@ -353,8 +325,11 @@ def amp_guard(
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
-    if not (dtype in ['float16', 'bfloat16']):
-        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+    if enable:
+        if not (dtype in ['float16', 'bfloat16']):
+            raise ValueError(
+                "If enable amp, dtype should be 'float16' or 'bfloat16'."
+            )
 
     # check tracer
     tracer = _dygraph_tracer()
@@ -421,8 +396,8 @@ def amp_guard(
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
         if dtype == 'float16':
-            _white_list = WHITE_LIST
-            _black_list = BLACK_LIST
+            _white_list = FP16_WHITE_LIST
+            _black_list = FP16_BLACK_LIST
         elif dtype == 'bfloat16':
             _white_list = BF16_WHITE_LIST
             _black_list = BF16_BLACK_LIST
@@ -438,8 +413,8 @@ def amp_guard(
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
         if dtype == 'float16':
-            _white_list = WHITE_LIST
-            _black_list = BLACK_LIST
+            _white_list = FP16_WHITE_LIST
+            _black_list = FP16_BLACK_LIST
         elif dtype == 'bfloat16':
             _white_list = BF16_WHITE_LIST
             _black_list = BF16_BLACK_LIST
@@ -700,7 +675,7 @@ def auto_cast(
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # paddle.float32
+            print(conv.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
@@ -714,11 +689,11 @@ def auto_cast(
         b = paddle.rand([2,3])
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
-            print(c.dtype) # paddle.float32
+            print(c.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
-            print(d.dtype) # paddle.float32
+            print(d.dtype) # paddle.float16
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)

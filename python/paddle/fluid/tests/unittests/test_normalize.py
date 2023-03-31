@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):
@@ -55,8 +55,8 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         self.assertRaises(BaseException, F.normalize, x)
 
     def run_static(self, use_gpu=False):
-        x = paddle.fluid.data(name='input', shape=[10, 10], dtype='float32')
-        x2 = paddle.fluid.data(name='input2', shape=[2], dtype='float32')
+        x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')
+        x2 = paddle.static.data(name='input2', shape=[2], dtype='float32')
         result0 = F.normalize(x)
         result1 = F.normalize(x, p=1.5)
         result2 = F.normalize(x, axis=0)
@@ -96,6 +96,18 @@ class TestNNFunctionalNormalize(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
+
+    def test_errors(self):
+        with fluid.dygraph.guard():
+            # The size of input in Normalize should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 0]), dtype='float32'
+                )
+                paddle.nn.functional.normalize(x)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

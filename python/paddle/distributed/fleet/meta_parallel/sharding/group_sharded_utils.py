@@ -54,8 +54,12 @@ class GroupShardedClipGrad:
 
     @paddle.autograd.no_grad()
     def _dygraph_clip(self, params_grads):
-        sum_square_fp32, sum_square_fp16 = [], []
-        unslice_params_fp32, unslice_params_fp16 = [], []
+        sum_square_fp32, sum_square_fp16, sum_square_bfp16 = [], [], []
+        unslice_params_fp32, unslice_params_fp16, unslice_params_bfp16 = (
+            [],
+            [],
+            [],
+        )
 
         for p, g in params_grads:
             p_slice = True  # using for slice parameter in sharding stage3
@@ -82,6 +86,11 @@ class GroupShardedClipGrad:
                     sum_square_fp32.append(sum_square)
                 else:
                     unslice_params_fp32.append(sum_square)
+            elif p.dtype == paddle.bfloat16:
+                if p_slice:
+                    sum_square_bfp16.append(sum_square)
+                else:
+                    unslice_params_bfp16.append(sum_square)
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_fp16) == 0:
@@ -93,6 +102,16 @@ class GroupShardedClipGrad:
                 global_norm_fp16, dtype=paddle.float32
             )
 
+        # global norm of non-distributed BFP16 params_and_grads
+        if len(sum_square_bfp16) == 0:
+            global_norm_bfp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
+        else:
+            global_norm_bfp16 = paddle.concat(sum_square_bfp16)
+            global_norm_bfp16 = paddle.sum(global_norm_bfp16)
+            global_norm_bfp16 = paddle.cast(
+                global_norm_bfp16, dtype=paddle.float32
+            )
+
         # global norm of non-distributed FP16 params_and_grads for unslice parameters
         if len(unslice_params_fp16) == 0:
             global_unslice_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
@@ -101,6 +120,16 @@ class GroupShardedClipGrad:
             global_unslice_fp16 = paddle.sum(global_unslice_fp16)
             global_unslice_fp16 = paddle.cast(
                 global_unslice_fp16, dtype=paddle.float32
+            )
+
+        # global norm of non-distributed BFP16 params_and_grads for unslice parameters
+        if len(unslice_params_bfp16) == 0:
+            global_unslice_bfp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
+        else:
+            global_unslice_bfp16 = paddle.concat(unslice_params_bfp16)
+            global_unslice_bfp16 = paddle.sum(global_unslice_bfp16)
+            global_unslice_bfp16 = paddle.cast(
+                global_unslice_bfp16, dtype=paddle.float32
             )
 
         # global norm of non-distributed FP32 params_and_grads
@@ -118,9 +147,13 @@ class GroupShardedClipGrad:
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
         global_unslice_fp32 = paddle.sum(global_unslice_fp32)
-        global_unslice_var = global_unslice_fp16 + global_unslice_fp32
+        global_unslice_var = (
+            global_unslice_fp16 + global_unslice_fp32 + global_unslice_bfp16
+        )
 
-        global_norm_var = global_norm_fp16 + global_norm_fp32
+        global_norm_var = (
+            global_norm_fp16 + global_norm_fp32 + global_norm_bfp16
+        )
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
@@ -168,7 +201,7 @@ def device_guard(dev_id=0, device="cpu"):
     if device == "cpu":
         paddle.set_device(device)
     elif device in ["gpu", "xpu", "npu"]:
-        paddle.set_device("{}:{}".format(device, dev_id))
+        paddle.set_device(f"{device}:{dev_id}")
     try:
         yield
     finally:
@@ -181,6 +214,7 @@ def GroupShardedScaler(scaler):
         if not self._enable:
             return
         param_grads = []
+        param_grads_bfp16 = []
         param_grads_fp16 = []
         param_grads_fp32 = []
         if hasattr(optimizer, "update_slice"):
@@ -200,6 +234,8 @@ def GroupShardedScaler(scaler):
                             paddle.float16,
                         ]:
                             param_grads_fp16.append(param.grad)
+                        elif param.grad.dtype in [paddle.bfloat16]:
+                            param_grads_bfp16.append(param.grad)
                         else:
                             param_grads_fp32.append(param.grad)
         else:
@@ -211,10 +247,13 @@ def GroupShardedScaler(scaler):
                         paddle.float16,
                     ]:
                         param_grads_fp16.append(param.grad)
+                    elif param.grad.dtype in [paddle.bfloat16]:
+                        param_grads_bfp16.append(param.grad)
                     else:
                         param_grads_fp32.append(param.grad)
 
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_bfp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
         device = paddle.get_device().split(":")[0]
@@ -223,7 +262,18 @@ def GroupShardedScaler(scaler):
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
 
+        self._found_inf = self._temp_found_inf_value_false
         with device_guard(dev_id, device):
+            if len(param_grads_bfp16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bfp16,
+                    self._scale,
+                    param_grads_bfp16,
+                    temp_found_inf_bfp16,
+                )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_bfp16
+                )
             if len(param_grads_fp16):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16,
@@ -268,7 +318,7 @@ def cvt_to_device(x, dev_id, blocking=True):
     elif paddle.is_compiled_with_xpu():
         place = paddle.XPUPlace(dev_id)
     else:
-        raise EnvironmentError(
+        raise OSError(
             "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
         )
     return x._copy_to(place, blocking)

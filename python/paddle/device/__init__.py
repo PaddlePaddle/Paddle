@@ -19,7 +19,6 @@ import ctypes
 import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
@@ -225,9 +224,9 @@ def get_cudnn_version():
 def _convert_to_place(device):
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
-        selected_devices = os.getenv(
-            "FLAGS_selected_{}s".format(device), "0"
-        ).split(",")
+        selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
+            ","
+        )
         device_id = int(selected_devices[0])
         place = core.CustomPlace(device, device_id)
     elif lower_device == 'cpu':
@@ -238,7 +237,7 @@ def _convert_to_place(device):
                 "The device should not be 'gpu', "
                 "since PaddlePaddle is not compiled with CUDA"
             )
-        place = core.CUDAPlace(ParallelEnv().dev_id)
+        place = core.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
     elif lower_device == 'xpu':
         if not core.is_compiled_with_xpu():
             raise ValueError(
@@ -344,7 +343,7 @@ def _convert_to_place(device):
                 raise ValueError(
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
-                            "'{}', '{}:x'".format(x, x)
+                            f"'{x}', '{x}:x'"
                             for x in ['gpu', 'xpu', 'npu', 'mlu']
                             + core.get_all_custom_device_type()
                         )
@@ -410,7 +409,7 @@ def get_device():
         device = 'npu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
-        device = "ipus:{{0-{}}}".format(num_devices - 1)
+        device = f"ipus:{{0-{num_devices - 1}}}"
     elif isinstance(place, core.MLUPlace):
         device_id = place.get_device_id()
         device = 'mlu:' + str(device_id)
@@ -419,7 +418,7 @@ def get_device():
         device_type = place.get_device_type()
         device = device_type + ':' + str(device_id)
     else:
-        raise ValueError("The device specification {} is invalid".format(place))
+        raise ValueError(f"The device specification {place} is invalid")
 
     return device
 
@@ -524,7 +523,7 @@ def get_available_custom_device():
     return core.get_available_custom_device()
 
 
-class Event(object):
+class Event:
     '''
     A device event wrapper around StreamBase.
     Parameters:
@@ -540,6 +539,8 @@ class Event(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             e1 = paddle.device.Event()
             e2 = paddle.device.Event('custom_cpu')
             e3 = paddle.device.Event('custom_cpu:0')
@@ -593,6 +594,8 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
                 e.record()
 
@@ -613,7 +616,10 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
+                e.record()
                 e.query()
         '''
         return self.event_base.query()
@@ -628,8 +634,13 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e1 = paddle.device.Event()
+                e1.record()
+
                 e2 = paddle.device.Event()
+                e2.record()
                 e1.elapsed_time(e2)
         '''
         return 0
@@ -645,7 +656,10 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
+                e.record()
                 e.synchronize()
         '''
         self.event_base.synchronize()
@@ -654,7 +668,7 @@ class Event(object):
         return self.event_base
 
 
-class Stream(object):
+class Stream:
     '''
     A device stream wrapper around StreamBase.
     Parameters:
@@ -670,6 +684,8 @@ class Stream(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s1 = paddle.device.Stream()
             s2 = paddle.device.Stream('custom_cpu')
             s3 = paddle.device.Stream('custom_cpu:0')
@@ -727,9 +743,13 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
-                s = paddle.device.Stream()
+
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
                 e = paddle.device.Event()
-                s.wait_event(e)
+                e.record(s1)
+                s2.wait_event(e)
         '''
         self.stream_base.wait_event(event.event_base)
 
@@ -746,6 +766,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s1 = paddle.device.Stream()
                 s2 = paddle.device.Stream()
                 s1.wait_stream(s2)
@@ -764,6 +786,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 e1 = s.record_event()
 
@@ -784,6 +808,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 s.query()
         '''
@@ -798,6 +824,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 s.synchronize()
         '''
@@ -812,14 +840,14 @@ class Stream(object):
 
     def __eq__(self, o):
         if isinstance(o, Stream):
-            return super(Stream, self).__eq__(o)
+            return super().__eq__(o)
         return False
 
     def __hash__(self):
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={0} stream={1:#x}>'.format(
+        return '<paddle.device.Stream device={} stream={:#x}>'.format(
             self.device, self._as_parameter_.value
         )
 
@@ -837,8 +865,10 @@ def current_stream(device=None):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s1 = paddle.device.current_stream()
-            s2 = paddle.device.current_stream("gpu:0")
+            s2 = paddle.device.current_stream("custom_cpu:0")
             place = paddle.CustomPlace('custom_cpu', 0)
             s3 = paddle.device.current_stream(place)
     '''
@@ -878,6 +908,8 @@ def set_stream(stream):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s = paddle.device.Stream()
             paddle.device.set_stream(s)
     '''
@@ -904,7 +936,7 @@ def set_stream(stream):
     return prev_stream
 
 
-class stream_guard(object):
+class stream_guard:
     '''
     Notes:
         This API only supports dynamic graph mode currently.
@@ -917,6 +949,8 @@ class stream_guard(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s = paddle.device.Stream()
             data1 = paddle.ones(shape=[20])
             data2 = paddle.ones(shape=[20])
@@ -967,8 +1001,10 @@ def synchronize(device=None):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             paddle.device.synchronize()
-            paddle.device.synchronize("gpu:0")
+            paddle.device.synchronize("custom_cpu:0")
             place = paddle.CustomPlace('custom_cpu', 0)
             paddle.device.synchronize(place)
     '''

@@ -18,7 +18,7 @@ import numpy as np
 from simple_nets import init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
 from paddle.static import Program, program_guard
@@ -131,9 +131,7 @@ class TestPrintOpBackward(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup)
 
-        binary = paddle.static.CompiledProgram(main).with_data_parallel(
-            loss_name=loss.name
-        )
+        binary = paddle.static.CompiledProgram(main)
 
         img, label = init_data()
         feed_dict = {"image": img, "label": label}

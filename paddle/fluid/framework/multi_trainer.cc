@@ -15,9 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
@@ -192,20 +192,35 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
 }
-
+inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
+GetThreadPool(int thread_num) {
+  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+      thread_pools;
+  if (!thread_pools.empty()) {
+    return thread_pools;
+  }
+  thread_pools.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+  }
+  return thread_pools;
+}
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
-  for (int thidx = 0; thidx < thread_num_; ++thidx) {
+  auto pool = GetThreadPool(thread_num_);
+  std::vector<std::future<void>> wait_futures;
+  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
+  for (int i = 0; i < thread_num_; ++i) {
     if (!debug_) {
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFiles(); }));
     } else {
-      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-                                     workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFilesWithProfiler(); }));
     }
   }
-  for (auto& th : threads_) {
-    th.join();
+  for (auto& th : wait_futures) {
+    th.get();
   }
 }
 

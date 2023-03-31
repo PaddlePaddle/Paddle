@@ -19,9 +19,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 
 def get_places():
@@ -58,7 +57,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
@@ -124,11 +125,7 @@ class TestWeightDecay(unittest.TestCase):
         build_strategy.memory_optimize = use_ir_memory_optimize
 
         train_cp = compiler.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(
-            loss_name=loss.name,
-            exec_strategy=exec_strategy,
-            build_strategy=build_strategy,
+            fluid.default_main_program(), build_strategy=build_strategy
         )
 
         loss_set = []
@@ -167,7 +164,7 @@ class TestWeightDecay(unittest.TestCase):
 
             for params in param_list:
                 updated_p = paddle.subtract(x=params[0], y=params[1])
-                fluid.layers.assign(input=updated_p, output=params[0])
+                paddle.assign(updated_p, output=params[0])
 
             if use_parallel_exe:
                 loss = self.run_parallel_exe(

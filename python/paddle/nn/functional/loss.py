@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +14,7 @@
 
 # TODO: define loss functions of neural network
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, fluid, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils import deprecated
 
@@ -254,19 +252,41 @@ def fluid_softmax_with_cross_entropy(
             #        [1.15328646])
     """
     if in_dygraph_mode():
-        if core.is_compiled_with_npu():
-            softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
-                logits,
-                label,
-                'soft_label',
-                soft_label,
-                'ignore_index',
-                ignore_index,
-                'numeric_stable_mode',
-                numeric_stable_mode,
-                'axis',
-                axis,
-            )
+        if core.is_compiled_with_custom_device("npu"):
+            if not soft_label:
+                valid_label = (
+                    paddle.cast(label != ignore_index, dtype=label.dtype)
+                    * label
+                )
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    valid_label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
+            else:
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
         else:
             softmax, loss = _C_ops.cross_entropy_with_softmax(
                 logits,
@@ -293,7 +313,9 @@ def fluid_softmax_with_cross_entropy(
         loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': loss}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=logits.dtype
             )
@@ -349,6 +371,10 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
           print(npair_loss)
 
     """
+    if anchor.size == 0:
+        raise ValueError("The dims of anchor should be greater than 0.")
+    if positive.size == 0:
+        raise ValueError("The dims of positive should be greater than 0.")
     check_variable_and_dtype(
         anchor, 'anchor', ['float32', 'float64'], 'npair_loss'
     )
@@ -955,9 +981,7 @@ def hsigmoid_loss(
             #  [1.92374969]]
     """
     if num_classes < 2:
-        raise ValueError(
-            'Expected num_classes >= 2 (got {})'.format(num_classes)
-        )
+        raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
@@ -1078,7 +1102,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        out, residual = _C_ops.huber_loss(input, label, delta)
+        out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
@@ -1390,9 +1414,7 @@ def nll_loss(
         )
 
     if input_dims < 2:
-        raise ValueError(
-            'Expected 2 or more dimensions (got {})'.format(input_dims)
-        )
+        raise ValueError(f'Expected 2 or more dimensions (got {input_dims})')
 
     if input_shape[1] < 1:
         raise ValueError(
@@ -2573,9 +2595,11 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             if not soft_label:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
                     'soft_label',
@@ -2590,7 +2614,7 @@ def cross_entropy(
                     use_softmax,
                 )
             else:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     label,
                     'soft_label',
@@ -2744,7 +2768,9 @@ def cross_entropy(
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': out}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=input.dtype
             )
@@ -3847,7 +3873,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to " "label's shape")
 
-    label = fluid.layers.cast(label, input.dtype)
+    label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
 
     if reduction == 'sum':

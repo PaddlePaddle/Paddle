@@ -131,6 +131,9 @@ class AmpScaler:
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
             self._found_inf = to_variable(np.array([0]).astype(np.bool_))
+            self._temp_found_inf_value_false = to_variable(
+                np.array([0]).astype(np.bool_)
+            )
             self._temp_found_inf_fp16 = to_variable(
                 np.array([0]).astype(np.bool_)
             )
@@ -176,7 +179,7 @@ class AmpScaler:
                     scaled.backward()
                     scaler.minimize(optimizer, scaled)
         """
-        check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
+        check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
 
         if not self._enable:
             return var
@@ -228,9 +231,16 @@ class AmpScaler:
 
         optimize_ops, params_grads = (None, None)
 
-        optimizer._set_auxiliary_var('found_inf', self._found_inf)
-        optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
-        self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+        if hasattr(optimizer, "_set_auxiliary_var"):
+            optimizer._set_auxiliary_var('found_inf', self._found_inf)
+            optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+        else:
+            if self._found_inf:
+                self._cache_founf_inf = True
+            else:
+                optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+                self._cache_founf_inf = False
 
         if self._use_dynamic_loss_scaling:
             # uopdate the scale
@@ -316,6 +326,7 @@ class AmpScaler:
                     for param in param_grads
                     if param.dtype == core.VarDesc.VarType.FP32
                 ]
+        self._found_inf = self._temp_found_inf_value_false
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)
@@ -771,9 +782,16 @@ class GradScaler(AmpScaler):
         if optimizer_state["state"] is OptimizerState.INIT:
             self._unscale(optimizer)
 
-        optimizer._set_auxiliary_var('found_inf', self._found_inf)
-        optimizer.step()
-        self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+        if hasattr(optimizer, "_set_auxiliary_var"):
+            optimizer._set_auxiliary_var('found_inf', self._found_inf)
+            optimizer.step()
+            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+        else:
+            if self._found_inf:
+                self._cache_founf_inf = True
+            else:
+                optimizer.step()
+                self._cache_founf_inf = False
 
         optimizer_state["state"] = OptimizerState.STEPPED
 

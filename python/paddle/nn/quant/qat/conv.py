@@ -17,29 +17,31 @@ Layers used for QAT.
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
+from ..format import ConvertibleQuantedLayer
 
-class QuantedConv2D(Layer):
+
+class QuantedConv2D(ConvertibleQuantedLayer):
     """
-    The computational logic of QuantizedConv2D is the same with Conv2D.
+    The computational logic of QuantizedConv2D is the same as Conv2D.
     The only difference is that its inputs are all fake quantized.
     """
 
     def __init__(self, layer: Layer, q_config):
-        super(QuantedConv2D, self).__init__()
+        super().__init__()
 
         # For Conv2D
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._padding_mode = getattr(layer, '_padding_mode')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._padding_mode = layer._padding_mode
         if self._padding_mode != 'zeros':
-            self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice'
+            self._reversed_padding_repeated_twice = (
+                layer._reversed_padding_repeated_twice
             )
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
 
         self.weight_quanter = None
         self.activation_quanter = None
@@ -77,3 +79,9 @@ class QuantedConv2D(Layer):
             groups=self._groups,
             data_format=self._data_format,
         )
+
+    def weights_to_quanters(self):
+        return [('weight', 'weight_quanter')]
+
+    def activation_quanters(self):
+        return ['activation_quanter']

@@ -66,7 +66,7 @@ TEST(AmplifierInterceptor, Amplifier) {
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
-  int64_t micro_steps = 3;
+  int64_t micro_steps = 1;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* source =

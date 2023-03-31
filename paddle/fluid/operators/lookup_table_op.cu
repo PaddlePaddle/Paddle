@@ -169,12 +169,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
-      framework::Vector<int64_t> new_rows;
+      phi::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      phi::MixVector<int64_t> mixv_new_rows(&new_rows);
       memory::Copy(gpu_place,
                    mixv_new_rows.CUDAMutableData(context.GetPlace()),
                    gpu_place,

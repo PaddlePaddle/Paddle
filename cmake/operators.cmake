@@ -28,11 +28,7 @@ endfunction()
 
 function(find_phi_register FILENAME ADD_PATH PATTERN)
   # set op_name to OUTPUT
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs "")
   file(READ ${FILENAME} CONTENT)
-
   string(
     REGEX
       MATCH
@@ -223,6 +219,16 @@ function(op_library TARGET)
         list(APPEND mlu_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
         list(APPEND cc_srcs ${src})
+      elseif((WITH_ROCM OR WITH_GPU) AND ${src} MATCHES ".*\\.kps$")
+        string(REPLACE ".kps" ".cu" src_cu ${src})
+        file(COPY ${src} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${src}
+             ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        if(WITH_ROCM)
+          list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        else()
+          list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        endif()
       else()
         message(
           FATAL_ERROR
@@ -402,8 +408,20 @@ function(op_library TARGET)
     set(op_name "")
     # Add PHI Kernel Registry Message
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
+    # pybind USE_OP_ITSELF
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_register(${cc_src} "REGISTER_ACTIVATION_OP" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
       # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
@@ -442,6 +460,7 @@ function(op_library TARGET)
     set(op_name "")
     # Add PHI Kernel Registry Message
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
@@ -456,6 +475,9 @@ function(op_library TARGET)
   foreach(hip_src ${hip_srcs})
     set(op_name "")
     find_register(${hip_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
       set(pybind_flag 1)
@@ -509,6 +531,8 @@ function(op_library TARGET)
     foreach(xpu_kp_src ${xpu_kp_cc_srcs})
       set(op_name "")
       find_register(${xpu_kp_src} "REGISTER_OP_KERNEL" op_name)
+      find_phi_register(${xpu_kp_src} ${pybind_file}
+                        "PD_REGISTER_STRUCT_KERNEL")
       if(NOT ${op_name} EQUAL "")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
         message(STATUS "Building KP Target: ${op_name}")

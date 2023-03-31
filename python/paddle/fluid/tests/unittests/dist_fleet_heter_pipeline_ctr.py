@@ -22,7 +22,7 @@ import ctr_dataset_reader
 from test_dist_fleet_heter_base import FleetDistHeterRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -82,7 +82,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -98,7 +98,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
 
@@ -116,8 +116,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 dnn_out = fc
 
         with fluid.device_guard("cpu"):
-            merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-            label = fluid.layers.cast(label, dtype="int64")
+            merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+            label = paddle.cast(label, dtype="int64")
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )
@@ -162,7 +162,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         filelist = fleet.util.get_file_shard(train_file_list)
-        print("filelist: {}".format(filelist))
+        print(f"filelist: {filelist}")
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
@@ -186,7 +186,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 debug=int(os.getenv("Debug", "0")),
             )
             pass_time = time.time() - pass_start
-            print("do_dataset_training done. using time {}".format(pass_time))
+            print(f"do_dataset_training done. using time {pass_time}")
         exe.close()
 
     def do_dataset_heter_training(self, fleet):
@@ -212,7 +212,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         )
         exe.close()
         pass_time = time.time() - pass_start
-        print("do_dataset_heter_training done. using time {}".format(pass_time))
+        print(f"do_dataset_heter_training done. using time {pass_time}")
 
         # for epoch_id in range(1):
         #    pass_start = time.time()

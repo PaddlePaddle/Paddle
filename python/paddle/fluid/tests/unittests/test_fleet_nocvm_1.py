@@ -33,9 +33,13 @@ class TestFleet1(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -72,7 +76,7 @@ class TestFleet1(unittest.TestCase):
                 dtype="int64",
                 lod_level=1,
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)

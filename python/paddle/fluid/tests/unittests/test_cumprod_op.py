@@ -16,10 +16,10 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 np.random.seed(0)
 
@@ -109,7 +109,7 @@ class TestCumprod(OpTest):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output(check_eager=True)
+                self.check_output()
 
     # test backward.
     def test_check_grad(self):
@@ -118,14 +118,13 @@ class TestCumprod(OpTest):
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
                 if self.dtype == np.float64:
-                    self.check_grad(['X'], 'Out', check_eager=True)
+                    self.check_grad(['X'], 'Out')
                 else:
                     self.check_grad(
                         ['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
-                        check_eager=True,
                     )
 
 
@@ -167,7 +166,7 @@ class TestCumprodAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                x = paddle.static.data('X', self.shape, dtype=self.dtype)
                 out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])

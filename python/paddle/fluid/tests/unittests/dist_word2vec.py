@@ -17,7 +17,7 @@ import os
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 IS_SPARSE = True
 EMBED_SIZE = 32
@@ -75,8 +75,8 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 ),
             )
 
-            concat_embed = fluid.layers.concat(
-                input=[embed_first, embed_second, embed_third, embed_forth],
+            concat_embed = paddle.concat(
+                [embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )
             hidden1 = paddle.static.nn.fc(

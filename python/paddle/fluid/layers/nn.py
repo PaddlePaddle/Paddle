@@ -41,8 +41,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import concat, assign, fill_constant, zeros
-from . import utils
+from .tensor import zeros
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
@@ -99,28 +98,6 @@ def _get_reduce_dim(dim, input):
         reduce_all = False
 
     return reduce_all, dim
-
-
-@dygraph_only
-def _elementwise_op_in_dygraph(
-    x, y, axis=-1, act=None, use_mkldnn=False, op_name=None
-):
-    def is_inplace(op_name):
-        return op_name[-1] == "_"
-
-    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
-        op = getattr(_legacy_C_ops, op_name)
-        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-    else:
-        if in_dygraph_mode():
-            op = getattr(
-                _C_ops,
-                OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
-            )
-            out = op(x, y)
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn
-    )
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.embedding")
@@ -229,10 +206,10 @@ def embedding(
           import paddle
           paddle.enable_static()
 
-          data = fluid.data(name='x', shape=[None, 1], dtype='int64')
+          data = paddle.static.data(name='x', shape=[None, 1], dtype='int64')
 
           # example 1
-          emb_1 = fluid.embedding(input=data, size=[128, 64])
+          emb_1 = paddle.static.nn.embedding(input=data, size=[128, 64])
 
           # example 2: load custom or pre-trained word vectors
           weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
@@ -595,19 +572,19 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_sum(x)  # [3.5]
-            fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
-            fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
-            fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+            x = paddle.static.data(name='x', shape=[2, 4], dtype='float32')
+            fluid.layers.nn.reduce_sum(x)  # [3.5]
+            fluid.layers.nn.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
+            fluid.layers.nn.reduce_sum(x, dim=-1)  # [1.9, 1.6]
+            fluid.layers.nn.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
 
             # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
-            fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
+            y = paddle.static.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.nn.reduce_sum(y, dim=[1, 2]) # [10, 26]
+            fluid.layers.nn.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
@@ -721,10 +698,10 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
@@ -757,8 +734,10 @@ def unsqueeze(input, axes, name=None):
             axes.stop_gradient = True
             inputs["AxesTensor"] = axes
         elif isinstance(axes, (list, tuple)):
-            if utils._contain_var(axes):
-                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            if paddle.utils._contain_var(axes):
+                inputs["AxesTensorList"] = paddle.utils._convert_to_tensor_list(
+                    axes
+                )
             else:
                 attrs["axes"] = axes
 

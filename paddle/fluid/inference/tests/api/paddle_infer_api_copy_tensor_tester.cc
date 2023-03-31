@@ -205,6 +205,13 @@ static void test_copy_tensor(PlaceType src_place, PlaceType dst_place) {
   }
 }
 
+TEST(CopyTensor, float64) {
+  test_copy_tensor<double>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<double>(PlaceType::kCPU, PlaceType::kGPU);
+  test_copy_tensor<double>(PlaceType::kGPU, PlaceType::kCPU);
+  test_copy_tensor<double>(PlaceType::kGPU, PlaceType::kGPU);
+}
+
 TEST(CopyTensor, float32) {
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kGPU);

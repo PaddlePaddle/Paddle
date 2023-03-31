@@ -19,7 +19,7 @@ import numpy as np
 
 sys.path.append("..")
 
-from op_test import OpTest
+from eager_op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -126,7 +126,7 @@ class TestSiluAPI(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [11, 17])
+            x = paddle.static.data('X', [11, 17])
             out1 = F.silu(x)
             m = paddle.nn.Silu()
             out2 = m(x)
@@ -152,12 +152,12 @@ class TestSiluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.silu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[11, 17], dtype='int32'
             )
             self.assertRaises(TypeError, F.silu, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[11, 17], dtype='float16'
             )
             F.silu(x_fp16)
@@ -1011,7 +1011,7 @@ class XPUTestSoftReluOP(XPUOpTestWrapper):
             t = np.copy(x)
             t[t < -threshold] = -threshold
             t[t > threshold] = threshold
-            out = np.log((np.exp(t) + 1))
+            out = np.log(np.exp(t) + 1)
 
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
@@ -1221,6 +1221,105 @@ def ref_mish(x, threshold=20):
     out = x * np.tanh(sp)
     return out
 
+
+class XPUTestSinOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'sin'
+        self.use_dynamic_create_class = False
+
+    class XPUTestSinBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "sin"
+            self.dtype = self.in_type
+
+            self.init_config()
+            out = np.sin(self.x)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin_ZeroDim(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+
+    class XPUTestSin2(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin3(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin4(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('sin')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSinOP, stype)
+
+
+class XPUTestCosOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'cos'
+        self.use_dynamic_create_class = False
+
+    class XPUTestCosBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "cos"
+            self.dtype = self.in_type
+
+            self.init_config()
+            out = np.cos(self.x)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos_ZeroDim(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+
+    class XPUTestCos2(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos3(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos4(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('cos')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCosOP, stype)
 
 if __name__ == "__main__":
     unittest.main()

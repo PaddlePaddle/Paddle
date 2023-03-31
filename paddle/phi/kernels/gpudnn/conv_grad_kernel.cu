@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,7 +24,6 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -162,7 +162,7 @@ void ConvCudnnGradKernelImplV7(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 
 #ifdef PADDLE_WITH_HIP
@@ -189,7 +189,7 @@ void ConvCudnnGradKernelImplV7(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -228,39 +228,38 @@ void ConvCudnnGradKernelImplV7(
       workspace_handle.RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::miopenConvolutionBackwardData(
-                    handle,
-                    &alpha,
-                    args1.odesc.desc(),
-                    output_grad_data,
-                    args1.wdesc.desc(),
-                    filter_data,
-                    args1.cdesc.desc(),
-                    bwd_result.algo,
-                    &beta,
-                    args1.idesc.desc(),
-                    temp_tensor_data,
-                    cudnn_workspace_ptr,
-                    workspace_size));
+                phi::dynload::miopenConvolutionBackwardData(handle,
+                                                            &alpha,
+                                                            args1.odesc.desc(),
+                                                            output_grad_data,
+                                                            args1.wdesc.desc(),
+                                                            filter_data,
+                                                            args1.cdesc.desc(),
+                                                            bwd_result.algo,
+                                                            &beta,
+                                                            args1.idesc.desc(),
+                                                            temp_tensor_data,
+                                                            cudnn_workspace_ptr,
+                                                            workspace_size));
           },
           workspace_size);
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::miopenOpTensor(
-          handle,
-          miopenTensorOpAdd,
-          &alpha,
-          args1.idesc.desc(),
-          transformed_input_grad_data,
-          &alpha,
-          args1.idesc.desc(),
-          temp_tensor_data,
-          &beta,
-          args1.idesc.desc(),
-          transformed_input_grad_data));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::miopenOpTensor(handle,
+                                       miopenTensorOpAdd,
+                                       &alpha,
+                                       args1.idesc.desc(),
+                                       transformed_input_grad_data,
+                                       &alpha,
+                                       args1.idesc.desc(),
+                                       temp_tensor_data,
+                                       &beta,
+                                       args1.idesc.desc(),
+                                       transformed_input_grad_data));
     } else {
       workspace_handle.RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::miopenConvolutionBackwardData(
+                phi::dynload::miopenConvolutionBackwardData(
                     handle,
                     &alpha,
                     args1.odesc.desc(),
@@ -301,7 +300,7 @@ void ConvCudnnGradKernelImplV7(
     workspace_handle.RunFunc(
         [&](void* cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::miopenConvolutionBackwardWeights(
+              phi::dynload::miopenConvolutionBackwardWeights(
                   handle,
                   &alpha,
                   args2.odesc.desc(),
@@ -357,7 +356,7 @@ void ConvCudnnGradKernelImplV8(
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      paddle::platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Group concolution using CUDNNv8 API is unsupported for now"));
 
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
@@ -628,7 +627,6 @@ void ConvCudnnGradKernel(const Context& ctx,
       compute_format == phi::backends::gpu::DataLayout::kNHWC
           ? phi::backends::gpu::DataLayout::kNHWC
           : phi::backends::gpu::DataLayout::kNCHW;
-  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
   if (transformed_input.dims().size() == 5) {
     layout = compute_format == phi::backends::gpu::DataLayout::kNHWC
                  ? phi::backends::gpu::DataLayout::kNDHWC
@@ -1083,7 +1081,7 @@ void ConvCudnnGradGradKernel(
                       padding_common,
                       strides,
                       dilations,
-                      paddle::platform::AllowTF32Cudnn(),
+                      phi::AllowTF32Cudnn(),
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1107,7 +1105,7 @@ void ConvCudnnGradGradKernel(
                       padding_common,
                       strides,
                       dilations,
-                      paddle::platform::AllowTF32Cudnn(),
+                      phi::AllowTF32Cudnn(),
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1134,7 +1132,7 @@ void ConvCudnnGradGradKernel(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1161,7 +1159,7 @@ void ConvCudnnGradGradKernel(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1211,20 +1209,19 @@ void ConvCudnnGradGradKernel(
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::miopenConvolutionForward(
-                    handle,
-                    &alpha,
-                    args1.idesc.desc(),
-                    ddx,
-                    args1.wdesc.desc(),
-                    w,
-                    args1.cdesc.desc(),
-                    fwd_result1.algo,
-                    &beta,
-                    args1.odesc.desc(),
-                    transformed_ddy_channel,
-                    workspace_ptr,
-                    workspace_size));
+                phi::dynload::miopenConvolutionForward(handle,
+                                                       &alpha,
+                                                       args1.idesc.desc(),
+                                                       ddx,
+                                                       args1.wdesc.desc(),
+                                                       w,
+                                                       args1.cdesc.desc(),
+                                                       fwd_result1.algo,
+                                                       &beta,
+                                                       args1.odesc.desc(),
+                                                       transformed_ddy_channel,
+                                                       workspace_ptr,
+                                                       workspace_size));
           },
           workspace_size);
 #else
@@ -1249,20 +1246,19 @@ void ConvCudnnGradGradKernel(
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::miopenConvolutionForward(
-                    handle,
-                    &alpha,
-                    args2.idesc.desc(),
-                    x,
-                    args2.wdesc.desc(),
-                    ddw,
-                    args2.cdesc.desc(),
-                    fwd_result2.algo,
-                    &beta,
-                    args2.odesc.desc(),
-                    transformed_ddy_channel,
-                    workspace_ptr,
-                    workspace_size));
+                phi::dynload::miopenConvolutionForward(handle,
+                                                       &alpha,
+                                                       args2.idesc.desc(),
+                                                       x,
+                                                       args2.wdesc.desc(),
+                                                       ddw,
+                                                       args2.cdesc.desc(),
+                                                       fwd_result2.algo,
+                                                       &beta,
+                                                       args2.odesc.desc(),
+                                                       transformed_ddy_channel,
+                                                       workspace_ptr,
+                                                       workspace_size));
           },
           workspace_size);
 #else
@@ -1292,7 +1288,7 @@ void ConvCudnnGradGradKernel(
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::miopenConvolutionBackwardWeights(
+              phi::dynload::miopenConvolutionBackwardWeights(
                   handle,
                   &alpha,
                   args3.odesc.desc(),
@@ -1331,7 +1327,7 @@ void ConvCudnnGradGradKernel(
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::miopenConvolutionBackwardData(
+              phi::dynload::miopenConvolutionBackwardData(
                   handle,
                   &alpha,
                   args4.odesc.desc(),
@@ -1477,7 +1473,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    phi::DepthwiseConvCudnnGradKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
@@ -1516,7 +1512,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
@@ -1559,7 +1555,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    double,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,

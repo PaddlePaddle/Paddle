@@ -240,8 +240,8 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{4}, acc: {1:.4f}, latency: {2:.4f} ms, predictions per sec: {3:.2f}'.format(
-                        iters, batch_acc, latency, pps, appx
+                    'batch {}{}, acc: {:.4f}, latency: {:.4f} ms, predictions per sec: {:.2f}'.format(
+                        iters, appx, batch_acc, latency, pps
                     )
                 )
 
@@ -253,21 +253,19 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             ppses = ppses[skip_batch_num:]
             pps_avg = np.average(ppses)
             acc_avg = float(np.sum(total_correct)) / float(total_samples)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time)
-            )
+            _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
             return acc_avg, pps_avg, latency_avg
 
     def _print_performance(self, title, pps, lat):
         _logger.info(
-            '{0}: avg predictions per sec: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg predictions per sec: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, pps, lat
             )
         )
 
     def _print_accuracy(self, title, acc):
-        _logger.info('{0}: avg accuracy: {1:.6f}'.format(title, acc))
+        _logger.info(f'{title}: avg accuracy: {acc:.6f}')
 
     def _summarize_performance(self, int8_pps, int8_lat, fp32_pps, fp32_lat):
         _logger.info('--- Performance summary ---')
@@ -284,7 +282,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc, int8_acc):
         _logger.info(
-            'Accepted accuracy drop threshold: {0}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
+            'Accepted accuracy drop threshold: {}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
                 threshold
             )
         )
@@ -294,7 +292,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         assert quant_acc - int8_acc <= threshold
 
     def _strings_from_csv(self, string):
-        return set(s.strip() for s in string.split(','))
+        return {s.strip() for s in string.split(',')}
 
     def _ints_from_csv(self, string):
         return set(map(int, string.split(',')))
@@ -325,7 +323,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                 test_case_args.ops_to_quantize
             )
 
-        self._op_ids_to_skip = set([-1])
+        self._op_ids_to_skip = {-1}
         if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = self._ints_from_csv(
                 test_case_args.op_ids_to_skip
@@ -337,14 +335,14 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
 
         _logger.info('Quant & INT8 prediction run.')
-        _logger.info('Quant model: {}'.format(quant_model_path))
+        _logger.info(f'Quant model: {quant_model_path}')
         if fp32_model_path:
-            _logger.info('FP32 model: {}'.format(fp32_model_path))
-        _logger.info('Dataset: {}'.format(data_path))
-        _logger.info('Labels: {}'.format(labels_path))
-        _logger.info('Batch size: {}'.format(batch_size))
-        _logger.info('Batch number: {}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+            _logger.info(f'FP32 model: {fp32_model_path}')
+        _logger.info(f'Dataset: {data_path}')
+        _logger.info(f'Labels: {labels_path}')
+        _logger.info(f'Batch size: {batch_size}')
+        _logger.info(f'Batch number: {batch_num}')
+        _logger.info(f'Accuracy drop threshold: {acc_diff_threshold}.')
         _logger.info(
             'Quantized ops: {}.'.format(
                 ','.join(self._quantized_ops)

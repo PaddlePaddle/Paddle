@@ -99,6 +99,7 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -111,8 +112,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -535,7 +538,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p)
+                    f"only valid string values are 'fro', found {p}"
                 )
         elif isinstance(p, (int, float)):
             return vector_norm(
@@ -548,7 +551,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "only valid p type is string or float, found {}".format(type(p))
+                f"only valid p type is string or float, found {type(p)}"
             )
 
     if isinstance(axis, tuple):
@@ -571,7 +574,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p)
+                    f"only valid string values are 'fro', found {p}"
                 )
         elif isinstance(p, (int, float)):
             return vector_norm(
@@ -596,7 +599,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just suport axis type int or list (length of list <=1) if p = 0, found {}".format(
+                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
                     axis
                 )
             )
@@ -1026,7 +1029,7 @@ def cond(x, p=None, name=None):
     if not len(x_shape) >= 2:
         raise ValueError(
             "input should be a matrix or batches of matrices, "
-            + "but the dimention of received input is {}".format(len(x_shape))
+            + f"but the dimention of received input is {len(x_shape)}"
         )
     if p is None:
         p = 2
@@ -1050,7 +1053,7 @@ def cond(x, p=None, name=None):
                 )
         else:
             raise ValueError(
-                "only support p is {} when input is a ".format(p)
+                f"only support p is {p} when input is a "
                 + "square matrix or batches of square matrices"
             )
     elif p in (2, -2):
@@ -1059,7 +1062,7 @@ def cond(x, p=None, name=None):
         return svd_norm(x, porder=p)
     else:
         raise ValueError(
-            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(p)
+            f"unsupported {p} for p, only supporting ('fro', 'nuc', "
             + "1, -1, 2, -2, inf, -inf) or none"
         )
 
@@ -1104,8 +1107,8 @@ def dot(x, y, name=None):
     else:
         op_type = 'dot'
 
-        assert x is not None, 'x cannot be None in {}'.format(op_type)
-        assert y is not None, 'y cannot be None in {}'.format(op_type)
+        assert x is not None, f'x cannot be None in {op_type}'
+        assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
@@ -1333,8 +1336,8 @@ def cross(x, y, axis=9, name=None):
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
     Args:
-        x (Tensor): The first input tensor.
-        y (Tensor): The second input tensor.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1367,9 +1370,21 @@ def cross(x, y, axis=9, name=None):
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
         helper = LayerHelper("cross", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['dim'] = axis
 
         helper.append_op(
@@ -1794,7 +1809,7 @@ def det(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )
@@ -1853,7 +1868,7 @@ def slogdet(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )
@@ -1921,6 +1936,7 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
+
     if in_dygraph_mode():
         return _C_ops.svd(x, full_matrices)
     else:
@@ -1930,7 +1946,7 @@ def svd(x, full_matrices=False, name=None):
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
         vh = helper.create_variable_for_type_inference(dtype=x.dtype)
         s = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['full_matrices'] = full_matrices
         helper.append_op(
             type='svd',
@@ -2067,7 +2083,7 @@ def qr(x, mode="reduced", name=None):
         helper = LayerHelper('qr', **locals())
         q = helper.create_variable_for_type_inference(dtype=x.dtype)
         r = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['mode'] = mode
         helper.append_op(
             type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
@@ -2166,7 +2182,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
         lu = helper.create_variable_for_type_inference(dtype=x.dtype)
         p = helper.create_variable_for_type_inference(dtype='int')
         info = helper.create_variable_for_type_inference(dtype='int')
-        attrs = dict()
+        attrs = {}
         attrs['pivot'] = pivot
         helper.append_op(
             type='lu',
@@ -2265,7 +2281,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         l = helper.create_variable_for_type_inference(dtype=x.dtype)
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        attrs = dict()
+        attrs = {}
         attrs['unpack_ludata'] = unpack_ludata
         attrs['unpack_pivots'] = unpack_pivots
         helper.append_op(
@@ -2541,7 +2557,7 @@ def eigh(x, UPLO='L', name=None):
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
-                    "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
                 )
 
         __check_input(x, UPLO)
@@ -3067,7 +3083,7 @@ def eigvalsh(x, UPLO='L', name=None):
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
-                    "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
                 )
 
         __check_input(x, UPLO)

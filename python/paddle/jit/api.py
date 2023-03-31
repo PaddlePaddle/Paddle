@@ -24,7 +24,7 @@ import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -34,7 +34,6 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
@@ -42,7 +41,6 @@ from paddle.fluid.dygraph.base import (
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
-    CONVERSION_OPTIONS,
     add_ignore_module,
 )
 from .dy2static.program_translator import (
@@ -57,11 +55,10 @@ from paddle.jit.translated_layer import (
     INFER_PARAMS_INFO_SUFFIX,
     INFER_PROPERTY_SUFFIX,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
-    ParamBase,
     Program,
     Variable,
     Parameter,
@@ -74,6 +71,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.io import save_inference_model
 
 
 def create_program_from_desc(program_desc):
@@ -127,6 +125,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           from paddle.jit.api import dygraph_to_static_func
@@ -140,7 +139,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -191,7 +190,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: List[Any]):
+def ignore_module(modules: list[Any]):
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
@@ -348,7 +347,7 @@ def not_to_static(func=None):
         return not_to_static
 
     options = ConversionOptions(not_convert=True)
-    setattr(func, CONVERSION_OPTIONS, options)
+    options.attach(func)
     return func
 
 
@@ -390,7 +389,7 @@ class _SaveLoadConfig:
                 % type(input)
             )
             for var in spec:
-                if not isinstance(var, core.VarBase):
+                if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
                         "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var)
@@ -509,7 +508,9 @@ def _get_input_var_names(inputs, input_spec):
     )
     result_list = []
     input_var_names = [
-        var.name for var in flatten(inputs) if isinstance(var, Variable)
+        var.name
+        for var in paddle.utils.flatten(inputs)
+        if isinstance(var, Variable)
     ]
     if input_spec is None:
         # no prune
@@ -541,7 +542,7 @@ def _get_input_var_names(inputs, input_spec):
                 # name is None, the input_spec only can be InputSpec
                 raise ValueError(name_none_error % spec)
             elif spec.name not in input_var_names:
-                # the input_spec can be `InputSpec` or `VarBase`
+                # the input_spec can be `InputSpec` or `Tensor`
                 raise ValueError(name_no_exists_error % spec.name)
             else:
                 result_list.append(spec.name)
@@ -562,7 +563,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         )
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in flatten(outputs):
+    for var in paddle.utils.flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
@@ -600,9 +601,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -913,9 +914,7 @@ def save(layer, path, input_spec=None, **configs):
         )
 
     if not (
-        isinstance(layer, Layer)
-        or inspect.isfunction(layer)
-        or isinstance(layer, StaticFunction)
+        isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
@@ -970,10 +969,10 @@ def save(layer, path, input_spec=None, **configs):
                 % type(input_spec)
             )
         inner_input_spec = []
-        for var in flatten(input_spec):
+        for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
+            elif isinstance(var, (core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
@@ -991,7 +990,7 @@ def save(layer, path, input_spec=None, **configs):
         configs._program_only = True
 
     scope = core.Scope()
-    extra_var_info = dict()
+    extra_var_info = {}
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
@@ -1034,7 +1033,7 @@ def save(layer, path, input_spec=None, **configs):
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
@@ -1067,7 +1066,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
             else:
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
@@ -1097,8 +1096,8 @@ def save(layer, path, input_spec=None, **configs):
             # structured name, the buffer variable (non-persistable)
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
-            state_names_dict = dict()
-            state_var_dict = dict()
+            state_names_dict = {}
+            state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
@@ -1124,7 +1123,7 @@ def save(layer, path, input_spec=None, **configs):
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
+                    extra_info_dict = {}
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name
@@ -1132,7 +1131,7 @@ def save(layer, path, input_spec=None, **configs):
                     extra_info_dict[
                         'stop_gradient'
                     ] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                    if isinstance(param_or_buffer, EagerParamBase):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
@@ -1151,7 +1150,7 @@ def save(layer, path, input_spec=None, **configs):
 
         # NOTE(chenweihang): [ Get output variables ]
         # the rule is like [ Get input variables name ]. For output var,
-        # we only support VarBase spec, and actually, we only need the
+        # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
         # print(concrete_program.main_program)
         # print(concrete_program.outputs, configs.output_spec)
@@ -1160,8 +1159,6 @@ def save(layer, path, input_spec=None, **configs):
         )
 
         # 5. save inference model
-        from paddle.fluid.io import save_inference_model
-
         # construct new save_inference_model arguments
         model_path = dirname
         # NOTE(chenweihang): because prefix contains model and params filename,
@@ -1210,7 +1207,11 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(
                 Executor(_current_expected_place()),
                 dirname=model_path,
-                vars=list(filter(paddle.fluid.io.is_persistable, ordered_vars)),
+                vars=list(
+                    filter(
+                        paddle.framework.io_utils.is_persistable, ordered_vars
+                    )
+                ),
                 filename=params_filename,
             )
         # save property
@@ -1614,7 +1615,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
@@ -1679,11 +1680,8 @@ class TracedLayer:
     @switch_to_static_graph
     def _compile(self):
         self._compiled_program = CompiledProgram(
-            self._program
-        ).with_data_parallel(
+            self._program,
             build_strategy=self._build_strategy,
-            exec_strategy=self._exec_strategy,
-            places=self._place,
         )
 
     def _build_feed(self, inputs):
@@ -1817,8 +1815,6 @@ class TracedLayer:
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
 
-        from paddle.fluid.io import save_inference_model
-
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:
                 return all_vars
@@ -1831,7 +1827,7 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX

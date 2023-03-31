@@ -12,22 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
+from ..format import ConvertibleQuantedLayer
 
-class QuantedLinear(Layer):
+
+class QuantedLinear(ConvertibleQuantedLayer):
     """
-    The computational logic of QuantizedLinear is the same with Linear.
+    The computational logic of QuantizedLinear is the same as Linear.
     The only difference is that its inputs are all fake quantized.
     """
 
     def __init__(self, layer: Layer, q_config):
-        super(QuantedLinear, self).__init__()
+        super().__init__()
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, 'name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer.name
         # For FakeQuant
 
         self.weight_quanter = None
@@ -49,3 +52,9 @@ class QuantedLinear(Layer):
     def _linear_forward(self, input, weight):
         out = F.linear(x=input, weight=weight, bias=self.bias, name=self.name)
         return out
+
+    def weights_to_quanters(self):
+        return [('weight', 'weight_quanter')]
+
+    def activation_quanters(self):
+        return ['activation_quanter']

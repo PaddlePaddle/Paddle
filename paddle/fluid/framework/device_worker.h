@@ -285,6 +285,8 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
+  // check batch num
+  bool CheckBatchNum(int flag);
 
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
@@ -294,7 +296,7 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
   static std::atomic<bool> quit_flag_;
-  // static bool quit_flag_2;
+  phi::DenseTensor sync_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -548,7 +550,7 @@ class HeterCpuWorker : public HogwildWorker {
 class PSGPUWorker : public HogwildWorker {
  public:
   PSGPUWorker() {}
-  virtual ~PSGPUWorker() {}
+  virtual ~PSGPUWorker();
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
@@ -564,11 +566,26 @@ class PSGPUWorker : public HogwildWorker {
 #endif
   void ResetStat();
 
+  // async infershape
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+  virtual void BindingDataFeedMemory();
+
  protected:
   void PushGradients();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
+
+  struct InferShapeCheckData {
+    std::vector<std::vector<DDim>> pre_dims;
+    std::vector<std::vector<LoD>> pre_lods;
+    std::vector<std::vector<DDim>> after_dims;
+    std::vector<std::vector<LoD>> after_lods;
+  };
+
+  int OpRunAndShapeCheck(OperatorBase& op,  // NOLINT
+                         const Scope& scope,
+                         const platform::Place& place);
 
  private:
   int mpi_rank_;
@@ -632,6 +649,28 @@ class PSGPUWorker : public HogwildWorker {
   double gpu_2_cpu_time_;
   double cpu_2_gpu_time_;
   uint64_t total_inst_;
+
+  // async infershape
+  int task_threads_num_{6};
+  int scope_num_{task_threads_num_ + 1};
+  std::atomic<int> thread_count_{0};
+  std::atomic<bool> stop_token_{false};
+  std::atomic<bool> pack_is_end_{false};
+  std::vector<std::thread> task_threads_;
+  std::vector<Scope*> thread_scope_vec_;
+  std::map<Scope*, std::vector<Variable*>> need_reuse_var_vec_;
+  std::vector<Variable*> need_reuse_var_;
+
+  struct TaskData {
+    int ins_num;
+    Scope* scope;
+    MiniBatchGpuPack* pack;
+  };
+  paddle::framework::BlockingQueue<TaskData> free_task_queue_;
+  paddle::framework::BlockingQueue<TaskData> using_task_queue_;
+
+  static std::atomic<int> shape_check_count_;
+  static std::atomic<bool> shape_check_flag_;
 };
 #endif
 

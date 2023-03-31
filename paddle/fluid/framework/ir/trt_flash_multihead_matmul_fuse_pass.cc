@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 namespace paddle {
 namespace framework {
@@ -545,10 +546,18 @@ void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
                "8.5.2.2. Stop this pass";
     return;
   }
+  int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+  if (sm < 80) {
+    VLOG(3) << "Flash attention oss plugin only available for nvidia gpu with "
+               "sm >= 80, but got sm = "
+            << sm << " . Stop this pass";
+    return;
+  }
 #else
   // if no tensorrt, early stop
   return;
 #endif
+
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "Flash attention oss plugin need trt "
