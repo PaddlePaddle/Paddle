@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.inference import Config, create_predictor
 
 paddle.enable_static()
@@ -227,9 +227,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             iters += 1
             appx = ' (warm-up)' if iters <= skip_batch_num else ''
             _logger.info(
-                'batch {0}{4}, acc: {1:.4f}, latency: {2:.4f} ms, predictions per sec: {3:.2f}'.format(
-                    iters, batch_acc, latency, pps, appx
-                )
+                f'batch {iters}{appx}, acc: {batch_acc:.4f}, latency: {latency:.4f} ms, predictions per sec: {pps:.2f}'
             )
         # Postprocess benchmark data
         infer_total_time = time.time() - infer_start_time
@@ -239,17 +237,13 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         ppses = ppses[skip_batch_num:]
         pps_avg = np.average(ppses)
         acc_avg = float(np.sum(total_correct)) / float(total_samples)
-        _logger.info(
-            'Total inference run time: {:.2f} s'.format(infer_total_time)
-        )
+        _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
         return acc_avg, pps_avg, latency_avg
 
     def _print_performance(self, title, pps, lat):
         _logger.info(
-            '{}: avg predictions per sec: {:.2f}, avg latency: {:.4f} ms'.format(
-                title, pps, lat
-            )
+            f'{title}: avg predictions per sec: {pps:.2f}, avg latency: {lat:.4f} ms'
         )
 
     def _print_accuracy(self, title, acc):
@@ -273,9 +267,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc, int8_acc):
         _logger.info(
-            'Accepted accuracy drop threshold: {}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
-                threshold
-            )
+            f'Accepted accuracy drop threshold: {threshold}. (condition: (Quant_acc - INT8_acc) <= threshold)'
         )
         # Random outputs give accuracy about 0.33, we assume valid accuracy to be at least 0.5
         assert quant_acc > 0.5
