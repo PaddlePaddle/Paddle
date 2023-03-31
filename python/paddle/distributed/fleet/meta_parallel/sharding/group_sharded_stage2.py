@@ -79,12 +79,10 @@ class GroupShardedStage2(nn.Layer):
             else sharding_optimizer
         )
         assert all(
-            list(
-                map(
-                    lambda opt: isinstance(opt, GroupShardedOptimizerStage2),
-                    self._sharding_optimizers,
-                )
-            )
+            [
+                isinstance(opt, GroupShardedOptimizerStage2)
+                for opt in self._sharding_optimizers
+            ]
         ), "Please use GroupShardedOptimizerStage2 optimizer"
         self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable

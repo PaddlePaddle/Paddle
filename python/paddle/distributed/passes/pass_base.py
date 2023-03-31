@@ -132,7 +132,7 @@ def register_pass(name):
 
 def new_pass(name, pass_attrs={}):
     pass_class = PassBase._REGISTERED_PASSES.get(name)
-    assert pass_class is not None, "Pass {} is not registered".format(name)
+    assert pass_class is not None, f"Pass {name} is not registered"
     pass_obj = pass_class()
     for k, v in pass_attrs.items():
         pass_obj.set_attr(k, v)
@@ -230,7 +230,7 @@ def _make_rule_from_white_lists_dict(
 def _get_list_index(in_pass):
     assert (
         in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
-    ), "Pass {} is not in _PASS_PROCESS_ORDER_LIST".format(in_pass.name)
+    ), f"Pass {in_pass.name} is not in _PASS_PROCESS_ORDER_LIST"
     return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
 
 
@@ -255,6 +255,7 @@ PassBase._PASS_PROCESS_ORDER_LIST = [
     "fused_attention",
     "fused_feedforward",
     "fuse_gemm_epilogue",
+    "fuse_adamw",
     "fuse_optimizer",
 ]
 

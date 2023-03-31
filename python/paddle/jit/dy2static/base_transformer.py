@@ -33,7 +33,7 @@ __all__ = []
 class BaseTransformer(gast.NodeTransformer):
     def visit(self, node):
         if not isinstance(node, gast.AST):
-            msg = ('Expected "gast.AST", but got "{}".').format(type(node))
+            msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
         origin_info = getattr(node, ORIGI_INFO, None)
 
@@ -205,7 +205,7 @@ class ForNodeVisitor:
 
     In this process, the semantics of for does not change.
 
-    Now only can parse 3 type statements (Here var is VarBase(Tensor) or python variable):
+    Now only can parse 3 type statements (Here var is Tensor(Tensor) or python variable):
         1). for x in range(var[*]|var.numpy()[*])
         2). for x in var|var.numpy()
         3). for i, x enumerate(var|var.numpy())

@@ -44,7 +44,7 @@ from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F40
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import ParamBase, _set_expected_place
+from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
 from paddle.framework import core, in_dygraph_mode, to_variable
 from paddle.nn.layer import layers
@@ -158,14 +158,14 @@ def sync_params_buffers(
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+        if not isinstance(param, core.eager.Tensor):
             raise TypeError(
                 "The data type of '%s' must be Varbase or eager.Tensor"
                 % param.name
             )
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, (ParamBase, core.eager.Tensor)):
+        if isinstance(param, core.eager.Tensor):
             if is_model_parallel:
                 if hasattr(param, "is_distributed") and param.is_distributed:
                     continue
@@ -379,9 +379,7 @@ class DataParallel(layers.Layer):
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
         self.group = group
-        self.var_dtype = (
-            core.eager.Tensor if in_dygraph_mode() else core.VarBase
-        )
+        self.var_dtype = core.eager.Tensor
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy.
         # It just stores some environment variables, which can be constructed by
@@ -491,7 +489,7 @@ class DataParallel(layers.Layer):
             )
 
     def _find_varbase(self, obj):
-        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
+        var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
@@ -1116,7 +1114,7 @@ def init_parallel_env():
         paddle.distributed.barrier(group=group)
         return group
 
-    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
+    node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":

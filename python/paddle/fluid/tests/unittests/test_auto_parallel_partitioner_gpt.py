@@ -16,11 +16,8 @@ import collections
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.tensor as tensor
-import paddle.utils as utils
+from paddle import nn, static, tensor, utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner

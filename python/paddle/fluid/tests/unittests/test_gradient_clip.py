@@ -18,8 +18,8 @@ import numpy as np
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()

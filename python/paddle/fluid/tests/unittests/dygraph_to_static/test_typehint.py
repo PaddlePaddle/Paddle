@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 SEED = 2020
 np.random.seed(SEED)
@@ -53,7 +53,7 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            # Set the input of dyfunc to VarBase
+            # Set the input of dyfunc to Tensor
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(tensor_x)

@@ -23,7 +23,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -537,7 +537,7 @@ class TestSeResnet(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+            err_msg=f'dy_pre:\n {dy_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             dy_jit_pre,
@@ -573,25 +573,25 @@ class TestSeResnet(unittest.TestCase):
             pred_1,
             pred_2,
             rtol=1e-05,
-            err_msg='static pred: {} \ndygraph pred: {}'.format(pred_1, pred_2),
+            err_msg=f'static pred: {pred_1} \ndygraph pred: {pred_2}',
         )
         np.testing.assert_allclose(
             loss_1,
             loss_2,
             rtol=1e-05,
-            err_msg='static loss: {} \ndygraph loss: {}'.format(loss_1, loss_2),
+            err_msg=f'static loss: {loss_1} \ndygraph loss: {loss_2}',
         )
         np.testing.assert_allclose(
             acc1_1,
             acc1_2,
             rtol=1e-05,
-            err_msg='static acc1: {} \ndygraph acc1: {}'.format(acc1_1, acc1_2),
+            err_msg=f'static acc1: {acc1_1} \ndygraph acc1: {acc1_2}',
         )
         np.testing.assert_allclose(
             acc5_1,
             acc5_2,
             rtol=1e-05,
-            err_msg='static acc5: {} \ndygraph acc5: {}'.format(acc5_1, acc5_2),
+            err_msg=f'static acc5: {acc5_1} \ndygraph acc5: {acc5_2}',
         )
 
         self.verify_predict()

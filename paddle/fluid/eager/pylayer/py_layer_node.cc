@@ -166,8 +166,8 @@ GradNodePyLayer::operator()(
             grad_out.push_back({});
           } else {
             PADDLE_THROW(phi::errors::InvalidArgument(
-                "argument must be "
-                "Tensor or None, but got %s",
+                "We can only support Tensor or None for backward output, "
+                ", but got %s, please check your PyLayer code and make it fits",
                 reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
           }
         }

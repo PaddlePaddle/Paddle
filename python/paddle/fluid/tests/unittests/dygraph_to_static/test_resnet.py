@@ -22,7 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
@@ -394,7 +394,7 @@ class TestResnet(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+            err_msg=f'dy_pre:\n {dy_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             dy_jit_pre,

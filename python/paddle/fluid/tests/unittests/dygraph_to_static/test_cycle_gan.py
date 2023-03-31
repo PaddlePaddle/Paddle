@@ -31,7 +31,7 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -708,7 +708,7 @@ class TestCycleGANModel(unittest.TestCase):
 
         self.assertTrue(
             assert_func(dy_out, st_out),
-            msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out),
+            msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}",
         )
 
 

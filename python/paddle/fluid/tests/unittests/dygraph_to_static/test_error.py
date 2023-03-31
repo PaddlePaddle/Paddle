@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
 
@@ -259,7 +259,7 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
                 self.filepath
             ),
             'inner_func()',
-            'File "{}", line 28, in inner_func'.format(self.filepath),
+            f'File "{self.filepath}", line 28, in inner_func',
             'def inner_func():',
             'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -312,7 +312,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 91, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 91, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -376,7 +376,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 80, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 80, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',

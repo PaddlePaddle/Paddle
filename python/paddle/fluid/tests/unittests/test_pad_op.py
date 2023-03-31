@@ -20,8 +20,7 @@ from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -99,7 +98,7 @@ def create_test_fp16(parent):
         def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=0.3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
     globals()[cls_name] = TestPadFp16
 

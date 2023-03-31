@@ -28,8 +28,8 @@ import time
 from contextlib import closing
 from distutils.util import strtobool
 
-import paddle.framework as framework
 import paddle.utils.cpp_extension.extension_utils as utils
+from paddle import framework
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -118,10 +118,10 @@ class Cluster:
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
-            ep = "{}:{}".format(pod.addr, pod.port)
+            ep = f"{pod.addr}:{pod.port}"
             assert (
                 pod.port is not None and pod.addr is not None
-            ), "{} not a valid endpoint".format(ep)
+            ), f"{ep} not a valid endpoint"
             r.append(ep)
         return r
 
@@ -138,7 +138,7 @@ class JobServer:
         self.endpoint = None
 
     def __str__(self):
-        return "{}".format(self.endpoint)
+        return f"{self.endpoint}"
 
     def __eq__(self, j):
         return self.endpint == j.endpoint
@@ -215,42 +215,34 @@ class Pod:
             or self.addr != pod.addr
             or self.port != pod.port
         ):
-            logger.debug("pod {} != {}".format(self, pod))
+            logger.debug(f"pod {self} != {pod}")
             return False
 
         if len(self.trainers) != len(pod.trainers):
-            logger.debug(
-                "trainers {} != {}".format(self.trainers, pod.trainers)
-            )
+            logger.debug(f"trainers {self.trainers} != {pod.trainers}")
             return False
 
         for i in range(len(self.trainers)):
             if self.trainers[i] != pod.trainers[i]:
-                logger.debug(
-                    "trainer {} != {}".format(self.trainers[i], pod.trainers[i])
-                )
+                logger.debug(f"trainer {self.trainers[i]} != {pod.trainers[i]}")
                 return False
 
         if len(self.servers) != len(pod.servers):
-            logger.debug("servers {} != {}".format(self.servers, pod.servers))
+            logger.debug(f"servers {self.servers} != {pod.servers}")
             return False
 
         for i in range(len(self.servers)):
             if self.servers[i] != pod.servers[i]:
-                logger.debug(
-                    "servers {} != {}".format(self.servers[i], pod.servers[i])
-                )
+                logger.debug(f"servers {self.servers[i]} != {pod.servers[i]}")
                 return False
 
         if len(self.workers) != len(pod.workers):
-            logger.debug("workers {} != {}".format(self.workers, pod.workers))
+            logger.debug(f"workers {self.workers} != {pod.workers}")
             return False
 
         for i in range(len(self.workers)):
             if self.workers[i] != pod.workers[i]:
-                logger.debug(
-                    "workers {} != {}".format(self.workers[i], pod.workers[i])
-                )
+                logger.debug(f"workers {self.workers[i]} != {pod.workers[i]}")
                 return False
 
         return True
@@ -267,9 +259,9 @@ class Pod:
     def get_visible_accelerators(self):
         r = ""
         for g in self.accelerators:
-            r += "{},".format(g)
+            r += f"{g},"
 
-        assert r != "", "this pod {} can't see any accelerators".format(self)
+        assert r != "", f"this pod {self} can't see any accelerators"
 
         r = r[:-1]
         return r
@@ -343,7 +335,7 @@ def terminate_local_procs(procs):
                 os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
                 if p.log_fn:
                     p.log_fn.close()
-                logger.info("terminate process group gid:{}".format(p.proc.pid))
+                logger.info(f"terminate process group gid:{p.proc.pid}")
 
         time.sleep(1)
 
@@ -352,7 +344,7 @@ def terminate_local_procs(procs):
             p.proc.terminate()
             if p.log_fn:
                 p.log_fn.close()
-            logger.debug("terminate process id:{}".format(p.proc.pid))
+            logger.debug(f"terminate process id:{p.proc.pid}")
 
     # wait all process terminiated
     time.sleep(3)
@@ -370,7 +362,7 @@ def terminate_local_procs(procs):
         time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
-    exit(1)
+    sys.exit(1)
 
 
 def get_host_name_ip():
@@ -396,7 +388,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         default=default,
         type=type,
         help=help + ' Default: %(default)s.',
-        **kwargs
+        **kwargs,
     )
 
 
@@ -453,7 +445,7 @@ def pretty_print_envs(envs, header=None):
     h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
         max_k, " " * spacing, max_v
     )
-    l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
+    l_format = "    " + f"|{{:>{max_k}s}}{{}}{{:^{max_v}s}}|\n"
     length = max_k + max_v + spacing
 
     border = "    +" + "".join(["="] * length) + "+"
@@ -479,7 +471,7 @@ def pretty_print_envs(envs, header=None):
 
     draws += border
 
-    _str = "\n{}\n".format(draws)
+    _str = f"\n{draws}\n"
     return _str
 
 
@@ -498,7 +490,7 @@ _run_with_coverage = False
 
 def run_with_coverage(*args):
     global _run_with_coverage
-    assert len(args) <= 1, "len(args) {} should <= 1".format(len(args))
+    assert len(args) <= 1, f"len(args) {len(args)} should <= 1"
     if len(args) == 1:
         assert isinstance(args[0], bool)
         _run_with_coverage = args[0]
@@ -592,7 +584,7 @@ def start_local_trainers(
             + training_script_args
         )
 
-        logger.debug("start trainer proc{}  env:{}".format(cmd, current_env))
+        logger.debug(f"start trainer proc{cmd}  env:{current_env}")
 
         if idx == 0:
             logger.info(
@@ -610,9 +602,9 @@ def start_local_trainers(
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
-            os.system("mkdir -p {}".format(log_dir))
+            os.system(f"mkdir -p {log_dir}")
             if os.path.exists("%s/endpoints.log" % log_dir):
-                os.system("rm -f {}/endpoints.log".format(log_dir))
+                os.system(f"rm -f {log_dir}/endpoints.log")
             with open("%s/endpoints.log" % log_dir, "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
@@ -678,7 +670,7 @@ def watch_local_trainers(procs, nranks):
 
         if error:
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
@@ -752,11 +744,12 @@ def get_xpus(xpus):
             # therefore xpus=0,1,2,3
             xpu_visible_devices_list = xpu_visible_devices.split(',')
             for x in xpus.split(','):
-                assert (
-                    x in xpu_visible_devices_list
-                ), "Can't find " "your xpus %s in XPU_VISIBLE_DEVICES[%s]." % (
-                    x,
-                    xpu_visible_devices,
+                assert x in xpu_visible_devices_list, (
+                    "Can't find "
+                    "your xpus {} in XPU_VISIBLE_DEVICES[{}].".format(
+                        x,
+                        xpu_visible_devices,
+                    )
                 )
             res_xpus = [
                 xpu_visible_devices_list.index(x.strip())
@@ -821,11 +814,12 @@ def get_mlus(mlus):
             # therefore mlus=0,1,2,3
             mlu_visible_devices_list = mlu_visible_devices.split(',')
             for x in mlus.split(','):
-                assert (
-                    x in mlu_visible_devices_list
-                ), "Can't find " "your mlus %s in MLU_VISIBLE_DEVICES[%s]." % (
-                    x,
-                    mlu_visible_devices,
+                assert x in mlu_visible_devices_list, (
+                    "Can't find "
+                    "your mlus {} in MLU_VISIBLE_DEVICES[{}].".format(
+                        x,
+                        mlu_visible_devices,
+                    )
                 )
             res_mlus = [
                 mlu_visible_devices_list.index(x.strip())
@@ -951,7 +945,7 @@ def get_device_proc_info(args):
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
-            devices_per_proc = [x for x in range(0, args.nproc_per_node)]
+            devices_per_proc = list(range(0, args.nproc_per_node))
     else:
         raise AssertionError(
             "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
@@ -1086,7 +1080,7 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
     node_rank = node_ips.index(node_ip)
 
     assert len(node_ranks) == len(
@@ -1107,20 +1101,14 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
@@ -1226,7 +1214,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
     node_rank = node_ips.index(node_ip)
 
     assert (
@@ -1250,20 +1238,14 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(
-                    start_port, start_port + len(node_ranks[node_rank])
-                )
-            ]
+            free_ports = list(
+                range(start_port, start_port + len(node_ranks[node_rank]))
+            )
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
@@ -1657,7 +1639,7 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
-                    server.endpoint = "%s:%s" % (
+                    server.endpoint = "{}:{}".format(
                         ip,
                         self.server_endpoints_port[i],
                     )
@@ -1667,7 +1649,7 @@ class ParameterServerLauncher:
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
-                    worker.endpoint = "%s:%s" % (
+                    worker.endpoint = "{}:{}".format(
                         ip,
                         self.worker_endpoints_port[j],
                     )
@@ -1678,7 +1660,7 @@ class ParameterServerLauncher:
             for m in range(len(self.coordinator_endpoints_ips)):
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
-                    coordinator.endpoint = "%s:%s" % (
+                    coordinator.endpoint = "{}:{}".format(
                         ip,
                         self.coordinator_endpoints_port[m],
                     )
@@ -1690,7 +1672,7 @@ class ParameterServerLauncher:
             for k in range(len(self.heter_worker_endpoints_ips)):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
-                    heter_worker.endpoint = "%s:%s" % (
+                    heter_worker.endpoint = "{}:{}".format(
                         ip,
                         self.heter_worker_endpoints_port[k],
                     )
@@ -1839,7 +1821,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system("mkdir -p {}".format(args.log_dir))
+                os.system(f"mkdir -p {args.log_dir}")
                 fn = open("%s/serverlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["server"].append(fn)
                 proc = subprocess.Popen(
@@ -1947,7 +1929,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system("mkdir -p {}".format(args.log_dir))
+                os.system(f"mkdir -p {args.log_dir}")
                 fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["worker"].append(fn)
                 proc = subprocess.Popen(
@@ -2015,7 +1997,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system("mkdir -p {}".format(args.log_dir))
+                os.system(f"mkdir -p {args.log_dir}")
                 fn = open("%s/coordinator.%d" % (args.log_dir, idx), "w")
                 self.log_fns["coordinator"].append(fn)
                 proc = subprocess.Popen(
@@ -2106,7 +2088,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system("mkdir -p {}".format(args.log_dir))
+                os.system(f"mkdir -p {args.log_dir}")
                 fn = open("%s/heterlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["heter_worker"].append(fn)
                 proc = subprocess.Popen(

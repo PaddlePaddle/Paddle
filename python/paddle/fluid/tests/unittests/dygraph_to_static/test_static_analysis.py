@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
 from paddle.utils import gast
 
@@ -185,9 +185,7 @@ class TestStaticAnalysis(unittest.TestCase):
         if wrapper.parent is not None:
             self.assertTrue(wrapper in wrapper.parent.children)
 
-        children_ast_nodes = [
-            child for child in gast.iter_child_nodes(wrapper.node)
-        ]
+        children_ast_nodes = list(gast.iter_child_nodes(wrapper.node))
         self.assertEqual(len(wrapper.children), len(children_ast_nodes))
         for child in wrapper.children:
             self.assertTrue(child.node in children_ast_nodes)
