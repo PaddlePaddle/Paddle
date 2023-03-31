@@ -38,9 +38,6 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
                              ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(
-    c_sync_calc_stream, GPU, ALL_LAYOUT, ops::CSyncCalcStreamKernel, float) {}
-
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream,
                        ops::CSyncCalcStreamKernel<float, plat::NPUPlace>);
 
