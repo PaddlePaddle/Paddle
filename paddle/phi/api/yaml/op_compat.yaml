@@ -643,6 +643,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : eye
+  outputs :
+    out : Out
+  scalar :
+    num_rows :
+      support_tensor : true
+    num_columns :
+      support_tensor : true
+
 - op : fake_channel_wise_quantize_abs_max
   extra :
     attrs : [int round_type = 1]
