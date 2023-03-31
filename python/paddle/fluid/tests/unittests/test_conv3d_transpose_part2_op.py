@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from test_conv3d_transpose_op import TestConv3DTransposeOp, create_test_cudnn_fp16_class, create_test_cudnn_bf16_class
+from test_conv3d_transpose_op import (
+    TestConv3DTransposeOp,
+    create_test_cudnn_bf16_class,
+    create_test_cudnn_fp16_class,
+)
 
 import paddle
 from paddle import fluid
