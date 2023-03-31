@@ -1330,7 +1330,7 @@ static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-class DistributedFusedLambOpKernel<phi::GPUContext, T>
+class DistributedFusedLambOpKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
