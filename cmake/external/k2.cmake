@@ -46,7 +46,6 @@ else()
       CACHE FILEPATH "k2 context fsa log Library" FORCE)
 endif()
 
-
 set(K2_ENABLE_NVTX OFF)
 
 if(WITH_GPU)
