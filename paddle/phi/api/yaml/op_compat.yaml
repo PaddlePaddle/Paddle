@@ -1242,6 +1242,20 @@
   outputs :
     out : Out
 
+- op: max_pool2d_with_index
+  backward: max_pool2d_with_index_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: max_pool3d_with_index
+  backward: max_pool3d_with_index_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : mean (reduce_mean)
   backward : reduce_mean_grad
   inputs :

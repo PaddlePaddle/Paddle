@@ -1000,6 +1000,24 @@
     func : maxout
   backward : maxout_grad
 
+- op : max_pool2d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool2d_with_index
+  backward : max_pool2d_with_index_grad
+
+- op : max_pool3d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool3d_with_index
+  backward : max_pool3d_with_index_grad
+
 - op : memory_efficient_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test)
   output : Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)

@@ -1006,6 +1006,24 @@
   kernel :
     func : maxout_grad
 
+- backward_op : max_pool2d_with_index_grad
+  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : MaxPoolWithIndexGradInferMeta
+  kernel :
+    func : max_pool2d_with_index_grad
+
+- backward_op : max_pool3d_with_index_grad
+  forward : max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : MaxPoolWithIndexGradInferMeta
+  kernel :
+    func : max_pool3d_with_index_grad
+
 - backward_op : memory_efficient_attention_grad
   forward : memory_efficient_attention (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test) -> Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
   args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor output, Tensor logsumexp, Tensor seed_and_offset, Tensor output_grad, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale)
