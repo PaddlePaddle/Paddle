@@ -926,7 +926,7 @@ class TestAdamOptimizer(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            print("Start run on {}".format(place))
+            print(f"Start run on {place}")
             for epoch in range(10):
                 pred_res, loss_res = exe.run(
                     main_prog,

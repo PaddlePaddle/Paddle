@@ -241,7 +241,7 @@ def run_adaround(
     fetch_op_name = fetch_list[0].name
     final_weight_tensor_quant_dict = {}
     for weight_var_name, quant_op_out_name in quantized_op_pairs.items():
-        _logger.info('Start adaround op: {}'.format(weight_var_name))
+        _logger.info(f'Start adaround op: {weight_var_name}')
         weight_op_type = weight_op_pairs[weight_var_name]
         # get scale and weight tensor
         weight_var_tensor = load_variable_data(scope, weight_var_name)

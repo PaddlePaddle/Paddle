@@ -216,7 +216,7 @@ def create_reshape_bf16_test_classes(parent):
                 check_dygraph=False,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape2_BF16")
     TestReshape2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshape2BF16OneDNNOp
 
@@ -242,7 +242,7 @@ def create_reshape_bf16_test_classes(parent):
                 check_dygraph=False,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape_BF16")
     TestReshapeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshapeBF16OneDNNOp
 
