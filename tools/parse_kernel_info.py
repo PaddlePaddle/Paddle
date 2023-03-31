@@ -74,7 +74,7 @@ class KernelRegistryStatistics:
         res = "{ "
         num_floats = int(self.num_ops_for_dtypes["float32"])
         for dtype, num in self.num_ops_for_dtypes.items():
-            res += "{}: {:4d}".format(dtype, num)
+            res += f"{dtype}: {num:4d}"
             if dtype in ["float16", "bfloat16"]:
                 if num_floats != 0:
                     percent = float(self.num_ops_for_dtypes[dtype]) / float(
@@ -82,7 +82,7 @@ class KernelRegistryStatistics:
                     )
                     res += "({:.2f}%)".format(percent * 100)
                 else:
-                    res += "({:.2f}%)".format(0)
+                    res += f"({0:.2f}%)"
             res += " "
         res += "}"
         return res
@@ -159,9 +159,9 @@ def main(lib):
         print(
             "==================================   phi kernels summary   =================================="
         )
-        print("phi function  kernels : {}".format(phi_function_kernels_stats))
-        print("phi structure kernels : {}".format(phi_structure_kernels_stats))
-        print("phi all       kernels : {}".format(phi_all_kernels_stats))
+        print(f"phi function  kernels : {phi_function_kernels_stats}")
+        print(f"phi structure kernels : {phi_structure_kernels_stats}")
+        print(f"phi all       kernels : {phi_all_kernels_stats}")
         print("")
     else:
         fluid_ops_stats = parse_paddle_kernels(lib, "fluid", print_detail=False)
@@ -172,9 +172,9 @@ def main(lib):
         print(
             "================================== fluid operators summary =================================="
         )
-        print("fluid operators : {}".format(fluid_ops_stats))
-        print("phi   operators : {}".format(phi_ops_stats))
-        print("all   operators : {}".format(all_ops_stats))
+        print(f"fluid operators : {fluid_ops_stats}")
+        print(f"phi   operators : {phi_ops_stats}")
+        print(f"all   operators : {all_ops_stats}")
         print("")
 
 

@@ -54,7 +54,7 @@ def deco3(x=3):
     def inner_deco(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            print('in deco3, added {}'.format(x))
+            print(f'in deco3, added {x}')
             _t = paddle.to_tensor(x)
             _tt = func(*args, **kwargs)
             return paddle.add(_t, _tt)
@@ -68,7 +68,7 @@ def deco4(func=None, x=0):
     def decorated(pyfunc):
         @wraps(pyfunc)
         def inner_deco(*args, **kwargs):
-            print('in deco4, added {}'.format(x))
+            print(f'in deco4, added {x}')
             _t = paddle.to_tensor(x)
             _tt = pyfunc(*args, **kwargs)
             return paddle.add(_t, _tt)

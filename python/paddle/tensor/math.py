@@ -492,8 +492,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     bf16_and_complex_supported_ops = [
         "elementwise_add",
         "elementwise_sub",
@@ -5192,7 +5192,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
             dx = 1.0
         dx = paddle.to_tensor(dx)
         if dx.dim() > 1:
-            raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
+            raise ValueError(f'Expected dx to be a scalar, got dx={dx}')
     else:
         if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
             raise TypeError(

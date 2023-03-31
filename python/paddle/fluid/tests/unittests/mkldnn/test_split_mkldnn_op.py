@@ -151,8 +151,8 @@ def create_test_class(parent):
         def test_check_grad(self):
             pass
 
-    TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
-    TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
+    TestInt8Case.__name__ = "{}_{}".format(parent.__name__, "INT8")
+    TestUint8Case.__name__ = "{}_{}".format(parent.__name__, "UINT8")
     globals()[TestInt8Case.__name__] = TestUint8Case
     globals()[TestUint8Case.__name__] = TestInt8Case
 
