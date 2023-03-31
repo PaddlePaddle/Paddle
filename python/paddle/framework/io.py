@@ -179,9 +179,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
@@ -286,7 +286,7 @@ def _pickle_save(obj, f, protocol):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     def reduce_varbase(self):
@@ -848,7 +848,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     if _is_file_path(path):

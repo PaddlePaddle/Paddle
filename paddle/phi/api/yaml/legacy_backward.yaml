@@ -875,6 +875,7 @@
     param : [x]
   kernel :
     func : prod_grad
+  composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
 - backward_op : psroi_pool_grad
   forward : psroi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale) -> Tensor(out)
@@ -1043,16 +1044,6 @@
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
-
-- backward_op : spectral_norm_grad
-  forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
-  args : (Tensor weight, Tensor u, Tensor v, Tensor out_grad, int dim, int power_iters, float eps)
-  output : Tensor(weight_grad)
-  infer_meta :
-    func : SpectralNormGradInferMeta
-  kernel :
-    func : spectral_norm_grad
-    data_type : out_grad
 
 - backward_op : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)

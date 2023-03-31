@@ -17,9 +17,13 @@
 #if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
     defined(__i386__)
 #define __PADDLE_x86__
+#ifdef __SSE2__
 #undef __SSE2__
 #include <immintrin.h>
 #define __SSE2__
+#else
+#include <immintrin.h>
+#endif
 #endif
 #include <stdint.h>
 
