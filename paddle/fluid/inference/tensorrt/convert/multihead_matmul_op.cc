@@ -478,6 +478,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
         }
       } else {
+        auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+          for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+              dst[j * m + i] = src[i * n + j];
+            }
+          }
+        };
+        tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
             engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
             platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
