@@ -219,7 +219,6 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Input'],
                 'Output',
-                # max_relative_error=0.03,
                 no_grad_set={'Filter'},
                 check_dygraph=(not self.use_mkldnn),
             )
@@ -233,12 +232,11 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Filter'],
                 'Output',
-                # max_relative_error=0.03,
                 no_grad_set={'Input'},
                 check_dygraph=(not self.use_mkldnn),
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
     TestConv3DCUDNNBF16.__name__ = cls_name
     globals()[cls_name] = TestConv3DCUDNNBF16
 
