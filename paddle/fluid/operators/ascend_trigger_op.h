@@ -27,7 +27,6 @@ class AscendTriggerCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Please compile WITH_ASCEND option to enable ascend_trigger op"));
-#endif
   }
 };
 
