@@ -15,7 +15,6 @@ namespace paddle {
 namespace distributed {
 
 constexpr uint8_t kSendRecvSlotPrefix = 0x08;
-constexpr uint8_t kGatherSlotPrefix = 0x09;
 
 class SendRecvOptions {
  public:

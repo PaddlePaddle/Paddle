@@ -19,7 +19,6 @@
 #include "gloo/math.h"
 #include "gloo/types.h"
 #include "paddle/fluid/distributed/collective/gloo_tools.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
