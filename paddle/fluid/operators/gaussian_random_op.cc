@@ -46,116 +46,11 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
   }
 };
 
-class GaussianRandomOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto data_type =
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
-  }
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
-    }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-  }
-};
-
-class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddOutput("Out", "Output matrix of gaussian random op");
-
-    AddAttr<std::vector<int64_t>>("shape",
-                                  "(vector<int64_t>) "
-                                  "The dimension of random tensor.")
-        .SetDefault({});
-    AddInput("ShapeTensor",
-             "(Tensor<int>), optional). The shape of the output."
-             "It has a higher priority than Attr(shape).")
-        .AsDispensable();
-    AddInput("ShapeTensorList",
-             "(vector<Tensor<int>>, optional). The shape of the output. "
-             "It has a higher priority than Attr(shape)."
-             "The shape of the element in vector must be [1].")
-        .AsDuplicable()
-        .AsDispensable();
-    AddAttr<float>("mean",
-                   "(float, default 0.0) "
-                   "mean of random tensor.")
-        .SetDefault(.0f);
-    AddAttr<float>("std",
-                   "(float, default 1.0) "
-                   "std of random tensor.")
-        .SetDefault(1.0f);
-    AddAttr<int>("seed",
-                 "(int, default 0) "
-                 "Random seed of generator."
-                 "0 means use system wide seed."
-                 "Note that if seed is not 0, this operator will always "
-                 "generate the same random numbers every time.")
-        .SetDefault(0);
-    AddAttr<int>("dtype",
-                 "(int, default 5(FP32)) "
-                 "Output data type.")
-        .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddComment(R"DOC(
-GaussianRandom Operator.
-
-Used to initialize tensors with gaussian random generator.
-
-)DOC");
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
-                            GaussianRandomInferShapeFunctor,
-                            PD_INFER_META(phi::GaussianInferMeta));
-
-REGISTER_OPERATOR(
-    gaussian_random,
-    ops::GaussianRandomOp,
-    ops::GaussianRandomOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    GaussianRandomInferShapeFunctor);
-
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
-
-REGISTER_OP_VERSION(gaussian_random)
-    .AddCheckpoint(
-        R"ROC(
-               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
-               and modify the attribute of [shape])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("ShapeTensor",
-                      "The output shape supports Tensor type. ShapeTensor is "
-                      "dispensable.")
-            .NewInput("ShapeTensorList",
-                      "The output shape supports list filled with Tensor. "
-                      "ShapeTensorList is dispensable.")
-            .ModifyAttr("shape",
-                        "The arg 'default_value' of attr 'shape' is changed: "
-                        "from 'None' to '{}'.",
-                        std::vector<int64_t>{}));
