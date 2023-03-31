@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,7 @@ import numpy as np
 import paddle
 
 
-class TestNanInfDirCheckResult(unittest.TestCase):
+class TestCompareAccuracyApi(unittest.TestCase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
         # [-10, 10)
@@ -37,24 +38,31 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         return num_nan, num_inf
 
     def test_num_nan_inf(self):
-        path = "nan_inf_log_dir"
-        paddle.fluid.core.set_nan_inf_debug_path(path)
-
-        def _check_num_nan_inf(use_cuda):
-            shape = [32, 32]
-            x_np, _ = self.generate_inputs(shape)
-            num_nan_np, num_inf_np = self.get_reference_num_nan_inf(x_np)
-            add_assert = (num_nan_np + num_inf_np) > 0
+        path1 = "workerlog_fp32_log_dir"
+        paddle.fluid.core.set_nan_inf_debug_path(path1)
 
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        _check_num_nan_inf(use_cuda=False)
-        if paddle.fluid.core.is_compiled_with_cuda():
-            _check_num_nan_inf(use_cuda=True)
-        x = paddle.to_tensor([2, 3, 4], 'float32')
-        y = paddle.to_tensor([1, 5, 2], 'float32')
+        x = paddle.to_tensor([2, 3, 4, 0], 'float32')
+        y = paddle.to_tensor([1, 5, 2, 0], 'float32')
         z = paddle.add(x, y)
+
+        path2 = "workerlog_fp16_log_dir"
+        paddle.fluid.core.set_nan_inf_debug_path(path2)
+
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        x = paddle.to_tensor([2, 3, 4, 0], 'float16')
+        y = paddle.to_tensor([1, 5, 2, 0], 'float16')
+        z = paddle.add(x, y)
+
+        out_excel = "compary_accuracy_out_excel.csv"
+        print(os.path.abspath(out_excel))
+        paddle.amp.debugging.compare_accuracy(
+            path1, path2, out_excel, loss_scale=1, dump_all_tensors=False
+        )
 
 
 if __name__ == '__main__':

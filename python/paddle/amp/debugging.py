@@ -219,15 +219,17 @@ class TensorInfo:
         self.mean_value = None
         self.has_inf = None
         self.has_nan = None
+        self.num_zero = None
 
     def __str__(self):
-        return "[TensorInfo] op_type={}, tensor_name={}, dtype={}, numel={}, has_inf={}, has_nan={}, max_value={:.6f}, min_value={:.6f}, mean_value={:.6f}".format(
+        return "[TensorInfo] op_type={}, tensor_name={}, dtype={}, numel={}, has_inf={}, has_nan={}, num_zero={}, max_value={:.6f}, min_value={:.6f}, mean_value={:.6f}".format(
             self.op_type,
             self.tensor_name,
             self.dtype,
             self.numel,
             self.has_inf,
             self.has_nan,
+            self.num_zero,
             self.max_value,
             self.min_value,
             self.mean_value,
@@ -264,6 +266,8 @@ class TensorInfo:
                     self.has_inf = int(words[1])
                 elif words[0] == "find_nan":
                     self.has_nan = int(words[1])
+                elif words[0] == "num_zero":
+                    self.num_zero = np.int64(words[1])
         except Exception as e:
             print("!! Error parsing {}".format(line))
         return self
@@ -299,6 +303,7 @@ class MixedPrecisionTensorInfo:
         if fp32_tensor_info is not None:
             self.op_type = fp32_tensor_info.op_type
             self.numel = fp32_tensor_info.numel
+            self.num_zero = fp32_tensor_info.num_zero
             self.fp32_tensor_name = fp32_tensor_info.tensor_name
             self.fp32_dtype = fp32_tensor_info.dtype
             self.fp32_max_value = fp32_tensor_info.max_value
@@ -315,6 +320,7 @@ class MixedPrecisionTensorInfo:
         if fp16_tensor_info is not None:
             self.op_type = fp16_tensor_info.op_type
             self.numel = fp16_tensor_info.numel
+            self.num_zero = fp16_tensor_info.num_zero
             self.fp16_tensor_name = fp16_tensor_info.tensor_name
             self.fp16_dtype = fp16_tensor_info.dtype
             self.fp16_max_value = fp16_tensor_info.max_value
@@ -527,6 +533,7 @@ class ExcelWriter:
             "op_type": 24,
             "tensor_name": 60,
             "numel": 10,
+            "num_zero": 10,
             "infinite": 8,
             "dtype": 8,
             "max_value": 16,
@@ -826,12 +833,14 @@ def compare_accuracy(
     loss_scale=1,
     dump_all_tensors=False,
 ):
+    print("dump_path:", dump_path)
     excel_writer = ExcelWriter(dump_path, another_dump_path, output_filename)
     grad_scale = loss_scale
     workerlog_filenames = []
     filenames = os.listdir(dump_path)
+    print("filenames:", filenames)
     for name in filenames:
-        if "workerlog_" in name:
+        if "worker_" in name:
             workerlog_filenames.append(name)
     print(
         "-- There are {} workerlogs under {}: {}".format(
@@ -862,9 +871,12 @@ def compare_accuracy(
                 filename
             )
         )
+        print("fp32_tensor_info_list:", fp32_tensor_info_list)
+        print("fp16_tensor_info_list:", fp16_tensor_info_list)
         mp_tensor_info_list = merge_tensor_info_list(
             fp32_tensor_info_list, fp16_tensor_info_list, grad_scale
         )
+        print("mp_tensor_info_list:", mp_tensor_info_list)
 
         print(
             "-- [Step 4/4] Add worksheet for mixed precision tensor info of {}".format(
