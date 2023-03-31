@@ -69,7 +69,7 @@ class PartialRecvOp : public framework::OperatorWithKernel {
                             out_shape[i]));
     }
     auto out_dims = phi::make_ddim(out_shape);
-    int numel = phi::product(out_dims);
+    int64_t numel = phi::product(out_dims);
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,

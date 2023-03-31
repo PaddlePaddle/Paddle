@@ -276,7 +276,8 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
                         "The offset exceeds the size of tensor."));
 
   T b = static_cast<T>(0);
-  if (platform::is_cpu_place(self.place())) {
+  if (platform::is_cpu_place(self.place()) ||
+      platform::is_cuda_pinned_place(self.place())) {
     b = self.data<T>()[offset];
   } else if (platform::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
