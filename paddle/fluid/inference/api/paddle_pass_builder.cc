@@ -519,6 +519,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
+      "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
@@ -527,6 +528,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "one_beam_size_fuse_pass",
+      "delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",

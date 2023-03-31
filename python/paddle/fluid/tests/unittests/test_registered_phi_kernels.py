@@ -86,9 +86,7 @@ class TestRegisteredPhiKernels(unittest.TestCase):
 
     def test_registered_phi_kernels(self):
         phi_function_kernel_infos = core._get_registered_phi_kernels("function")
-        registered_kernel_list = [
-            name for name in phi_function_kernel_infos.keys()
-        ]
+        registered_kernel_list = list(phi_function_kernel_infos.keys())
         forward_kernels = get_all_kernels(
             self.forward_ops, registered_kernel_list
         )
