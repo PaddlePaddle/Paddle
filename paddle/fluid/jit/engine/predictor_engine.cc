@@ -47,6 +47,7 @@ PredictorEngine::PredictorEngine(
   config.SetSkipLoadParams(true);
   config.SetApplyOptim(true);
   config.SwitchIrOptim(true);
+  config.SwitchUseFeedFetchOps(false);
 
   predictor_.reset(new AnalysisPredictor(config));
 

@@ -118,8 +118,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
     def test_output(self):
         inorder_output = self.get_inorder_output()
         disorder_output = self.get_disorder_output()
-        print(inorder_output)
-        print(disorder_output)
+
         assert np.allclose(
             inorder_output.numpy().flatten(), disorder_output.numpy().flatten()
         )
