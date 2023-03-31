@@ -55,6 +55,12 @@ class TrilTriuOpDefaultTest(OpTest):
         self.X = np.arange(1, 101, dtype="float64").reshape([10, -1])
 
 
+class TrilTriuOpDefaultTestFP16(TrilTriuOpDefaultTest):
+    def initTestCase(self):
+        super().initTestCase()
+        self.X = self.X.astype("float16")
+
+
 def case_generator(op_type, Xshape, diagonal, expected):
     """
     Generate testcases with the params shape of X, diagonal and op_type.
