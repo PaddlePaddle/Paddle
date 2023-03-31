@@ -15,11 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 
 from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import OpTest
-
-from eager_op_test import convert_float_to_uint16
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -608,10 +607,7 @@ def create_test_bf16_class(parent, check_grad=True):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
-            if (
-                self.pool_type != "max"
-                and check_grad
-            ):
+            if self.pool_type != "max" and check_grad:
                 self.check_grad_with_place(
                     place,
                     {'X'},
@@ -1048,18 +1044,14 @@ create_test_cudnn_fp16_class(TestCase4_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase5_AsyPadding_channel_last)
 
 create_test_fp16_class(TestPool2D_AsyPadding_channel_last)
-create_test_fp16_class(
-    TestCase1_AsyPadding_channel_last, check_grad=False
-)
+create_test_fp16_class(TestCase1_AsyPadding_channel_last, check_grad=False)
 create_test_fp16_class(TestCase2_AsyPadding_channel_last)
 create_test_fp16_class(TestCase3_AsyPadding_channel_last)
 create_test_fp16_class(TestCase4_AsyPadding_channel_last)
 create_test_fp16_class(TestCase5_AsyPadding_channel_last)
 
 create_test_bf16_class(TestPool2D_AsyPadding_channel_last)
-create_test_bf16_class(
-    TestCase1_AsyPadding_channel_last, check_grad=False
-)
+create_test_bf16_class(TestCase1_AsyPadding_channel_last, check_grad=False)
 create_test_bf16_class(TestCase2_AsyPadding_channel_last)
 create_test_bf16_class(TestCase3_AsyPadding_channel_last)
 create_test_bf16_class(TestCase4_AsyPadding_channel_last)
