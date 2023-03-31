@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from test_softmax_op import stable_softmax
 
 import paddle
@@ -478,6 +478,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def setUp(self):
         self.initParams()
         self.op_type = "softmax_with_cross_entropy"
+        self.dtype = np.float16
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
         date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -915,6 +916,53 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
         self.use_softmax = True
+
+
+class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
+    def setUp(self):
+        self.initParams()
+        self.op_type = "softmax_with_cross_entropy"
+        self.dtype = np.uint16
+
+        # NOTE: numpy bf16 have very low accuracy, use float32 for numpy check.
+        date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
+        logits = getattr(
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(date_type),
+        )
+        softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
+
+        axis_dim = self.shape[self.axis]
+        self.shape[self.axis] = 1
+        labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
+
+        loss = cross_entropy(softmax, labels, self.soft_label, self.axis)
+
+        self.inputs = {
+            "Logits": convert_float_to_uint16(logits),
+            "Label": labels,
+        }
+        self.outputs = {
+            "Softmax": convert_float_to_uint16(softmax),
+            "Loss": convert_float_to_uint16(loss),
+        }
+        self.attrs = {
+            "numeric_stable_mode": self.numeric_stable_mode,
+            "soft_label": self.soft_label,
+        }
+        if self.axis != -1:
+            self.attrs['axis'] = self.axis
+
+    def test_check_output(self):
+        if self.python_api is not None:
+            self.check_output(atol=1e-2)
+        self.check_output(atol=1e-2)
+
+    def test_check_grad(self):
+        if self.python_api is not None:
+            self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
 if __name__ == "__main__":
