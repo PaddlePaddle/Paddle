@@ -204,7 +204,7 @@ def build_comp_desc_str_for_predict(desc):
         elif dtype == paddle.unit8:
             dtype_str = "unit8"
         else:
-            raise TypeError("Unsupported dtype {}".format(dtype))
+            raise TypeError(f"Unsupported dtype {dtype}")
         return dtype_str
 
     assert isinstance(desc, dict)
@@ -806,7 +806,7 @@ class CommOpCost(OpCost):
             elif dtype == paddle.bool:
                 factor = 8
             else:
-                raise ValueError("Unsupported comm dtype {}".format(dtype))
+                raise ValueError(f"Unsupported comm dtype {dtype}")
             comm_count = reduce(lambda x, y: x * y, shape) * factor
             self._comm_count = comm_count
 

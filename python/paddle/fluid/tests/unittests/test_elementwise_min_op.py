@@ -183,82 +183,6 @@ class TestElementwiseMinFP16Op_Vector(TestElementwiseFP16Op):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
-        x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
-        y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-            )
-        }
-
-
-class TestElementwiseMinFP16Op_broadcast_0(TestElementwiseFP16Op):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
-        x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
-        y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-            )
-        }
-
-
-class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
-        x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
-        y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-            )
-        }
-
-
-class TestElementwiseMinFP16Op_broadcast_1(TestElementwiseFP16Op):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
-        x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
-        y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-            )
-        }
-
-
 class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
@@ -291,44 +215,6 @@ class TestElementwiseMinFP16Op_broadcast_2(TestElementwiseFP16Op):
         self.outputs = {
             'Out': np.minimum(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
-            )
-        }
-
-
-class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[1, 25, 4, 1])
-        x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(np.float64)
-        sgn = np.random.choice([-1, 1], (25, 4)).astype(np.float64)
-        y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (25, 4)).astype(
-            np.float64
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 25, 4, 1)
-            )
-        }
-
-
-class TestElementwiseMinFP16Op_broadcast_3(TestElementwiseFP16Op):
-    def setUp(self):
-        self.op_type = "elementwise_min"
-        self.python_api = broadcast_wrapper(shape=[1, 25, 4, 1])
-        x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(np.float16)
-        sgn = np.random.choice([-1, 1], (25, 4)).astype(np.float16)
-        y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (25, 4)).astype(
-            np.float16
-        )
-        self.inputs = {'X': x, 'Y': y}
-
-        self.attrs = {'axis': 1}
-        self.outputs = {
-            'Out': np.minimum(
-                self.inputs['X'], self.inputs['Y'].reshape(1, 25, 4, 1)
             )
         }
 

@@ -529,7 +529,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
-        ignore_index (int, optional):  Specifies a target value that is ignored and
+        ignore_index (long int, optional):  Specifies a target value that is ignored and
             does not contribute to the loss. A negative value means that no label value
             needs to be ignored. Default is -100 .
 

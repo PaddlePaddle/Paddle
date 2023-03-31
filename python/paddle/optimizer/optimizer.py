@@ -374,7 +374,7 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 assert (
                     var_tmp.name in state_dict
-                ), "optimizer Tensor {} not found".format(var_tmp.name)
+                ), f"optimizer Tensor {var_tmp.name} not found"
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
