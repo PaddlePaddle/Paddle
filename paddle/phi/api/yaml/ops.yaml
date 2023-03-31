@@ -1263,6 +1263,7 @@
     func : ReverseInferMeta
   kernel :
     func : reverse
+    data_type : x
   backward : reverse_grad
 
 - op : roll
