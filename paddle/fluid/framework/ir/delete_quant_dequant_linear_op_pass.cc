@@ -142,7 +142,8 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                                                   "conv2d_fusion",
                                                   "depthwise_conv2d_transpose"};
     // for example, modify according to your needs, save d/dq in the front
-    const std::vector<std::string> retain_op_name{"batch_norm_0.tmp_2"};
+    // const std::vector<std::string> retain_op_name{"batch_norm_0.tmp_2"};
+    const std::vector<std::string> retain_op_name;
 
     // Conclusion: qdq befor bn or relu must be delete.
     // {"batch_norm", "relu"};
