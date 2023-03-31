@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/fused_linear_param_grad_add_kernel.h"
-
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #endif
@@ -23,6 +21,7 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
+namespace fusion {
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
@@ -201,12 +200,13 @@ void FusedLinearParamGradAdd(const Context &ctx,
 }
 #endif
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_linear_param_grad_add,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedLinearParamGradAdd,
+                   phi::fusion::FusedLinearParamGradAdd,
                    float,
                    double,
                    phi::dtype::float16,

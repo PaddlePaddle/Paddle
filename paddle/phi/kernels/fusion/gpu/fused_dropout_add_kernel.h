@@ -19,18 +19,7 @@
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
-
-template <typename T, typename Context>
-void FusedDropoutAddKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           const Scalar& p,
-                           bool is_test,
-                           const std::string& mode,
-                           int seed,
-                           bool fix_seed,
-                           DenseTensor* out,
-                           DenseTensor* seed_offset);
+namespace fusion {
 
 template <typename Context>
 static inline std::vector<size_t> GetRandomCudaProp(int numel,
@@ -52,4 +41,5 @@ static inline std::vector<size_t> GetRandomCudaProp(int numel,
   return {grid_size, block_size, offset, main_offset};
 }
 
+}  // namespace fusion
 }  // namespace phi

@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/onednn/conv_function.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void FusedConv2DKernel(const Context& dev_ctx,
@@ -132,12 +133,13 @@ void FusedConv3DKernel(const Context& dev_ctx,
                 out);
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_conv2d_onednn,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedConv2DKernel,
+                   phi::fusion::FusedConv2DKernel,
                    float,
                    phi::dtype::bfloat16,
                    uint8_t,

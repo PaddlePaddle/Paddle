@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void FusedSoftplusKernel(const Context& dev_ctx,
@@ -55,11 +56,12 @@ void FusedSoftplusKernel(const Context& dev_ctx,
   out->set_mem_desc(dst_memory_p->get_desc());
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_softplus,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedSoftplusKernel,
+                   phi::fusion::FusedSoftplusKernel,
                    float,
                    phi::dtype::bfloat16) {}
