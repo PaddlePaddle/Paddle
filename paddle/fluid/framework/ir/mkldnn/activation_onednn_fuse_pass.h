@@ -42,7 +42,7 @@ inline std::unordered_map<std::string, std::string> GetAttributeMap(
   if (act_type == "swish") {
     attr_map.emplace("beta", "fuse_alpha");
   } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
+    attr_map.emplace("threshold", "fuse_beta");
   } else if (act_type == "hard_sigmoid") {
     attr_map.emplace("slope", "fuse_alpha");
     attr_map.emplace("offset", "fuse_beta");
