@@ -1188,15 +1188,6 @@
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
 
-- op : prelu
-  args : (Tensor x, Tensor alpha, str data_format, str mode)
-  output : Tensor(out)
-  infer_meta :
-    func : PReluInferMeta
-  kernel :
-    func : prelu
-  backward : prelu_grad
-
 - op : prior_box
   args : (Tensor input, Tensor image, float[] min_sizes, float[] aspect_ratios, float[] variances, float[] max_sizes = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
   output : Tensor(out), Tensor(var)
@@ -1390,15 +1381,6 @@
   data_transform:
     skip_transform : input
 
-- op : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize, int ignore_index)
-  output : Tensor
-  infer_meta :
-    func : SigmoidCrossEntropyWithLogitsInferMeta
-  kernel :
-    func : sigmoid_cross_entropy_with_logits
-  backward : sigmoid_cross_entropy_with_logits_grad
-
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor
@@ -1417,16 +1399,6 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
-
-- op : spectral_norm
-  args : (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps)
-  output : Tensor
-  infer_meta :
-    func : SpectralNormInferMeta
-  kernel :
-    func : spectral_norm
-    data_type : weight
-  backward : spectral_norm_grad
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)

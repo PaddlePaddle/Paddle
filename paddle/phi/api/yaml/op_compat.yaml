@@ -1447,6 +1447,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    { x : X, alpha : Alpha}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1791,6 +1795,13 @@
   outputs :
     out : Out
 
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
+  outputs :
+    out : Out
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -2040,3 +2051,10 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: sigmoid_cross_entropy_with_logits
+  backward: sigmoid_cross_entropy_with_logits_grad
+  inputs :
+    {x: X, label: Label}
+  outputs :
+    out : Out

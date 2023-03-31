@@ -168,7 +168,7 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x_array.dtype, x.numpy().dtype)
                 np.testing.assert_array_equal(x_array, x.numpy())
 
-                x = paddle.to_tensor(1.0)
+                x = paddle.to_tensor(1.0, place=place)
                 self.assertEqual(x.item(), 1.0)
                 self.assertTrue(isinstance(x.item(), float))
 

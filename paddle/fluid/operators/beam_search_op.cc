@@ -148,8 +148,12 @@ REGISTER_OPERATOR(beam_search,
                   ops::BeamSearchOp,
                   ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
-REGISTER_OP_CPU_KERNEL(beam_search,
-                       ops::BeamSearchOpKernel<phi::CPUContext, float>,
-                       ops::BeamSearchOpKernel<phi::CPUContext, double>,
-                       ops::BeamSearchOpKernel<phi::CPUContext, int>,
-                       ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(beam_search,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BeamSearchOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
