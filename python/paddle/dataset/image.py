@@ -76,8 +76,8 @@ def batch_images_from_tar(
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
-    meta_file = "%s/%s_%s.txt" % (batch_dir, dataset_name, os.getpid())
+    out_path = f"{batch_dir}/{dataset_name}_{os.getpid()}"
+    meta_file = f"{batch_dir}/{dataset_name}_{os.getpid()}.txt"
 
     if os.path.exists(out_path):
         return meta_file
@@ -111,7 +111,7 @@ def batch_images_from_tar(
 
     with open(meta_file, mode='a') as meta:
         for file in os.listdir(out_path):
-            meta.write(os.path.abspath("%s/%s" % (out_path, file)) + "\n")
+            meta.write(os.path.abspath(f"{out_path}/{file}") + "\n")
     return meta_file
 
 

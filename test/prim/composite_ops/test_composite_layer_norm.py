@@ -18,8 +18,10 @@ import numpy as np
 from utils import SUB_TOLERANCE
 
 import paddle
-import paddle.nn.functional as F
+from paddle import _C_ops
 from paddle.fluid import core, framework
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.incubate.autograd import primapi
 from paddle.nn import LayerNorm
 
@@ -30,6 +32,70 @@ def generate_data(shape1, shape2, shape3, dtype="float32"):
     np_data2 = np.random.random(shape2).astype(dtype)
     np_data3 = np.random.random(shape3).astype(dtype)
     return np_data1, np_data2, np_data3
+
+
+def layer_norm_wrapper(
+    x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
+):
+    input_shape = list(x.shape)
+    input_ndim = len(input_shape)
+
+    normalized_ndim = len(normalized_shape)
+    begin_norm_axis = input_ndim - normalized_ndim
+    if (
+        input_ndim < normalized_ndim
+        or input_shape[begin_norm_axis:] != normalized_shape
+    ):
+        str_normalized_shape = str(normalized_shape)
+        raise ValueError(
+            'Given normalized_shape is '
+            + str_normalized_shape
+            + ', expected input with shape [*, '
+            + str_normalized_shape[1:]
+            + ', but got input shape '
+            + str(input_shape)
+        )
+
+    if in_dygraph_mode():
+        return _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+
+    else:
+
+        inputs = {}
+        inputs['X'] = [x]
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
+        attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
+
+        # create output
+        helper = LayerHelper('layer_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
+
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
+        mean_out = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        variance_out = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
+
+        helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+        )
+
+        return layer_norm_out, mean_out, variance_out
 
 
 class Attr:
@@ -64,7 +130,7 @@ attrs = Attr()
 
 
 def fn(x, norm_shape, w, b):
-    return F.layer_norm(x, norm_shape, w, b)
+    return layer_norm_wrapper(x, norm_shape, w, b)
 
 
 def expect_forward(x, norm_shape, w, b):
@@ -92,7 +158,7 @@ class TestCompositelayer_norm(unittest.TestCase):
                 'w', shape=weight.shape, dtype=str(weight.dtype)
             )
             b = paddle.static.data('b', shape=bias.shape, dtype=str(bias.dtype))
-            y = fn(x, norm_shape, w, b)
+            out, mean, var = fn(x, norm_shape, w, b)
 
             blocks = main_program.blocks
 
@@ -115,7 +181,7 @@ class TestCompositelayer_norm(unittest.TestCase):
                 'w': weight,
                 'b': bias,
             },
-            fetch_list=[y],
+            fetch_list=[out, mean, var],
         )
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
@@ -131,7 +197,7 @@ class TestCompositelayer_norm(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
 
-            y = fn(x, norm_shape, weight, bias)
+            out, mean, var = fn(x, norm_shape, weight, bias)
 
             blocks = main_program.blocks
 
@@ -152,7 +218,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             feed={
                 'x': inputs,
             },
-            fetch_list=[y],
+            fetch_list=[out, mean, var],
         )
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
@@ -167,26 +233,28 @@ class TestCompositelayer_norm(unittest.TestCase):
         w_p = paddle.to_tensor(w)
         b_p = paddle.to_tensor(b)
 
-        expect = expect_forward(x_p, n_shape, w_p, b_p).numpy()
-        actual = self.cal_composite(x, n_shape, w, b)[0]
+        expect = expect_forward(x_p, n_shape, w_p, b_p)
+        actual = self.cal_composite(x, n_shape, w, b)
 
-        assert expect.dtype == actual.dtype
-        np.testing.assert_allclose(
-            expect,
-            actual,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
-        )
+        assert expect[0].numpy().dtype == actual[0].dtype
+        for i in range(3):
+            np.testing.assert_allclose(
+                expect[i].numpy(),
+                actual[i],
+                rtol=attrs.get_rtol("forward"),
+                atol=attrs.get_atol("forward"),
+            )
 
-        expect_2 = expect_forward(x_p, n_shape, None, None).numpy()
-        actual_2 = self.cal2_composite(x, n_shape, None, None)[0]
-        assert expect_2.dtype == actual_2.dtype
-        np.testing.assert_allclose(
-            expect_2,
-            actual_2,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
-        )
+        expect_2 = expect_forward(x_p, n_shape, None, None)
+        actual_2 = self.cal2_composite(x, n_shape, None, None)
+        assert expect_2[0].numpy().dtype == actual_2[0].dtype
+        for i in range(3):
+            np.testing.assert_allclose(
+                expect_2[i].numpy(),
+                actual_2[i],
+                rtol=attrs.get_rtol("forward"),
+                atol=attrs.get_atol("forward"),
+            )
 
     def test_forward(self):
         for j in self.dtypes:

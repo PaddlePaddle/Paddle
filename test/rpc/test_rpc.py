@@ -25,7 +25,7 @@ paddle.device.set_device("cpu")
 
 
 def worker_name(rank):
-    return "worker{}".format(rank)
+    return f"worker{rank}"
 
 
 def paddle_add(a, b):
@@ -80,7 +80,7 @@ class TestMultiProcessRpc(RpcTestBase):
 class TestSingleProcessRpc(RpcTestBase):
     def setUp(self):
         self._port_set = set()
-        master_endpoint = "127.0.0.1:{}".format(self._find_free_port())
+        master_endpoint = f"127.0.0.1:{self._find_free_port()}"
         dist.rpc.init_rpc(worker_name(0), 0, 1, master_endpoint)
         print("Single Process RPC setUp...")
 

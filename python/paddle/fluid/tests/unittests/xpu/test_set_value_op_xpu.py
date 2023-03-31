@@ -687,7 +687,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _get_answer(self):
                 self.data[0, 1] = 3
 
-        cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt32")
+        cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt32")
         XPUTestValueInt.__name__ = cls_name
         globals()[cls_name] = XPUTestValueInt
 
@@ -709,7 +709,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _get_answer(self):
                 self.data[0, 1] = 3
 
-        cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt64")
+        cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt64")
         XPUTestValueInt.__name__ = cls_name
         globals()[cls_name] = XPUTestValueInt
 
@@ -731,7 +731,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _get_answer(self):
                 self.data[0, 1] = 3
 
-        cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp32")
+        cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp32")
         XPUTestValueInt.__name__ = cls_name
         globals()[cls_name] = XPUTestValueInt
 
@@ -755,7 +755,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _get_answer(self):
                 self.data[0, 1] = False
 
-        cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorBool")
+        cls_name = "{}_{}".format(parent.__name__, "ValueTensorBool")
         XPUTestValueInt.__name__ = cls_name
         globals()[cls_name] = XPUTestValueInt
 

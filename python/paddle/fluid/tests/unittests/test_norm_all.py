@@ -310,7 +310,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     max_relative_error=max_relative_error,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPnormFP16Op.__name__ = cls_name
     globals()[cls_name] = TestPnormFP16Op
 
