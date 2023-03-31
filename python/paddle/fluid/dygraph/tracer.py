@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
+
+import numpy as np
+
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle import _C_ops, _legacy_C_ops
@@ -321,6 +324,14 @@ class Tracer(core.Tracer):
                     type, inputs, outputs, attrs, stop_gradient, inplace_map
                 )
         else:
+            # this block is used to convert attrs according to the opproto
+            # since `trace` handles AttributeMap directly, without other
+            # modification to the passed attribute map, so we change it before
+            # `trace`
+            if framework.OpProtoHolder.instance().has_op_proto(type):
+                proto = framework.OpProtoHolder.instance().get_op_proto(type)
+                attrs = framework.canonicalize_attrs(attrs, proto)
+
             self.trace(
                 type,
                 inputs,

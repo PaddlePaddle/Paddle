@@ -20,10 +20,10 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
+from paddle.fluid import core
 
 __all__ = []
 
@@ -185,7 +185,7 @@ class Gloo:
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
         def __start_kv_server(http_server_d, size_d):
-            print("start http_server: {}, {}".format(port, size_d))
+            print(f"start http_server: {port}, {size_d}")
             from paddle.distributed.fleet.utils.http_server import KVServer
 
             http_server = KVServer(port, size_d)
@@ -203,7 +203,7 @@ class Gloo:
             size_d = {
                 worker_key: self._worker_num,
             }
-            print("worker_key:{}, size: {}".format(worker_key, size_d))
+            print(f"worker_key:{worker_key}, size: {size_d}")
 
             http_server_d["running"] = True
             # child process for http server

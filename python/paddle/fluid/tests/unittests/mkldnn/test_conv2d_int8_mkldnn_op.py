@@ -17,8 +17,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import (
     TestConv2DOp,
     conv2d_forward_naive,
@@ -385,15 +385,15 @@ def create_test_int8_class(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", True)
 
-    cls_name_s8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
-    cls_name_s8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
-    cls_name_u8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
-    cls_name_u8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
+    cls_name_s8u8 = "{}_relu_{}_residual_0".format(parent.__name__, "1")
+    cls_name_s8s8 = "{}_relu_{}_residual_0".format(parent.__name__, "0")
+    cls_name_u8s8 = "{}_relu_{}_residual_0".format(parent.__name__, "0")
+    cls_name_u8u8 = "{}_relu_{}_residual_0".format(parent.__name__, "1")
 
-    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+    cls_name_s8s8_re_1 = "{}_relu_{}_residual_{}".format(
         parent.__name__, "0", "1"
     )
-    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+    cls_name_u8s8_re_1 = "{}_relu_{}_residual_{}".format(
         parent.__name__, "0", "1"
     )
     TestS8U8Case.__name__ = cls_name_s8u8
@@ -416,7 +416,7 @@ def create_test_int8_class(parent):
             def init_data_type(self):
                 init_data_type_with_fusion(self, np.int8, "relu", True)
 
-        cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+        cls_name_s8u8_re_1 = "{}_relu_{}_residual_{}".format(
             parent.__name__, "1", "1"
         )
         TestS8U8ResCase.__name__ = cls_name_s8u8_re_1

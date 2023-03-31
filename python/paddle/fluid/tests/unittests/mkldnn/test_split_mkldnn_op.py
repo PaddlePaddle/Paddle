@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestSplitSectionsOneDNNOp(OpTest):
@@ -68,10 +68,10 @@ class TestSplitSectionsOneDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_dygraph=False)
 
 
 # test with attr(num)
@@ -86,7 +86,9 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2', 'out3'], check_dygraph=False
+        )
 
 
 class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
@@ -112,7 +114,7 @@ class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
         self.sections_tensor_list = []
         for index, ele in enumerate(self.sections):
             self.sections_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
         self.sections = [-1, -1, -1]
         indices_or_sections = [2, 3]  # sections
@@ -149,8 +151,8 @@ def create_test_class(parent):
         def test_check_grad(self):
             pass
 
-    TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
-    TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
+    TestInt8Case.__name__ = "{}_{}".format(parent.__name__, "INT8")
+    TestUint8Case.__name__ = "{}_{}".format(parent.__name__, "UINT8")
     globals()[TestInt8Case.__name__] = TestUint8Case
     globals()[TestUint8Case.__name__] = TestInt8Case
 

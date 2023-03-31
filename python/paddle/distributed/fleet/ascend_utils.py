@@ -84,10 +84,8 @@ def _get_ascend_rankfile(rank_table_file_path):
             nodes = os.getenv("DLS_TASK_NUMBER", None)
             assert nodes is not None, "DLS_TASK_NUMBER didn't set!"
             for node in range(int(nodes)):
-                node_ip = os.getenv("VC_CUSTOM{}_HOSTS".format(node), None)
-                assert (
-                    node_ip is not None
-                ), "VC_CUSTOM{}_HOSTS didn't set!".format(node)
+                node_ip = os.getenv(f"VC_CUSTOM{node}_HOSTS", None)
+                assert node_ip is not None, f"VC_CUSTOM{node}_HOSTS didn't set!"
                 node_ips.append(node_ip)
             return node_ips, device_count
         node_ips.append(server['server_id'])
@@ -118,7 +116,7 @@ def get_cloud_cluster(
 
         assert (
             node_ip in node_ips
-        ), "Can't find your local ip {%s} in node_ips: {%s}" % (
+        ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
             node_ip,
             node_ips,
         )
@@ -129,9 +127,7 @@ def get_cloud_cluster(
         device_count = 1
 
     devices_per_proc = [str(x) for x in range(device_count)]
-    free_ports = [
-        x for x in range(start_port, start_port + len(devices_per_proc))
-    ]
+    free_ports = list(range(start_port, start_port + len(devices_per_proc)))
 
     trainer_endpoints = []
     for ip in node_ips:

@@ -21,11 +21,9 @@ from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 from scipy.special import erf, expit
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-import paddle.static as static
-from paddle.fluid import Program, program_guard
+from paddle import fluid, static
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -471,9 +469,12 @@ class TestLogSigmoidAPI(unittest.TestCase):
 class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tanh
+        self.public_python_api = paddle.tanh
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -485,7 +486,7 @@ class TestTanh(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -493,10 +494,16 @@ class TestTanh(TestActivation, TestParameter):
         # for now.
         self.dtype = np.float32
 
+    def if_enable_cinn(self):
+        pass
+
 
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -603,7 +610,7 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
-class TestAtan_ZeroDim(TestTanh):
+class TestAtan_ZeroDim(TestAtan):
     def init_shape(self):
         self.shape = []
 
@@ -2437,7 +2444,7 @@ class TestSoftRelu(TestActivation):
         t = np.copy(x)
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
-        out = np.log((np.exp(t) + 1))
+        out = np.log(np.exp(t) + 1)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {'threshold': threshold}
@@ -3843,7 +3850,7 @@ def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
         def init_kernel_type(self):
             self.attrs = {"use_cudnn": True}
 
-    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    cls_name = "{}_{}".format(parent.__name__, "cudnn")
     TestActCudnn.__name__ = cls_name
     globals()[cls_name] = TestActCudnn
 
@@ -3898,7 +3905,7 @@ def create_test_act_fp16_class(
                     max_relative_error=grad_atol,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "fp16")
+    cls_name = "{}_{}".format(parent.__name__, "fp16")
     TestActFp16.__name__ = cls_name
     globals()[cls_name] = TestActFp16
 
@@ -3912,7 +3919,7 @@ create_test_act_fp16_class(TestTanh)
 create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
-create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestSqrt, check_prim=True)
 create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
@@ -3977,7 +3984,7 @@ def create_test_act_bf16_class(
                 place, ['X'], 'Out', max_relative_error=grad_atol
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
+    cls_name = "{}_{}".format(parent.__name__, "bf16")
     TestActBF16.__name__ = cls_name
     globals()[cls_name] = TestActBF16
 

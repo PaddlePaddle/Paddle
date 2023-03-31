@@ -31,7 +31,7 @@ __all__ = []
 def detach_variable(inputs):
     out = []
     for inp in inputs:
-        if not isinstance(inp, (core.eager.Tensor, core.VarBase)):
+        if not isinstance(inp, core.eager.Tensor):
             out.append(inp)
             continue
 
@@ -109,18 +109,14 @@ class RecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError(
-                "unsupported amp dtype: {}".format(tracer._amp_dtype)
-            )
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -172,7 +168,7 @@ class RecomputeFunction(PyLayer):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, core.eager.Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -185,7 +181,7 @@ class RecomputeFunction(PyLayer):
             backward_inputs_with_grad = []
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], core.eager.Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -206,13 +202,13 @@ class RecomputeFunction(PyLayer):
                 grads = tuple(
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                    if isinstance(inp, core.eager.Tensor)
                 )
             else:
                 grads = [
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                    if isinstance(inp, core.eager.Tensor)
                 ]
             return grads
 
@@ -499,6 +495,6 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
             _run_func(begin, end, functions),
             *args,
             preserve_rng_state=preserve_rng_state,
-            **kwargs
+            **kwargs,
         )
     return _run_func(end + 1, len(functions) - 1, functions)(args)

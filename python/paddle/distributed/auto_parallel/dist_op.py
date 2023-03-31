@@ -37,7 +37,7 @@ class DistributedOperator:
             # TODO: Do we really need to write back to serial op？
             self._serial_op.dist_attr = dist_attr
         else:
-            assert dist_attr is None, "{}".format(dist_attr)
+            assert dist_attr is None, f"{dist_attr}"
             # Use the dist attr of serial_op to do the initialization
             self._dist_attr = self._serial_op.dist_attr
         self._serial_inputs = {}
@@ -323,7 +323,7 @@ class DistributedOperatorHelper:
         output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
-        if isinstance(output, tuple) or isinstance(output, list):
+        if isinstance(output, (tuple, list)):
             new_output = list(output)
         elif isinstance(output, Variable):
             new_output = [output]

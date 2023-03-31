@@ -26,3 +26,40 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               std::vector<int> dilations,
                               int groups,
                               std::string data_format);
+
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool use_global_stats,
+                         bool trainable_statistics);
+namespace sparse {
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool use_global_stats,
+                         bool trainable_statistics);
+}  // namespace sparse
