@@ -543,7 +543,7 @@ def _lower(block, reverse, blacklist):
     for var_name in sorted(vars_to_remove):
         assert (
             var_name in to_bind_rev
-        ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+        ), f'var_name "{var_name}" is not in to_bind_rev.'
         if var_name != to_bind_rev[var_name]:
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
@@ -704,7 +704,7 @@ def _lower_composite(
         for var_name in sorted(vars_to_remove):
             assert (
                 var_name in to_bind_rev
-            ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+            ), f'var_name "{var_name}" is not in to_bind_rev.'
             if var_name != to_bind_rev[var_name]:
                 block.desc._remove_var(var_name.encode())
                 del block.vars[var_name]
