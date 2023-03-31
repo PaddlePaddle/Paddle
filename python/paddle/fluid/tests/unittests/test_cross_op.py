@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class TestCrossOp(OpTest):
@@ -75,6 +75,45 @@ class TestCrossFP16Op(TestCrossOp):
         for i in range(2048):
             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "cross"
+        self.python_api = paddle.cross
+        self.initTestCase()
+        self.inputs = {
+            'X': np.random.random(self.shape).astype(self.dtype),
+            'Y': np.random.random(self.shape).astype(self.dtype),
+        }
+        self.init_output()
+
+    def initTestCase(self):
+        self.attrs = {'dim': -2}
+        self.dtype = np.uint16
+        self.shape = (1024, 3, 1)
+
+    def init_output(self):
+        x = np.squeeze(self.inputs['X'], 2)
+        y = np.squeeze(self.inputs['Y'], 2)
+        z_list = []
+        for i in range(1024):
+            z_list.append(np.cross(x[i], y[i]))
+        self.outputs = {
+            'Out': np.array(z_list).astype(np.float32).reshape(self.shape)
+        }
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 class TestCrossAPI(unittest.TestCase):
