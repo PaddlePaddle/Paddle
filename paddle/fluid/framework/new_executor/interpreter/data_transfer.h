@@ -35,7 +35,7 @@ class DataTranferHelper {
       : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
   bool apply(const phi::KernelKey& kernel_type_for_var,
-             const framework::OpKernelType& expected_kernel_key,
+             const phi::KernelKey& expected_kernel_key,
              const phi::DenseTensor* tensor,
              const std::string& var_name,
              std::string* new_var_name,
@@ -82,9 +82,14 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
 
 inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
                                   const phi::DenseTensor* tensor,
-                                  const phi::Place& expected_place) {
+                                  const phi::Backend& expected_backend) {
   if (kernel_type_for_var.backend() == phi::Backend::ALL_BACKEND ||
-      platform::is_same_place(tensor->place(), expected_place) ||
+      expected_backend == phi::Backend::ALL_BACKEND) {
+    return false;
+  }
+
+  phi::Place expected_place = phi::TransToPhiPlace(expected_backend);
+  if (platform::is_same_place(tensor->place(), expected_place) ||
       (platform::is_cuda_pinned_place(tensor->place()) &&
        platform::is_cpu_place(expected_place))) {
     return false;

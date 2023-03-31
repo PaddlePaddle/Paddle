@@ -16,8 +16,8 @@ from collections import namedtuple
 
 import hccl.manage.api as hccl
 
-import paddle.framework.core as core
 from paddle.distributed import fleet
+from paddle.framework import core
 from paddle.optimizer import Optimizer
 
 from . import ascend_parser
@@ -116,10 +116,9 @@ class AscendIRParser:
             )
             op_parser.apply(op)
         else:
-            assert (
-                False
-            ), "Op[%s] has not been registered, so we have to skip it" % (
-                op.type
+            raise AssertionError(
+                'Op[%s] has not been registered, so we have to skip it'
+                % op.type
             )
 
     def _parse_program(
@@ -197,7 +196,7 @@ class AscendIRParser:
                 HcomGroupConfig(
                     name="hcom_group_0",
                     nranks=fleet.world_size(),
-                    rank_ids=[x for x in range(fleet.world_size())],
+                    rank_ids=list(range(fleet.world_size())),
                 )
             )
 

@@ -71,7 +71,7 @@ __global__ void SetVariance(T* out,
   CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -133,6 +133,10 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(anchor_generator,
-                        ops::AnchorGeneratorOpCUDAKernel<float>,
-                        ops::AnchorGeneratorOpCUDAKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(anchor_generator,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::AnchorGeneratorOpCUDAKernel,
+                          float,
+                          double) {}

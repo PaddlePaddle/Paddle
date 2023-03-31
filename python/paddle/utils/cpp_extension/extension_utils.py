@@ -887,7 +887,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 def is_cuda_file(path):
 
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
@@ -950,12 +950,12 @@ def parse_op_info(op_name):
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
     in_names = [x.name for x in op_proto.inputs]
-    out_names = [x.name for x in op_proto.outputs]
     attr_names = [
         x.name for x in op_proto.attrs if x.name not in DEFAULT_OP_ATTR_NAMES
     ]
+    out_names = [x.name for x in op_proto.outputs]
 
-    return in_names, out_names, attr_names
+    return in_names, attr_names, out_names
 
 
 def _import_module_from_library(module_name, build_directory, verbose=False):
@@ -1038,29 +1038,58 @@ def _generate_python_module(
     return custom_module
 
 
+def _gen_output_content(in_names, out_names, inplace_reverse_idx):
+    # ' ' * tab space * tab number
+    indent = ' ' * 4 * 2
+    dynamic_content = ""
+    static_content = ""
+    for out_idx, out_name in enumerate(out_names):
+        in_idx = -1
+        if out_idx in inplace_reverse_idx:
+            in_idx = inplace_reverse_idx[out_idx]
+        if in_idx != -1 and "@VECTOR" in in_names[in_idx]:
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}outs['{out_name}'] = [core.eager.Tensor() for _ in range(len({lower_in_names}))]
+{indent}ctx.add_outputs(outs['{out_name}'])"""
+            static_content += f"""
+{indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+        else:
+            dynamic_content += f"""
+{indent}outs['{out_name}'] = core.eager.Tensor()
+{indent}ctx.add_outputs(outs['{out_name}'])"""
+            static_content += f"""
+{indent}outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+
+    return dynamic_content, static_content
+
+
 def _custom_api_content(op_name):
     (
-        params_str,
-        ins_str,
-        attrs_str,
-        outs_str,
+        params_list,
+        ins_map,
+        attrs_map,
+        outs_list,
         in_names,
-        attrs_names,
+        attr_names,
+        out_names,
+        inplace_reverse_idx,
     ) = _get_api_inputs_str(op_name)
-    lower_in_names = [p.split("@")[0].lower() for p in in_names]
+    dynamic_content, static_content = _gen_output_content(
+        in_names, out_names, inplace_reverse_idx
+    )
+    lower_in_list = [p.split("@")[0].lower() for p in in_names]
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.core import VarBase, CustomOpKernelContext
+        from paddle.fluid.core import Tensor, CustomOpKernelContext
         from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 
-        def {op_name}({inputs}):
+        def {op_name}({params_list}):
             # prepare inputs and outputs
-            ins = {ins}
-            attrs = {attrs}
             outs = {{}}
-            out_names = {out_names}
+            outs_list = {outs_list}
 
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
@@ -1070,18 +1099,19 @@ def _custom_api_content(op_name):
                     ctx.add_inputs(i)
                 for j in {attr_names}:
                     ctx.add_attr(j)
-                for out_name in out_names:
-                    outs[out_name] = core.eager.Tensor()
-                    ctx.add_outputs(outs[out_name])
+                {dynamic_content}
                 core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
+                ins = {{}}
+                for key, value in dict({ins_map}).items():
+                    # handle optional inputs
+                    if value is not None:
+                        ins[key] = value
                 helper = LayerHelper("{op_name}", **locals())
-                for out_name in out_names:
-                    outs[out_name] = helper.create_variable(dtype='float32')
+                {static_content}
+                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs={attrs_map})
 
-                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
-
-            res = [outs[out_name] for out_name in out_names]
+            res = [outs[out_name] for out_name in outs_list]
 
             return res[0] if len(res)==1 else res
             """
@@ -1090,13 +1120,15 @@ def _custom_api_content(op_name):
     # generate python api file
     api_content = API_TEMPLATE.format(
         op_name=op_name,
-        inputs=params_str,
-        ins=ins_str,
-        attrs=attrs_str,
+        params_list=params_list,
+        ins_map=ins_map,
+        attrs_map=attrs_map,
         # "[x, y, z]""
-        in_names="[" + ",".join(lower_in_names) + "]",
-        attr_names="[" + ",".join(attrs_names) + "]",
-        out_names=outs_str,
+        in_names="[" + ",".join(lower_in_list) + "]",
+        attr_names="[" + ",".join(attr_names) + "]",
+        outs_list=outs_list,
+        dynamic_content=dynamic_content,
+        static_content=static_content,
     )
 
     return api_content
@@ -1128,30 +1160,42 @@ def _get_api_inputs_str(op_name):
     """
     Returns string of api parameters and inputs dict.
     """
-    in_names, out_names, attr_names = parse_op_info(op_name)
+    in_names, attr_names, out_names = parse_op_info(op_name)
     # e.g: x, y, z
     param_names = in_names + attr_names
     # NOTE(chenweihang): we add suffix `@VECTOR` for std::vector<Tensor> input,
     # but the string contains `@` cannot used as argument name, so we split
     # input name by `@`, and only use first substr as argument
-    params_str = ','.join([p.split("@")[0].lower() for p in param_names])
+    params_list = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_str = "{%s}" % ','.join(
+    ins_map = "{%s}" % ','.join(
         [
             "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
             for in_name in in_names
         ]
     )
     # e.g: {'num': n}
-    attrs_str = "{%s}" % ",".join(
+    attrs_map = "{%s}" % ",".join(
         [
             "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
             for attr_name in attr_names
         ]
     )
     # e.g: ['Out', 'Index']
-    outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
-    return params_str, ins_str, attrs_str, outs_str, in_names, attr_names
+    outs_list = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
+
+    inplace_reverse_idx = core.eager._get_custom_operator_inplace_map(op_name)
+
+    return (
+        params_list,
+        ins_map,
+        attrs_map,
+        outs_list,
+        in_names,
+        attr_names,
+        out_names,
+        inplace_reverse_idx,
+    )
 
 
 def _write_setup_file(
@@ -1273,7 +1317,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 

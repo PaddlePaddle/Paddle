@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -69,8 +69,8 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
             self.np_grad[func] = grad
 
-        self.np_out = dict()
-        self.np_grad = dict()
+        self.np_out = {}
+        self.np_grad = {}
         _cal_np_out_and_gradient('amax')
         _cal_np_out_and_gradient('amin')
         _cal_np_out_and_gradient('max')

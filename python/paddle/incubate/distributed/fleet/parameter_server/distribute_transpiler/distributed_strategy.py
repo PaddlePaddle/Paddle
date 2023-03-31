@@ -16,7 +16,7 @@ __all__ = []
 
 import os
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
@@ -186,7 +186,7 @@ class DistributedStrategy:
         self.debug_opt = opt_info
 
     def get_debug_opt(self):
-        opt_info = dict()
+        opt_info = {}
         if self.debug_opt is not None and isinstance(self.debug_opt, dict):
             opt_info["dump_slot"] = bool(self.debug_opt.get("dump_slot", 0))
             opt_info["dump_converter"] = str(

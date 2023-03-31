@@ -18,7 +18,7 @@ including config, etc.
 
 import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestTrainerDesc(unittest.TestCase):

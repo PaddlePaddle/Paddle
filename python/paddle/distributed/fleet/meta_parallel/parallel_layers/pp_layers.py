@@ -45,8 +45,7 @@ import re
 from functools import partial
 
 import paddle
-import paddle.framework as framework
-import paddle.nn as nn
+from paddle import framework, nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ...utils.log_util import layer_to_str, logger
@@ -502,7 +501,10 @@ class PipelineLayer(nn.Layer):
             if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad, group=comm['group']
+                        param.grad
+                        if not hasattr(param, "main_grad")
+                        else param.main_grad,
+                        group=comm['group'],
                     )
             else:
                 with paddle.framework.no_grad():

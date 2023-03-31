@@ -542,7 +542,7 @@ class PSLib(Fleet):
                 for i in tp.dense_table:
                     if table_id is not None and table_id != i.table_id:
                         continue
-                    var_list = [var for var in i.dense_variable_name]
+                    var_list = list(i.dense_variable_name)
                     skip = False
                     for var in var_list:
                         if scope.find_var(var) is None:
@@ -751,7 +751,7 @@ class PSLib(Fleet):
                 for i in tp.dense_table:
                     if table_id is not None and table_id != i.table_id:
                         continue
-                    table_var_names = [var for var in i.dense_variable_name]
+                    table_var_names = list(i.dense_variable_name)
                     skip = False
                     for var in table_var_names:
                         if scope.find_var(var) is None:
