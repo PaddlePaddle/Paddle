@@ -17,9 +17,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/bilinear_tensor_product_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(bilinear_tensor_product_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BilinearTensorProductGradKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    bilinear_grad, CPU, ALL_LAYOUT, phi::BilinearGradKernel, float, double) {}

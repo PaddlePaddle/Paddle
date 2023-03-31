@@ -247,7 +247,7 @@
   infer_meta :
     func : BilinearTensorProductInferMeta
   kernel :
-    func : bilinear_tensor_product
+    func : bilinear
   optional : bias
   backward : bilinear_tensor_product_grad
 
