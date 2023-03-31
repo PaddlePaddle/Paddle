@@ -17,6 +17,7 @@ import numpy as np
 from paddle.fluid import core
 from paddle.fluid.proto import framework_pb2
 
+
 # NOTE: this is added to support creating a Scalar message
 # from a python number
 def make_scalar_proto(value):
@@ -256,7 +257,7 @@ def create_op_creation_method(op_proto):
         inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
         outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs],
-        extra_attrs=[item for item in extra_attrs_map.keys()],
+        extra_attrs=list(extra_attrs_map.keys()),
     )
 
 
