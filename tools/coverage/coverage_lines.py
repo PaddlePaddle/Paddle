@@ -60,7 +60,7 @@ if __name__ == '__main__':
     expected = float(sys.argv[2])
 
     if not os.path.isfile(info_file):
-        print('info file {} is not exists, ignored'.format(info_file))
+        print(f'info file {info_file} is not exists, ignored')
         sys.exit()
 
     actual = get_lines(info_file)
