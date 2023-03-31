@@ -20,7 +20,6 @@ from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
-from paddle.fluid.parallel_executor import ParallelExecutor
 
 from ..base.private_helper_function import wait_server_ready
 from .runtime_base import RuntimeBase
@@ -164,9 +163,9 @@ class Accessor:
     def to_string(self, indent):
         accessor_str = "{}accessor {{{}\n{}}}"
         attrs = ""
-        attrs += "accessor_class: \"{}\" ".format(self.accessor_class)
-        attrs += "fea_dim: {} ".format(self.feature_dim)
-        attrs += "embedx_dim: {} ".format(self.embedding_dim)
+        attrs += f"accessor_class: \"{self.accessor_class}\" "
+        attrs += f"fea_dim: {self.feature_dim} "
+        attrs += f"embedx_dim: {self.embedding_dim} "
         attrs += "\n"
         if self.optimizer is not None:
             attrs += self.optimizer.to_string(indent)
@@ -323,7 +322,7 @@ class CommonAccessor:
                 break
 
         if oop is None:
-            raise ValueError("can not find optimizer for {}".format(grad_name))
+            raise ValueError(f"can not find optimizer for {grad_name}")
 
         params = []
         dims = []
@@ -437,28 +436,28 @@ class CommonAccessor:
     def to_string(self, indent):
         accessor_str = "{}common {{{}\n{}}}"
         attrs = ""
-        attrs += "name: \"{}\" ".format(self.accessor_class)
+        attrs += f"name: \"{self.accessor_class}\" "
 
         if self.table_name:
-            attrs += "table_name: \"{}\" ".format(self.table_name)
+            attrs += f"table_name: \"{self.table_name}\" "
 
         if self.entry:
-            attrs += "entry: \"{}\" ".format(self.entry)
-        attrs += "trainer_num: {} ".format(self.trainer_num)
-        attrs += "sync: {} ".format(self.sync)
+            attrs += f"entry: \"{self.entry}\" "
+        attrs += f"trainer_num: {self.trainer_num} "
+        attrs += f"sync: {self.sync} "
         if self.table_num:
-            attrs += "table_num: {} ".format(self.table_num)
+            attrs += f"table_num: {self.table_num} "
         if self.table_dim:
-            attrs += "table_dim: {} ".format(self.table_dim)
+            attrs += f"table_dim: {self.table_dim} "
 
         for param in self.params:
-            attrs += "params: \"{}\" ".format(param)
+            attrs += f"params: \"{param}\" "
 
         for dim in self.dims:
-            attrs += "dims: {} ".format(dim)
+            attrs += f"dims: {dim} "
 
         for initializer in self.initializers:
-            attrs += "initializers: \"{}\" ".format(initializer)
+            attrs += f"initializers: \"{initializer}\" "
 
         attrs += "\n"
         return accessor_str.format(
@@ -477,10 +476,10 @@ class Tensor:
     def to_string(self, indent):
         program_str = "{}tensor {{{}\n{}}}"
         attrs = ""
-        attrs += "feed_var_name: \"{}\" ".format(str(self.feed_var_name))
-        attrs += "fetch_var_name: \"{}\" ".format(str(self.fetch_var_name))
-        attrs += "startup_program_id: {} ".format(str(self.startup_program_id))
-        attrs += "main_program_id: {} ".format(str(self.main_program_id))
+        attrs += f"feed_var_name: \"{str(self.feed_var_name)}\" "
+        attrs += f"fetch_var_name: \"{str(self.fetch_var_name)}\" "
+        attrs += f"startup_program_id: {str(self.startup_program_id)} "
+        attrs += f"main_program_id: {str(self.main_program_id)} "
         attrs += "tensor_table_class: \"{}\" ".format(
             str(self.tensor_table_class)
         )
@@ -510,10 +509,10 @@ class Table:
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
-        attrs += "table_id: {} ".format(self.id)
-        attrs += "table_class: \"{}\" ".format(self.table_class)
-        attrs += "shard_num: {} ".format(self.shard_num)
-        attrs += "type: {}".format(self.type)
+        attrs += f"table_id: {self.id} "
+        attrs += f"table_class: \"{self.table_class}\" "
+        attrs += f"shard_num: {self.shard_num} "
+        attrs += f"type: {self.type}"
         attrs += "\n"
         indent += 2
 
@@ -550,11 +549,11 @@ class Service:
         service_str = "{}service_param {{{}\n{}}}"
 
         attrs = ""
-        attrs += "server_class: \"{}\" ".format(self.server_class)
-        attrs += "client_class: \"{}\" ".format(self.client_class)
-        attrs += "service_class: \"{}\" ".format(self.service_class)
-        attrs += "start_server_port: {} ".format(self.start_server_port)
-        attrs += "server_thread_num: {} ".format(self.server_thread_num)
+        attrs += f"server_class: \"{self.server_class}\" "
+        attrs += f"client_class: \"{self.client_class}\" "
+        attrs += f"service_class: \"{self.service_class}\" "
+        attrs += f"start_server_port: {self.start_server_port} "
+        attrs += f"server_thread_num: {self.server_thread_num} "
 
         return service_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
@@ -766,7 +765,7 @@ class TheOnePSRuntime(RuntimeBase):
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
-            print("worker: \n{}".format(proto_txt))
+            print(f"worker: \n{proto_txt}")
 
         endpoints = self.compiled_strategy.get_ps_endpoints()
 
@@ -788,12 +787,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
-            print("worker: \n{}".format(proto_txt))
+            print(f"worker: \n{proto_txt}")
             print("communicator send_ctx:")
             for key in send_ctx:
-                print("{}: {}".format(key, send_ctx[key]))
+                print(f"{key}: {send_ctx[key]}")
             for key in dense_map:
-                print("{}: {}".format(key, dense_map[key]))
+                print(f"{key}: {dense_map[key]}")
 
         kwargs = {}
         kwargs['need_global_step'] = "0"
@@ -1178,7 +1177,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
-            print("server: \n{}".format(proto_txt))
+            print(f"server: \n{proto_txt}")
 
         string_hosts = []
         for idx, ep in enumerate(endpoints):
@@ -1362,11 +1361,6 @@ class TheOnePSRuntime(RuntimeBase):
         single file, use `filename` to specify the file name.
         """
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save() function, executor must be as Executor type"
@@ -1399,11 +1393,6 @@ class TheOnePSRuntime(RuntimeBase):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(
@@ -1456,7 +1445,7 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = self.context[
             "user_defined_strategy"
         ].trainer_desc_configs["stat_var_names"]
-        generate_vars = [var for var in generate_vars]
+        generate_vars = list(generate_vars)
         remaining_vars = list(
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),

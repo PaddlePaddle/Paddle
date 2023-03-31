@@ -18,13 +18,9 @@ import paddle
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import global_var
 from .layer_function_generator import templatedoc
 
-if global_var._in_eager_mode_:
-    Tensor = paddle.fluid.framework.core.eager.Tensor
-else:
-    from ..framework import VarBase as Tensor
+Tensor = paddle.fluid.framework.core.eager.Tensor
 
 from paddle import _C_ops
 from paddle.tensor.creation import full

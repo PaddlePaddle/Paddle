@@ -941,7 +941,7 @@ class GeneralRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self.generate_role()
-        input_list = [i for i in input]
+        input_list = list(input)
         ans = self._node_type_comm.all_reduce(input_list, mode)
         for i in range(len(ans)):
             output[i] = ans[i]

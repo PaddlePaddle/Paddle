@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu()
@@ -35,7 +35,7 @@ class TestStack2DOneDNNOp(OpTest):
     def getInputNames(self):
         input_names = []
         for i in range(self.num_inputs):
-            input_names.append('x{}'.format(i))
+            input_names.append(f'x{i}')
         return input_names
 
     def setUp(self):

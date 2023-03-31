@@ -28,7 +28,6 @@ from imperative_test_utils import (
 import paddle
 from paddle import nn
 from paddle.dataset.common import download
-from paddle.fluid.framework import _test_eager_guard
 from paddle.quantization import (
     AbsmaxQuantizer,
     HistQuantizer,
@@ -60,10 +59,7 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (
-                    isinstance(layer, nn.BatchNorm1D)
-                    or isinstance(layer, nn.BatchNorm2D)
-                )
+                assert not (isinstance(layer, (nn.BatchNorm1D, nn.BatchNorm2D)))
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
@@ -104,7 +100,7 @@ class TestImperativePTQ(unittest.TestCase):
         download(data_url, self.download_path, data_md5)
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
-        print('Data is downloaded at {0}'.format(zip_path))
+        print(f'Data is downloaded at {zip_path}')
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         self.cache_unzipping(data_cache_folder, zip_path)
@@ -269,8 +265,6 @@ class TestImperativePTQ(unittest.TestCase):
             print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
         self.func_ptq()
 
 
@@ -294,10 +288,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (
-                    isinstance(layer, nn.BatchNorm1D)
-                    or isinstance(layer, nn.BatchNorm2D)
-                )
+                assert not (isinstance(layer, (nn.BatchNorm1D, nn.BatchNorm2D)))
         before_acc_top1 = self.model_test(
             quant_model, self.batch_num, self.batch_size
         )
@@ -345,8 +336,6 @@ class TestImperativePTQfuse(TestImperativePTQ):
             print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
         self.func_ptq()
 
 

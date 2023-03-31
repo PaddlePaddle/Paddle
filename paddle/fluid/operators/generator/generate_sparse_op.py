@@ -21,6 +21,7 @@ from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
     find_optinal_inputs_name,
+    get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -67,6 +68,7 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
+env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
