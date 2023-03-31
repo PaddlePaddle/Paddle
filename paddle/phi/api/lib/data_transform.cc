@@ -14,13 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
+
+DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {
@@ -54,6 +58,10 @@ inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
                                 const phi::Place& place,
                                 const TransformFlag& transform_flag) {
+  if (FLAGS_use_stride_kernel && target == DataLayout::STRIDED) {
+    return false;
+  }
+
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
@@ -61,6 +69,11 @@ inline bool NeedTransformLayout(const DataLayout& input,
     return false;
   }
   return ret;
+}
+
+inline bool NeedTransform2Contiguous(bool is_stride_kernel,
+                                     bool is_contiguous) {
+  return FLAGS_use_stride_kernel && !is_stride_kernel && !is_contiguous;
 }
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
@@ -196,24 +209,138 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   return out;
 }
 
+template <typename Context>
+phi::DenseTensor TensorContiguous(const Context& dev_ctx,
+                                  const phi::DenseTensor& tensor) {
+  // phi::DenseTensor dense_out;
+  // phi::MetaTensor meta_input(tensor);
+  // phi::MetaTensor meta_out(&dense_out);
+  // UnchangedInferMeta(meta_input, &meta_out);
+
+  // PD_VISIT_ALL_TYPES(tensor.dtype(), "TensorContiguous", ([&] {
+  //                      phi::ContiguousKernel<data_t, Context>(dev_ctx,
+  //                      tensor, &dense_out);
+  //                    }));
+  // return dense_out;
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      return phi::Contiguous<float>(dev_ctx, tensor);
+    case DataType::FLOAT64:
+      return phi::Contiguous<double>(dev_ctx, tensor);
+    case DataType::INT32:
+      return phi::Contiguous<int32_t>(dev_ctx, tensor);
+    case DataType::INT64:
+      return phi::Contiguous<int64_t>(dev_ctx, tensor);
+    case DataType::FLOAT16:
+      return phi::Contiguous<phi::dtype::float16>(dev_ctx, tensor);
+    case DataType::BFLOAT16:
+      return phi::Contiguous<phi::dtype::bfloat16>(dev_ctx, tensor);
+    case DataType::BOOL:
+      return phi::Contiguous<bool>(dev_ctx, tensor);
+    case DataType::INT16:
+      return phi::Contiguous<int16_t>(dev_ctx, tensor);
+    case DataType::UINT8:
+      return phi::Contiguous<uint8_t>(dev_ctx, tensor);
+    case DataType::INT8:
+      return phi::Contiguous<int8_t>(dev_ctx, tensor);
+    case DataType::COMPLEX64:
+      return phi::Contiguous<phi::dtype::complex<float>>(dev_ctx, tensor);
+    case DataType::COMPLEX128:
+      return phi::Contiguous<phi::dtype::complex<double>>(dev_ctx, tensor);
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          tensor.dtype()));
+  }
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+phi::DenseTensor TensorContiguous(const phi::GPUContext& dev_ctx,
+                                  const phi::DenseTensor& tensor) {
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      return phi::Contiguous<float>(dev_ctx, tensor);
+    case DataType::FLOAT64:
+      return phi::Contiguous<double>(dev_ctx, tensor);
+    case DataType::INT32:
+      return phi::Contiguous<int32_t>(dev_ctx, tensor);
+    case DataType::INT64:
+      return phi::Contiguous<int64_t>(dev_ctx, tensor);
+    case DataType::FLOAT16:
+      return phi::Contiguous<phi::dtype::float16>(dev_ctx, tensor);
+    case DataType::BOOL:
+      return phi::Contiguous<bool>(dev_ctx, tensor);
+    case DataType::INT16:
+      return phi::Contiguous<int16_t>(dev_ctx, tensor);
+    case DataType::UINT8:
+      return phi::Contiguous<uint8_t>(dev_ctx, tensor);
+    case DataType::INT8:
+      return phi::Contiguous<int8_t>(dev_ctx, tensor);
+    case DataType::COMPLEX64:
+      return phi::Contiguous<phi::dtype::complex<float>>(dev_ctx, tensor);
+    case DataType::COMPLEX128:
+      return phi::Contiguous<phi::dtype::complex<double>>(dev_ctx, tensor);
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          tensor.dtype()));
+  }
+}
+#endif
+
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+
+  VLOG(3) << "Trans2Contiguous...";
+
+  if (paddle::platform::is_cpu_place(tensor.place())) {
+    auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
+    return TensorContiguous(*dev_ctx, tensor);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (paddle::platform::is_gpu_place(tensor.place())) {
+    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
+    return TensorContiguous(*dev_ctx, tensor);
+#endif
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Place type is not supported when casting data type."));
+  }
+
+  return tensor;
+}
+
 phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
-                               const TransformFlag& transform_flag) {
+                               const TransformFlag& transform_flag,
+                               bool is_stride_kernel) {
   phi::DenseTensor out = *tensor;
   bool trans_layout = false;
   bool trans_dtype = false;
+
+  if (NeedTransform2Contiguous(is_stride_kernel,
+                               out.meta().is_contiguous(out.layout()))) {
+    out = Trans2Contiguous(out);
+  }
 
   if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
                           tensor->place(),
                           transform_flag) &&
       tensor->dims().size() != 1) {
+    if (NeedTransform2Contiguous(is_stride_kernel,
+                                 out.meta().is_contiguous(out.layout()))) {
+      out = Trans2Contiguous(out);
+    }
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }
 
   if (NeedTransformDataType(
           tensor->dtype(), target_args_def.dtype, transform_flag)) {
+    if (NeedTransform2Contiguous(is_stride_kernel,
+                                 out.meta().is_contiguous(out.layout()))) {
+      out = Trans2Contiguous(out);
+    }
     out = TransDataType(out, target_args_def.dtype);
     trans_dtype = true;
   }
@@ -232,7 +359,8 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   const auto& tensor_in = input.impl();
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
@@ -245,11 +373,14 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
          !NeedTransformLayout(dense_tensor.layout(),
                               target_args_def.layout,
                               dense_tensor.place(),
-                              transform_flag))) {
+                              transform_flag) &&
+         !NeedTransform2Contiguous(
+             is_stride_kernel,
+             dense_tensor.meta().is_contiguous(dense_tensor.layout())))) {
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
-    phi::DenseTensor out =
-        TransformData(&dense_tensor, target_args_def, transform_flag);
+    phi::DenseTensor out = TransformData(
+        &dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
@@ -258,9 +389,11 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   if (input) {
-    return {*PrepareData(*input, target_args_def, transform_flag)};
+    return {*PrepareData(
+        *input, target_args_def, transform_flag, is_stride_kernel)};
   }
   return paddle::none;
 }
@@ -268,12 +401,14 @@ paddle::optional<phi::DenseTensor> PrepareData(
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor>>();
   pt_tensors->reserve(inputs.size());
 
   for (const auto& input : inputs) {
     const auto& tensor_in = input.impl();
+    auto dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in);
     if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
         (!NeedTransformPlace(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
@@ -282,14 +417,19 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
          !NeedTransformLayout(tensor_in->layout(),
                               target_args_def.layout,
                               tensor_in->place(),
-                              transform_flag))) {
+                              transform_flag) &&
+         !(dense_tensor &&
+           NeedTransform2Contiguous(
+               is_stride_kernel,
+               dense_tensor->meta().is_contiguous(dense_tensor->layout()))))) {
       pt_tensors->emplace_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
       pt_tensors->emplace_back(
           TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
                         target_args_def,
-                        transform_flag));
+                        transform_flag,
+                        is_stride_kernel));
     }
   }
 
@@ -299,9 +439,11 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   if (inputs) {
-    return {*PrepareData(*inputs, target_args_def, transform_flag)};
+    return {*PrepareData(
+        *inputs, target_args_def, transform_flag, is_stride_kernel)};
   }
   return paddle::none;
 }

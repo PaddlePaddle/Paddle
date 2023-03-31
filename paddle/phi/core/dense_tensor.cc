@@ -217,6 +217,11 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
+  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  } else {
+    meta_.strides = meta.strides;
+  }
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -230,7 +235,18 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
+  if (!(meta_.dims.size() == 1 && meta_.dims[0] == 0) && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(
+        meta_.is_contiguous(meta_.layout),
+        true,
+        phi::errors::InvalidArgument(
+            "Right now Reshape is only supported for contiguous Tensor."));
+  }
   meta_.dims = dims;
+  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  }
+
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }

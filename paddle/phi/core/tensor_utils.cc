@@ -252,6 +252,7 @@ void Copy(const Context& dev_ctx,
     PADDLE_THROW(errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
+  dst->set_strides(src.strides());
 }
 
 template <typename Context>

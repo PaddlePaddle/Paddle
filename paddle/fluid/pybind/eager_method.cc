@@ -58,6 +58,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -149,6 +150,17 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_rank = 1;
       py_dims[0] = 1;
       py_strides[0] = sizeof_dtype * numel;
+    }
+  } else if (self->tensor.is_dense_tensor()) {
+    const int64_t* tensor_strides =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
+            ->strides()
+            .Get();
+
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+      py_strides[i] = sizeof_dtype * tensor_strides[i];
+      numel *= py_dims[i];
     }
   } else {
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
@@ -1925,6 +1937,76 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_get_strides(TensorObject* self,
+                                           PyObject* args,
+                                           PyObject* kwargs) {
+  EAGER_TRY
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    return ToPyObject(value);
+  }
+  auto strides = self->tensor.strides();
+  size_t rank = static_cast<size_t>(strides.size());
+  value.resize(rank);
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = strides[i];
+  }
+  return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_contiguous(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    phi::DataLayout layout = phi::DataLayout::NCHW;
+    Py_ssize_t args_num = PyTuple_Size(args);
+    if (args_num == (Py_ssize_t)1) {
+      std::string str_layout =
+          CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+      layout = phi::StringToDataLayout(str_layout);
+    }
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    if (dense_tensor->meta().is_contiguous(layout)) {
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
+    } else {
+      eager_gil_scoped_release guard;
+      return ToPyObject(
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
+              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
+    }
+
+  } else {
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(self);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_is_contiguous(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    phi::DataLayout layout = phi::DataLayout::NCHW;
+    Py_ssize_t args_num = PyTuple_Size(args);
+    if (args_num == (Py_ssize_t)1) {
+      std::string str_layout =
+          CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+      layout = phi::StringToDataLayout(str_layout);
+    }
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    return ToPyObject(dense_tensor->meta().is_contiguous(layout));
+  } else {
+    return ToPyObject(true);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -2186,6 +2268,18 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_grad_ivar",
      (PyCFunction)(void (*)(void))tensor__grad_ivar,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"contiguous",
+     (PyCFunction)(void (*)(void))tensor_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_contiguous",
+     (PyCFunction)(void (*)(void))tensor_is_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"strides",
+     (PyCFunction)(void (*)(void))tensor_method_get_strides,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)

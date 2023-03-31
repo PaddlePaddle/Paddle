@@ -26,4 +26,10 @@ void TransposeGradKernel(const Context& dev_ctx,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad);
 
+template <typename Context>
+void TransposeGradStrideKernel(const Context& dev_ctx,
+                               const DenseTensor& out_grad,
+                               const std::vector<int>& axis,
+                               DenseTensor* x_grad);
+
 }  // namespace phi
