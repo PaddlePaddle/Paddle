@@ -4785,16 +4785,24 @@ void UniqueRawInferMeta(const MetaTensor& x,
 
     auto out_dims = x.dims();
     out_dims[axis_value] = -1;
+    auto UNType = (param.dtype() == phi::DataType::INT64 ||
+                   param.dtype() == phi::DataType::INT32)
+                      ? param.dtype()
+                      : phi::DataType::INT64;
     out->set_dims(out_dims);
+    out->set_dtype(UNType);
     if (return_inverse) {
       index->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+      index->set_dtype(UNType);
     }
   }
   if (return_index) {
     indices->set_dims(phi::make_ddim({-1}));
+    indices->set_dtype(UNType);
   }
   if (return_counts) {
     counts->set_dims(phi::make_ddim({-1}));
+    counts->set_dtype(UNType);
   }
 }
 
