@@ -95,7 +95,8 @@ __global__ void FusedDropoutActBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  const T factor =
+      phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;

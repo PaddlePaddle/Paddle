@@ -33,6 +33,8 @@
 #define WARP_SIZE 32
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+
 #define MASK 0xffffffff
 
 namespace phi {
@@ -255,6 +257,8 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
           seq_len));
   }
 }
+
+#endif
 
 }  // namespace fusion
 }  // namespace phi

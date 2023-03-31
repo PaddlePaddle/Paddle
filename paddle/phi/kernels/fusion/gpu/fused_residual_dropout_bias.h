@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
+#endif
 
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"

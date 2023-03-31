@@ -14,7 +14,10 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cublasLt.h"
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"

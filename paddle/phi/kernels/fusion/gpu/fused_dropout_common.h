@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
 #include <cooperative_groups.h>
 #include <cuda.h>
 #include <curand_kernel.h>
+#endif
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
