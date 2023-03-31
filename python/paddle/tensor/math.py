@@ -5354,7 +5354,7 @@ def vander(x, n=None, increasing=False, name=None):
         Tensor, A vandermonde matrix with shape (len(x), N). If increasing is False, the first column is :math:`x^{(N-1)}`, the second :math:`x^{(N-2)}` and so forth.
         If increasing is True, the columns are :math:`x^0`, :math:`x^1`, ..., :math:`x^{(N-1)}`.
 
-        Examples:
+    Examples:
         .. code-block:: python
 
             import paddle
