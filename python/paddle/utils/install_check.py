@@ -246,7 +246,6 @@ def run_check():
         device_list = paddle.static.cpu_places(device_count=1)
     device_count = len(device_list)
 
-
     _run_static_single(use_cuda, use_xpu)
     _run_dygraph_single(use_cuda, use_xpu)
     print(f"PaddlePaddle works well on 1 {device_str}.")
