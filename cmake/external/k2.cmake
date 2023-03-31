@@ -53,6 +53,12 @@ else()
 endif()
 message(STATUS "K2_WITH_CUDA=${K2_WITH_CUDA}")
 
+if(WIN32)
+  set(K2_BUILD_LIB_DIR ${K2_BUILD_DIR}/bin)
+else()
+  set(K2_BUILD_LIB_DIR ${K2_BUILD_DIR}/lib)
+endif()
+
 ExternalProject_Add(
   ${TARGET_NAME}
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
