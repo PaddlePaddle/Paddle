@@ -698,7 +698,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     const auto input_x_dims = input_x->dims();
     int bsz = input_x_dims[0];
     int seq_len = input_x_dims[1];
-    // std::cout<<"seq_len   "<< seq_len <<std::endl;
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
@@ -730,8 +729,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              sequence_lengths->data<int>(),
                              bsz,
                              seq_len);
-      // std::cout<<"token_num   "<<token_num<<std::endl;
-      // std::cout<<"seq_len   "<<seq_len<<std::endl;
       padding_offset_tensor.Resize({{token_num}});
       x_remove_padding.Resize({{token_num, dim_embed}});
       dev_ctx.Alloc<T>(&x_remove_padding, x_remove_padding.numel() * sizeof(T));
@@ -824,7 +821,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                 dev_ctx.stream());
         dev_ctx.Wait();
       }
-      // std::cout<<"time_step_value  \n"<< time_step_value<<std::endl;
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
                         platform::errors::PreconditionNotMet(
