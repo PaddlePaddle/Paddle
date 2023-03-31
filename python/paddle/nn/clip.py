@@ -14,6 +14,7 @@
 
 import copy
 import warnings
+from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
@@ -217,7 +218,9 @@ def _squared_l2_norm(x):
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16'], op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'float16', 'uint16'], op_type
+    )
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -287,7 +290,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def __str__(self):
-        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+        return f"ByValue, min={self.min:f}, max={self.max:f}"
 
     def _append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()
@@ -400,7 +403,7 @@ class ClipGradByValue(ClipGradBase):
         self.min = float(min)
 
     def __str__(self):
-        return "Clip Gradient By Value, min = %f, max=%f" % (self.min, self.max)
+        return f"Clip Gradient By Value, min = {self.min:f}, max={self.max:f}"
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
@@ -417,7 +420,7 @@ class ClipGradByValue(ClipGradBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
-        param_new_grad_name_dict = dict()
+        param_new_grad_name_dict = {}
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -520,7 +523,7 @@ class ClipGradByNorm(ClipGradBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -554,6 +557,20 @@ def _allow_pure_fp16_global_norm_clip(*args):
         assert len(args) == 1 and isinstance(args[0], bool)
         old_value = _allow_pure_fp16_global_norm_clip_flag
         _allow_pure_fp16_global_norm_clip_flag = args[0]
+        return old_value
+
+
+_allow_pure_bf16_global_norm_clip_flag = False
+
+
+def _allow_pure_bf16_global_norm_clip(*args):
+    global _allow_pure_bf16_global_norm_clip_flag
+    if len(args) == 0:
+        return _allow_pure_bf16_global_norm_clip_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _allow_pure_bf16_global_norm_clip_flag
+        _allow_pure_bf16_global_norm_clip_flag = args[0]
         return old_value
 
 
@@ -720,6 +737,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         params_and_grads = []
         sum_square_list = []
         sum_square_list_fp16 = []
+        sum_square_list_bf16 = []
         sum_square_list_fp32 = []
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
@@ -735,15 +753,27 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     sum_square = _squared_l2_norm(merge_grad)
                     if sum_square.dtype == core.VarDesc.VarType.FP16:
                         sum_square_list_fp16.append(sum_square)
+                    elif sum_square.dtype == core.VarDesc.VarType.BF16:
+                        sum_square_list_bf16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
                         sum_square_list.append(sum_square)
 
+            if len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0:
+                raise NotSupportedError(
+                    'FP16 and BF16 are not supported at the same time.'
+                )
+
             # all parameters have been filterd out
             if (
                 len(sum_square_list)
                 + len(sum_square_list_fp16)
+                + len(sum_square_list_fp32)
+                == 0
+            ) and (
+                len(sum_square_list)
+                + len(sum_square_list_bf16)
                 + len(sum_square_list_fp32)
                 == 0
             ):
@@ -765,6 +795,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                     else:
                         global_norm_var.append(global_norm_var_fp16)
+                if len(sum_square_list_bf16) > 0:
+                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    if (
+                        sum_square_list_fp32
+                        or sum_square_list
+                        or not _allow_pure_bf16_global_norm_clip()
+                    ):
+                        global_norm_var.append(
+                            global_norm_var_bf16.astype(sum_dtype)
+                        )
+                    else:
+                        global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
                     global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
@@ -793,7 +835,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -804,12 +846,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (
-                        scale_var.astype('float16')
-                        if new_g.dtype == core.VarDesc.VarType.FP16
+                    if (
+                        new_g.dtype == core.VarDesc.VarType.FP16
                         and scale_var.dtype != core.VarDesc.VarType.FP16
-                        else scale_var
-                    )
+                    ):
+                        scale_input = scale_var.astype('float16')
+                    elif (
+                        new_g.dtype == core.VarDesc.VarType.BF16
+                        and scale_var.dtype != core.VarDesc.VarType.BF16
+                    ):
+                        scale_input = scale_var.astype('bfloat16')
+                    else:
+                        scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
@@ -921,7 +969,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             paddle.enable_static()
 
             def network():
-                image = fluid.data(name='image', shape=[
+                image = paddle.static.data(name='image', shape=[
                                    None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
@@ -1014,7 +1062,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    context = dict()
+    context = {}
     for p, g in param_grads:
         if g is None:
             continue
@@ -1032,7 +1080,7 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    param_new_grad_name_dict = dict()
+    param_new_grad_name_dict = {}
     for p, g in param_grads:
         if g is None:
             continue

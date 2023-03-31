@@ -195,7 +195,7 @@ class InputSpec:
                 print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
-        if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
+        if isinstance(tensor, (Variable, core.eager.Tensor)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(

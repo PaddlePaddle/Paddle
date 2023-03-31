@@ -28,6 +28,7 @@
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -55,7 +56,7 @@ class CUDAGraphContextManager {
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
-      EmplaceDeviceContexts(
+      phi::memory_utils::EmplaceDeviceContexts(
           &ctxs,
           {place},
           /*disable_setting_default_stream_for_allocator=*/true,
@@ -196,14 +197,6 @@ class CUDAGraph {
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
 
-  static void SetIsCUDAGraphStreamCreated(bool create_cuda_graph_stream) {
-    capturing_graph_->is_cuda_graph_stream_created_ = create_cuda_graph_stream;
-  }
-
-  static bool IsCUDAGraphStreamCreated() {
-    return capturing_graph_->is_cuda_graph_stream_created_;
-  }
-
   static bool IsThreadLocalCapturing() {
 #if CUDA_VERSION >= 10010
     return IsCapturing() &&
@@ -253,8 +246,6 @@ class CUDAGraph {
   std::mutex func_mtx_;
 
   bool is_first_run_{true};
-
-  bool is_cuda_graph_stream_created_{false};
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;

@@ -20,11 +20,12 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
+from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
-from op_test import OpTest
 
 import paddle.fluid.dygraph as dg
-import paddle.static as static
+from paddle import static
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -56,7 +57,7 @@ class TestConjOp(OpTest):
         self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -64,7 +65,6 @@ class TestConjOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_in],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
@@ -146,6 +146,44 @@ class Testfp16ConjOp(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': input_x}, fetch_list=[out])
+
+
+class TestConjFP16OP(TestConjOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestConjBF16(OpTest):
+    def setUp(self):
+        self.op_type = "conj"
+        self.python_api = paddle.tensor.conj
+        self.init_dtype_type()
+        self.init_input_output()
+
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+
+    def init_input_output(self):
+        x = (
+            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+        ).astype(np.float32)
+        out = np.conj(x)
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":

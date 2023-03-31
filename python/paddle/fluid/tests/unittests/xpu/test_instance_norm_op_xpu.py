@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 sys.path.append("..")
@@ -145,27 +145,27 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
     class TestXPUInstanceNormOp6(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [10, 12, 32, 32]
-            self.no_grad_set = set(['Scale', 'Bias'])
+            self.no_grad_set = {'Scale', 'Bias'}
 
     class TestXPUInstanceNormOp7(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [4, 5, 6, 7]
-            self.no_grad_set = set(['Scale', 'Bias'])
+            self.no_grad_set = {'Scale', 'Bias'}
 
     class TestXPUInstanceNormOp8(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [1, 8, 16, 16]
-            self.no_grad_set = set(['Scale', 'Bias'])
+            self.no_grad_set = {'Scale', 'Bias'}
 
     class TestXPUInstanceNormOp9(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [4, 16, 256, 128]
-            self.no_grad_set = set(['Scale', 'Bias'])
+            self.no_grad_set = {'Scale', 'Bias'}
 
     class TestXPUInstanceNormOp10(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [10, 3, 512, 1]
-            self.no_grad_set = set(['Scale', 'Bias'])
+            self.no_grad_set = {'Scale', 'Bias'}
 
     class TestInstanceNormOpError(XPUOpTest):
         def setUp(self):

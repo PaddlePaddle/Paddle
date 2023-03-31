@@ -21,8 +21,8 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -58,7 +58,7 @@ class TensorRTPool3dTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -93,9 +93,7 @@ class TensorRTPool3dTest(InferencePassTest):
             elif self.precision == AnalysisConfig.Precision.Half:
                 atol, rtol = (1e-3, 1e-3)
             else:
-                raise ValueError(
-                    "Unsupported precision {}".format(self.precision)
-                )
+                raise ValueError(f"Unsupported precision {self.precision}")
             self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
@@ -190,7 +188,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -290,7 +288,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',

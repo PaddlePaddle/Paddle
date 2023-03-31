@@ -14,7 +14,7 @@
 
 import logging
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")

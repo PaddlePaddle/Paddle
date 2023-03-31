@@ -61,16 +61,16 @@ class TestInitParallelEnv(unittest.TestCase):
 class TestSpawnAssistMethod(unittest.TestCase):
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
-            _get_subprocess_env_list(nprocs=100, options=dict())
+            _get_subprocess_env_list(nprocs=100, options={})
 
     def test_selected_devices_error(self):
         with self.assertRaises(ValueError):
-            options = dict()
+            options = {}
             options['selected_devices'] = "100,101"
             _get_subprocess_env_list(nprocs=2, options=options)
 
     def test_get_correct_env(self):
-        options = dict()
+        options = {}
         options['print_config'] = True
         env_dict = _get_subprocess_env_list(nprocs=1, options=options)[0]
         self.assertEqual(env_dict['PADDLE_TRAINER_ID'], '0')
@@ -78,12 +78,12 @@ class TestSpawnAssistMethod(unittest.TestCase):
 
     def test_nprocs_not_equal_to_selected_devices(self):
         with self.assertRaises(ValueError):
-            options = dict()
+            options = {}
             options['selected_devices'] = "100,101,102"
             _get_subprocess_env_list(nprocs=2, options=options)
 
     def test_options_valid_check(self):
-        options = dict()
+        options = {}
         options['selected_devices'] = "100,101,102"
         _options_valid_check(options)
 

@@ -18,8 +18,8 @@ import re
 from functools import partial
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 
 # Parameters for the entire model (stem, all blocks, and head)
 GlobalParams = collections.namedtuple(
@@ -421,4 +421,4 @@ def load_pretrained_weights(
         state_dict.pop('_fc.bias')
         model.set_state_dict(state_dict)
 
-    print('Loaded pretrained weights for {}'.format(model_name))
+    print(f'Loaded pretrained weights for {model_name}')
