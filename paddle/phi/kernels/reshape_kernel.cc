@@ -87,8 +87,9 @@ void ReshapeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(
-    reshape_infer, ALL_DEVICE, ALL_LAYOUT, phi::ReshapeInferKernel, ALL_DTYPE) {
-}
-PD_REGISTER_GENERAL_ALL_BACKEND_KERNEL(
-    reshape, ALL_DEVICE, ALL_LAYOUT, phi::ReshapeKernel, ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_infer,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeInferKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeKernel) {}
