@@ -119,7 +119,7 @@ class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor(TestReshape2OneDNNOp):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs["ShapeTensor"] = shape_tensor
@@ -138,7 +138,7 @@ class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensorAndShape(
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs["Shape"] = np.array((1, 2, 3, 4), dtype="int32")
@@ -216,7 +216,7 @@ def create_reshape_bf16_test_classes(parent):
                 check_dygraph=False,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape2_BF16")
     TestReshape2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshape2BF16OneDNNOp
 
@@ -242,7 +242,7 @@ def create_reshape_bf16_test_classes(parent):
                 check_dygraph=False,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Reshape_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Reshape_BF16")
     TestReshapeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshapeBF16OneDNNOp
 

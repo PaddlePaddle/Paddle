@@ -160,7 +160,7 @@ class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x1", np.ones((1)).astype('int32') * 2))
+            starts_tensor.append(("x1", np.ones(1).astype('int32') * 2))
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
 
     def config(self):
@@ -233,7 +233,7 @@ def create_bf16_test_class(parent):
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestSliceBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSliceBF16OneDNNOp
 

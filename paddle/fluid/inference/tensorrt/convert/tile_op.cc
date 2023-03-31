@@ -24,7 +24,7 @@ class TileOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a tile op to tensorrt tile layer";
+    VLOG(3) << "convert a tile op to tensorrt tile layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

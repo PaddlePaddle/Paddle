@@ -412,9 +412,7 @@ class Fleet:
             "mp": ['model', self.mp_degree],
         }
 
-        order = self.hybrid_configs["order"]
-        if not order:
-            order = ['dp', 'pp', 'sharding', 'mp']
+        order = self._user_defined_strategy.hybrid_parallel_order
         if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
             raise AssertionError(
                 'The order of hybrid_config setting is incorrect.'
