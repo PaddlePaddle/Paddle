@@ -616,11 +616,10 @@ class MultiClassNMS3Op : public MultiClassNMS2Op {
       : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
-        ctx.device_context());
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"), ctx.GetPlace());
   }
 };
 

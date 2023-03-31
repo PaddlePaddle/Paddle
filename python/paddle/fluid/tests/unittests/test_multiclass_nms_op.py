@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, fluid
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -797,8 +797,8 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        place = fluid.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5, check_eager=True)
+        place = paddle.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5)
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
@@ -811,15 +811,15 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
 class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
     def test_check_output(self):
         self.__class__.op_type = "multiclass_nms3"
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
-            bboxes = fluid.layers.data(
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            bboxes = paddle.static.data(
                 name='BBoxes',
                 shape=self.inputs['BBoxes'].shape,
                 dtype='float32',
             )
-            scores = fluid.layers.data(
+            scores = paddle.static.data(
                 name='Scores',
                 shape=self.inputs['Scores'].shape,
                 dtype='float32',
@@ -828,7 +828,7 @@ class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
                 bboxes, scores, **self.attrs
             )
 
-        place = fluid.CUDAPlace(0)
+        place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
 
