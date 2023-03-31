@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -39,7 +39,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
@@ -48,7 +48,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif Y.ndim == 2:
             Y = Y.T
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -142,9 +142,11 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
     class API_TestMm(unittest.TestCase):
         def test_out(self):
             with fluid.program_guard(fluid.Program()):
-                x = fluid.data(name="x", shape=[2], dtype=self.in_type)
-                y = fluid.data(name='y', shape=[2], dtype=self.in_type)
-                res = fluid.data(name="output", shape=[1], dtype=self.in_type)
+                x = paddle.static.data(name="x", shape=[2], dtype=self.in_type)
+                y = paddle.static.data(name='y', shape=[2], dtype=self.in_type)
+                res = paddle.static.data(
+                    name="output", shape=[1], dtype=self.in_type
+                )
                 result = paddle.mm(x, y)
                 exe = fluid.Executor(fluid.XPUPlace(0))
                 data1 = np.random.rand(2).astype(self.in_type)
@@ -193,10 +195,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
         def test_errors(self):
             def test_error1():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -205,10 +207,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
             def test_error2():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[-1, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -217,10 +219,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
             def test_error3():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)

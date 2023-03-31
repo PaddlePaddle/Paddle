@@ -19,13 +19,13 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
 
 
 def inner_func():
-    fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
+    paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
     return
 
 
@@ -50,7 +50,7 @@ def func_error_in_compile_time_2(x):
 @paddle.jit.to_static
 def func_error_in_runtime(x):
     x = fluid.dygraph.to_variable(x)
-    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+    two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
     x = paddle.reshape(x, shape=[1, two])
     return x
 
@@ -67,7 +67,7 @@ def func_decorated_by_other_2():
     return 1
 
 
-class LayerErrorInCompiletime(fluid.dygraph.Layer):
+class LayerErrorInCompiletime(paddle.nn.Layer):
     def __init__(self, fc_size=20):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
@@ -77,12 +77,12 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
     )
     def forward(self, x):
         y = self._linear(x)
-        z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
+        z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
         out = paddle.mean(y[z])
         return out
 
 
-class LayerErrorInCompiletime2(fluid.dygraph.Layer):
+class LayerErrorInCompiletime2(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -101,7 +101,7 @@ class LayerErrorInCompiletime2(fluid.dygraph.Layer):
 @paddle.jit.to_static
 def func_error_in_runtime_with_empty_line(x):
     x = fluid.dygraph.to_variable(x)
-    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+    two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
 
     x = paddle.reshape(x, shape=[1, two])
 
@@ -259,9 +259,9 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
                 self.filepath
             ),
             'inner_func()',
-            'File "{}", line 28, in inner_func'.format(self.filepath),
+            f'File "{self.filepath}", line 28, in inner_func',
             'def inner_func():',
-            'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+            'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
             'return',
         ]
@@ -312,7 +312,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 91, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 91, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -340,7 +340,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
                 self.filepath
             ),
             'x = fluid.dygraph.to_variable(x)',
-            'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+            'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
@@ -356,7 +356,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
             'File "{}", line 106, in func_error_in_runtime_with_empty_line'.format(
                 self.filepath
             ),
-            'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+            'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
@@ -376,10 +376,10 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 80, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 80, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
-            'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+            'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
             'out = paddle.mean(y[z])',
             'return out',

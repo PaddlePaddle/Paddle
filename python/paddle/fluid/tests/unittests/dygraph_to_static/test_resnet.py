@@ -14,7 +14,6 @@
 
 import math
 import os
-import platform
 import tempfile
 import time
 import unittest
@@ -23,7 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
@@ -56,7 +55,7 @@ def optimizer_setting(parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -87,7 +86,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
         super().__init__()
 
@@ -141,7 +140,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
@@ -395,7 +394,7 @@ class TestResnet(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+            err_msg=f'dy_pre:\n {dy_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             dy_jit_pre,
@@ -442,22 +441,18 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_resnet_composite_forward_backward(self):
-        plat = platform.system()
-        if plat == "Linux":
-            core._set_prim_all_enabled(True)
-            static_loss = self.train(to_static=True)
-            core._set_prim_all_enabled(False)
-            dygraph_loss = self.train(to_static=True)
-            np.testing.assert_allclose(
-                static_loss,
-                dygraph_loss,
-                rtol=1e-02,
-                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                    static_loss, dygraph_loss
-                ),
-            )
-        else:
-            pass
+        core._set_prim_all_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_all_enabled(False)
+        dygraph_loss = self.train(to_static=True)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-02,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
 
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})

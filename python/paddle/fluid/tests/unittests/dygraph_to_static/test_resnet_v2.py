@@ -393,7 +393,7 @@ class TestResnet(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+            err_msg=f'dy_pre:\n {dy_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             dy_jit_pre,
@@ -427,6 +427,7 @@ class TestResnet(unittest.TestCase):
 
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("batch_norm")
         static_loss = self.train(to_static=True)
         core._set_prim_backward_enabled(False)
         dygraph_loss = self.train(to_static=False)

@@ -204,6 +204,8 @@ void InterpreterCore::RunImpl() {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
@@ -539,6 +541,11 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      platform::IsCUDAGraphCapturing(),
+      false,
+      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                         "before prepare."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -670,6 +677,28 @@ void InterpreterCore::Convert(
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+#ifdef PADDLE_WITH_CUDA
+    if (FLAGS_new_executor_use_cuda_graph) {
+      auto& op = op_func_node.operator_base_;
+      auto& op_type = op->Type();
+      if (op_type == interpreter::kMemcpyD2H ||
+          op_type == interpreter::kMemcpyH2D) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
+      }
+      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Device context of op %s must be [%s] while using "
+                            "cuda graph, but got [%s].",
+                            op_type,
+                            typeid(phi::GPUContext).name(),
+                            typeid(*dev_ctx_).name()));
+      // cuda graph needs to record all stream
+      phi::backends::gpu::CUDAGraphContextManager::Instance()
+          .RecordCapturingDeviceContext(dev_ctx_);
+    }
+#endif
   }
 
   BuildOperatorDependences();
@@ -918,23 +947,28 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
-    if (op_with_kernel == nullptr) {
+    if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      // fit for phi
-      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
-        VLOG(4) << "Run phi kernel: " << op->Type();
-        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
-                << &instr_node.DeviceContext();
-        phi::KernelContext phi_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(
-            *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &phi_kernel_context);
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          VLOG(4) << "Run function kernel: " << op->Type();
+          VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                  << &instr_node.DeviceContext();
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&phi_kernel_context);
-
-      } else {
+          (*kernel)(&phi_kernel_context);
+        } else {
+          VLOG(4) << "Run structure kernel: " << op->Type();
+          (*kernel)(instr_node.InnerExecutionContext().get());
+        }
+      } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
     }
@@ -1022,7 +1056,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";

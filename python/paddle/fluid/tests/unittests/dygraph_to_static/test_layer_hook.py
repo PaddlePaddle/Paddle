@@ -75,12 +75,12 @@ class TestNestLayerHook(unittest.TestCase):
         if to_static:
             paddle.jit.save(net, self.path)
 
-        return out.numpy()[0]
+        return float(out)
 
     def load_train(self):
         net = paddle.jit.load(self.path)
         out = net(self.x)
-        return out.numpy()[0]
+        return float(out)
 
     def test_hook(self):
         dy_out = self.train_net(to_static=False)
@@ -99,7 +99,7 @@ class TestNestLayerHook(unittest.TestCase):
             st_out,
             load_out,
             rtol=1e-05,
-            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out),
+            err_msg=f'load_out is {load_out}\nstatic_res is {st_out}',
         )
 
 

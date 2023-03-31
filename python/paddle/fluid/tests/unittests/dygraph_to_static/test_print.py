@@ -17,7 +17,7 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit import to_static
 
 
@@ -39,7 +39,7 @@ def dyfunc_print_ndarray(x):
 @to_static
 def dyfunc_print_with_format(x):
     x_t = paddle.to_tensor(x)
-    print("PrintTensor: {}".format(x_t))
+    print(f"PrintTensor: {x_t}")
 
 
 # 4. print Tensor with format 2

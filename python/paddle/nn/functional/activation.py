@@ -924,12 +924,12 @@ def selu(
     """
     if scale <= 1.0:
         raise ValueError(
-            "The scale must be greater than 1.0. Received: {}.".format(scale)
+            f"The scale must be greater than 1.0. Received: {scale}."
         )
 
     if alpha < 0:
         raise ValueError(
-            "The alpha must be no less than zero. Received: {}.".format(alpha)
+            f"The alpha must be no less than zero. Received: {alpha}."
         )
 
     if in_dygraph_mode():
@@ -1110,15 +1110,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float32', 'float64'],
+                ['float16', 'bfloat16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float32 or float64.',
+                'If dtype is not None, it only support float16, bfloat16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())
@@ -1664,7 +1664,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     Parameters:
         x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch
             of independent distributions and the last dimension represents
-            a vector of probabilities with datatype float32, float64.
+            a vector of probabilities with datatype float16, float32, float64.
         temperature (float, optional): non-negative scalar temperature.
             Default is 1.0.
         hard (bool, optional): if True, the returned samples will be discretized as
@@ -1705,7 +1705,9 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
         )
 
     helper = LayerHelper("gumbel_softmax", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'gumbel_softmax'
+    )
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='gumbel_softmax',

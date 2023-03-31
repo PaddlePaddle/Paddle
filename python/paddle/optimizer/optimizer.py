@@ -246,16 +246,16 @@ class Optimizer:
 
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
-        self._learning_rate_map = dict()
+        self._learning_rate_map = {}
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
-        self._accumulators = defaultdict(lambda: dict())
+        self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
-        self._param_device_map = dict()
+        self._param_device_map = {}
         self.clear_gradients = self.clear_grad
         self._default_dict = {
             'weight_decay': self.regularization,
@@ -275,6 +275,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -373,7 +374,7 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 assert (
                     var_tmp.name in state_dict
-                ), "optimizer Tensor {} not found".format(var_tmp.name)
+                ), f"optimizer Tensor {var_tmp.name} not found"
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -381,9 +382,9 @@ class Optimizer:
                 load_para = state_dict[var_tmp.name]
 
                 if isinstance(load_para, Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = load_para.numpy()
+                    load_para_np = np.array(load_para)
+                elif isinstance(load_para, core.eager.Tensor):
+                    load_para_np = np.array(load_para)
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -437,13 +438,13 @@ class Optimizer:
                 self._learning_rate._var_name = lr_name
                 lr_var = self.helper.create_global_variable(
                     name=lr_name,
-                    shape=[1],
+                    shape=[],
                     persistable=True,
                     stop_gradient=True,
                     dtype=_lr_dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
 
                 self._learning_rate_map[
@@ -465,7 +466,7 @@ class Optimizer:
                     framework.default_main_program()
                 ] = paddle.static.create_global_var(
                     name=unique_name.generate("learning_rate"),
-                    shape=[1],
+                    shape=[],
                     value=float(self._learning_rate),
                     dtype=_lr_dtype,
                     persistable=True,
@@ -979,31 +980,38 @@ class Optimizer:
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
-                if isinstance(parameters_and_grads, list):
-                    for param_and_grad in parameters_and_grads:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            self._append_optimize_op(
-                                target_block, param_and_grad
-                            )
+                found_inf = self._get_auxiliary_var('found_inf')
+                if found_inf:
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', True)
                 else:
-                    for param_and_grad in parameters_and_grads['params']:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            param_grad_dict = dict()
-                            param_grad_dict['params'] = param_and_grad
-                            param_grad_dict.update(
-                                {
-                                    k: v
-                                    for k, v in parameters_and_grads.items()
-                                    if k != 'params'
-                                }
-                            )
-                            self._append_optimize_op(
-                                target_block, param_grad_dict
-                            )
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', False)
+                    if isinstance(parameters_and_grads, list):
+                        for param_and_grad in parameters_and_grads:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                self._append_optimize_op(
+                                    target_block, param_and_grad
+                                )
+                    else:
+                        for param_and_grad in parameters_and_grads['params']:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                param_grad_dict = {}
+                                param_grad_dict['params'] = param_and_grad
+                                param_grad_dict.update(
+                                    {
+                                        k: v
+                                        for k, v in parameters_and_grads.items()
+                                        if k != 'params'
+                                    }
+                                )
+                                self._append_optimize_op(
+                                    target_block, param_grad_dict
+                                )
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -1100,8 +1108,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )
@@ -1313,9 +1321,9 @@ class Optimizer:
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.stop_gradient is True]
-        )
+        param_no_trainable = {
+            param.name for param in parameters if param.stop_gradient is True
+        }
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
@@ -1478,7 +1486,7 @@ class Optimizer:
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue

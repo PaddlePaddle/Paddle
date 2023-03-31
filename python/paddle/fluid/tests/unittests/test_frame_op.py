@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from numpy.lib.stride_tricks import as_strided
-from op_test import OpTest
 
 import paddle
 
@@ -39,7 +39,7 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
         strides = [hop_length * x.itemsize] + list(strides)
 
     else:
-        raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
+        raise ValueError(f"Frame axis={axis} must be either 0 or -1")
 
     return as_strided(x, shape=shape, strides=strides)
 
@@ -68,12 +68,12 @@ class TestFrameOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
         paddle.disable_static()
 
 

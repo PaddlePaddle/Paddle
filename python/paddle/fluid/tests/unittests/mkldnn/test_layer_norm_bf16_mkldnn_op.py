@@ -19,16 +19,15 @@ from operator import mul
 
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import enable_static
+from paddle import enable_static, fluid
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+)
 from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import (
     TestLayerNormMKLDNNOp,
     _reference_layer_norm_naive,
-)
-from paddle.fluid.tests.unittests.op_test import (
-    _set_use_system_allocator,
-    convert_float_to_uint16,
 )
 
 np.random.random(123)

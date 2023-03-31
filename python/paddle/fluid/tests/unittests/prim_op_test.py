@@ -20,8 +20,14 @@ import config
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+from paddle.fluid import core
+from paddle.fluid.framework import (
+    OpProtoHolder,
+    _dygraph_tracer,
+    canonicalize_attrs,
+    in_dygraph_mode,
+)
+from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 
@@ -61,11 +67,16 @@ class OpTestUtils:
         cls, op_type, eager_tensor_inputs, eager_tensor_outputs, attrs_outputs
     ):
         try:
+            op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+            canonicalized_attrs = canonicalize_attrs(attrs_outputs, op_proto)
+        except ValueError:
+            canonicalized_attrs = attrs_outputs
+        try:
             kernel_sig = _dygraph_tracer()._get_kernel_signature(
                 op_type,
                 eager_tensor_inputs,
                 eager_tensor_outputs,
-                attrs_outputs,
+                canonicalized_attrs,
             )
         except RuntimeError as re:
             """we think the kernel_sig is missing."""
@@ -163,11 +174,13 @@ class OpTestUtils:
         if api_params == []:
             results.append(input_arguments)
             return results
-        api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+        api_ignore_param_list = {'name', 'dtype', 'out', 'output'}
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
                 results.append(get_default(idx, api_defaults))
+                if idx_of_op_proto_arguments < len(input_arguments):
+                    idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
                     tmp = input_arguments[idx_of_op_proto_arguments]
@@ -220,12 +233,12 @@ def apply_to_static(net, use_cinn):
 
 
 class PrimNet(paddle.nn.Layer):
-    def __init__(self, python_api):
-        super(PrimNet, self).__init__()
-        self.python_api = python_api
+    def __init__(self, public_python_api):
+        super().__init__()
+        self.public_python_api = public_python_api
 
     def forward(self, args):
-        out = self.python_api(*args)
+        out = self.public_python_api(*args)
         return out
 
 
@@ -263,7 +276,10 @@ class PrimForwardChecker:
         ), "Please set dtype in setUp function."
         self.op_type = self.op_test.op_type
         self.prim_op_type = self.op_test.prim_op_type
-        self.python_api = self.op_test.python_api
+        assert hasattr(
+            self.op_test, 'public_python_api'
+        ), "If you want to check prim, please set public_python_api in setUp function."
+        self.public_python_api = self.op_test.public_python_api
         self.dtype = np.dtype(self.op_test.dtype)
         self.inputs = self.op_test.inputs
         self.attrs = (
@@ -431,7 +447,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -440,7 +456,7 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        ret = flatten(_as_list(self.python_api(*args)))
+        ret = flatten(_as_list(self.public_python_api(*args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = paddle.utils.map_structure(
@@ -578,7 +594,7 @@ class PrimForwardChecker:
                 stop_gradient=True
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api,
+                self.public_python_api,
                 static_inputs,
                 attrs,
                 self.kernel_sig,
@@ -587,8 +603,8 @@ class PrimForwardChecker:
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            ret = flatten(_as_list(self.python_api(*args)))
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            ret = flatten(_as_list(self.public_python_api(*args)))
+            primapi.to_prim(main_program.blocks)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -649,7 +665,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -658,7 +674,7 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
@@ -731,7 +747,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -740,7 +756,7 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
@@ -894,7 +910,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -905,7 +921,7 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        ret = _as_list(self.python_api(*args))
+        ret = _as_list(self.public_python_api(*args))
         outputs_dict = self.get_output_dict(self.outputs, ret, outputs_sig)
         ys = []
         if isinstance(self.output_names, list):
@@ -1003,7 +1019,7 @@ class PrimGradChecker(PrimForwardChecker):
                 stop_gradient=False
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api,
+                self.public_python_api,
                 static_inputs,
                 attrs,
                 self.kernel_sig,
@@ -1014,11 +1030,11 @@ class PrimGradChecker(PrimForwardChecker):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            fw_outs = _as_list(self.python_api(*args))
+            fw_outs = _as_list(self.public_python_api(*args))
             outputs_dict = self.get_output_dict(
                 self.outputs, fw_outs, outputs_sig
             )
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            primapi.to_prim(main_program.blocks)
             ys = []
             if isinstance(self.output_names, list):
                 for output_name in self.output_names:
@@ -1109,7 +1125,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -1118,7 +1134,7 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
@@ -1224,7 +1240,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -1233,7 +1249,7 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )

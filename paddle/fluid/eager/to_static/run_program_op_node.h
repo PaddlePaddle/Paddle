@@ -283,6 +283,7 @@ inline void RunProgramAPI(
     std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     std::vector<paddle::Tensor *> &dout,                  // NOLINT
+    bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
@@ -308,14 +309,22 @@ inline void RunProgramAPI(
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
+
   auto input_names = details::GetTensorsName(x);
   auto output_names = details::GetTensorsName(out);
+  auto param_names = details::GetTensorsName(params);
   auto dout_names = details::GetTensorsName(dout);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream s;
     s << "input_names: ";
     for (auto name : input_names) {
+      s << name << " ";
+    }
+    s << std::endl;
+    s << "param_names: ";
+    for (auto name : param_names) {
       s << name << " ";
     }
     s << std::endl;
@@ -430,8 +439,10 @@ inline void RunProgramAPI(
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    if (is_test || !egr::Controller::Instance().HasGrad()) {
-      VLOG(4) << "is test, set this scope can reused";
+    if (is_test || !require_any_grad) {
+      VLOG(4) << "don't require any grad, set this scope can reused";
+      VLOG(4) << "is_test: " << is_test
+              << ", require_any_grad: " << require_any_grad;
       global_inner_scope->SetCanReuesd(true);
       details::GcScope(global_inner_scope);
     } else {
@@ -470,6 +481,7 @@ inline void RunProgramGradAPI(
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
       paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
@@ -580,7 +592,19 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   GradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
 
-  ~GradNodeRunProgram() override = default;
+  ~GradNodeRunProgram() {
+    if (!executed_) {
+      auto *out_scope_vec = &step_scope_;
+      VLOG(4) << "~GradNodeRunProgram";
+      // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
+      for (size_t i = 0; i < out_scope_vec->size(); ++i) {
+        paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
+        global_inner_scope->SetCanReuesd(true);
+        details::GcScope(global_inner_scope);
+        VLOG(4) << "global_inner_scope SetCanReuesd";
+      }
+    }
+  }
   // Functor: perform backward computations
   virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
@@ -640,6 +664,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       x_grad_ptr,
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+
+    executed_ = true;
     return {x_grad, params_grad};
   }
 
@@ -716,4 +742,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;
+
+  bool executed_{false};
 };

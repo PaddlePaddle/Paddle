@@ -21,7 +21,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
 from paddle.jit import to_static
@@ -99,7 +99,7 @@ def _get_interp1d_bin_mask(
     return p_mask
 
 
-class Conv1D(fluid.dygraph.Layer):
+class Conv1D(paddle.nn.Layer):
     def __init__(
         self,
         prefix,
@@ -140,7 +140,7 @@ class Conv1D(fluid.dygraph.Layer):
         return x
 
 
-class BMN(fluid.dygraph.Layer):
+class BMN(paddle.nn.Layer):
     def __init__(self, cfg):
         super().__init__()
 
@@ -583,9 +583,7 @@ def fake_data_reader(args, mode='train'):
                     (video_feat, gt_iou_map, gt_start, gt_end, video_idx)
                 )
             else:
-                raise NotImplementedError(
-                    'mode {} not implemented'.format(mode)
-                )
+                raise NotImplementedError(f'mode {mode} not implemented')
             if len(batch_out) == args.batch_size:
                 yield batch_out
                 batch_out = []
@@ -620,19 +618,19 @@ def val_bmn(model, args):
         avg_loss = paddle.mean(loss)
 
         loss_data += [
-            avg_loss.numpy()[0],
-            tem_loss.numpy()[0],
-            pem_reg_loss.numpy()[0],
-            pem_cls_loss.numpy()[0],
+            float(avg_loss),
+            float(tem_loss),
+            float(pem_reg_loss),
+            float(pem_cls_loss),
         ]
 
         print(
-            '[VALID] iter {} '.format(batch_id)
+            f'[VALID] iter {batch_id} '
             + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                '%f' % avg_loss.numpy()[0],
-                '%f' % tem_loss.numpy()[0],
-                '%f' % pem_reg_loss.numpy()[0],
-                '%f' % pem_cls_loss.numpy()[0],
+                '%f' % float(avg_loss),
+                '%f' % float(tem_loss),
+                '%f' % float(pem_reg_loss),
+                '%f' % float(pem_cls_loss),
             )
         )
 
@@ -716,22 +714,22 @@ class TestTrain(unittest.TestCase):
                     bmn.clear_gradients()
                     # log loss data to verify correctness
                     loss_data += [
-                        avg_loss.numpy()[0],
-                        tem_loss.numpy()[0],
-                        pem_reg_loss.numpy()[0],
-                        pem_cls_loss.numpy()[0],
+                        float(avg_loss),
+                        float(tem_loss),
+                        float(pem_reg_loss),
+                        float(pem_cls_loss),
                     ]
 
                     if args.log_interval > 0 and (
                         batch_id % args.log_interval == 0
                     ):
                         print(
-                            '[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
+                            f'[TRAIN] Epoch {epoch}, iter {batch_id} '
                             + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                                '%f' % avg_loss.numpy()[0],
-                                '%f' % tem_loss.numpy()[0],
-                                '%f' % pem_reg_loss.numpy()[0],
-                                '%f' % pem_cls_loss.numpy()[0],
+                                '%f' % float(avg_loss),
+                                '%f' % float(tem_loss),
+                                '%f' % float(pem_reg_loss),
+                                '%f' % float(pem_cls_loss),
                             )
                         )
 

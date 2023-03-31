@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestFleetBase(unittest.TestCase):
@@ -144,7 +144,7 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
 
     def test_exception(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         self.assertRaises(Exception, fleet.init_worker)
 

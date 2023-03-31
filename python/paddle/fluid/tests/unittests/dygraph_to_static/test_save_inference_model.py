@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -33,7 +33,7 @@ place = (
 )
 
 
-class SimpleFcLayer(fluid.dygraph.Layer):
+class SimpleFcLayer(paddle.nn.Layer):
     def __init__(self, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
@@ -98,7 +98,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         self, model, inputs, gt_out, feed=None, fetch=None
     ):
 
-        expected_persistable_vars = set([p.name for p in model.parameters()])
+        expected_persistable_vars = {p.name for p in model.parameters()}
 
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference/model"
@@ -161,13 +161,13 @@ class TestPartialProgramRaiseError(unittest.TestCase):
 
             concrete_program.parameters = params[0]
             # TypeError: Type of self._params should be list or tuple,
-            # but received <class 'paddle.fluid.framework.ParamBase'>.
+            # but received <class 'paddle.fluid.framework.EagerParamBase'>.
             with self.assertRaises(TypeError):
                 partial_program_from(concrete_program)
 
             params[0] = "linear.w.0"
             concrete_program.parameters = params
-            # TypeError: Type of self._params[0] should be framework.ParamBase,
+            # TypeError: Type of self._params[0] should be framework.EagerParamBase,
             # but received <type 'str'>.
             with self.assertRaises(TypeError):
                 partial_program_from(concrete_program)
