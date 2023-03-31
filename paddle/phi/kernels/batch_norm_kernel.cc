@@ -72,6 +72,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    phi::BatchNormInferKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);

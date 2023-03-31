@@ -1221,6 +1221,7 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
@@ -1238,8 +1239,10 @@ PD_REGISTER_KERNEL(batch_norm,
                    phi::BatchNormKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
