@@ -32,18 +32,22 @@ class alignas(8) Operation final {
 
   void destroy();
 
+  ir::OpResult GetResultByIndex(uint32_t index);
+
+  std::string print();
+
  private:
-  Operation(uint8_t num_results,
-            uint8_t num_operands,
+  Operation(uint32_t num_results,
+            uint32_t num_operands,
             ir::DictionaryAttribute attibute);
 
   ~Operation();
 
   ir::DictionaryAttribute attibute_;
 
-  uint8_t num_results_ = 0;
+  uint32_t num_results_ = 0;
 
-  uint8_t num_operands_ = 0;
+  uint32_t num_operands_ = 0;
 };
 
 }  // namespace ir

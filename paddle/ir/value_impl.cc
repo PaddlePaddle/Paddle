@@ -18,8 +18,9 @@ namespace ir {
 namespace detail {
 uint32_t ValueImpl::index() const {
   uint32_t index = reinterpret_cast<uintptr_t>(offset_first_user_) & 0x07;
+  VLOG(1) << "get ValueImpl index: " << index;
   if (index < 6) return index;
-  return ir::dyn_cast<OpOutlineResultImpl>(ir::dyn_cast<OpResultImpl>(this))
+  return reinterpret_cast<OpOutlineResultImpl *>(const_cast<ValueImpl *>(this))
       ->GetResultIndex();
 }
 
