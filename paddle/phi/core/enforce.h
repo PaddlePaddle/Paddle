@@ -1118,17 +1118,16 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
     }                                                      \
   } while (0)
 
-#define PADDLE_WARN_GPU_SUCCESS(COND)                        \
-  do {                                                       \
-    auto __cond__ = (COND);                                  \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
-    constexpr auto __success_type__ =                        \
-        ::phi::enforce::details::ExternalApiType<            \
-            __CUDA_STATUS_TYPE__>::kSuccess;                 \
-    if (UNLIKELY(__cond__ != __success_type__)) {            \
-      __THROW_WARN_INTERNAL__(                               \
-          ::phi::enforce::build_nvidia_error_msg(__cond__)); \
-    }                                                        \
+#define PADDLE_WARN_GPU_SUCCESS(COND)                                          \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
+    constexpr auto __success_type__ =                                          \
+        ::phi::enforce::details::ExternalApiType<                              \
+            __CUDA_STATUS_TYPE__>::kSuccess;                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                              \
+      __THROW_WARN_INTERNAL__(::phi::enforce::build_rocm_error_msg(__cond__)); \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {
