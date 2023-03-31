@@ -376,15 +376,13 @@ class CompileTimeStrategy:
             for slice in slices:
                 if self.is_geo_mode():
                     if is_send:
-                        names.append("{}.delta".format(slice.name))
+                        names.append(f"{slice.name}.delta")
                     else:
                         names.append(slice.name)
                 elif (
                     is_grad and self.is_sync_mode() and self.get_trainers() > 1
                 ):
-                    names.append(
-                        "{}.trainer_{}".format(slice.name, self.get_role_id())
-                    )
+                    names.append(f"{slice.name}.trainer_{self.get_role_id()}")
                 else:
                     names.append(slice.name)
 
@@ -793,7 +791,7 @@ class CompileTimeStrategy:
             splited_varname = []
 
             for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
+                splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
                 True if param_name in distibuted_varnames else False
@@ -1327,7 +1325,7 @@ class CompileTimeStrategy:
                 del self.merged_sparse_pairs[index]
                 return
 
-        print("Not find {} in self.merge_pairs".format(var_name))
+        print(f"Not find {var_name} in self.merge_pairs")
 
 
 def _is_opt_role_op(op):

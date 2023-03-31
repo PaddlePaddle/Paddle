@@ -50,7 +50,7 @@ def insert_fuse_all_reduce_ops(
     block, reversed_op_indices, input_var_names, output_var_names, dtype, attrs
 ):
     fused_var = block.create_var(
-        name=unique_name.generate("FusedOutput_{}".format(input_var_names[0])),
+        name=unique_name.generate(f"FusedOutput_{input_var_names[0]}"),
         dtype=dtype,
     )
 

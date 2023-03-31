@@ -219,7 +219,7 @@ def create_test_fp16(parent):
         def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestPad3dFp16.__name__ = cls_name
     globals()[cls_name] = TestPad3dFp16
 
@@ -259,7 +259,7 @@ def create_test_bf16(parent):
                 place, ['X'], 'Out', max_relative_error=1e-2
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestPad3dBf16.__name__ = cls_name
     globals()[cls_name] = TestPad3dBf16
 

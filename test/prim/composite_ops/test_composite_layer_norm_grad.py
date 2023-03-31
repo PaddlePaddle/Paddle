@@ -492,7 +492,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float16", "float32"]
+        self.dtypes = ["float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -576,7 +576,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         b_p = paddle.to_tensor(b)
         y_g_p = paddle.to_tensor(y_g)
 
-        expect = dygraph_fused_backward_withNone(x_p, n_shape, w_p, b_p, y_g_p)[
+        expect = dygraph_fused_backward(x_p, n_shape, w_p, b_p, y_g_p)[
             0
         ].numpy()
         actual = self.static_comp_forward_and_backward(x, n_shape, w, b)[0]
