@@ -1483,7 +1483,7 @@ def poisson_nll_loss(
     r"""Poisson negative log likelihood loss.
     See more detail in :ref:`PoissonNLLLoss <api_paddle_nn_PoissonNLLLoss>` .
 
-    Parameters::
+    Parameters:
          input (Tensor):
             Input tensor, expectation of underlying Poisson distribution.
             The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
@@ -1514,7 +1514,7 @@ def poisson_nll_loss(
          name (str, optional):
             Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Examples::
+    Examples:
         .. code-block:: python
 
             import paddle

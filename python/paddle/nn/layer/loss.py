@@ -894,6 +894,7 @@ class PoissonNLLLoss(Layer):
 
     .. math::
         \text{loss}(\text{input}, \text{label}) = \text{input} - \text{label} * \log(\text{label}) + \log(\text{label!})
+
     The last term can be approximated with Stirling formula. This approximation term is used when :attr:`full` is ``True``.
     The approximation is added when label values are more than 1 and omitted when the labels are less than or equal to 1.
 
@@ -925,7 +926,7 @@ class PoissonNLLLoss(Layer):
         - label (Tensor): The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
         - output (Tensor): scalar if :attr:`reduction` is ``'mean'`` (default) or ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same shape as the input
 
-    Examples::
+    Examples:
         .. code-block:: python
 
             import paddle
