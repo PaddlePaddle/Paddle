@@ -616,7 +616,7 @@ def create_test_bf16_class(parent, check_grad=True):
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
     TestBf16Case.__name__ = cls_name
     globals()[cls_name] = TestBf16Case
 
