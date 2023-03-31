@@ -46,8 +46,14 @@ else()
       CACHE FILEPATH "k2 context fsa log Library" FORCE)
 endif()
 
+
+set(K2_ENABLE_NVTX OFF)
+
 if(WITH_GPU)
   set(K2_WITH_CUDA ON)
+  if(NOT WIN32)
+    set(K2_ENABLE_NVTX ON)
+  endif()
 else()
   set(K2_WITH_CUDA OFF)
 endif()
@@ -69,6 +75,7 @@ ExternalProject_Add(
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DBUILD_SHARED_LIBS=ON
              -DK2_WITH_CUDA=${K2_WITH_CUDA}
+             -DK2_ENABLE_NVTX=${K2_ENABLE_NVTX}
              -DK2_USE_PYTORCH=OFF
              -DK2_ENABLE_TESTS=OFF
              -DK2_ENABLE_BENCHMARK=OFF
