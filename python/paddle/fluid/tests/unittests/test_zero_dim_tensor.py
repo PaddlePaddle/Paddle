@@ -580,6 +580,196 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(zero_dim_var.shape, [])
         self.assertEqual(zero_dim_var.item(), 0.5)
 
+    # TODO(zhouwei): will open after sum/min/max is ready
+    def _test_linalg_cond(self):
+        for p in ['fro', 'nuc', 1, float('inf'), 2]:
+            # 1) x is 2D
+            x = paddle.rand([3, 3])
+            x.stop_gradient = False
+            out = paddle.linalg.cond(x, p)
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [3, 3])
+
+            # 2) x is 3D
+            x = paddle.rand([5, 3, 3])
+            x.stop_gradient = False
+            out = paddle.linalg.cond(x, p)
+            out.backward()
+            self.assertEqual(out.shape, [5])
+            self.assertEqual(x.grad.shape, [5, 3, 3])
+
+    def test_linalg_norm(self):
+        # for p in ['fro', 1, 2]:
+        for p in [1, 2]:
+            # 1) x is 1D
+            x = paddle.rand([10])
+            x.stop_gradient = False
+            out = paddle.linalg.norm(x, p=p, axis=0)
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [10])
+
+            # 2) x is 2D
+            x = paddle.rand([3, 3])
+            x.stop_gradient = False
+            out = paddle.linalg.norm(x, p=p)
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [3, 3])
+
+            # 3) x is 3D
+            x = paddle.rand([5, 3, 3])
+            x.stop_gradient = False
+            out = paddle.linalg.norm(x, p=p, axis=[1, 2])
+            out.backward()
+            self.assertEqual(out.shape, [5])
+            self.assertEqual(x.grad.shape, [5, 3, 3])
+
+            # 4) x is 3D, axis is None
+            x = paddle.rand([5, 3, 3])
+            x.stop_gradient = False
+            out = paddle.linalg.norm(x, p=p)
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [5, 3, 3])
+
+        # TODO(zhouwei): will open after min/max is ready
+        # x = paddle.rand([5, 5])
+        # x.stop_gradient = False
+        # out = paddle.linalg.norm(x, p=float('inf'), axis=[0, 1])
+        # out.backward()
+        # self.assertEqual(out.shape, [])
+        # self.assertEqual(x.grad.shape, [5, 5])
+
+    def test_linglg_cov(self):
+        x = paddle.rand([10])
+        x.stop_gradient = False
+        out = paddle.linalg.cov(x)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+
+    def test_linalg_det(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.det(x1)
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(x1.grad.shape, [3, 3])
+
+        # 2) x is 3D
+        x2 = paddle.rand([5, 3, 3])
+        x2.stop_gradient = False
+        out2 = paddle.linalg.det(x2)
+        out2.backward()
+        self.assertEqual(out2.shape, [5])
+        self.assertEqual(x2.grad.shape, [5, 3, 3])
+
+        # 3) x is ND
+        x3 = paddle.rand([5, 2, 3, 3])
+        x3.stop_gradient = False
+        out3 = paddle.linalg.det(x3)
+        out3.backward()
+        self.assertEqual(out3.shape, [5, 2])
+        self.assertEqual(x3.grad.shape, [5, 2, 3, 3])
+
+    def test_matrix_rank(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        out1 = paddle.linalg.matrix_rank(x1)
+        self.assertEqual(out1.shape, [])
+
+        # 2) x is 2D with tol
+        x2 = paddle.rand([3, 3])
+        out2 = paddle.linalg.matrix_rank(x2, 0.01)
+        self.assertEqual(out2.shape, [])
+
+        # 3) x is 3D
+        x3 = paddle.rand([5, 3, 3])
+        out3 = paddle.linalg.matrix_rank(x3)
+        self.assertEqual(out3.shape, [5])
+
+    def test_multi_dot(self):
+        x1 = paddle.rand([5])
+        x1.stop_gradient = False
+        x2 = paddle.rand([5, 10])
+        x2.stop_gradient = False
+        x3 = paddle.rand([10])
+        x3.stop_gradient = False
+        out = paddle.linalg.multi_dot([x1, x2, x3])
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x1.grad.shape, [5])
+        self.assertEqual(x2.grad.shape, [5, 10])
+        self.assertEqual(x3.grad.shape, [10])
+
+    def test_linalg_slogdet(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        out1.backward()
+        self.assertEqual(out1.shape, [2])
+        self.assertEqual(x1.grad.shape, [3, 3])
+
+        # 2) x is 3D
+        x2 = paddle.rand([5, 3, 3])
+        x2.stop_gradient = False
+        out2 = paddle.linalg.slogdet(x2)
+        out2.backward()
+        self.assertEqual(out2.shape, [2, 5])
+        self.assertEqual(x2.grad.shape, [5, 3, 3])
+
+        # 3) x is ND
+        x3 = paddle.rand([5, 2, 3, 3])
+        x3.stop_gradient = False
+        out3 = paddle.linalg.slogdet(x3)
+        out3.backward()
+        self.assertEqual(out3.shape, [2, 5, 2])
+        self.assertEqual(x3.grad.shape, [5, 2, 3, 3])
+
+    def test_dist(self):
+        # 1) x is 2D
+        x = paddle.rand([5, 5])
+        x.stop_gradient = False
+        y = paddle.rand([5, 5])
+        y.stop_gradient = False
+        out = paddle.dist(x, y)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [5, 5])
+        self.assertEqual(y.grad.shape, [5, 5])
+
+        # 2) x is 3D
+        x = paddle.rand([6, 5, 5])
+        x.stop_gradient = False
+        y = paddle.rand([6, 5, 5])
+        y.stop_gradient = False
+        out = paddle.dist(x, y)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [6, 5, 5])
+        self.assertEqual(y.grad.shape, [6, 5, 5])
+
+    def test_trace(self):
+        # 1) x is 2D
+        x = paddle.rand([3, 3])
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [3, 3])
+
+        # 2) x is 3D
+        x = paddle.rand([5, 3, 3])
+        x.stop_gradient = False
+        out = paddle.trace(x, 1, 2)
+        out.backward()
+        self.assertEqual(out.shape, [5])
+        self.assertEqual(x.grad.shape, [5, 3, 3])
+
     def test_expand(self):
         # case1
         x = paddle.full([], 1, 'float32')
@@ -2071,6 +2261,261 @@ class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    # TODO(zhouwei): will open after sum/min/max is ready
+    def _test_linalg_cond(self):
+        for p in ['fro', 'nuc', 1, float('inf'), 2]:
+            prog = paddle.static.Program()
+            with paddle.static.program_guard(prog):
+                # 1) x is 2D
+                x1 = paddle.rand([3, 3])
+                x1.stop_gradient = False
+                out1 = paddle.linalg.cond(x1, p)
+                paddle.static.append_backward(out1)
+
+                # 2) x is 3D
+                x2 = paddle.rand([5, 3, 3])
+                x2.stop_gradient = False
+                out2 = paddle.linalg.cond(x2, p)
+                paddle.static.append_backward(out2.sum())
+
+                res = self.exe.run(
+                    prog, fetch_list=[out1, x1.grad_name, out2, x2.grad_name]
+                )
+                self.assertEqual(res[0].shape, ())
+                self.assertEqual(res[1].shape, (3, 3))
+                self.assertEqual(res[2].shape, (5,))
+                self.assertEqual(res[3].shape, (5, 3, 3))
+
+    def test_linalg_norm(self):
+        # prog = paddle.static.Program()
+        # with paddle.static.program_guard(prog):
+        # TODO(zhouwei): will open after min/max is ready
+        # x = paddle.rand([5, 5])
+        # x.stop_gradient = False
+        # out = paddle.linalg.norm(x, p=float('inf'), axis=[0, 1])
+        # paddle.static.append_backward(out)
+        # res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        # self.assertEqual(res[0].shape, ())
+        # self.assertEqual(res[1].shape, (5, 5))
+
+        # for p in ['fro', 1, 2]:
+        for p in [1, 2]:
+            prog = paddle.static.Program()
+            with paddle.static.program_guard(prog):
+                # 1) x is 2D
+                x1 = paddle.rand([3, 3])
+                x1.stop_gradient = False
+                out1 = paddle.linalg.norm(x1, p=p)
+                paddle.static.append_backward(out1)
+
+                # 2) x is 3D
+                x2 = paddle.rand([5, 3, 3])
+                x2.stop_gradient = False
+                out2 = paddle.linalg.norm(x2, p=p, axis=[1, 2])
+                paddle.static.append_backward(out2.sum())
+
+                prog = paddle.static.default_main_program()
+                res = self.exe.run(
+                    prog, fetch_list=[out1, x1.grad_name, out2, x2.grad_name]
+                )
+                self.assertEqual(res[0].shape, ())
+                self.assertEqual(res[1].shape, (3, 3))
+                self.assertEqual(res[2].shape, (5,))
+                self.assertEqual(res[3].shape, (5, 3, 3))
+
+    @prog_scope()
+    def test_linglg_cov(self):
+        x = paddle.rand([10])
+        x.stop_gradient = False
+        out = paddle.linalg.cov(x)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (10,))
+
+    @prog_scope()
+    def test_linalg_det(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.det(x1)
+        paddle.static.append_backward(out1.sum())
+
+        # 2) x is 3D
+        x2 = paddle.rand([5, 3, 3])
+        x2.stop_gradient = False
+        out2 = paddle.linalg.det(x2)
+        paddle.static.append_backward(out2.sum())
+
+        # 3) x is ND
+        x3 = paddle.rand([5, 2, 3, 3])
+        x3.stop_gradient = False
+        out3 = paddle.linalg.det(x3)
+        paddle.static.append_backward(out3.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                out2,
+                x2.grad_name,
+                out3,
+                x3.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 3))
+        self.assertEqual(res[2].shape, (5,))
+        self.assertEqual(res[3].shape, (5, 3, 3))
+        self.assertEqual(res[4].shape, (5, 2))
+        self.assertEqual(res[5].shape, (5, 2, 3, 3))
+
+    @prog_scope()
+    def test_matrix_rank(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        out1 = paddle.linalg.matrix_rank(x1)
+        self.assertEqual(out1.shape, ())
+
+        # 2) x is 2D with tol
+        x2 = paddle.rand([3, 3])
+        out2 = paddle.linalg.matrix_rank(x2, 0.01)
+        self.assertEqual(out2.shape, ())
+
+        # 3) x is 3D
+        x3 = paddle.rand([5, 3, 3])
+        out3 = paddle.linalg.matrix_rank(x3)
+        self.assertEqual(out3.shape, (5,))
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2, out3])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (5,))
+
+    @prog_scope()
+    def test_multi_dot(self):
+        x1 = paddle.rand([5])
+        x1.stop_gradient = False
+        x2 = paddle.rand([5, 10])
+        x2.stop_gradient = False
+        x3 = paddle.rand([10])
+        x3.stop_gradient = False
+        out = paddle.linalg.multi_dot([x1, x2, x3])
+
+        paddle.static.append_backward(out)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out, x1.grad_name, x2.grad_name, x3.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5,))
+        self.assertEqual(res[2].shape, (5, 10))
+        self.assertEqual(res[3].shape, (10,))
+
+    @prog_scope()
+    def test_linalg_slogdet(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        paddle.static.append_backward(out1.sum())
+
+        # 2) x is 3D
+        x2 = paddle.rand([5, 3, 3])
+        x2.stop_gradient = False
+        out2 = paddle.linalg.slogdet(x2)
+        paddle.static.append_backward(out2.sum())
+
+        # 3) x is ND
+        x3 = paddle.rand([5, 2, 3, 3])
+        x3.stop_gradient = False
+        out3 = paddle.linalg.slogdet(x3)
+        paddle.static.append_backward(out3.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                out2,
+                x2.grad_name,
+                out3,
+                x3.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, (2,))
+        self.assertEqual(res[1].shape, (3, 3))
+        self.assertEqual(res[2].shape, (2, 5))
+        self.assertEqual(res[3].shape, (5, 3, 3))
+        self.assertEqual(res[4].shape, (2, 5, 2))
+        self.assertEqual(res[5].shape, (5, 2, 3, 3))
+
+    @prog_scope()
+    def test_dist(self):
+        # 1) x is 2D
+        x1 = paddle.rand([5, 5])
+        x1.stop_gradient = False
+        y1 = paddle.rand([5, 5])
+        y1.stop_gradient = False
+        out1 = paddle.dist(x1, y1)
+        paddle.static.append_backward(out1.sum())
+
+        # 2) x is 3D
+        x2 = paddle.rand([6, 5, 5])
+        x2.stop_gradient = False
+        y2 = paddle.rand([6, 5, 5])
+        y2.stop_gradient = False
+        out2 = paddle.dist(x2, y2)
+        paddle.static.append_backward(out2.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                y1.grad_name,
+                out2,
+                x2.grad_name,
+                y2.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5, 5))
+        self.assertEqual(res[2].shape, (5, 5))
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, (6, 5, 5))
+        self.assertEqual(res[5].shape, (6, 5, 5))
+
+    @prog_scope()
+    def test_trace(self):
+        # 1) x is 2D
+        x1 = paddle.rand([3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.trace(x1)
+        paddle.static.append_backward(out1.sum())
+
+        # 2) x is 3D
+        x2 = paddle.rand([5, 3, 3])
+        x2.stop_gradient = False
+        out2 = paddle.trace(x2, 1, 2)
+        paddle.static.append_backward(out2.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out1, x1.grad_name, out2, x2.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 3))
+        self.assertEqual(res[2].shape, (5,))
+        self.assertEqual(res[3].shape, (5, 3, 3))
 
     @prog_scope()
     def test_create_parameter_var(self):

@@ -79,26 +79,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   auto input_dims_size = x.dims().size();
-  if (input_dims_size > 2) {
-    PADDLE_ENFORCE_EQ(
-        out_grad.dims().size() + 2,
-        input_dims_size,
-        phi::errors::InvalidArgument(
-            "The grad tensor of det dims size should be 2 less than"
-            " input tensor's, but here differ %d",
-            input_dims_size - out_grad.dims().size()));
-  } else if (input_dims_size == 2) {
-    // input dims size 2 and grad dims size 1 is possible
-    PADDLE_ENFORCE_EQ(
-        out_grad.dims().size(),
-        1,
-        phi::errors::InvalidArgument(
-            "The grad tensor of det dims size should be 2 less than"
-            " input tensor's, but here differ %d",
-            input_dims_size - out_grad.dims().size()));
-  } else {
-    // checked in forward, pass
-  }
+  PADDLE_ENFORCE_EQ(out_grad.dims().size() + 2,
+                    input_dims_size,
+                    phi::errors::InvalidArgument(
+                        "The grad tensor of det dims size should be 2 less than"
+                        " input tensor's, but here differ %d",
+                        input_dims_size - out_grad.dims().size()));
 
   // Check Whether the matrix is invertible
   // (matrix A not invertible) == (det(A)=0)

@@ -73,32 +73,12 @@ template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out) {
-  auto input_dim = vectorize(x.dims());
-  auto input_dim_size = input_dim.size();
-
+  auto x_dim = x.dims();
   auto batch_count = detail::GetBatchCount(x.dims());
-  VLOG(2) << "input dim:" << x.dims();
-  PADDLE_ENFORCE_GE(
-      input_dim_size,
-      2,
-      errors::InvalidArgument(
-          "the input matrix dimension size should greater than 2."));
-  PADDLE_ENFORCE_EQ(
-      input_dim[input_dim_size - 1],
-      input_dim[input_dim_size - 2],
-      errors::InvalidArgument("the input matrix should be square matrix."));
-  auto rank = input_dim[input_dim_size - 1];  // square matrix length
+  auto rank = x_dim[x_dim.size() - 1];  // square matrix rank
+  auto origin_out_dim = out->dims();
   SlogDeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
-  if (input_dim.size() == static_cast<size_t>(2)) {
-    // when input is a two-dimension matrix, The det value is a number.
-    output_dim_vec = {1};
-  }
-  output_dim_vec.insert(output_dim_vec.begin(),
-                        2);  // make the output dims as same as numpy
-  auto output_dims = phi::make_ddim(output_dim_vec);
-  out->Resize(output_dims);
-  VLOG(2) << "output dim:" << out->dims();
+  out->Resize(origin_out_dim);
 }
 
 }  // namespace phi

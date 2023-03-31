@@ -296,7 +296,7 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
         ]
 
 
-class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
+class TestAutoGradTransformForIndexSelect(unittest.TestCase):
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3,)}
@@ -338,6 +338,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         self.orig2prim_ops = [
             'broadcast_p',
             'add_p',
+            'reshape_p',
             'reshape_p',
             'mul_p',
             'reduce_sum_p',
@@ -457,6 +458,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'fill_constant',
             'elementwise_mul',
             'reduce_sum',
+            'reshape2',
             'reshape2',
             'reshape2',
             'elementwise_mul',

@@ -36,9 +36,6 @@ namespace detail {
 // Used in MatrixRankInferMeta
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
-  if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
-  }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
 }
@@ -131,6 +128,40 @@ void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
 void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
+}
+
+void SlogdetInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto x_dim_vec = vectorize(x.dims());
+  size_t x_rank = x_dim_vec.size();
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      errors::InvalidArgument(
+          "the input matrix dimension size should greater than 2."));
+  PADDLE_ENFORCE_EQ(
+      x_dim_vec[x_rank - 1],
+      x_dim_vec[x_rank - 2],
+      errors::InvalidArgument("the input matrix should be square matrix."));
+  std::vector<int> output_dim_vec(x_dim_vec.begin(), x_dim_vec.end() - 2);
+  output_dim_vec.insert(output_dim_vec.begin(), 2);
+  auto output_dims = phi::make_ddim(output_dim_vec);
+  out->set_dims(output_dims);
+}
+
+void DetInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto x_dim_vec = vectorize(x.dims());
+  size_t x_rank = x_dim_vec.size();
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "the input matrix dimension size should greater than 2."));
+  PADDLE_ENFORCE_EQ(x_dim_vec[x_rank - 1],
+                    x_dim_vec[x_rank - 2],
+                    phi::errors::InvalidArgument(
+                        "the input matrix should be square matrix."));
+  auto output_dims = phi::slice_ddim(x.dims(), 0, x_rank - 2);
+  out->set_dims(output_dims);
 }
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
@@ -2725,6 +2756,7 @@ void PNormInferMeta(const MetaTensor& x,
                     MetaTensor* out) {
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
+  if (axis < 0) axis = axis + x_rank;
 
   PADDLE_ENFORCE_GE(axis,
                     -x_rank,
@@ -2745,32 +2777,19 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> reduce_dims;
-  if (asvector) {
-    reduce_dims.emplace_back(1);
-    if (keepdim) {
-      for (int i = 1; i < x_dim.size(); ++i) {
-        reduce_dims.emplace_back(1);
+  std::vector<int> out_dim_vec;
+  for (int i = 0; i < x_dim.size(); ++i) {
+    if (asvector || i == axis) {
+      if (keepdim) {
+        out_dim_vec.emplace_back(1);
+      } else {
+        continue;
       }
-      x_dim = phi::make_ddim(reduce_dims);
+    } else {
+      out_dim_vec.emplace_back(x_dim[i]);
     }
-  } else {
-    if (axis < 0) axis = x_dim.size() + axis;
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
-    }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-
-    x_dim[axis] = 1;
   }
-
-  if (keepdim) {
-    out->set_dims(x_dim);
-  } else {
-    out->set_dims(phi::make_ddim(reduce_dims));
-  }
+  out->set_dims(phi::make_ddim(out_dim_vec));
   out->set_dtype(x.dtype());
 }
 
@@ -4246,7 +4265,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));

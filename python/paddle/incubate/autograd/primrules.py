@@ -400,9 +400,9 @@ def p_norm_orig2prim(op, x):
         x = reshape(x, shape=[num_el(x.shape)])
 
     if abs(op.attr('porder') - 2.0) < 1e-5:
-        return sqrt(reduce_sum(mul(x, x), axis=[0]))
+        return reshape(sqrt(reduce_sum(mul(x, x), axis=[0])), [])
     elif abs(op.attr('porder') - 1.0) < 1e-5:
-        return reduce_sum(primops.abs(x), axis=[0])
+        return reshape(reduce_sum(primops.abs(x), axis=[0]), [])
     else:
         raise RuntimeError('Only support lower l2/l1 norm currently')
 

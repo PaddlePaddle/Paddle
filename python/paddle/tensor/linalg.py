@@ -28,7 +28,7 @@ from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
 from .logic import logical_not
 from .manipulation import cast
-from .math import add, multiply
+from .math import _get_reduce_axis, add, multiply
 
 __all__ = []
 
@@ -458,11 +458,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 dtype=helper.input_dtype()
             )
 
-            reduce_all = (
-                True if axis is None or axis == [] or asvector else False
-            )
-            axis = axis if axis is not None and axis != [] else [0]
-
+            reduce_all, axis = _get_reduce_axis(axis, input)
             reduce_type = (
                 'reduce_max' if porder == np.float64('inf') else 'reduce_min'
             )
@@ -532,14 +528,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         )
         return out
 
-    if axis is None and p is not None:
-        if isinstance(p, str):
-            if p == "fro":
-                return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
+    if axis is None:
+        if p == "fro":
+            return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif isinstance(p, (int, float)):
             return vector_norm(
                 x,
@@ -551,7 +542,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                f"only valid p type is string or float, found {type(p)}"
+                f"only support p is 'fro'/float/int, but found {p}"
             )
 
     if isinstance(axis, tuple):
@@ -559,23 +550,17 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
-    # calculate vector norm, where axis is int or list with only one integer
     if isinstance(axis, int):
-        if isinstance(p, str):
-            if p == "fro":
-                return vector_norm(
-                    x,
-                    porder=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    asvector=False,
-                    name=name,
-                )
-
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
+        # calculate vector norm, where axis is int or list with only one integer
+        if p == "fro":
+            return vector_norm(
+                x,
+                porder=2,
+                axis=axis,
+                keepdim=keepdim,
+                asvector=False,
+                name=name,
+            )
         elif isinstance(p, (int, float)):
             return vector_norm(
                 x,
@@ -587,19 +572,17 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".format(
-                    p
-                )
+                f"only support p is 'fro'/float/int, but found {p}"
             )
-    # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
+        # calculate matrix norm, where axis is list with two integers
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == np.inf or p == -np.inf:
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
+                "only support axis is int/list(length==1) if p = 0, but found {}".format(
                     axis
                 )
             )
@@ -609,7 +592,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".format(
+            "only support axis is None/int/list(length<=2), but found {}".format(
                 axis
             )
         )
@@ -832,8 +815,7 @@ def cond(x, p=None, name=None):
             if porder == -1 or porder == -np.inf:
                 return _C_ops.min(sum_out, [-1], False)
         else:
-            reduce_all = True if axis is None or axis == [] else False
-            axis = axis if axis is not None and axis != [] else [0]
+            reduce_all, axis = _get_reduce_axis(axis, input)
             block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -892,7 +874,7 @@ def cond(x, p=None, name=None):
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
             return _C_ops.pow(sum_out_2, float(1.0 / porder))
         else:
-            reduce_all = True if axis is None or axis == [] else False
+            reduce_all, axis = _get_reduce_axis(axis, input)
             block = LayerHelper('norm', **locals())
             pow_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -958,7 +940,7 @@ def cond(x, p=None, name=None):
             if porder == -2:
                 return _C_ops.divide(min_out, max_out)
         else:
-            reduce_all = True if axis is None or axis == [] else False
+            reduce_all, axis = _get_reduce_axis(axis, input)
             block = LayerHelper('norm', **locals())
             out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()

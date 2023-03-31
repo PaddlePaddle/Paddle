@@ -115,13 +115,13 @@ TEST(DDim, Print) {
   std::stringstream ss1;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   ss1 << ddim;
-  EXPECT_EQ("2, 3, 4", ss1.str());
+  EXPECT_EQ("[2, 3, 4]", ss1.str());
 
   // print a zero-DDim
   std::stringstream ss2;
   phi::DDim zero_ddim = phi::make_ddim({});
   ss2 << zero_ddim;
-  EXPECT_EQ("", ss2.str());
+  EXPECT_EQ("[]", ss2.str());
 }
 
 TEST(DDim, Hash) {

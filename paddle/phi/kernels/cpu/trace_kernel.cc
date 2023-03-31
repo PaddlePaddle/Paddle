@@ -37,7 +37,6 @@ void TraceKernel(const Context& dev_ctx,
     auto output = phi::EigenVector<T>::Flatten(*out);
     auto reduce_dim = Eigen::array<int, 1>({1});
     output.device(*dev_ctx.eigen_device()) = x.sum(reduce_dim);
-    out->Resize(out->dims());
   } else {
     std::fill(out_data, out_data + out->numel(), static_cast<T>(0));
   }

@@ -39,15 +39,13 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
       errors::InvalidArgument("The grad tensor of SlogDet should contain two"
                               " grad: sign and absslogdet, but here %ld.",
                               out_grad.dims()[0]));
-  if (x.dims().size() > 2) {
-    PADDLE_ENFORCE_EQ(
-        out_grad.dims().size() + 1,
-        x.dims().size(),
-        errors::InvalidArgument(
-            "The grad tensor of slogdet dims size should 1 less than"
-            " input tensor's, but here differ %d",
-            x.dims().size() - out_grad.dims().size()));
-  }
+  PADDLE_ENFORCE_EQ(
+      out_grad.dims().size() + 1,
+      x.dims().size(),
+      errors::InvalidArgument(
+          "The grad tensor of slogdet dims size should 1 less than"
+          " input tensor's, but here differ %d",
+          x.dims().size() - out_grad.dims().size()));
 
   // Check Whether the matrix is invertible
   // (matrix A not invertible) == (absslogdet(A)=0)

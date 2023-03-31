@@ -596,6 +596,10 @@ void TopKInferMeta(const MetaTensor& x,
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
+void SlogdetInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void DetInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void TransferLayoutInferMeta(const MetaTensor& x,
                              int src_layout,
                              int dst_layout,
