@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -208,7 +207,6 @@ class TestDistMPSyncTraning(unittest.TestCase):
         mp_sync_grad=False,
         mp_sync_moment=False,
     ):
-        os.environ["FLAGS_mp_sync"] = "0"
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
