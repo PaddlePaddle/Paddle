@@ -34,6 +34,7 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
@@ -527,6 +528,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  phi::RecordEvent *step_event = nullptr;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 

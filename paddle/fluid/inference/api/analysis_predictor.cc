@@ -297,6 +297,8 @@ bool AnalysisPredictor::Init(
     platform::EnableHostEventRecorder();
     profiler_->Prepare();
     profiler_->Start();
+    step_event = new phi::RecordEvent(
+        "ProfileStep#0", phi::TracerEventType::ProfileStep, 0);
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
@@ -2283,6 +2285,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   } else if (config_.with_new_profile_) {
+    delete step_event;
+    step_event = nullptr;
     platform::DisableHostEventRecorder();
     std::unique_ptr<platform::ProfilerResult> profiler_result =
         profiler_->Stop();
