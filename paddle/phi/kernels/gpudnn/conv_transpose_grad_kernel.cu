@@ -1070,7 +1070,8 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    ALL_LAYOUT,
                    phi::Conv3dTransposeGradGPUDNNKernel,
                    float,
-                   float16) {}
+                   float16,
+                   phi::dtype::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
