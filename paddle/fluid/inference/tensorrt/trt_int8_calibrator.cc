@@ -122,7 +122,6 @@ bool TRTInt8Calibrator::getBatch(void** bindings,
             names[i],
             i));
       } catch (std::exception& e) {
-        PADDLE_THROW(e);
       }
     }
     bindings[i] = it->second.first;
