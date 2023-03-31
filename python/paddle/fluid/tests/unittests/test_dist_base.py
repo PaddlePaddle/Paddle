@@ -287,7 +287,7 @@ class TestDistRunnerBase:
             out_losses.append(loss[0])
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
-        print_to_err(type(self).__name__, "dist losses: {}".format(out_losses))
+        print_to_err(type(self).__name__, f"dist losses: {out_losses}")
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
 
@@ -442,7 +442,7 @@ class TestDistRunnerBase:
         build_stra.memory_optimize = False
 
         if args.fuse_all_reduce is not None:
-            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            sys.stderr.write(f'fuse_all_reduce={args.fuse_all_reduce}')
             build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
 
         if args.hogwild:
@@ -1015,12 +1015,12 @@ class TestDistBase(unittest.TestCase):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
         if DIST_UT_PORT == 0:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
         else:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT,
                 DIST_UT_PORT + 1,
             )
@@ -1123,7 +1123,7 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " %s --role trainer --update_method local --lr %f" % (
+        cmd += " {} --role trainer --update_method local --lr {:f}".format(
             model,
             self._lr,
         )
@@ -1163,7 +1163,7 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        print("local_cmd: {}, env: {}".format(cmd, env_local))
+        print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
             path = os.path.join(self.temp_dir.name, log_name + "_local.log")
@@ -1269,8 +1269,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
-        print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
+        print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
+        print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
 
         path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
@@ -1356,8 +1356,8 @@ class TestDistBase(unittest.TestCase):
         tr_cmd += " --use_cpu"
         env.update(
             {
-                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                "PADDLE_TRAINER_ID": f"{trainer_id}",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_CURRENT_ENDPOINT": ep,
@@ -1380,7 +1380,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --enable_backward_deps"
 
         if self._fuse_all_reduce is not None:
-            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+            tr_cmd += f" --fuse_all_reduce {self._fuse_all_reduce}"
 
         assert not self._use_fleet_api, "gloo not support use fleet api"
         assert not self._use_fleet_api_20, "gloo not support use fleet api"
@@ -1417,10 +1417,10 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update(
                 {
-                    "FLAGS_selected_gpus": "{}".format(0),
-                    "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                    "FLAGS_selected_gpus": f"{0}",
+                    "CUDA_VISIBLE_DEVICES": f"{trainer_id}",
+                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                    "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                 }
@@ -1431,10 +1431,10 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_xpu"
             env.update(
                 {
-                    "FLAGS_selected_xpus": "{}".format(trainer_id),
+                    "FLAGS_selected_xpus": f"{trainer_id}",
                     # "XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                    "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                     "GLOG_v": "2",
@@ -1444,9 +1444,9 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_mlu"
             env.update(
                 {
-                    "FLAGS_selected_mlus": "{}".format(trainer_id),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                    "FLAGS_selected_mlus": f"{trainer_id}",
+                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                    "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                     "GLOG_v": "4",
@@ -1467,10 +1467,10 @@ class TestDistBase(unittest.TestCase):
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            env = {"FLAGS_selected_gpus": f"{trainer_id}"}
 
         if self._nccl_comm_num > 1:
-            tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+            tr_cmd += f" --nccl_comm_num {self._nccl_comm_num}"
 
         if self._use_hallreduce:
             tr_cmd += " --use_hallreduce --hallreduce_inter_nranks 2"
@@ -1479,7 +1479,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --enable_backward_deps"
 
         if self._fuse_all_reduce is not None:
-            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+            tr_cmd += f" --fuse_all_reduce {self._fuse_all_reduce}"
 
         if self._use_fleet_api:
             tr_cmd += (
@@ -1530,13 +1530,13 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + f"_tr{i}_err.log"
             )
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1553,7 +1553,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if trainer_num == 1:
             if check_error_log:
@@ -1604,13 +1604,13 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + f"_tr{i}_err.log"
             )
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1627,7 +1627,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if check_error_log:
             print("outs[0]:", outs[0])
@@ -1653,14 +1653,14 @@ class TestDistBase(unittest.TestCase):
             tr_env['NCCL_SHM_DISABLE'] = '1'
             tr_env['FLAGS_selected_gpus'] = str(i)
             tr_env['FLAGS_cudnn_deterministic'] = '0'
-            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
+            print(f"tr_cmd:{tr_cmd}, env: {tr_env}")
 
-            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
+            path = os.path.join(self.temp_dir.name + f"tr{i}_err.log")
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1677,7 +1677,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if check_error_log:
             print("outs[0]:", outs[0])

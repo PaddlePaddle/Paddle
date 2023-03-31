@@ -221,7 +221,7 @@ def _mp_allreduce(
 
     if in_dygraph_mode():
         group = collective._get_default_group() if group is None else group
-        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
+        assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
 
         from paddle.autograd import PyLayer
 
@@ -350,7 +350,7 @@ class _Linear(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )

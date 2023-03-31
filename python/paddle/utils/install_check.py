@@ -246,9 +246,10 @@ def run_check():
         device_list = paddle.static.cpu_places(device_count=1)
     device_count = len(device_list)
 
+
     _run_static_single(use_cuda, use_xpu)
     _run_dygraph_single(use_cuda, use_xpu)
-    print("PaddlePaddle works well on 1 {}.".format(device_str))
+    print(f"PaddlePaddle works well on 1 {device_str}.")
 
     try:
         if len(device_list) > 1:
@@ -272,7 +273,7 @@ def run_check():
             )
         )
 
-        logging.warning("\n Original Error is: {}".format(e))
+        logging.warning(f"\n Original Error is: {e}")
         print(
             "PaddlePaddle is installed successfully ONLY for single {}! "
             "Let's start deep learning with PaddlePaddle now.".format(
