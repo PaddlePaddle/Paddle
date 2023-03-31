@@ -1069,8 +1069,8 @@
     func : mv_grad
 
 - backward_op : nanmedian_grad
-  forward : nanmedian (Tensor x, IntArray axis, bool keep_dim) -> Tensor(out), Tensor(medians)
-  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keep_dim)
+  forward : nanmedian (Tensor x, IntArray axis, bool keepdim) -> Tensor(out), Tensor(medians)
+  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim)
   output : Tensor(x_grad)
   infer_meta :
     func : NanmedianGradInferMeta
