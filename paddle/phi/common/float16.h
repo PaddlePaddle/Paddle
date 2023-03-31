@@ -18,8 +18,8 @@
     defined(__i386__)
 #define __PADDLE_x86__
 #endif
+#include <immintrin.h>
 #include <stdint.h>
-
 #include <cmath>
 #include <iostream>
 #include <limits>
