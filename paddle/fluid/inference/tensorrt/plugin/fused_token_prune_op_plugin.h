@@ -108,7 +108,8 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
       try {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Token_prune'token_length(max) must <= 512"));
-      } catch (std::excepiton& e) {
+      } catch (std::exception& e) {
+        PADDLE_THROW(e);
       }
     }
     try {
@@ -124,7 +125,8 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
       }
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
           &padding_scores_, max_batchs_ * padding_token_length * type_size));
-    } catch (std::excepiton& e) {
+    } catch (std::exception& e) {
+      PADDLE_THROW(e);
     }
   }
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
