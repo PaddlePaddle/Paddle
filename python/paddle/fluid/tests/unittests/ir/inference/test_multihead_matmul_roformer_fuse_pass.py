@@ -54,7 +54,10 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                 "sin_input": [1, 12, 128, 64],
             },
         )
-        yield config, ["multihead_matmul_roformer", "matmul"], (1e-2, 1e-3)
+        yield config, ["multihead_matmul_roformer", "matrix_multiply"], (
+            1e-2,
+            1e-3,
+        )
 
     def sample_program_config(self, draw):
         def generate_mul_input():
