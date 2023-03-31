@@ -888,6 +888,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"lod_reset",
        XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
                      phi::DataType::FLOAT64,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
