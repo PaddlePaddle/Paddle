@@ -366,8 +366,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    ALL_LAYOUT,
                    phi::Conv3dTransposeGPUDNNKernel,
                    float,
-                   float16,
-                   phi::dtype::bfloat16) {}
+                   float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_transpose,
@@ -376,7 +375,8 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    phi::Conv2dTransposeGPUDNNKernel,
                    float,
                    double,
-                   float16) {}
+                   float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(conv3d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,
