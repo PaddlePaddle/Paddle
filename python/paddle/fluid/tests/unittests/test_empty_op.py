@@ -289,9 +289,6 @@ class TestEmptyFP16Op(TestEmptyOp):
         self.inputs = {}
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
 
-    def test_check_output1(self):
-        self.check_output()
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -312,9 +309,6 @@ class TestEmptyBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output()
-
-    def test_check_output2(self):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
