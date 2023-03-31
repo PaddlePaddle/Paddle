@@ -157,32 +157,34 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
 
     // modify according to your needs, save d/dq in the front of this op
-    const std::vector<std::string> retain_op_input_name{
-        "batch_norm_0.tmp_2.quantized.dequantized",
-        "batch_norm_20.tmp_2.quantized.dequantized",
-        "hard_swish_0.tmp_0.quantized.dequantized",
-        "relu_7.tmp_0.quantized.dequantized",
-        "batch_norm_6.tmp_2.quantized.dequantized",
-        "batch_norm_21.tmp_2.quantized.dequantized",
-        "elementwise_add_4.quantized.dequantized",
-        "elementwise_add_5.quantized.dequantized",
-        "batch_norm_12.tmp_2.quantized.dequantized",
-        "elementwise_add_2.quantized.dequantized",
-        "elementwise_add_4.quantized.dequantized",
-        "elementwise_add_5.quantized.dequantized",
-        "batch_norm_33.tmp_2.quantized.dequantized",
-        "batch_norm_39.tmp_2.quantized.dequantized",
-        "elementwise_add_8.quantized.dequantized",
-        "batch_norm_44.tmp_2.quantized.dequantized",
-        "batch_norm_35.tmp_2.quantized.dequantized",
-        "batch_norm_26.tmp_2.quantized.dequantized",
-        "batch_norm_29.tmp_2.quantized.dequantized",
-        "batch_norm_23.tmp_2.quantized.dequantized",
-        // significant!
-        // "batch_norm_32.tmp_2.quantized.dequantized",
-        "batch_norm_38.tmp_2.quantized.dequantized",
-        "conv2d_112.tmp_0.quantized.dequantized",
-        "batch_norm_41.tmp_2.quantized.dequantized"};
+    // mbnetv3_large exampel
+    // const std::vector<std::string> retain_op_input_name{
+    //     "batch_norm_0.tmp_2.quantized.dequantized",
+    //     "batch_norm_20.tmp_2.quantized.dequantized",
+    //     "hard_swish_0.tmp_0.quantized.dequantized",
+    //     "relu_7.tmp_0.quantized.dequantized",
+    //     "batch_norm_6.tmp_2.quantized.dequantized",
+    //     "batch_norm_21.tmp_2.quantized.dequantized",
+    //     "elementwise_add_4.quantized.dequantized",
+    //     "elementwise_add_5.quantized.dequantized",
+    //     "batch_norm_12.tmp_2.quantized.dequantized",
+    //     "elementwise_add_2.quantized.dequantized",
+    //     "elementwise_add_4.quantized.dequantized",
+    //     "elementwise_add_5.quantized.dequantized",
+    //     "batch_norm_33.tmp_2.quantized.dequantized",
+    //     "batch_norm_39.tmp_2.quantized.dequantized",
+    //     "elementwise_add_8.quantized.dequantized",
+    //     "batch_norm_44.tmp_2.quantized.dequantized",
+    //     "batch_norm_35.tmp_2.quantized.dequantized",
+    //     "batch_norm_26.tmp_2.quantized.dequantized",
+    //     "batch_norm_29.tmp_2.quantized.dequantized",
+    //     "batch_norm_23.tmp_2.quantized.dequantized",
+    //     // significant!
+    //     // "batch_norm_32.tmp_2.quantized.dequantized",
+    //     "batch_norm_38.tmp_2.quantized.dequantized",
+    //     "conv2d_112.tmp_0.quantized.dequantized",
+    //     "batch_norm_41.tmp_2.quantized.dequantized"};
+    const std::vector<std::string> retain_op_input_name;
 
     bool is_retain_op_name = is_retain_op(
         retain_op_input_name, dequantize_linear_op_out->Var()->Name());
