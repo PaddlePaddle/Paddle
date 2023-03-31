@@ -15,7 +15,7 @@
 import math
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 
 class DNNLayer(nn.Layer):

@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
@@ -219,7 +219,7 @@ def _get_dims_mapping(dist_parameter, mp_group):
 
     dist_shape = np.array(dist_parameter.shape)
     if hasattr(dist_parameter, "split_axis"):
-        aixs = getattr(dist_parameter, "split_axis")
+        aixs = dist_parameter.split_axis
         mapping = [-1 for _ in dist_shape]
         mapping[aixs] = 1
         logger.debug(
@@ -333,7 +333,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
 def _get_wrapped_dist_state_dict(dist_state_dict):
 
-    wrapped_state_dict = dict()
+    wrapped_state_dict = {}
     if dist.get_world_size() <= 1:
         for _, v in dist_state_dict.items():
             wrapped_state_dict[v.name] = v
@@ -351,7 +351,7 @@ def _get_wrapped_dist_state_dict(dist_state_dict):
             logger.debug(f"not first used : {v.name}")
             continue
         wrapped_state_dict[name_mapping[v.name]] = v
-        setattr(v, "dims_mapping", _get_dims_mapping(v, mp_group))
+        v.dims_mapping = _get_dims_mapping(v, mp_group)
         logger.debug(
             f"saving param: {v.name} -> {name_mapping[v.name]} shape: {v.shape}"
         )

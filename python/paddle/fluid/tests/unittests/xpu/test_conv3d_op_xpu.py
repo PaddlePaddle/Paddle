@@ -172,7 +172,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -183,7 +183,7 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -197,7 +197,7 @@ def create_test_channel_last_class(parent):
             N, C, D, H, W = self.input_size
             self.input_size = [N, D, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLast")
     TestChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestChannelLastCase
 
@@ -275,7 +275,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
         def test_check_grad_no_input(self):
@@ -286,7 +286,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
 
         def init_test_case(self):
@@ -445,7 +445,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
         def test_check_grad_no_input(self):
@@ -455,7 +455,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
 
         def init_test_case(self):

@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     skip_check_grad_ci,
@@ -110,7 +110,7 @@ class TestBilinearInterpOneDNNOp(OpTest):
         scale_w = 0
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 scale_h = float(self.scale)
                 scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -222,7 +222,7 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.uint16
 
-    TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
+    TestBf16Case.__name__ = "{}_{}".format(parent.__name__, "BF16")
     globals()[TestBf16Case.__name__] = TestBf16Case
 
 

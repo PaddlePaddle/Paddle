@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.tensor as tensor
+from paddle import fluid, tensor
+from paddle.fluid import core
 
 
 class TestTraceOp(OpTest):
@@ -31,10 +30,10 @@ class TestTraceOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out', check_eager=True)
+        self.check_grad(['Input'], 'Out')
 
     def init_config(self):
         self.case = np.random.randn(20, 6).astype('float64')
@@ -72,7 +71,9 @@ class TestTraceOpCase2(TestTraceOp):
 class TestTraceAPICase(unittest.TestCase):
     def test_case1(self):
         case = np.random.randn(2, 20, 2, 3).astype('float32')
-        data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')
+        data1 = paddle.static.data(
+            name='data1', shape=[2, 20, 2, 3], dtype='float32'
+        )
         out1 = tensor.trace(data1)
         out2 = tensor.trace(data1, offset=-5, axis1=1, axis2=-1)
 

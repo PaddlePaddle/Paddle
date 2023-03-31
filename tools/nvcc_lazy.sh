@@ -18,11 +18,6 @@ echo "#!/usr/bin/env bash" >> $1
 echo "unset GREP_OPTIONS" >> $1
 echo "set -e" >> $1
 echo -e >> $1 
-echo "if [[ \$# -le 8 ]]; then" >> $1
-echo "  nvcc \"\$@\"" >> $1
-echo "  exit 0" >> $1
-echo "fi" >> $1
-echo -e >> $1
 echo "# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved." >> $1
 echo "#" >> $1
 echo "# Licensed under the Apache License, Version 2.0 (the \"License\");" >> $1
@@ -43,6 +38,11 @@ echo -e >> $1
 echo "# set cicc PATH for Centos" >> $1
 echo "export PATH=\$PATH:$2/bin" >> $1
 echo "export PATH=\$PATH:$2/nvvm/bin" >> $1
+echo -e >> $1
+echo "if [[ \$# -le 8 ]]; then" >> $1
+echo "  nvcc \"\$@\"" >> $1
+echo "  exit 0" >> $1
+echo "fi" >> $1
 echo -e >> $1
 echo "# check nvcc version, if nvcc >= 11.7, just run nvcc itself" >> $1
 echo "CUDA_VERSION=\$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')" >> $1

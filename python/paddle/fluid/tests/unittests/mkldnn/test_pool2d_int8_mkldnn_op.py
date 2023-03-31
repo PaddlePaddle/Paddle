@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_pool2d_op import (
     TestPool2D_Op,
     max_pool2D_forward_naive,
@@ -119,8 +119,8 @@ def create_test_s8_u8_class(parent):
         def init_data_type(self):
             self.dtype = np.uint8
 
-    cls_name_s8 = "{0}_{1}".format(parent.__name__, "mkldnn_s8")
-    cls_name_u8 = "{0}_{1}".format(parent.__name__, "mkldnn_u8")
+    cls_name_s8 = "{}_{}".format(parent.__name__, "mkldnn_s8")
+    cls_name_u8 = "{}_{}".format(parent.__name__, "mkldnn_u8")
     TestS8Case.__name__ = cls_name_s8
     TestU8Case.__name__ = cls_name_u8
     globals()[cls_name_s8] = TestS8Case
