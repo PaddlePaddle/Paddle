@@ -1820,13 +1820,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op: squared_l2_norm
-  backward: squared_l2_norm_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op : squeeze (squeeze2)
   backward : squeeze_grad (squeeze2_grad), squeeze_double_grad(squeeze2_double_grad)
   inputs :
@@ -2063,5 +2056,12 @@
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
     {x: X, label: Label}
+  outputs :
+    out : Out
+
+- op: squared_l2_norm
+  backward: squared_l2_norm_grad
+  inputs :
+    x : X
   outputs :
     out : Out
