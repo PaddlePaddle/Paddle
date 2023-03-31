@@ -134,7 +134,7 @@ void FusedConv3DKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_conv2d,
+PD_REGISTER_KERNEL(fused_conv2d_onednn,
                    OneDNN,
                    ONEDNN,
                    phi::FusedConv2DKernel,
