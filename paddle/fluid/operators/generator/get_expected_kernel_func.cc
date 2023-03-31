@@ -151,5 +151,45 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetFillConstantExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)op_ptr;
+  auto input_data_type =
+      framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+  phi::KernelKey kt = phi::KernelKey(input_data_type, ctx.GetPlace());
+  // TODO(zyfncg) The force_cpu and place_type are conflicted, it's an issue
+  // left before, and we may merge them in the future.
+  // In order to invoke new fill_constant kernel, the place of OpKernelType
+  // will be setted by force_cpu and place_type here.
+  if (ctx.Attr<bool>("force_cpu")) {
+    kt.set_backend(phi::Backend::CPU);
+  }
+  auto place_type = ctx.Attr<int>("place_type");
+  if (place_type != -1) {
+    switch (place_type) {
+      case 0:
+        kt.set_backend(phi::Backend::CPU);
+        break;
+      case 1:
+      case 2:
+        kt.set_backend(phi::Backend::GPU);
+        break;
+      case 3:
+        kt.set_backend(phi::Backend::XPU);
+        break;
+      case 4:
+        kt.set_backend(phi::Backend::NPU);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Could NOT determine the place of variable, place_type = %d .",
+            place_type));
+    }
+  }
+
+  return kt;
+}
+
 }  // namespace operators
 }  // namespace paddle

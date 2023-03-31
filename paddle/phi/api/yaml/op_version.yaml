@@ -44,6 +44,18 @@
           comment : In order to force fill output variable to gpu memory.
           default : "false"
 
+- op : fill_constant
+  version :
+    - checkpoint : Upgrade fill_constant, add a new input [ValueTensor].
+      action :
+        - add_input : ValueTensor
+          comment : In order to support new feature tensor support of Value
+    - checkpoint : Upgrade fill_constant to add a new attribute [place_type].
+      action :
+        - add_input : place_type
+          comment : In order to support tensor in CUDAPinnedPlace and XPUPlace
+          default : -1
+
 - op : flip
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]

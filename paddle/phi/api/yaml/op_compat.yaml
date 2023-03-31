@@ -768,6 +768,20 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+    value :
+      data_type : float
+      tensor_name : ValueTensor
+  get_expected_kernel_type :
+    full : GetFillConstantExpectedKernelType
+  manual_signature : [full]
   extra :
     attrs : [bool use_mkldnn = false]
 

@@ -100,7 +100,6 @@ register_unity_group(
   mkldnn/fc_mkldnn_op.cc
   fill_any_like_op.cc
   fill_constant_batch_size_like_op.cc
-  fill_constant_op.cc
   fill_op.cc
   fill_zeros_like_op.cc
   filter_by_instag_op.cc)

@@ -46,7 +46,7 @@ cc_test_old(
   fleet_executor
   ${BRPC_DEPS}
   op_registry
-  fill_constant_op
+  generated_static_op
   elementwise_add_op
   scope
   device_context)

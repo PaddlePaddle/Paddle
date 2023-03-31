@@ -12,7 +12,7 @@ if(WITH_GPU
 
   # all operators used in the program
   set(OPS
-      fill_constant_op
+      generated_static_op
       uniform_random_op
       lookup_table_op
       transpose_op
