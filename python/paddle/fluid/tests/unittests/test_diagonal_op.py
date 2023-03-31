@@ -212,7 +212,7 @@ class TestDiagonalBF16OP(OpTest):
             offset=self.attrs['offset'],
             axis1=self.attrs['axis1'],
             axis2=self.attrs['axis2'],
-        )
+        ).copy()
 
 
 if __name__ == '__main__':
