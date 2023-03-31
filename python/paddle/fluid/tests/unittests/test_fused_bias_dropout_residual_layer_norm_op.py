@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
-from paddle.nn.layer.norm import LayerNorm
+from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
-import unittest
-from op_test import OpTest
-from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
-
-_enable_legacy_dygraph()
+from paddle.nn.layer.norm import LayerNorm
 
 default_main_program().random_seed = 42
 

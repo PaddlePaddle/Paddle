@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy as np
 import math
 import sys
-from op_test import OpTest
-import paddle.fluid as fluid
+import unittest
+from decimal import ROUND_HALF_UP, Decimal
 
-from decimal import Decimal, ROUND_HALF_UP
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 def _round(x):
@@ -170,38 +170,10 @@ class TestROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
-
-
-class BadInputTestRoiPool(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_bad_x():
-                x = fluid.layers.data(
-                    name='data1', shape=[2, 1, 4, 4], dtype='int64'
-                )
-                label = fluid.layers.data(
-                    name='label', shape=[2, 4], dtype='float32', lod_level=1
-                )
-                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
-
-            self.assertRaises(TypeError, test_bad_x)
-
-            def test_bad_y():
-                x = fluid.layers.data(
-                    name='data2',
-                    shape=[2, 1, 4, 4],
-                    dtype='float32',
-                    append_batch_size=False,
-                )
-                label = [[1, 2, 3, 4], [2, 3, 4, 5]]
-                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
-
-            self.assertRaises(TypeError, test_bad_y)
+        self.check_grad(['X'], 'Out')
 
 
 class TestROIPoolInLodOp(TestROIPoolOp):

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 import numpy as np
-import os
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
 
 
 class TestGradientScale(unittest.TestCase):

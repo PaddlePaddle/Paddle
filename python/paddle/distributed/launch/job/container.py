@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
-
-import os
-import sys
 
 
 class Container:
@@ -90,7 +90,7 @@ class Container:
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
                 v, str
-            ), 'env {}:{} must be str'.format(k, v)
+            ), f'env {k}:{v} must be str'
 
     def _get_fd(self, pth):
         if not pth:

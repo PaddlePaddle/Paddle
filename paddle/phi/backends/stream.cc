@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/stream.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/event.h"
 
@@ -82,10 +81,11 @@ void Stream::Wait() const {
 void Stream::WaitCallback() const { callback_manager_->Wait(); }
 
 void Stream::Destroy() {
-  if (own_data_) {
+  if (own_data_ && stream_ != nullptr) {
     phi::DeviceManager::SetDevice(place_);
     device_->DestroyStream(this);
     own_data_ = false;
+    stream_ = nullptr;
   }
 }
 

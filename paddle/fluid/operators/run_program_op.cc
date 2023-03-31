@@ -47,17 +47,18 @@ class RunProgramOp : public framework::OperatorWithKernel {
    *
    * Of course, the data type here is also not important.
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -65,18 +66,18 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "The input tensors of RunProgram operator, also the feed targets "
              "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
-             "(vector<LoDTensor or SelecetedRows>)"
+             "(vector<phi::DenseTensor or SelecetedRows>)"
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors of RunProgram operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();
@@ -87,7 +88,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
     AddOutput("DOut",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
               "computes double grad.")
@@ -130,6 +131,14 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed backward program desc.")
         .SetDefault(nullptr);
+    AddAttr<std::vector<std::string>>("param_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of parameter gradients.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("out_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of output gradients.")
+        .SetDefault({});
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -165,17 +174,18 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
  protected:
   /* see [Why use single type kernel] */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 

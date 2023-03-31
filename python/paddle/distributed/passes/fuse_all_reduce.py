@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework import core
-from paddle.fluid import unique_name
-from .pass_base import PassBase, PassType, register_pass
 import numpy as np
+
+from paddle.framework import core
+from paddle.utils import unique_name
+
+from .pass_base import PassBase, PassType, register_pass
 
 
 def find_adjacent_match_sequences(
@@ -48,7 +50,7 @@ def insert_fuse_all_reduce_ops(
     block, reversed_op_indices, input_var_names, output_var_names, dtype, attrs
 ):
     fused_var = block.create_var(
-        name=unique_name.generate("FusedOutput_{}".format(input_var_names[0])),
+        name=unique_name.generate(f"FusedOutput_{input_var_names[0]}"),
         dtype=dtype,
     )
 

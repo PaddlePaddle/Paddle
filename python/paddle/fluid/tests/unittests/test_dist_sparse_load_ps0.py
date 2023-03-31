@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import tempfile
 import shutil
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle import fluid
 from paddle.distributed.fleet import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class SparseLoadOp(unittest.TestCase):
@@ -28,7 +30,9 @@ class SparseLoadOp(unittest.TestCase):
 
     def net(self, emb_array, fc_array):
         with fluid.unique_name.guard():
-            dense_input = fluid.data('input', shape=[None, 1], dtype="int64")
+            dense_input = paddle.static.data(
+                'input', shape=[None, 1], dtype="int64"
+            )
 
             emb = fluid.layers.embedding(
                 input=dense_input,
@@ -36,24 +40,20 @@ class SparseLoadOp(unittest.TestCase):
                 size=[10, 10],
                 param_attr=fluid.ParamAttr(
                     name="embedding",
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        emb_array
-                    ),
+                    initializer=paddle.nn.initializer.Assign(emb_array),
                 ),
             )
 
-            fc1 = fluid.layers.fc(
-                input=emb,
+            fc1 = paddle.static.nn.fc(
+                x=emb,
                 size=10,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     name='fc',
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        fc_array
-                    ),
+                    initializer=paddle.nn.initializer.Assign(fc_array),
                 ),
             )
-            loss = fluid.layers.reduce_mean(fc1)
+            loss = paddle.mean(fc1)
         return loss
 
     def save_origin_model(self, emb_array, fc_array):

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestSortOnCPU(unittest.TestCase):
@@ -26,7 +27,9 @@ class TestSortOnCPU(unittest.TestCase):
 
     def test_api_0(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 4], dtype="float32"
+            )
             output = paddle.sort(x=input)
             exe = fluid.Executor(self.place)
             data = np.array(
@@ -42,7 +45,9 @@ class TestSortOnCPU(unittest.TestCase):
 
     def test_api_1(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 4], dtype="float32"
+            )
             output = paddle.sort(x=input, axis=1)
             exe = fluid.Executor(self.place)
             data = np.array(
@@ -73,19 +78,14 @@ class TestSortDygraph(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
-    def func_api_0(self):
+    def test_api_0(self):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.sort(var_x)
         self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
         paddle.enable_static()
 
-    def test_api_0(self):
-        with _test_eager_guard():
-            self.func_api_0()
-        self.func_api_0()
-
-    def func_api_1(self):
+    def test_api_1(self):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.sort(var_x, axis=-1)
@@ -93,8 +93,3 @@ class TestSortDygraph(unittest.TestCase):
             (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
         )
         paddle.enable_static()
-
-    def test_api_1(self):
-        with _test_eager_guard():
-            self.func_api_1()
-        self.func_api_1()

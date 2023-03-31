@@ -17,15 +17,17 @@ import sys
 sys.path.append("..")
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()
 
@@ -124,7 +126,7 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
             shape_tensor_list = []
             for index, ele in enumerate(self.shape):
                 shape_tensor_list.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {"ShapeTensorList": shape_tensor_list}

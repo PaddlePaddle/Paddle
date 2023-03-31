@@ -14,10 +14,11 @@
 
 import os
 import unittest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle import fluid
 from paddle.distributed.fleet import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestSparseLoadProgram(unittest.TestCase):
@@ -45,13 +46,17 @@ class TestSparseLoadProgram(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 with fluid.unique_name.guard():
-                    inputs = fluid.data('input', shape=[None, 1], dtype="int64")
+                    inputs = paddle.static.data(
+                        'input', shape=[None, 1], dtype="int64"
+                    )
                     emb = fluid.layers.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )
-                    fc1 = fluid.layers.fc(input=emb, size=128, act="relu")
-                    fc2 = fluid.layers.fc(input=fc1, size=64, act="relu")
-                    loss = fluid.layers.reduce_mean(fc2)
+                    fc1 = paddle.static.nn.fc(
+                        x=emb, size=128, activation="relu"
+                    )
+                    fc2 = paddle.static.nn.fc(x=fc1, size=64, activation="relu")
+                    loss = paddle.mean(fc2)
             return scope, train_program, startup_program, loss
 
 

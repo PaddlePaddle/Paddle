@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
+
+import paddle
 import paddle.fluid.dygraph as dg
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
 class TestComplexMatMulLayer(unittest.TestCase):
@@ -109,8 +110,8 @@ class TestComplexMatMulLayer(unittest.TestCase):
             x = np.random.random((2, 1, 100)).astype(
                 dtype
             ) + 1j * np.random.random((2, 1, 100)).astype(dtype)
-            y = np.random.random((100)).astype(dtype) + 1j * np.random.random(
-                (100)
+            y = np.random.random(100).astype(dtype) + 1j * np.random.random(
+                100
             ).astype(dtype)
 
             np_result = np.matmul(x, y)
@@ -132,14 +133,6 @@ class TestComplexMatMulLayer(unittest.TestCase):
 
             self.compare_by_basic_api(x, y, np_result)
             self.compare_op_by_basic_api(x, y, np_result)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_complex_xy_gemm()
-            self.test_complex_xy_gemv()
-            self.test_real_x_complex_y()
-            self.test_complex_x_real_y()
-            self.test_complex_xy()
 
 
 if __name__ == '__main__':

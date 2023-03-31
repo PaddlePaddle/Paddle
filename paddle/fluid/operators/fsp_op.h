@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class FSPOpKernel : public framework::OpKernel<T> {
  public:
@@ -39,7 +37,8 @@ class FSPOpKernel : public framework::OpKernel<T> {
     auto height = x_dims[2];
     auto width = x_dims[3];
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     phi::funcs::MatDescriptor x_mat_desc;
     x_mat_desc.height_ = x_channel;
@@ -83,7 +82,8 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
     int64_t h = 0;
     int64_t w = 0;
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     if (d_x != nullptr) {
       d_x->mutable_data<T>(context.GetPlace());

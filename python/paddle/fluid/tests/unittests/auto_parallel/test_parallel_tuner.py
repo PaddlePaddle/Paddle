@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import paddle
-import paddle.static as static
-
+from paddle import static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-import sys
+from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 

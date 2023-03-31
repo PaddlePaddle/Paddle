@@ -14,14 +14,17 @@
 
 import os
 import unittest
-import numpy as np
-from op_test import OpTest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
+import numpy as np
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
+
+import paddle
+from paddle.fluid import Program, core, program_guard
+
+
+def pad_wrapper(x, paddings, pad_value):
+    return paddle._C_ops.pad(x, paddings, float(pad_value))
 
 
 class TestPadOp(OpTest):
@@ -29,6 +32,7 @@ class TestPadOp(OpTest):
         self.initTestCase()
         self.dtype = self.get_dtype()
         self.op_type = "pad"
+        self.python_api = pad_wrapper
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
         }
@@ -94,7 +98,7 @@ def create_test_fp16(parent):
         def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=0.3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
     globals()[cls_name] = TestPadFp16
 
@@ -111,12 +115,12 @@ class TestPadOpError(unittest.TestCase):
             input_data = np.random.random((2, 2)).astype("float32")
 
             def test_Variable():
-                fluid.layers.pad(x=input_data, paddings=[1, 1, 1, 1])
+                paddle.nn.functional.pad(x=input_data, pad=[1, 1, 1, 1])
 
             self.assertRaises(TypeError, test_Variable)
 
-            data = fluid.data(name='data', shape=[4], dtype='float16')
-            fluid.layers.pad(x=data, paddings=[0, 1])
+            data = paddle.static.data(name='data', shape=[4], dtype='float16')
+            paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 
 class TestPaddingValueTensor(UnittestBase):
@@ -172,11 +176,30 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
     def call_func(self, x):
         padding_value = paddle.assign([1.0])
         # test for int value
-        tmp = paddle.fluid.layers.pad(x, paddings=[1, 1, 1, 1], pad_value=1)
-        out = paddle.fluid.layers.pad(
-            x, paddings=[1, 1, 1, 1], pad_value=padding_value
-        )
+        tmp = paddle.nn.functional.pad(x, pad=[1, 1, 1, 1], value=1)
+        out = paddle.nn.functional.pad(x, pad=[1, 1, 1, 1], value=padding_value)
         return out
+
+
+class TestPaddingValueTensor3(unittest.TestCase):
+    def test_static(self):
+        np_x = np.random.random((16, 16)).astype('float32')
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            x = paddle.assign(np_x).astype('float32')
+            pad_value = paddle.assign([0.0]).astype('float64')
+            y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)
+            loss = y.sum()
+            optimize_ops, params_grads = paddle.optimizer.SGD(0.01).minimize(
+                loss
+            )
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        res = exe.run(main_prog, fetch_list=[y] + [g for p, g in params_grads])
+        pd_out = res[0]
+        np_out = np.pad(np_x, [(0, 1), (2, 3)], constant_values=0.0)
+        np.testing.assert_allclose(pd_out, np_out)
 
 
 if __name__ == '__main__':

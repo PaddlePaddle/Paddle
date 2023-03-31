@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
 import tempfile
 import unittest
-import os
-import json
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cluster import DeviceType
-from paddle.distributed.auto_parallel.cluster import LinkType
+
+from paddle.distributed.auto_parallel.cluster import (
+    Cluster,
+    DeviceType,
+    LinkType,
+)
 
 cluster_json = """
 {
@@ -435,7 +438,7 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.assertAlmostEqual(link0_machine1.bandwidth, 1)
         self.assertAlmostEqual(link0_machine1.latency, 0)
 
-        str = "cluster: {}".format(cluster)
+        str = f"cluster: {cluster}"
 
 
 if __name__ == '__main__':

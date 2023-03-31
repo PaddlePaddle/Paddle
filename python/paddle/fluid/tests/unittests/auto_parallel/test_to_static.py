@@ -17,15 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import LazyGuard, nn
+from paddle.distributed.auto_parallel.helper import ProgramHelper, ProxyLayer
 from paddle.distributed.fleet import auto
-
-from paddle import LazyGuard
-from paddle.io import Dataset
-from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.helper import ProgramHelper
+from paddle.io import Dataset
+from paddle.jit.dy2static.utils import is_paddle_func
+from paddle.nn import Sequential
+from paddle.static import InputSpec
 
 batch_size = 4
 batch_num = 30
@@ -181,6 +181,27 @@ class TestLazyInit(unittest.TestCase):
         vars = program_helper.startup_program.block(0).vars
         assert len(vars.keys()) == len(ops)
         program_helper.reset()
+
+
+class TestIgnoreProxyLayer(unittest.TestCase):
+    def test_is_paddle_func(self):
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
+        loss = paddle.nn.CrossEntropyLoss()
+        metrics = paddle.metric.Accuracy()
+
+        proxy_layer = ProxyLayer(mlp, loss, metrics)
+
+        self.assertFalse(is_paddle_func(proxy_layer._train))
+        self.assertFalse(is_paddle_func(proxy_layer._eval))
+        self.assertFalse(is_paddle_func(proxy_layer._predict))
+        # test for nn.Sequential
+        net = Sequential(('mlp', mlp))
+        self.assertFalse(is_paddle_func(net))
 
 
 if __name__ == "__main__":

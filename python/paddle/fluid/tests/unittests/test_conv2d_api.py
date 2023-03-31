@@ -13,33 +13,32 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestConv2DAPI(unittest.TestCase):
     def test_api(self):
 
-        input_NHWC = fluid.layers.data(
+        input_NHWC = paddle.static.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCHW = fluid.layers.data(
+        input_NCHW = paddle.static.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NHWC,
             num_filters=3,
             filter_size=[3, 3],
@@ -50,7 +49,7 @@ class TestConv2DAPI(unittest.TestCase):
             data_format="NCHW",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NCHW,
             num_filters=3,
             filter_size=[3, 3],
@@ -61,7 +60,7 @@ class TestConv2DAPI(unittest.TestCase):
             data_format="NCHW",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NCHW,
             num_filters=3,
             filter_size=[3, 3],
@@ -72,7 +71,7 @@ class TestConv2DAPI(unittest.TestCase):
             data_format="NCHW",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NHWC,
             num_filters=3,
             filter_size=[3, 3],
@@ -83,7 +82,7 @@ class TestConv2DAPI(unittest.TestCase):
             data_format="NHWC",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NCHW,
             num_filters=3,
             filter_size=[3, 3],
@@ -94,7 +93,7 @@ class TestConv2DAPI(unittest.TestCase):
             data_format="NCHW",
         )
 
-        fluid.layers.conv2d(
+        paddle.static.nn.conv2d(
             input=input_NCHW,
             num_filters=3,
             filter_size=[3, 3],
@@ -119,16 +118,15 @@ class TestConv2DAPI(unittest.TestCase):
 
 class TestConv2DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input = fluid.layers.data(
+        input = paddle.static.data(
             name="input",
             shape=[2, 5, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 
         # ValueError: cudnn
         def run_1():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -144,7 +142,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: data_format
         def run_2():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -160,7 +158,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: padding
         def run_3():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -175,7 +173,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_3)
 
         def run_4():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -190,7 +188,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_4)
 
         def run_5():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -205,15 +203,14 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, -1],
-            append_batch_size=False,
             dtype="float32",
         )
 
         def run_6():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=x,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -229,7 +226,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: groups
         def run_7():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3],
@@ -245,7 +242,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: filter num
         def run_8():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=0,
                 filter_size=0,
@@ -261,7 +258,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: groups
         def run_9():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=0,
                 filter_size=0,
@@ -277,7 +274,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         # ValueError: stride
         def run_10():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=1,
                 filter_size=1,
@@ -292,16 +289,15 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_10)
 
     def test_api_with_error_input(self):
-        input = fluid.layers.data(
+        input = paddle.static.data(
             name="error_input",
             shape=[1],
-            append_batch_size=False,
             dtype="float32",
         )
 
         # ValueError: cudnn
         def run_1():
-            fluid.layers.conv2d(
+            paddle.static.nn.conv2d(
                 input=input,
                 num_filters=0,
                 filter_size=0,
@@ -324,13 +320,12 @@ class TestConv2DAPI_Error(unittest.TestCase):
 class TestConv2DEnviron(unittest.TestCase):
     def run1(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            inputs = fluid.layers.data(
+            inputs = paddle.static.data(
                 shape=[2, 3, 5, 5],
-                append_batch_size=False,
                 name="inputs",
                 dtype="float32",
             )
-            result = fluid.layers.conv2d(
+            result = paddle.static.nn.conv2d(
                 input=inputs,
                 num_filters=4,
                 filter_size=[3, 3],

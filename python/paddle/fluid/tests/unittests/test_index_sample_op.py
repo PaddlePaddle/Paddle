@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
 
 
 class TestIndexSampleOp(OpTest):
@@ -38,10 +40,10 @@ class TestIndexSampleOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def config(self):
         """
@@ -97,6 +99,28 @@ class TestCase4(TestIndexSampleOp):
         self.index_type = "int64"
 
 
+class TestCase5(TestIndexSampleOp):
+    def config(self):
+        """
+        For float16 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = "float16"
+        self.index_shape = (10, 64)
+        self.index_type = "int32"
+
+
+class TestCase6(TestIndexSampleOp):
+    def config(self):
+        """
+        For float16 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = "float16"
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
         paddle.enable_static()
@@ -112,8 +136,8 @@ class TestIndexSampleShape(unittest.TestCase):
             low=0, high=x_shape[1], size=index_shape
         ).astype(index_type)
 
-        x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
-        index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
+        x = paddle.static.data(name='x', shape=[-1, 5], dtype='float64')
+        index = paddle.static.data(name='index', shape=[-1, 3], dtype='int32')
         output = paddle.index_sample(x=x, index=index)
 
         place = fluid.CPUPlace()

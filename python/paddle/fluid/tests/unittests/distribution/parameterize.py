@@ -16,11 +16,10 @@ import functools
 import inspect
 import re
 import sys
-
 from unittest import SkipTest
 
-import numpy as np
 import config
+import numpy as np
 
 TEST_CASE_NAME = 'suffix'
 
@@ -135,7 +134,7 @@ def delete_patches_if_need(func):
 
 def default_name_func(func, num, p):
     base_name = func.__name__
-    name_suffix = "_%s" % (num,)
+    name_suffix = f"_{num}"
 
     if len(p.args) > 0 and isinstance(p.args[0], str):
         name_suffix += "_" + to_safe_name(p.args[0])

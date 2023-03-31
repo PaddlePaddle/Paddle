@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import test_collective_api_base as test_base
 
 
@@ -26,14 +27,7 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
             "allgather_object",
             "nccl",
             static_mode="0",
-            dtype="pylist",
-        )
-        self.check_with_place(
-            "collective_allgather_object_api_dygraph.py",
-            "allgather_object",
-            "nccl",
-            static_mode="0",
-            dtype="pydict",
+            dtype="pyobject",
         )
 
     def test_allgather_gloo_dygraph(self):
@@ -43,15 +37,7 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
             "gloo",
             "3",
             static_mode="0",
-            dtype="pylist",
-        )
-        self.check_with_place(
-            "collective_allgather_object_api_dygraph.py",
-            "allgather_object",
-            "gloo",
-            "3",
-            static_mode="0",
-            dtype="pydict",
+            dtype="pyobject",
         )
 
 

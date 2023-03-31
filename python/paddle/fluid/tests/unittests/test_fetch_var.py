@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestFetchVar(unittest.TestCase):
@@ -24,8 +26,10 @@ class TestFetchVar(unittest.TestCase):
 
     def test_fetch_var(self):
         self.set_input()
-        x = layers.create_tensor(dtype="int32", persistable=True, name="x")
-        layers.assign(input=self.val, output=x)
+        x = paddle.tensor.create_tensor(
+            dtype="int32", persistable=True, name="x"
+        )
+        paddle.assign(self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")

@@ -80,15 +80,13 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
       int in_dtype = context.Attr<int>("out_dtype");
 
       if (in_dtype >= 0) {
-        Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         auto* pre_input =
             context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-        auto in_kernel_type = framework::OpKernelType(
-            framework::TransToProtoVarType(pre_input->dtype()),
-            context.GetPlace());
-        auto out_kernel_type = framework::OpKernelType(
-            static_cast<framework::proto::VarType::Type>(in_dtype),
-            context.GetPlace());
+        auto in_kernel_type = phi::KernelKey(context.GetPlace(),
+                                             phi::DataLayout::ALL_LAYOUT,
+                                             pre_input->dtype());
+        auto out_kernel_type = phi::KernelKey(in_dtype, context.GetPlace());
         framework::TransDataType(
             in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
         ComputeFromInput(&tmp_tensor, context);

@@ -26,8 +26,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
                                  const phi::DenseTensor* input,

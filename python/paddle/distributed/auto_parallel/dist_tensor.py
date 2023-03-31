@@ -16,9 +16,11 @@ import copy
 import inspect
 
 import paddle
-from paddle.fluid.framework import Parameter, Block, Variable
-from .dist_attribute import TensorDistributedAttribute
-from .utils import _linear_idx2coordinate, __no_shape_var_type__
+from paddle.framework import Block
+from paddle.static import Parameter, Variable
+
+from .dist_attribute import TensorDistAttr
+from .utils import __no_shape_var_type__, _linear_idx2coordinate
 
 
 class DistributedTensor:
@@ -37,7 +39,7 @@ class DistributedTensor:
     ):
         if not (
             isinstance(sizes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, sizes))
+            and all(isinstance(x, int) and x >= 0 for x in sizes)
         ):
             raise ValueError(
                 "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".format(
@@ -46,7 +48,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(dims_mapping, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))
+            and all(isinstance(x, int) and x >= -1 for x in dims_mapping)
         ):
             raise ValueError(
                 "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".format(
@@ -55,7 +57,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(processes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, processes))
+            and all(isinstance(x, int) and x >= 0 for x in processes)
         ):
             raise ValueError(
                 "The processes must be list or tuple and item in processes must be integer, but got {}".format(
@@ -64,7 +66,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(topology, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x > 0, topology))
+            and all(isinstance(x, int) and x > 0 for x in topology)
         ):
             raise ValueError(
                 "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".format(
@@ -72,11 +74,11 @@ class DistributedTensor:
                 )
             )
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
 
-        # NOTE: Only support even sharding now
-        if shard_sizes is not None:
-            raise ValueError("Only support even sharding now.")
+        # # NOTE: Only support even sharding now
+        # if shard_sizes is not None:
+        #     raise ValueError("Only support even sharding now.")
 
     @staticmethod
     def get_local_sizes(
@@ -160,18 +162,26 @@ class DistributedTensor:
             len(local_sizes), len(local_offsets)
         )
 
-        local_end_offsets = list(
-            map(lambda x: x[0] + x[1], zip(local_offsets, local_sizes))
-        )
+        local_end_offsets = [
+            x[0] + x[1] for x in zip(local_offsets, local_sizes)
+        ]
         local_shard = list(zip(local_offsets, local_end_offsets))
         return local_shard
 
     def __init__(self, serial_tensor, dist_attr=None, dist_context=None):
         self._serial_tensor = serial_tensor
-        self._dist_attr = None
+        if dist_attr is not None and isinstance(dist_attr, TensorDistAttr):
+            # TODO: remove this deepcopy after we fix the issue
+            self._dist_attr = copy.deepcopy(dist_attr)
+            # self._dist_attr = dist_attr
+            # TODO: Do we really need to write dist_attr back to serial_tensor？
+            self._serial_tensor.dist_attr = dist_attr
+        else:
+            assert dist_attr is None, f"{dist_attr}"
+            # Use the dist attr of serial_tensor to do the initialization
+            self._dist_attr = self._serial_tensor.dist_attr
+
         self._batch_dim = 0
-        # Reuse the dist_attr setter to initialize _dist_attr
-        self.dist_attr = dist_attr
         self._local_offsets_map = {}
         self._local_shard_map = {}
         self._local_tensor_map = {}
@@ -194,25 +204,24 @@ class DistributedTensor:
     def dist_attr(self):
         return self._dist_attr
 
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
+        self._dist_attr = dist_attr
+        # TODO: Do we really need to write back dist_attr to serial_tensor？
+        self._serial_tensor.dist_attr = dist_attr
+
     @property
     def dist_context(self):
         return self._dist_context
 
-    @dist_attr.setter
-    def dist_attr(self, dist_attr):
-        if self._dist_attr is None:
-            self._dist_attr = TensorDistributedAttribute()
-        self._dist_attr.init(dist_attr)
-        self._init_default_dist_attr()
-
-    def _init_default_dist_attr(self):
-        if self._dist_attr.dims_mapping is None:
-            if self.serial_tensor.type in __no_shape_var_type__:
-                tensor_shape = []
-            else:
-                tensor_shape = self._serial_tensor.shape
-            tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-            self._dist_attr.dims_mapping = tensor_dims_mapping
+    # def _init_default_dist_attr(self):
+    #     if self._dist_attr.dims_mapping is None:
+    #         if self.serial_tensor.type in __no_shape_var_type__:
+    #             tensor_shape = []
+    #         else:
+    #             tensor_shape = self._serial_tensor.shape
+    #         tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
+    #         self._dist_attr.dims_mapping = tensor_dims_mapping
 
     def validate_dist_attr(self):
         if self.serial_tensor.type in __no_shape_var_type__:
@@ -224,10 +233,10 @@ class DistributedTensor:
             if self.dist_attr.dims_mapping[
                 i
             ] < -1 or self.dist_attr.dims_mapping[i] >= len(
-                self.dist_attr.process_mesh.topology
+                self.dist_attr.process_mesh.shape
             ):
                 return False
-        for i in range(len(self.dist_attr.process_mesh.topology)):
+        for i in range(len(self.dist_attr.process_mesh.shape)):
             if self.dist_attr.dims_mapping.count(i) > 1:
                 return False
         return True
@@ -237,11 +246,11 @@ class DistributedTensor:
         rank = paddle.distributed.get_rank() if rank is None else rank
         global_sizes = self.serial_tensor.shape
         dims_mapping = self.dist_attr.dims_mapping
-        shard_sizes = self.dist_attr.shard_sizes
-        processes = self.dist_attr.process_mesh.processes
-        topology = self.dist_attr.process_mesh.topology
+        # shard_sizes = self.dist_attr.shard_sizes
+        processes = self.dist_attr.process_mesh.process_ids
+        topology = self.dist_attr.process_mesh.shape
         local_sizes = DistributedTensor.get_local_sizes(
-            global_sizes, dims_mapping, topology, processes, rank, shard_sizes
+            global_sizes, dims_mapping, topology, processes, rank
         )
 
         return local_sizes
@@ -254,16 +263,11 @@ class DistributedTensor:
         else:
             global_sizes = self.serial_tensor.shape
             dims_mapping = self.dist_attr.dims_mapping
-            shard_sizes = self.dist_attr.shard_sizes
-            processes = self.dist_attr.process_mesh.processes
-            topology = self.dist_attr.process_mesh.topology
+            # shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.process_ids
+            topology = self.dist_attr.process_mesh.shape
             local_offsets = DistributedTensor.get_local_offsets(
-                global_sizes,
-                dims_mapping,
-                topology,
-                processes,
-                rank,
-                shard_sizes,
+                global_sizes, dims_mapping, topology, processes, rank
             )
             self._local_offsets_map[rank] = local_offsets
 
@@ -280,16 +284,11 @@ class DistributedTensor:
         else:
             global_sizes = self.serial_tensor.shape
             dims_mapping = self.dist_attr.dims_mapping
-            shard_sizes = self.dist_attr.shard_sizes
-            processes = self.dist_attr.process_mesh.processes
-            topology = self.dist_attr.process_mesh.topology
+            # shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.process_ids
+            topology = self.dist_attr.process_mesh.shape
             local_shard = DistributedTensor.get_local_shard(
-                global_sizes,
-                dims_mapping,
-                topology,
-                processes,
-                rank,
-                shard_sizes,
+                global_sizes, dims_mapping, topology, processes, rank
             )
             self._local_shard_map[rank] = local_shard
 
@@ -306,7 +305,7 @@ class DistributedTensor:
         def _copy_kwargs(serial_tensor):
             kwargs = {}
             no_need_copy_args = ["self", "block", "shape", "name"]
-            arg_spec = inspect.getargspec(Variable.__init__)
+            arg_spec = inspect.getfullargspec(Variable.__init__)
 
             for key in arg_spec.args:
                 # TODO: Check the copied attribute from serial tensor whether valid
@@ -343,11 +342,9 @@ class DistributedTensor:
             return kwargs
 
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
         if block is not None and not isinstance(block, Block):
-            raise TypeError(
-                "The block must be Block, but got {}.".format(type(block))
-            )
+            raise TypeError(f"The block must be Block, but got {type(block)}.")
         rank = paddle.distributed.get_rank() if rank is None else rank
 
         if block is None:
@@ -374,7 +371,7 @@ class DistributedTensor:
         rank = paddle.distributed.get_rank() if rank is None else rank
         assert (
             rank in self._local_tensor_map
-        ), "The rank {} local tensor has not been created.".format(rank)
+        ), f"The rank {rank} local tensor has not been created."
         return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):
@@ -389,8 +386,10 @@ class DistributedTensor:
         return result
 
     def __str__(self):
-        str = "{{tensor name: {}, tensor id: {}".format(
-            self.serial_tensor.desc.name(), self.serial_tensor.desc.id()
+        str = "{{tensor name: {}, tensor id: {}, tensor original_id {}".format(
+            self.serial_tensor.desc.name(),
+            self.serial_tensor.desc.id(),
+            self.serial_tensor.desc.original_id(),
         )
 
         # str += ", {}".format(self.dist_attr)
@@ -404,25 +403,25 @@ class DistributedTensor:
             annotated_str, self.dist_attr.process_mesh
         )
 
-        str += ", is_parameter: {}".format(self.serial_tensor.is_parameter)
+        str += f", is_parameter: {self.serial_tensor.is_parameter}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", dims_mapping ({}): {}".format(
+        str += ", dims_mapping ({}): {} }}".format(
             annotated_str, self.dist_attr.dims_mapping
         )
 
-        if self.dist_attr.is_annotated("shard_mask"):
-            annotated_str = "annotated"
-        else:
-            annotated_str = "non-annotated"
-        str += ", shard_mask ({}): {}".format(annotated_str, None)
+        # if self.dist_attr.is_annotated("shard_mask"):
+        #     annotated_str = "annotated"
+        # else:
+        #     annotated_str = "non-annotated"
+        # str += ", shard_mask ({}): {}".format(annotated_str, None)
 
-        if self.dist_attr.is_annotated("offload_device"):
-            annotated_str = "annotated"
-        else:
-            annotated_str = "non-annotated"
-        str += ", offload_device ({}): {} }}".format(annotated_str, None)
+        # if self.dist_attr.is_annotated("offload_device"):
+        #     annotated_str = "annotated"
+        # else:
+        #     annotated_str = "non-annotated"
+        # str += ", offload_device ({}): {} }}".format(annotated_str, None)
         return str

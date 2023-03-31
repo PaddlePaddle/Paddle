@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T, cnnlLogicOp_t log_method>
 class LogicalMLUKernel : public framework::OpKernel<T> {
  public:

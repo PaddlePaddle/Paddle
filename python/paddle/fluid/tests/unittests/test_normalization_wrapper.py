@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestNormalization(unittest.TestCase):
@@ -29,15 +32,16 @@ class TestNormalization(unittest.TestCase):
 
     def set_program(self, axis, epsilon):
         """Build the test program."""
-        data = fluid.layers.data(
+        data = paddle.static.data(
             name=self.data_desc["name"],
             shape=self.data_desc["shape"],
             dtype="float32",
-            append_batch_size=False,
         )
         data.stop_gradient = False
-        l2_norm = fluid.layers.l2_normalize(x=data, axis=axis, epsilon=epsilon)
-        out = fluid.layers.reduce_sum(l2_norm, dim=None)
+        l2_norm = paddle.nn.functional.normalize(
+            data, axis=axis, epsilon=epsilon
+        )
+        out = paddle.sum(l2_norm, axis=None)
 
         fluid.backward.append_backward(loss=out)
         self.fetch_list = [l2_norm]

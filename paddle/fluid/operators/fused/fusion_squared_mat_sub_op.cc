@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -63,19 +63,19 @@ void FusionSquaredMatSubOp::InferShape(
   ctx->SetOutputDim("Out", {x_dims[0], y_dims[1]});
 }
 
-framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
+phi::KernelKey FusionSquaredMatSubOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSquaredMatSubOpMaker::Make() {
-  AddInput("X", "(Tensor) Input Mat A of this operator.");
-  AddInput("Y", "(Tensor) Input Mat B of this operator.");
-  AddOutput("SquaredX", "(Tensor) Squared X.").AsIntermediate();
-  AddOutput("SquaredY", "(Tensor) Squared Y.").AsIntermediate();
-  AddOutput("SquaredXY", "(Tensor) Squared X*Y.").AsIntermediate();
-  AddOutput("Out", "(Tensor) Output tensor of concat operator.");
+  AddInput("X", "(phi::DenseTensor) Input Mat A of this operator.");
+  AddInput("Y", "(phi::DenseTensor) Input Mat B of this operator.");
+  AddOutput("SquaredX", "(phi::DenseTensor) Squared X.").AsIntermediate();
+  AddOutput("SquaredY", "(phi::DenseTensor) Squared Y.").AsIntermediate();
+  AddOutput("SquaredXY", "(phi::DenseTensor) Squared X*Y.").AsIntermediate();
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<float>("scalar", "The scalar on output matrix.").SetDefault(1.f);
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.
@@ -99,30 +99,30 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
-    jit::matmul_attr_t attr;
+    phi::jit::matmul_attr_t attr;
     attr.m = x_dims[0];
     attr.k = x_dims[1];
     attr.n = y_dims[1];
     int o_numel = attr.m * attr.n;
 
-    auto vsquare_x =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            attr.m * attr.k);
-    auto vsquare_y =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            attr.k * attr.n);
-    auto vsquare_xy =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto vsub =
-        jit::KernelFuncs<jit::VSubTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto vscal =
-        jit::KernelFuncs<jit::VScalTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto matmul =
-        jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto vsquare_x = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr.m * attr.k);
+    auto vsquare_y = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr.k * attr.n);
+    auto vsquare_xy = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                            platform::CPUPlace>::Cache()
+                          .At(o_numel);
+    auto vsub = phi::jit::KernelFuncs<phi::jit::VSubTuple<T>,
+                                      platform::CPUPlace>::Cache()
+                    .At(o_numel);
+    auto vscal = phi::jit::KernelFuncs<phi::jit::VScalTuple<T>,
+                                       platform::CPUPlace>::Cache()
+                     .At(o_numel);
+    auto matmul = phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>,
+                                        platform::CPUPlace>::Cache()
+                      .At(attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();

@@ -80,7 +80,7 @@ void recompute_bias_and_weights(const Scope* scope,
       ac_bias_tensor.data<float>(), ac_bias_tensor.numel(), 1);
 
   EigenVectorArrayMap eltwise_y_in_array(
-      eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+      eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
       eltwise_y_in_tensor->numel(),
       1);
 
@@ -91,7 +91,7 @@ void recompute_bias_and_weights(const Scope* scope,
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
-  auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
+  auto* weights_data = weights->mutable_data<float>(phi::CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(
       weights_data, weights_shape_2d[0], weights_shape_2d[1]);
@@ -106,6 +106,44 @@ void recompute_bias_and_weights(const Scope* scope,
 
 ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -177,6 +215,12 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+  FuseConvAffineChannel(graph, "conv2d");
+  FuseConvAffineChannel(graph, "fused_conv2d");
+}
+
+void ConvAffineChannelFusePass::FuseConvAffineChannel(
+    ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
@@ -190,10 +234,10 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input("conv2d", "Input");
+          ->assert_is_op_input(conv_type, "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
-  conv_ac_pattern(conv_input, false /*with_eltwise_add*/);
+  conv_ac_pattern(conv_input, conv_type, false /*with_eltwise_add*/);
 
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -233,7 +277,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* eltwise_y_in_tensor =
         scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
-    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
                 eltwise_y_in_tensor->numel(),
                 0.0f);
 

@@ -13,32 +13,41 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
+
+
+def meshgrid_wrapper(x):
+    return paddle.tensor.meshgrid(x[0], x[1])
 
 
 class TestMeshgridOp(OpTest):
     def setUp(self):
         self.op_type = "meshgrid"
+        self.prim_op_type = "comp"
+        self.python_api = meshgrid_wrapper
+        self.public_python_api = meshgrid_wrapper
         self.dtype = self.get_dtype()
         ins, outs = self.init_test_data()
         self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
         self.outputs = {
             'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
         }
+        self.python_out_sig = ['out0', 'out1']
+        self.if_enable_cinn()
 
     def get_dtype(self):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0'])
-        self.check_grad(['x1'], ['out1'])
+        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
 
     def init_test_data(self):
         self.shape = self.get_x_shape()
@@ -57,6 +66,9 @@ class TestMeshgridOp(OpTest):
     def get_x_shape(self):
         return [100, 200]
 
+    def if_enable_cinn(self):
+        self.enable_cinn = True
+
 
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
@@ -65,8 +77,8 @@ class TestMeshgridOp2(TestMeshgridOp):
 
 class TestMeshgridOp3(unittest.TestCase):
     def test_api(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,
@@ -101,8 +113,8 @@ class TestMeshgridOp3(unittest.TestCase):
 
 class TestMeshgridOp4(unittest.TestCase):
     def test_list_input(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,
@@ -138,8 +150,8 @@ class TestMeshgridOp4(unittest.TestCase):
 
 class TestMeshgridOp5(unittest.TestCase):
     def test_tuple_input(self):
-        x = fluid.data(shape=[100], dtype='int32', name='x')
-        y = fluid.data(shape=[200], dtype='int32', name='y')
+        x = paddle.static.data(shape=[100], dtype='int32', name='x')
+        y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
         input_1 = np.random.randint(
             0,
@@ -198,10 +210,6 @@ class TestMeshgridOp6(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph()
-
 
 class TestMeshgridOp7(unittest.TestCase):
     def test_api_with_dygraph_list_input(self):
@@ -227,10 +235,6 @@ class TestMeshgridOp7(unittest.TestCase):
 
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph_list_input()
 
 
 class TestMeshgridOp8(unittest.TestCase):
@@ -258,9 +262,27 @@ class TestMeshgridOp8(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph_tuple_input()
+
+class TestMeshGrid_ZeroDim(TestMeshgridOp):
+    def init_test_data(self):
+        self.shape = self.get_x_shape()
+        ins = []
+        outs = []
+        ins.append(np.random.random([]).astype(self.dtype))
+        ins.append(np.random.random([2]).astype(self.dtype))
+        ins.append(np.random.random([3]).astype(self.dtype))
+        for i in range(len(self.shape)):
+            out_reshape = [1] * len(self.shape)
+            out_reshape[i] = self.shape[i]
+            out_temp = np.reshape(ins[i], out_reshape)
+            outs.append(np.broadcast_to(out_temp, self.shape))
+        return ins, outs
+
+    def get_x_shape(self):
+        return [1, 2, 3]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestMeshgridEager(unittest.TestCase):
@@ -288,28 +310,23 @@ class TestMeshgridEager(unittest.TestCase):
             res_1, res_2 = paddle.tensor.meshgrid((tensor_1, tensor_2))
             sum = paddle.add_n([res_1, res_2])
             sum.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input_1)
-                tensor_eager_2 = fluid.dygraph.to_variable(input_2)
-                tensor_eager_1.stop_gradient = False
-                tensor_eager_2.stop_gradient = False
-                res_eager_1, res_eager_2 = paddle.tensor.meshgrid(
-                    (tensor_eager_1, tensor_eager_2)
-                )
-                sum_eager = paddle.add_n([res_eager_1, res_eager_2])
-                sum_eager.backward()
-                self.assertEqual(
-                    (
-                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
-                    ).all(),
-                    True,
-                )
-                self.assertEqual(
-                    (
-                        tensor_2.grad.numpy() == tensor_eager_2.grad.numpy()
-                    ).all(),
-                    True,
-                )
+            tensor_eager_1 = fluid.dygraph.to_variable(input_1)
+            tensor_eager_2 = fluid.dygraph.to_variable(input_2)
+            tensor_eager_1.stop_gradient = False
+            tensor_eager_2.stop_gradient = False
+            res_eager_1, res_eager_2 = paddle.tensor.meshgrid(
+                (tensor_eager_1, tensor_eager_2)
+            )
+            sum_eager = paddle.add_n([res_eager_1, res_eager_2])
+            sum_eager.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True,
+            )
+            self.assertEqual(
+                (tensor_2.grad.numpy() == tensor_eager_2.grad.numpy()).all(),
+                True,
+            )
 
 
 if __name__ == '__main__':

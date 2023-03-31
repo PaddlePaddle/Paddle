@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import xml.etree.ElementTree
-from PIL import Image
-import numpy as np
+import argparse
+import hashlib
 import os
 import sys
-from paddle.dataset.common import download
 import tarfile
+import xml.etree.ElementTree
 from io import StringIO
-import hashlib
-import tarfile
-import argparse
+
+import numpy as np
+from PIL import Image
+
+from paddle.dataset.common import download
 
 DATA_URL = (
     "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"

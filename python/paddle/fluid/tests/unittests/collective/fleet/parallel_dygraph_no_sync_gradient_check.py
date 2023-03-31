@@ -14,11 +14,11 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 paddle.seed(1024)
 np.random.seed(2021)
@@ -28,7 +28,7 @@ in_dim = 10
 out_dim = 20
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self, train_id):
         super().__init__()
         self.w1 = self.create_parameter(
@@ -52,7 +52,7 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, x):
         is_use = (
-            paddle.equal_all(x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
+            paddle.equal_all(x, paddle.ones(shape=(batch, in_dim))).item()
             and self.trainer_id == 1
         )
 

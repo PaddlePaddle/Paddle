@@ -25,10 +25,14 @@ void AllKernel(const Context& dev_ctx,
                const std::vector<int64_t>& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
-  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size()) {
-    reduce_all = true;
+  auto x_dim = x.dims();
+  for (int i = 0; i < x_dim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      x_dim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
   }
+  bool reduce_all = recompute_reduce_all(x, dims);
   AllRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

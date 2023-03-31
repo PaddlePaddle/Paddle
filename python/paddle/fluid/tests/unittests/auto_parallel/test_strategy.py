@@ -14,6 +14,7 @@
 
 # import yaml
 import unittest
+
 from paddle.distributed.fleet import auto
 
 
@@ -23,10 +24,12 @@ class TestStrategy(unittest.TestCase):
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
-        self.assertIsNone(recompute.checkpoints)
+        self.assertEqual(recompute.checkpoints, [])
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
+        self.assertEqual(amp.dtype, "float16")
+        self.assertEqual(amp.level, "o1")
         self.assertAlmostEqual(amp.init_loss_scaling, 32768.0)
         self.assertEqual(amp.incr_every_n_steps, 1000)
         self.assertEqual(amp.decr_every_n_nan_or_inf, 2)
@@ -36,17 +39,20 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.custom_black_list, [])
         self.assertEqual(amp.custom_white_list, [])
         self.assertEqual(amp.custom_black_varnames, [])
-        self.assertEqual(amp.use_pure_fp16, False)
-        self.assertEqual(amp.use_fp16_guard, True)
-        self.assertEqual(amp.use_optimizer_fp16, False)
+        self.assertEqual(amp.use_fp16_guard, False)
+        self.assertEqual(amp.use_bf16_guard, False)
 
         sharding = strategy.sharding
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
         self.assertEqual(sharding.degree, 8)
-        self.assertAlmostEqual(sharding.overlap_grad_comm, False)
-        self.assertAlmostEqual(sharding.bucket_size_numel, -1)
+        self.assertAlmostEqual(sharding.enable_overlap, False)
+        self.assertAlmostEqual(sharding.param_comm_stream_num, 1)
+        self.assertAlmostEqual(sharding.grad_comm_stream_num, 1)
         self.assertAlmostEqual(sharding.partition_algor, "greedy_even")
+        self.assertAlmostEqual(sharding.param_bucket_size_numel, 1)
+        self.assertAlmostEqual(sharding.grad_bucket_size_numel, 1)
+        self.assertAlmostEqual(sharding.enable_hierarchical_comm, False)
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
 
@@ -65,12 +71,10 @@ class TestStrategy(unittest.TestCase):
 
         tuning = strategy.tuning
         self.assertEqual(tuning.enable, False)
-        self.assertEqual(tuning.batch_size, 1)
-        self.assertIsNone(tuning.dataset)
         self.assertEqual(tuning.profile_start_step, 1)
         self.assertEqual(tuning.profile_end_step, 1)
         self.assertEqual(tuning.run_after_tuning, True)
-        self.assertEqual(tuning.verbose, True)
+        self.assertEqual(tuning.debug, False)
 
     def test_modify_config(self):
         strategy = auto.Strategy()
@@ -83,6 +87,8 @@ class TestStrategy(unittest.TestCase):
 
         amp = strategy.amp
         amp.enable = True
+        amp.dtype = "float16"
+        amp.level = "o2"
         amp.init_loss_scaling = 16384.0
         amp.incr_every_n_steps = 2000
         amp.decr_every_n_nan_or_inf = 4
@@ -92,10 +98,10 @@ class TestStrategy(unittest.TestCase):
         amp.custom_white_list = ["x"]
         amp.custom_black_list = ["y"]
         amp.custom_black_varnames = ["z"]
-        amp.use_pure_fp16 = True
         amp.use_fp16_guard = False
-        amp.use_optimizer_fp16 = True
         self.assertEqual(amp.enable, True)
+        self.assertEqual(amp.dtype, "float16")
+        self.assertEqual(amp.level, "o2")
         self.assertAlmostEqual(amp.init_loss_scaling, 16384.0)
         self.assertEqual(amp.incr_every_n_steps, 2000)
         self.assertEqual(amp.decr_every_n_nan_or_inf, 4)
@@ -105,9 +111,7 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.custom_white_list, ["x"])
         self.assertEqual(amp.custom_black_list, ["y"])
         self.assertEqual(amp.custom_black_varnames, ["z"])
-        self.assertEqual(amp.use_pure_fp16, True)
         self.assertEqual(amp.use_fp16_guard, False)
-        self.assertEqual(amp.use_optimizer_fp16, True)
 
         sharding = strategy.sharding
         sharding.enable = True

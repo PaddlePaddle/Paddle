@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
+from eager_op_test import OpTest
+
+from paddle import fluid
 
 
 class TestSpaceToDepthOp(OpTest):
@@ -77,7 +79,9 @@ class TestSpaceToDepthOp(OpTest):
             if fluid.core.is_compiled_with_cuda()
             else fluid.core.CPUPlace()
         )
-        self.check_output_with_place(place, 1e-5, None, False)
+        self.check_output_with_place(
+            place=place, atol=1e-5, no_check_set=None, equal_nan=False
+        )
 
     def test_check_grad(self):
         place = (

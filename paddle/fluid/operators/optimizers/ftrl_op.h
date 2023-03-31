@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -198,7 +197,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           ctx.template device_context<DeviceContext>(), *grad, merged_grad);
 
       auto* merged_rows = merged_grad->mutable_rows();
-      paddle::framework::MixVector<int64_t> mixv_merged_rows(merged_rows);
+      phi::MixVector<int64_t> mixv_merged_rows(merged_rows);
       const int64_t* rows = mixv_merged_rows.Data(ctx.GetPlace());
       auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
       auto row_height = static_cast<int64_t>(merged_grad->rows().size());

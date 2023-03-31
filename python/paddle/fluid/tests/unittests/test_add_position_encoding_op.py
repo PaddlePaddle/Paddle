@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unittest
-import numpy as np
 import math
-from op_test import OpTest
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid import Program, program_guard
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 def add_position_encoding(input, alpha=1.0, beta=1.0):
@@ -149,35 +147,6 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
                         + math.cos(val) * self.beta
                     )
             start += max_length
-
-
-class TestAddPositionEncodingOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            input_data = np.random.random((4, 16, 8)).astype("float32")
-
-            def test_Variable():
-                # the input type must be Variable
-                fluid.layers.add_position_encoding(
-                    input=input_data, alpha=1.0, beta=1.0
-                )
-
-            self.assertRaises(TypeError, test_Variable)
-
-
-class TestAddPositionEncodingOpDygraph(unittest.TestCase):
-    def test_dygraph(self):
-        paddle.disable_static()
-        tensor = np.random.randn(16, 32, 64)
-        position_tensor = paddle.fluid.layers.add_position_encoding(
-            input=paddle.to_tensor(tensor), alpha=1.0, beta=1.0
-        ).numpy()
-        paddle.enable_static()
-
-        position_tensor_np = add_position_encoding(tensor, 1.0, 1.0)
-        np.testing.assert_allclose(
-            position_tensor, position_tensor_np, rtol=1e-05
-        )
 
 
 if __name__ == '__main__':

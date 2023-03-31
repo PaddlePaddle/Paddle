@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
-from .meta_optimizer_base import MetaOptimizerBase
+from paddle import static
+from paddle.fluid import core
+from paddle.utils import unique_name
+
 from .common import (
-    OpRole,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
     CollectiveHelper,
-    is_loss_grad_op,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class RawProgramOptimizer(MetaOptimizerBase):
@@ -38,9 +40,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 0
 
     def _set_basic_info(
@@ -63,6 +63,10 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
+            return False
+        if self.user_defined_strategy.tensor_parallel:
+            return False
+        if self.user_defined_strategy.sharding:
             return False
 
         if self.without_graph_optimization:
@@ -132,7 +136,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = static.default_startup_program()
         self.startup_program = startup_program
 
         block = loss.block
@@ -297,17 +301,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
 
-                    grad_vars.append(grad)
-                    block._insert_op(
-                        idx + offset,
-                        type='c_sync_calc_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            OP_ROLE_KEY: OpRole.Backward,
-                        },
-                    )
-                    offset += 1
                     block._insert_op(
                         idx + offset,
                         type='c_allreduce_sum',
@@ -321,17 +314,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         if grad is None:
             return
-
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                block._insert_op(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': grad_vars},
-                    outputs={'Out': grad_vars},
-                    attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
-                )
-                break
 
     # This function helps reduce the number of allreduce by integrating op, which can save communication time.
     # to use allreduce fuse, follow these codes:
@@ -401,7 +383,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             # insert coalesce tensor
             fused_var = block.create_var(
                 name=unique_name.generate(
-                    'FusedOutput_{}'.format(grad_segment[0].name)
+                    f'FusedOutput_{grad_segment[0].name}'
                 ),
                 dtype=grad_segment[0].dtype,
                 persistable=False,
@@ -420,14 +402,20 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
-            if not self.calc_comm_same_stream:
-                block._insert_op_without_sync(
-                    after_idx + 1,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: OpRole.Backward},
-                )
+        idx = 0
+        if not self.calc_comm_same_stream:
+            for i in range(len(grad_param_segments)):
+                while block.ops[idx].type != 'c_allreduce_sum':
+                    idx += 1
+                grad_segment, param_segment = grad_param_segments[i]
+                for grad in grad_segment:
+                    block._insert_op_without_sync(
+                        idx + 1,
+                        type='depend',
+                        inputs={'X': grad, 'Dep': fused_var},
+                        outputs={'Out': grad},
+                    )
+                    idx += 1
 
         # update the outputs_name_to_idx after insertion of sync/allreduce ops
         outputs_name_to_idx = self.__get_ouputs_name_to_idx(
@@ -467,21 +455,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 },
             )
 
-        if self.calc_comm_same_stream:
-            block._sync_with_cpp()
-            return
-
-        # insert the sync comm op
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                block._insert_op_without_sync(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': fused_vars},
-                    outputs={'Out': fused_vars},
-                    attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
-                )
-                break
         block._sync_with_cpp()
 
     def __get_ouputs_name_to_idx(self, first_backward_idx, block):

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import os
+
 from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid
 
 IS_SPARSE = True
 EMBED_SIZE = 32
@@ -39,7 +41,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
             )
             embed_second = fluid.layers.embedding(
@@ -49,7 +51,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
             )
             embed_third = fluid.layers.embedding(
@@ -59,7 +61,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
             )
             embed_forth = fluid.layers.embedding(
@@ -69,32 +71,35 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
             )
 
-            concat_embed = fluid.layers.concat(
-                input=[embed_first, embed_second, embed_third, embed_forth],
+            concat_embed = paddle.concat(
+                [embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )
-            hidden1 = fluid.layers.fc(
-                input=concat_embed,
+            hidden1 = paddle.static.nn.fc(
+                x=concat_embed,
                 size=HIDDEN_SIZE,
-                act='sigmoid',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)
+                activation='sigmoid',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.1)
                 ),
             )
-            predict_word = fluid.layers.fc(
-                input=hidden1,
+            predict_word = paddle.static.nn.fc(
+                x=hidden1,
                 size=dict_size,
-                act='softmax',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)
+                activation='softmax',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.1)
                 ),
             )
-            cost = fluid.layers.cross_entropy(
-                input=predict_word, label=words[4]
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict_word,
+                label=words[4],
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(cost)
             return avg_cost, predict_word
@@ -102,13 +107,21 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
-        second_word = fluid.layers.data(
-            name='secondw', shape=[1], dtype='int64'
+        first_word = paddle.static.data(
+            name='firstw', shape=[-1, 1], dtype='int64'
         )
-        third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
-        forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
-        next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+        second_word = paddle.static.data(
+            name='secondw', shape=[-1, 1], dtype='int64'
+        )
+        third_word = paddle.static.data(
+            name='thirdw', shape=[-1, 1], dtype='int64'
+        )
+        forth_word = paddle.static.data(
+            name='forthw', shape=[-1, 1], dtype='int64'
+        )
+        next_word = paddle.static.data(
+            name='nextw', shape=[-1, 1], dtype='int64'
+        )
         avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word]
         )
@@ -136,8 +149,6 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-    import os
-
     os.environ['CPU_NUM'] = '1'
     os.environ['USE_CUDA'] = "FALSE"
     runtime_main(TestDistWord2vec2x2)

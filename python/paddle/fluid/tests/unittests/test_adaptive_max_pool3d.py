@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
-from op_test import check_out_dtype
+import numpy as np
+from eager_op_test import check_out_dtype
+
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -142,7 +143,7 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(
+            x = paddle.static.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
 
@@ -180,7 +181,7 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
 
             assert np.allclose(res_5, self.res_5_np)
 
-    def func_dynamic_graph(self):
+    def test_dynamic_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
@@ -215,11 +216,6 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
-    def test_dynamic_graph(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_dynamic_graph()
-        self.func_dynamic_graph()
-
 
 class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
     def setUp(self):
@@ -252,7 +248,7 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(
+            x = paddle.static.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
 

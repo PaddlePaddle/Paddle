@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-from decorator_helper import prog_scope
-import paddle
-import paddle.fluid as fluid
+
 import numpy
 import numpy as np
+from decorator_helper import prog_scope
+
+import paddle
+from paddle import fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -26,9 +28,9 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_add_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a + 10
-        ab = fluid.layers.concat(input=[a, b], axis=1)
+        ab = paddle.concat([a, b], axis=1)
         c = ab + 10
         d = ab + a
         # e = a + ab
@@ -46,19 +48,19 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_radd_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 + a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(
+        (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
         np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_sub_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a - 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -69,8 +71,8 @@ class TestMathOpPatches(unittest.TestCase):
         np.testing.assert_allclose(a_np - 10, b_np, rtol=1e-05)
 
     @prog_scope()
-    def test_radd_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+    def test_rsub_scalar(self):
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 - a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -82,7 +84,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_mul_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a * 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -94,7 +96,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rmul_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 * a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -106,7 +108,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_div_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = a / 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -118,7 +120,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rdiv_scalar(self):
-        a = fluid.layers.data(name="a", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
         b = 10 / a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -131,8 +133,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_div_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a / b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -147,8 +149,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_mul_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a * b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -163,8 +165,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_add_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a + b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -179,8 +181,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_sub_two_tensor(self):
-        a = fluid.layers.data(name="a", shape=[1])
-        b = fluid.layers.data(name="b", shape=[1])
+        a = paddle.static.data(name="a", shape=[-1, 1])
+        b = paddle.static.data(name="b", shape=[-1, 1])
         c = a - b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -195,7 +197,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_integer_div(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='int64')
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='int64')
         b = a / 7
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -209,8 +211,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_equal(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
-        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
+        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
         c = a == b
 
         place = fluid.CPUPlace()
@@ -229,18 +231,19 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_equal_and_cond(self):
-        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
-        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
-
-        one = fluid.layers.ones(shape=[1], dtype='int32')
+        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
+        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
+        b.desc.set_need_check_feed(False)
+        one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
-        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+        c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float')
-        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float')
+        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
+        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, "b": b_np},
@@ -251,7 +254,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_neg(self):
-        a = fluid.layers.data(name="a", shape=[10, 1])
+        a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
         b = -a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -264,7 +268,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_astype(self):
-        a = fluid.layers.data(name="a", shape=[10, 1])
+        a = paddle.static.data(name="a", shape=[-1, 10, 1])
+        a.desc.set_need_check_feed(False)
         b = a.astype('float32')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -378,6 +383,108 @@ class TestMathOpPatches(unittest.TestCase):
             fetch_list=[c],
         )
         np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
+
+
+class TestDygraphMathOpPatches(unittest.TestCase):
+    def init_data(self):
+        self.np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        self.np_b = np.random.random((2, 3, 4)).astype(np.float32)
+        self.np_a[np.abs(self.np_a) < 0.0005] = 0.002
+        self.np_b[np.abs(self.np_b) < 0.0005] = 0.002
+
+        self.tensor_a = paddle.to_tensor(self.np_a, dtype="float32")
+        self.tensor_b = paddle.to_tensor(self.np_b, dtype="float32")
+
+    def test_dygraph_greater_than(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor > nparray
+        expect_out = self.np_a > self.np_b
+        actual_out = self.tensor_a > self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_greater_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor >= nparray
+        expect_out = self.np_a >= self.np_b
+        actual_out = self.tensor_a >= self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_reminder(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor % nparray
+        expect_out = self.np_a % self.np_b
+        actual_out = self.tensor_a % self.np_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+        paddle.enable_static()
+
+    def test_dygraph_less_than(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor < nparray
+        expect_out = self.np_a < self.np_b
+        actual_out = self.tensor_a < self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_less_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor <= nparray
+        expect_out = self.np_a <= self.np_b
+        actual_out = self.tensor_a <= self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_floor_divide(self):
+        paddle.disable_static()
+        np_a = np.random.random((2, 3, 4)).astype(np.int32)
+        np_b = np.random.random((2, 3, 4)).astype(np.int32)
+        np_b[np.abs(np_b) < 1] = 2
+        # normal case: tenor // nparray
+        tensor_a = paddle.to_tensor(np_a, dtype="int32")
+        tensor_b = paddle.to_tensor(np_b, dtype="int32")
+        expect_out = np_a // np_b
+        actual_out = tensor_a // np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_elementwise_pow(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor ** nparray
+        expect_out = self.np_a**self.np_b
+        actual_out = self.tensor_a**self.np_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+
+        # normal case: nparray ** tensor
+        expect_out = self.np_a**self.np_b
+        actual_out = self.np_a**self.tensor_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+
+        paddle.enable_static()
+
+    def test_dygraph_not_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor != nparray
+        expect_out = self.np_a != self.np_b
+        actual_out = self.tensor_a != self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor == nparray
+        expect_out = self.np_a == self.np_b
+        actual_out = self.tensor_a == self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

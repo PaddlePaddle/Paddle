@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle.fluid as fluid
 import os
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.framework import _enable_legacy_dygraph
 
-_enable_legacy_dygraph()
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid.framework import _global_flags
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def check():
@@ -42,13 +42,13 @@ def check():
     )
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     b_np = np.random.uniform(-5, 5, (10, 20, 30)).astype(np.float32)
-    helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
+    helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
     func = helper.append_activation
     with fluid.dygraph.guard(fluid.core.CPUPlace()):
         a = fluid.dygraph.to_variable(a_np)
         b = fluid.dygraph.to_variable(b_np)
-        y = fluid.layers.elementwise_add(x=a, y=b)
-        y = fluid.layers.matmul(x=y, y=b, transpose_y=True)
+        y = paddle.add(x=a, y=b)
+        y = paddle.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)
 
         np_res = np.add(a_np, b_np)

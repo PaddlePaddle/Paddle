@@ -13,13 +13,48 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 paddle.enable_static()
+
+
+def lamb_wrapper(
+    param,
+    grad,
+    lr,
+    moment1,
+    moment2,
+    beta1Pow,
+    beta2Pow,
+    master_weight=None,
+    found_inf=None,
+    epsilon=1e-8,
+    beta1=0.9,
+    beta2=0.999,
+    weight_decay=0.01,
+):
+    return paddle._C_ops.lamb_(
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1Pow,
+        beta2Pow,
+        master_weight,
+        found_inf,
+        weight_decay,
+        beta1,
+        beta2,
+        epsilon,
+        False,
+    )
 
 
 class TestLambOp1(OpTest):
@@ -41,6 +76,10 @@ class TestLambOp1(OpTest):
 
         learning_rate = 0.001
         self.set_attrs()
+
+        self.python_api = lamb_wrapper
+        self.python_out_sig = ['Out']
+
         beta1_pow = self.attrs['beta1']
         beta2_pow = self.attrs['beta2']
 
@@ -297,7 +336,7 @@ class TestSparseLambOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place)
 
-        op_args = dict()
+        op_args = {}
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)

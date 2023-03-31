@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import copy
-from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
+from paddle.fluid import Program, program_guard
 
 
 def python_matrix_nms(
@@ -268,7 +269,11 @@ class TestMatrixNMSOp(OpTest):
         )
 
         empty = len(det_outs) == 0
-        det_outs = np.array([], dtype=np.float32) if empty else det_outs
+        det_outs = (
+            np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
+            if empty
+            else det_outs
+        )
         index_outs = np.array([], dtype=np.float32) if empty else index_outs
         nmsed_outs = det_outs.astype('float32')
 
@@ -291,7 +296,7 @@ class TestMatrixNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
@@ -323,23 +328,15 @@ class TestMatrixNMSError(unittest.TestCase):
         scores_np = np.transpose(scores, (0, 2, 1))
 
         with program_guard(Program(), Program()):
-            boxes_data = fluid.data(
+            boxes_data = paddle.static.data(
                 name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32'
             )
-            scores_data = fluid.data(
+            scores_data = paddle.static.data(
                 name='scores', shape=[N, C, M], dtype='float32'
             )
 
             def test_bboxes_Variable():
                 # the bboxes type must be Variable
-                fluid.layers.matrix_nms(
-                    bboxes=boxes_np,
-                    scores=scores_data,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold,
-                    nms_top_k=nms_top_k,
-                    keep_top_k=keep_top_k,
-                )
                 paddle.vision.ops.matrix_nms(
                     bboxes=boxes_np,
                     scores=scores_data,
@@ -351,14 +348,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_scores_Variable():
                 # the scores type must be Variable
-                fluid.layers.matrix_nms(
-                    bboxes=boxes_data,
-                    scores=scores_np,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold,
-                    nms_top_k=nms_top_k,
-                    keep_top_k=keep_top_k,
-                )
                 paddle.vision.ops.matrix_nms(
                     bboxes=boxes_data,
                     scores=scores_np,
@@ -370,17 +359,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_empty():
                 # when all score are lower than threshold
-                try:
-                    fluid.layers.matrix_nms(
-                        bboxes=boxes_data,
-                        scores=scores_data,
-                        score_threshold=score_threshold,
-                        post_threshold=post_threshold,
-                        nms_top_k=nms_top_k,
-                        keep_top_k=keep_top_k,
-                    )
-                except Exception as e:
-                    self.fail(e)
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
@@ -395,17 +373,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_coverage():
                 # cover correct workflow
-                try:
-                    fluid.layers.matrix_nms(
-                        bboxes=boxes_data,
-                        scores=scores_data,
-                        score_threshold=score_threshold,
-                        post_threshold=post_threshold,
-                        nms_top_k=nms_top_k,
-                        keep_top_k=keep_top_k,
-                    )
-                except Exception as e:
-                    self.fail(e)
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,

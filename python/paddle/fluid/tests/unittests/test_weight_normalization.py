@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import collections
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.initializer import ConstantInitializer
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.param_attr import WeightNormParamAttr
 
 
@@ -32,21 +34,21 @@ class TestWeightNormalization(unittest.TestCase):
 
     @classmethod
     def set_program(cls):
-        data = fluid.layers.data(
-            name=cls.data_desc[0][0], shape=cls.data_desc[0][1]
+        data = paddle.static.data(
+            name=cls.data_desc[0][0], shape=[-1] + cls.data_desc[0][1]
         )
-        out = fluid.layers.fc(
-            input=data,
+        out = paddle.static.nn.fc(
+            x=data,
             size=cls.hidden_size,
-            param_attr=WeightNormParamAttr(
+            weight_attr=WeightNormParamAttr(
                 dim=None,
                 name='weight_norm_param',
-                initializer=ConstantInitializer(1.0),
+                initializer=paddle.nn.initializer.Constant(1.0),
             ),
             bias_attr=False,
-            act=None,
+            activation=None,
         )
-        loss = fluid.layers.reduce_sum(out)
+        loss = paddle.sum(out)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [
             'weight_norm_param_g',

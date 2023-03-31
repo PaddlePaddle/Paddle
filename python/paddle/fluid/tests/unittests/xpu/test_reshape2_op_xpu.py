@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import sys
 import unittest
 
-sys.path.append("..")
+import numpy as np
 
-import paddle
+sys.path.append("..")
 
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -40,6 +41,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def setUp(self):
             self.init_data()
             self.op_type = "reshape2"
+            self.dtype = self.in_type
             self.init_test_input()
             self.init_test_output()
             self.init_attrs()
@@ -116,7 +118,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
             shape_tensor = []
             for index, ele in enumerate(self.new_shape):
                 shape_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {

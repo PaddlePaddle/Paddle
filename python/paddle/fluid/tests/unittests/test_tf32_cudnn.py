@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid.core as core
+
+from paddle.fluid import core
 
 
 class TestTF32Switch(unittest.TestCase):

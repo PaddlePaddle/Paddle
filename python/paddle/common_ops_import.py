@@ -11,31 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
-from paddle.fluid.param_attr import ParamAttr  # noqa: F401
-from paddle.fluid.framework import (  # noqa: F401
-    convert_np_dtype_to_dtype_,
-    _non_static_mode,
-    _varbase_creator,
-    in_dygraph_mode,
-    _in_legacy_dygraph,
-)
-from paddle.fluid.framework import (  # noqa: F401
-    device_guard,
-    default_main_program,
-    dygraph_only,
-    _dygraph_tracer,
-)
-from paddle.fluid.framework import OpProtoHolder, Variable  # noqa: F401
-from paddle.fluid.initializer import Constant  # noqa: F401
-from paddle.fluid.core import VarDesc  # noqa: F401
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, dygraph_utils  # noqa: F401
+from paddle.fluid.core import VarDesc  # noqa: F401
 from paddle.fluid.data_feeder import (  # noqa: F401
-    check_type,
     check_dtype,
+    check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.layers import fill_constant, utils, scale  # noqa: F401
-from paddle.tensor.layer_function_generator import templatedoc  # noqa: F401
-import paddle.fluid as fluid  # noqa: F401
+from paddle.fluid.framework import (  # noqa: F401
+    OpProtoHolder,
+    Variable,
+    _dygraph_tracer,
+    _non_static_mode,
+    _varbase_creator,
+    convert_np_dtype_to_dtype_,
+    default_main_program,
+    device_guard,
+    dygraph_only,
+    in_dygraph_mode,
+)
+from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
+from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
+    templatedoc,
+)
+from paddle.fluid.param_attr import ParamAttr  # noqa: F401

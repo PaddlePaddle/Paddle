@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid import dygraph
 from paddle import static
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import dygraph
 
 paddle.enable_static()
 
@@ -67,7 +67,7 @@ class TestComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         dout = self.out_grad
@@ -79,7 +79,6 @@ class TestComplexOp(OpTest):
             'Out',
             user_defined_grads=[dx, dy],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
         )
 
     def test_check_grad_ignore_x(self):
@@ -95,7 +94,6 @@ class TestComplexOp(OpTest):
             no_grad_set=set('X'),
             user_defined_grads=[dy],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
         )
 
     def test_check_grad_ignore_y(self):
@@ -109,7 +107,6 @@ class TestComplexOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[dx],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
         )
 
 
@@ -160,10 +157,6 @@ class TestComplexAPI(unittest.TestCase):
             mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
         )
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 if __name__ == "__main__":

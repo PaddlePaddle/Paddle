@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -58,13 +58,13 @@ class RNNDescriptors {
 
   template <typename T>
   void Create(const gpuDnnHandle_t &handle,
-              const Place &place,
+              const DeviceContext &dev_ctx,
               const std::vector<int> &sequence_length,
               size_t *workspace_size,
               size_t *reserve_size,
               DenseTensor *dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    gpuDnnDataType_t cudnn_type = paddle::platform::CudnnDataType<T>::type;
+    gpuDnnDataType_t cudnn_type = phi::backends::gpu::CudnnDataType<T>::type;
     // ------------------- cudnn x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
     std::vector<int> strides_x = {input_size_, 1, 1};
@@ -103,17 +103,15 @@ class RNNDescriptors {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
 #endif
+      dropout_state->Resize({static_cast<int64_t>(state_size)});
+      dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
     dropout_desc_.descriptor(handle,
-                             place,
+                             dev_ctx.GetPlace(),
                              is_initialized,
                              dropout_prob_,
                              is_test_ ? nullptr : dropout_state,
@@ -179,7 +177,7 @@ class RNNDescriptors {
         phi::errors::InvalidArgument(
             "The cudnn rnn and setting weight size should be same."));
     // ------------------- cudnn weight descriptors ---------------------
-    auto layout = paddle::platform::DataLayout::kNCHW;
+    auto layout = phi::backends::gpu::DataLayout::kNCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
@@ -250,19 +248,19 @@ class RNNDescriptors {
   std::vector<cudnnTensorDescriptor_t> y_descs_;
 #endif
 
-  paddle::platform::ScopedTensorDescriptor x_desc_;
-  paddle::platform::ScopedTensorDescriptor y_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
-  paddle::platform::ScopedRNNTensorDescriptor x_seq_desc_;
-  paddle::platform::ScopedRNNTensorDescriptor y_seq_desc_;
+  phi::backends::gpu::ScopedRNNTensorDescriptor x_seq_desc_;
+  phi::backends::gpu::ScopedRNNTensorDescriptor y_seq_desc_;
 #endif
-  paddle::platform::ScopedTensorDescriptor init_h_desc_;
-  paddle::platform::ScopedTensorDescriptor init_c_desc_;
-  paddle::platform::ScopedTensorDescriptor last_h_desc_;
-  paddle::platform::ScopedTensorDescriptor last_c_desc_;
-  paddle::platform::ScopedDropoutDescriptor dropout_desc_;
-  paddle::platform::ScopedFilterDescriptor weight_desc_;
-  paddle::platform::ScopedRNNDescriptor rnn_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
+  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
 template <typename T, typename Type>
@@ -289,12 +287,12 @@ void WeightToTensor(const Place &place,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    paddle::memory::Copy(weight->place(),
-                         weight_data + weight_offset,
-                         weight_list[i]->place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight->place(),
+                       weight_data + weight_offset,
+                       weight_list[i]->place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }
@@ -312,12 +310,12 @@ void WeightListToTensor(const Place &place,
   for (size_t i = 0; i < tensor_list.size(); ++i) {
     const T *in_data = tensor_list[i].data<T>();
     auto in_size = tensor_list[i].numel();
-    paddle::memory::Copy(weight_whole->place(),
-                         weight_data + weight_offset,
-                         tensor_list[i].place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight_whole->place(),
+                       weight_data + weight_offset,
+                       tensor_list[i].place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }

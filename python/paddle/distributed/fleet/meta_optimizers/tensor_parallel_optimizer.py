@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
-from .meta_optimizer_base import MetaOptimizerBase
+from paddle import static
+
 from .common import (
-    CollectiveHelper,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
+    CollectiveHelper,
     OpRole,
     is_backward_op,
     is_loss_grad_op,
     is_optimizer_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
@@ -36,9 +37,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.mp_ring_id = 0
         self.global_ring_id = 1
         self.dp_ring_id = 2
@@ -174,7 +173,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = static.default_startup_program()
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, self.startup_program, parameter_list, no_grad_set

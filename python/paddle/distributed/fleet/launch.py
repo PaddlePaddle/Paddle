@@ -54,36 +54,34 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
+import copy
+import os
+import pathlib
 import shutil
 import sys
 import tempfile
-import os
 import time
-import copy
-import pathlib
-from argparse import ArgumentParser, REMAINDER
-import paddle.fluid as fluid
-from paddle.distributed.fleet import launch_utils
+from argparse import REMAINDER, ArgumentParser
+
+from paddle import framework
+from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (
-    get_host_name_ip,
-    find_free_ports,
-    logger,
-    get_cluster,
     DeviceMode,
-    start_local_trainers,
-    direct_start,
-    watch_local_trainers,
-    terminate_local_procs,
     DistributeMode,
     ParameterServerLauncher,
-    get_logger,
-    check_backend,
     block_windows_and_macos,
+    check_backend,
+    direct_start,
+    find_free_ports,
+    get_cluster,
+    get_host_name_ip,
+    get_logger,
+    logger,
+    start_local_trainers,
+    terminate_local_procs,
+    watch_local_trainers,
 )
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import ascend_utils
-
-from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 
 __all__ = []
 
@@ -91,7 +89,7 @@ __all__ = []
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print(f"{arg}: {value}")
     print("------------------------------------------------")
 
 
@@ -136,7 +134,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         help="run mode of job, can be:collective/ps/ps-heter",
     )
 
-    if fluid.core.is_compiled_with_cuda():
+    if framework.core.is_compiled_with_cuda():
         base_group.add_argument(
             "--gpus",
             type=str,
@@ -147,7 +145,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_gpus", dest="gpus")
 
-    if fluid.core.is_compiled_with_xpu():
+    if framework.core.is_compiled_with_xpu():
         base_group.add_argument(
             "--xpus",
             type=str,
@@ -157,7 +155,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
-    if fluid.core.is_compiled_with_npu():
+    if framework.core.is_compiled_with_npu():
         base_group.add_argument(
             "--npus",
             type=str,
@@ -167,7 +165,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_npus", dest="npus")
 
-    if fluid.core.is_compiled_with_mlu():
+    if framework.core.is_compiled_with_mlu():
         base_group.add_argument(
             "--mlus",
             type=str,
@@ -292,7 +290,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
@@ -310,15 +308,13 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
-            logger.info("find free ports:{}".format(free_ports))
+            logger.info(f"find free ports:{free_ports}")
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
 
-        free_ports = [
-            x for x in range(start_port, start_port + len(devices_per_proc))
-        ]
+        free_ports = list(range(start_port, start_port + len(devices_per_proc)))
 
     trainer_endpoints = []
     for ip in node_ips:
@@ -420,7 +416,7 @@ def get_cluster_info(args):
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port
         )
-        logger.debug("get cluster from cloud:{}".format(cluster))
+        logger.debug(f"get cluster from cloud:{cluster}")
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
         cluster, pod = ascend_utils.get_cloud_cluster(
@@ -433,7 +429,7 @@ def get_cluster_info(args):
         cluster, pod = get_cluster_from_args(
             args, device_mode, devices_per_proc
         )
-        logger.debug("get cluster from args:{}".format(cluster))
+        logger.debug(f"get cluster from args:{cluster}")
     return cluster, pod
 
 
@@ -462,7 +458,7 @@ def launch_collective(args):
     )
 
     for idx, proc in enumerate(procs):
-        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+        print(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     while True:
         try:
@@ -470,7 +466,7 @@ def launch_collective(args):
 
             if not alive:
                 logger.info("Local processes completed.")
-                logger.debug("POD info:{}".format(pod))
+                logger.debug(f"POD info:{pod}")
                 break
 
             time.sleep(3)
@@ -478,7 +474,7 @@ def launch_collective(args):
         except:
             logger.warning("Terminating... exit")
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     if os.path.exists(tmp_dir):
         shutil.rmtree(tmp_dir)
@@ -505,13 +501,13 @@ def launch_ps(args, distribute_mode):
 def infer_backend(args):
     if args.backend != "auto":
         return
-    if fluid.core.is_compiled_with_cuda():
+    if framework.core.is_compiled_with_cuda():
         args.backend = 'nccl'
-    elif fluid.core.is_compiled_with_npu():
+    elif framework.core.is_compiled_with_npu():
         args.backend = 'unknown'
-    elif fluid.core.is_compiled_with_xpu():
+    elif framework.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
-    elif fluid.core.is_compiled_with_mlu():
+    elif framework.core.is_compiled_with_mlu():
         args.backend = 'cncl'
     else:
         args.backend = 'gloo'
@@ -559,14 +555,14 @@ def which_distributed_mode(args):
             "Only one mode(Collective or Parameter-Server) can be selected at the same time, but more than one configuration was received."
         )
 
-    if fluid.core.is_compiled_with_cuda():
-        accelerators = fluid.core.get_cuda_device_count()
-    elif fluid.core.is_compiled_with_npu():
-        accelerators = fluid.core.get_npu_device_count()
-    elif fluid.core.is_compiled_with_xpu():
-        accelerators = fluid.core.get_xpu_device_count()
-    elif fluid.core.is_compiled_with_mlu():
-        accelerators = fluid.core.get_mlu_device_count()
+    if framework.core.is_compiled_with_cuda():
+        accelerators = framework.core.get_cuda_device_count()
+    elif framework.core.is_compiled_with_npu():
+        accelerators = framework.core.get_npu_device_count()
+    elif framework.core.is_compiled_with_xpu():
+        accelerators = framework.core.get_xpu_device_count()
+    elif framework.core.is_compiled_with_mlu():
+        accelerators = framework.core.get_mlu_device_count()
     else:
         accelerators = 0
 
@@ -591,9 +587,9 @@ def which_distributed_mode(args):
         return DistributeMode.COLLECTIVE
     else:
         if (
-            not fluid.core.is_compiled_with_cuda()
-            and not fluid.core.is_compiled_with_xpu()
-            and not fluid.core.is_compiled_with_mlu()
+            not framework.core.is_compiled_with_cuda()
+            and not framework.core.is_compiled_with_xpu()
+            and not framework.core.is_compiled_with_mlu()
         ):
             if args.servers:
                 logger.warning(

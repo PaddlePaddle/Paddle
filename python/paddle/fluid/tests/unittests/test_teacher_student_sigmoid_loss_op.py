@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import exp, log
+
 import numpy as np
-from math import log
-from math import exp
-from op_test import OpTest
+from eager_op_test import OpTest
 from scipy.special import logit
-import unittest
-import paddle.fluid as fluid
 
 
 class TestTeacherStudentSigmoidLossOp(OpTest):
@@ -71,20 +69,3 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.005)
-
-
-class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
-    def test_error(self):
-        def test_invalid_input():
-            input = [512, 1]
-            label = fluid.data(name='label', shape=[None, 1], dtype='float32')
-            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
-
-        self.assertRaises(TypeError, test_invalid_input)
-
-        def test_invalid_label():
-            input = fluid.data(name='input1', shape=[None, 1], dtype='float32')
-            label = [512, 1]
-            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
-
-        self.assertRaises(TypeError, test_invalid_label)

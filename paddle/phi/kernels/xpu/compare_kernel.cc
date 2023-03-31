@@ -52,22 +52,30 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
-#define DEFINE_XPU_COMPARE_KERNEL(name, functor)                            \
-  template <typename T, typename Context>                                   \
-  void name##RawKernel(const Context& dev_ctx,                              \
-                       const DenseTensor& x,                                \
-                       const DenseTensor& y,                                \
-                       int axis,                                            \
-                       DenseTensor* out) {                                  \
-    using XPUType = typename XPUTypeTrait<T>::Type;                         \
-    XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, functor); \
-  }                                                                         \
-  template <typename T, typename Context>                                   \
-  void name##Kernel(const Context& dev_ctx,                                 \
-                    const DenseTensor& x,                                   \
-                    const DenseTensor& y,                                   \
-                    DenseTensor* out) {                                     \
-    name##RawKernel<T, Context>(dev_ctx, x, y, -1, out);                    \
+#define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \
+  template <typename T, typename Context>                             \
+  void name##RawKernel(const Context& dev_ctx,                        \
+                       const DenseTensor& x,                          \
+                       const DenseTensor& y,                          \
+                       int axis,                                      \
+                       DenseTensor* out) {                            \
+    using XPUType = typename XPUTypeTrait<T>::Type;                   \
+    auto f = [](xpu::Context* ctx,                                    \
+                const XPUType* x,                                     \
+                const XPUType* y,                                     \
+                bool* z,                                              \
+                const std::vector<int>& xshape,                       \
+                const std::vector<int>& yshape) {                     \
+      return functor(ctx, x, y, z, xshape, yshape);                   \
+    };                                                                \
+    XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
+  }                                                                   \
+  template <typename T, typename Context>                             \
+  void name##Kernel(const Context& dev_ctx,                           \
+                    const DenseTensor& x,                             \
+                    const DenseTensor& y,                             \
+                    DenseTensor* out) {                               \
+    name##RawKernel<T, Context>(dev_ctx, x, y, -1, out);              \
   }
 
 DEFINE_XPU_COMPARE_KERNEL(Equal, xpu::broadcast_equal<XPUType>)
@@ -81,8 +89,16 @@ DEFINE_XPU_COMPARE_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    less_than, XPU, ALL_LAYOUT, phi::LessThanKernel, int, int64_t, float) {}
+PD_REGISTER_KERNEL(less_than,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LessThanKernel,
+                   int,
+                   int64_t,
+                   float,
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(less_than_raw,
                    XPU,
@@ -90,18 +106,32 @@ PD_REGISTER_KERNEL(less_than_raw,
                    phi::LessThanRawKernel,
                    int,
                    int64_t,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func)                          \
-  PD_REGISTER_KERNEL(                                                   \
-      name, XPU, ALL_LAYOUT, phi::func##Kernel, int, int64_t, float) {} \
-  PD_REGISTER_KERNEL(name##_raw,                                        \
-                     XPU,                                               \
-                     ALL_LAYOUT,                                        \
-                     phi::func##RawKernel,                              \
-                     int,                                               \
-                     int64_t,                                           \
-                     float) {}
+#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
+  PD_REGISTER_KERNEL(name,                                \
+                     XPU,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##Kernel,                   \
+                     int,                                 \
+                     int64_t,                             \
+                     float,                               \
+                     phi::dtype::float16) {               \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }                                                       \
+  PD_REGISTER_KERNEL(name##_raw,                          \
+                     XPU,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##RawKernel,                \
+                     int,                                 \
+                     int64_t,                             \
+                     float,                               \
+                     phi::dtype::float16) {               \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }
 
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)

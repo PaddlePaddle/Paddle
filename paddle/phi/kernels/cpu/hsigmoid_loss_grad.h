@@ -14,16 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_bit_code.h"
 
 namespace phi {
-
-namespace math = paddle::operators::math;
 
 template <typename T, typename Context>
 void HSigmoidLossGradKernelImpl(const Context& ctx,
@@ -55,12 +54,12 @@ void HSigmoidLossGradKernelImpl(const Context& ctx,
     is_custom = true;
   }
 
-  std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
+  std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;
   if (!is_custom) {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
         num_classes, label.template data<int64_t>()));
   } else {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
         *(path.get_ptr()), *(code.get_ptr()), label.template data<int64_t>()));
   }
 

@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import sys
 import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 paddle.enable_static()
@@ -77,7 +79,7 @@ class XPUTestRollOp(XPUOpTestWrapper):
             self.shifts = [8, -1]
             self.axis = [-1, -2]
 
-    class TestRollOpCase4(TestXPURollOp):
+    class TestRollOpCase5(TestXPURollOp):
         def init_shapes(self):
             self.x_shape = (100, 10, 5, 10)
             self.shifts = [20, -1]

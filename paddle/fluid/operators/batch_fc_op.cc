@@ -77,11 +77,10 @@ class BatchFCOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -106,11 +105,11 @@ class BatchFCGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -166,6 +165,5 @@ REGISTER_OPERATOR(batch_fc_grad,
                   ops::BatchFCGradOp,
                   ops::BatchFCGradOpNoNeedBufferVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(batch_fc,
-                       ops::BatchFCKernel<phi::CPUContext, float>,
-                       ops::BatchFCKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    batch_fc, CPU, ALL_LAYOUT, ops::BatchFCKernel, float, double) {}

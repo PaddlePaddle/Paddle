@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestHistogramOpAPI(unittest.TestCase):
@@ -28,7 +29,9 @@ class TestHistogramOpAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            inputs = fluid.data(name='input', dtype='int64', shape=[2, 3])
+            inputs = paddle.static.data(
+                name='input', dtype='int64', shape=[2, 3]
+            )
             output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -57,15 +60,13 @@ class TestHistogramOpAPI(unittest.TestCase):
                 msg='histogram output is wrong, out =' + str(actual.numpy()),
             )
 
-            with _test_eager_guard():
-                inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-                inputs = paddle.to_tensor(inputs_np)
-                actual = paddle.histogram(inputs, bins=5, min=1, max=5)
-                self.assertTrue(
-                    (actual.numpy() == expected).all(),
-                    msg='histogram output is wrong, out ='
-                    + str(actual.numpy()),
-                )
+            inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
+            inputs = paddle.to_tensor(inputs_np)
+            actual = paddle.histogram(inputs, bins=5, min=1, max=5)
+            self.assertTrue(
+                (actual.numpy() == expected).all(),
+                msg='histogram output is wrong, out =' + str(actual.numpy()),
+            )
 
 
 class TestHistogramOpError(unittest.TestCase):
@@ -83,7 +84,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test bins should be greater than or equal to 1."""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
@@ -95,7 +96,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test max must be larger or equal to min."""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=1, min=5, max=1)
@@ -107,7 +108,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test range of min, max is not finite"""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
@@ -122,7 +123,9 @@ class TestHistogramOpError(unittest.TestCase):
                 TypeError, paddle.histogram, 1, bins=5, min=1, max=5
             )
             # The input type must be 'int32', 'int64', 'float32', 'float64'
-            x_bool = fluid.data(name='x_bool', shape=[4, 3], dtype='bool')
+            x_bool = paddle.static.data(
+                name='x_bool', shape=[4, 3], dtype='bool'
+            )
             self.assertRaises(
                 TypeError, paddle.histogram, x_bool, bins=5, min=1, max=5
             )
@@ -151,7 +154,15 @@ class TestHistogramOp(OpTest):
         self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
+
+
+class TestHistogramOp_ZeroDim(TestHistogramOp):
+    def init_test_case(self):
+        self.in_shape = []
+        self.bins = 5
+        self.min = 1
+        self.max = 5
 
 
 if __name__ == "__main__":

@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict, List, Optional
-import numpy as np
 import enum
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.initializer import NumpyArrayInitializer
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from typing import Any, Callable, Dict, List, Optional
 
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.framework import IrGraph, IrNode, Operator
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import (
+    IrGraph,
+    IrNode,
+    Operator,
+    OpProtoHolder,
+    convert_np_dtype_to_dtype_,
+)
+from paddle.static.quantization import (
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 
 class TensorConfig:
@@ -87,7 +94,7 @@ class OpConfig:
         self.outputs_var_type = outputs_var_type
         self.attrs = attrs
         if self.attrs is None:
-            self.attrs = dict()
+            self.attrs = {}
         self.attrs.update(kwargs)
 
     def __repr__(self):
@@ -176,7 +183,15 @@ class BlockConfig:
             op_desc.set_type(op_config.type)
             for name, values in op_config.inputs.items():
                 op_desc.set_input(name, values)
-            for name, values in op_config.attrs.items():
+            # canonicalize scalar attrs
+            if OpProtoHolder.instance().has_op_proto(op_config.type):
+                proto = OpProtoHolder.instance().get_op_proto(op_config.type)
+                canonicalized_attrs = framework.canonicalize_attrs(
+                    op_config.attrs, proto
+                )
+            else:
+                canonicalized_attrs = op_config.attrs
+            for name, values in canonicalized_attrs.items():
                 op_desc._set_attr(name, values)
             for name, values in op_config.outputs.items():
                 op_desc.set_output(name, values)
@@ -275,7 +290,6 @@ def create_fake_model(program_config):
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
-        print(f"name: {name}; shape: {tensor_config.shape}")
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))
@@ -299,7 +313,7 @@ def create_fake_model(program_config):
             shape=tensor_config.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
             name=name,
-            initializer=NumpyArrayInitializer(tensor_config.data),
+            initializer=paddle.nn.initializer.Assign(tensor_config.data),
         )
     in_vars = []
     for name in sorted(save_var_map.keys()):
@@ -318,9 +332,18 @@ def create_fake_model(program_config):
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
+        # canonicalize scalar attrs
+        if OpProtoHolder.instance().has_op_proto(op_config.type):
+            proto = OpProtoHolder.instance().get_op_proto(op_config.type)
+            canonicalized_attrs = framework.canonicalize_attrs(
+                op_config.attrs, proto
+            )
+        else:
+            canonicalized_attrs = op_config.attrs
+
         for name, values in op_config.inputs.items():
             op_desc.set_input(name, values)
-        for name, values in op_config.attrs.items():
+        for name, values in canonicalized_attrs.items():
             if name == 'sub_block':
                 sub_block_desc = main_program_desc.append_block(main_block_desc)
                 values.fill_block_desc(sub_block_desc)
@@ -443,6 +466,10 @@ def create_quant_model(
         "pad2d",
         "reshape",
         "layer_norm",
+        "fusion_gru",
+        "multi_gru",
+        "quantize",
+        "dequantize",
     ]
     op_real_in_out_name = {
         "conv2d": [["Input", "Filter"], ["Output"]],
@@ -492,6 +519,10 @@ def create_quant_model(
         "pad2d": [["X"], ["Out"]],
         "flatten": [["X"], ["Out"]],
         "flatten2": [["X"], ["Out"]],
+        "fusion_gru": [["X", "WeightX", "WeightH"], ["Hidden", "XX"]],
+        "multi_gru": [["X", "WeightX", "WeightH"], ["Hidden"]],
+        "quantize": [["Input"], ["Output"]],
+        "dequantize": [["Input"], ["Output"]],
     }
 
     def _get_op_output_var_names(op):

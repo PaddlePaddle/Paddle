@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle import fluid
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
@@ -64,14 +65,14 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
             Y = Y.reshape((1, Y.size))
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -113,151 +114,6 @@ class Generator:
         self.check_grad(
             ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y')
         )
-
-
-class TestMatmulOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The inputs type of matmul_op must be Variable.
-            input1 = 12
-            self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
-            # The inputs dtype of matmul_op must be float32, float64.
-            input2 = fluid.layers.data(
-                name='input2', shape=[10, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
-            input3 = fluid.layers.data(
-                name='input3', shape=[2, 2], dtype="float16"
-            )
-            fluid.layers.matmul(input3, input3)
-
-
-# Negative dimension generation
-def generate_negative_dims(in_shape):
-    from itertools import combinations
-
-    size = len(in_shape)
-    indexs = list()
-    shapes = list()
-    for i in range(size):
-        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
-    for idx in indexs:
-        shapes.append(
-            [in_shape[i] if i not in idx else -1 for i in range(size)]
-        )
-    return shapes
-
-
-# Build program with inputs sizes that contain negative numbers
-def test_negative_dims_program(obj):
-    for shape_x in generate_negative_dims(obj.shape_X):
-        for shape_y in generate_negative_dims(obj.shape_Y):
-            X = np.random.random(obj.shape_X).astype("float32")
-            Y = np.random.random(obj.shape_Y).astype("float32")
-            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
-            with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=shape_x, dtype='float32')
-                y = fluid.data(name='y', shape=shape_y, dtype='float32')
-                output = fluid.layers.matmul(
-                    x, y, obj.transpose_X, obj.transpose_Y
-                )
-                obj.assertEqual(len(Ref.shape), len(output.shape))
-                for idx in range(len(Ref.shape)):
-                    if output.shape[idx] != -1:
-                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
-                exe = fluid.Executor(fluid.CPUPlace())
-                (res,) = exe.run(
-                    fluid.default_main_program(),
-                    feed={'x': X, 'y': Y},
-                    fetch_list=[output],
-                )
-                np.allclose(res, Ref, atol=1e-5)
-
-
-# Generate program api cases for all negative possibilities
-def api_test(dim_x, dim_y, trans_x, trans_y):
-    test_name = 'TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-        dim_x, dim_y, trans_x, trans_y
-    )
-    shape_x, shape_y = generate_compatible_shapes(
-        dim_x, dim_y, trans_x, trans_y
-    )
-    globals()[test_name] = type(
-        test_name,
-        (unittest.TestCase,),
-        {
-            'shape_X': shape_x,
-            'shape_Y': shape_y,
-            'transpose_X': trans_x,
-            'transpose_Y': trans_y,
-            'test_propram': test_negative_dims_program,
-        },
-    )
-
-
-# Generate operators cases for all possibilities
-def inject_test(dim_x, dim_y, trans_x, trans_y):
-    test_name = 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-        dim_x, dim_y, trans_x, trans_y
-    )
-    shape_x, shape_y = generate_compatible_shapes(
-        dim_x, dim_y, trans_x, trans_y
-    )
-    globals()[test_name] = type(
-        test_name,
-        (Generator, OpTest),
-        {
-            'shape_X': shape_x,
-            'shape_Y': shape_y,
-            'transpose_X': trans_x,
-            'transpose_Y': trans_y,
-        },
-    )
-
-
-for dim_X in (1, 2, 3):
-    for dim_Y in (1, 2, 3):
-        for transose_x in (False, True):
-            for transose_y in (False, True):
-                inject_test(dim_X, dim_Y, transose_x, transose_y)
-                api_test(dim_X, dim_Y, transose_x, transose_y)
-
-
-# Test case more batch_size and N, M, K
-def generate_compatible_shapes_batch(
-    dim_X, dim_Y, transpose_X, transpose_Y, batch_size
-):
-    BATCH_SIZE = 2
-    M = 3
-    N = 4
-    K = 5
-    if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
-        K = 1
-    if dim_X == 1:
-        if transpose_X:
-            shape_X = [M]
-        else:
-            shape_X = [K]
-    if dim_Y == 1:
-        if transpose_Y:
-            shape_Y = [N]
-        else:
-            shape_Y = [K]
-    if dim_X >= 2:
-        if transpose_X:
-            shape_X = [K, M]
-        else:
-            shape_X = [M, K]
-    if dim_X == 3:
-        shape_X = [BATCH_SIZE] + shape_X
-    if dim_Y >= 2:
-        if transpose_Y:
-            shape_Y = [N, K]
-        else:
-            shape_Y = [K, N]
-    if dim_Y == 3:
-        shape_Y = [BATCH_SIZE] + shape_Y
-    return shape_X, shape_Y
 
 
 # Test case n-dim
@@ -307,28 +163,33 @@ for dim in [4]:
 
 class API_TestMm(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2], dtype="float64")
-            y = fluid.data(name='y', shape=[2], dtype='float64')
-            res = fluid.data(name="output", shape=[1], dtype="float64")
-            result = paddle.mm(x, y)
-            exe = fluid.Executor(fluid.CPUPlace())
-            data1 = np.random.rand(2)
-            data2 = np.random.rand(2)
-            np_res = exe.run(feed={'x': data1, 'y': data2}, fetch_list=[result])
-            expected_result = np.matmul(
-                data1.reshape(1, 2), data2.reshape(2, 1)
-            )
+        with paddle_static_guard():
+            with fluid.program_guard(fluid.Program()):
+                x = paddle.static.data(name="x", shape=[2], dtype="float64")
+                y = paddle.static.data(name='y', shape=[2], dtype='float64')
+                res = paddle.static.data(
+                    name="output", shape=[1], dtype="float64"
+                )
+                result = paddle.mm(x, y)
+                exe = fluid.Executor(fluid.CPUPlace())
+                data1 = np.random.rand(2)
+                data2 = np.random.rand(2)
+                np_res = exe.run(
+                    feed={'x': data1, 'y': data2}, fetch_list=[result]
+                )
+                expected_result = np.matmul(
+                    data1.reshape(1, 2), data2.reshape(2, 1)
+                )
 
-        np.testing.assert_allclose(
-            np_res,
-            expected_result,
-            rtol=1e-05,
-            atol=1e-05,
-            err_msg='two value is            {}\n{}, check diff!'.format(
-                np_res, expected_result
-            ),
-        )
+            np.testing.assert_allclose(
+                np_res,
+                expected_result,
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='two value is            {}\n{}, check diff!'.format(
+                    np_res, expected_result
+                ),
+            )
 
     def test_dygraph_without_out(self):
         device = fluid.CPUPlace()
@@ -357,37 +218,43 @@ class Test_API_Matmul(unittest.TestCase):
 
 class API_TestMmError(unittest.TestCase):
     def test_errors(self):
-        def test_error1():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data1 = fluid.data(name="data1", shape=[10, 2], dtype="float32")
-                data2 = fluid.data(name="data2", shape=[3, 10], dtype="float32")
-                paddle.mm(data1, data2)
+        with paddle_static_guard():
 
-        self.assertRaises(ValueError, test_error1)
+            def test_error1():
+                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                    data1 = paddle.static.data(
+                        name="data1", shape=[10, 2], dtype="float32"
+                    )
+                    data2 = paddle.static.data(
+                        name="data2", shape=[3, 10], dtype="float32"
+                    )
+                    paddle.mm(data1, data2)
 
-        def test_error2():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data1 = fluid.data(
-                    name="data1", shape=[-1, 10, 2], dtype="float32"
-                )
-                data2 = fluid.data(
-                    name="data2", shape=[-1, 2, 10], dtype="float32"
-                )
-                paddle.mm(data1, data2)
+            self.assertRaises(ValueError, test_error1)
 
-        test_error2()
+            def test_error2():
+                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                    data1 = paddle.static.data(
+                        name="data1", shape=[-1, 10, 2], dtype="float32"
+                    )
+                    data2 = paddle.static.data(
+                        name="data2", shape=[-1, 2, 10], dtype="float32"
+                    )
+                    paddle.mm(data1, data2)
 
-        def test_error3():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data1 = fluid.data(
-                    name="data1", shape=[10, 10, 2], dtype="float32"
-                )
-                data2 = fluid.data(
-                    name="data2", shape=[3, 2, 10], dtype="float32"
-                )
-                paddle.mm(data1, data2)
+            test_error2()
 
-        self.assertRaises(ValueError, test_error3)
+            def test_error3():
+                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                    data1 = paddle.static.data(
+                        name="data1", shape=[10, 10, 2], dtype="float32"
+                    )
+                    data2 = paddle.static.data(
+                        name="data2", shape=[3, 2, 10], dtype="float32"
+                    )
+                    paddle.mm(data1, data2)
+
+            self.assertRaises(ValueError, test_error3)
 
 
 if __name__ == "__main__":

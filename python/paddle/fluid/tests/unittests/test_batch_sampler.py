@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
+
 from paddle.io import (
     BatchSampler,
     Dataset,
+    RandomSampler,
     Sampler,
     SequenceSampler,
-    RandomSampler,
     WeightedRandomSampler,
 )
 

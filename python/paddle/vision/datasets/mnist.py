@@ -14,12 +14,13 @@
 
 import gzip
 import struct
+
 import numpy as np
 from PIL import Image
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -112,7 +113,7 @@ class MNIST(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train' or 'test', but got {}".format(mode)
+        ], f"mode should be 'train' or 'test', but got {mode}"
 
         if backend is None:
             backend = paddle.vision.get_image_backend()

@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -47,6 +37,7 @@ class CastOpConverter : public OpConverter {
         layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
         break;
       case 2:  // INT32 = 2
+      case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
         layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;

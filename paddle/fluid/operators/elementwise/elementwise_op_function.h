@@ -24,11 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/transform.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
@@ -42,8 +42,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif
@@ -61,11 +61,11 @@ namespace operators {
 /*
  *  Pack input and output tensors into respective vectors with
  *  consideration of varible X`s class type.
- *  Input variable X is supported to be whether LoDTensor or
+ *  Input variable X is supported to be whether phi::DenseTensor or
  *  SelectedRows class type in this package function, once X
  *  was SelectedRows type, a valid pointer x_for_selectedrows
  *  is excepted to be passed in from op kernel for acquisition
- *  of the valid address of LoDTensor created ahead in the function.
+ *  of the valid address of phi::DenseTensor created ahead in the function.
  */
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
@@ -112,7 +112,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "X's type[%s] is not supported by elementwise_op. X's type should be "
-        "LoDTensor or SelectedRows.",
+        "phi::DenseTensor or SelectedRows.",
         framework::ToTypeName(x_var->Type())));
   }
   z->mutable_data<OutT>(ctx.GetPlace());
@@ -982,7 +982,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
     for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
       // reduce sum with wrap
-      val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
     }
 
     size_t idx_j = j + threadIdx.y;
@@ -1004,7 +1004,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
         for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
           // reduce sum with wrap
-          inter_val += platform::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+          inter_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
         }
         if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }
@@ -1160,14 +1161,14 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
   if (BcastY) {
     if (dy) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dy[j] = val;
       }
     }
   } else {
     if (dx) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dx[j] = val;
       }
@@ -1175,7 +1176,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   }
   if (!SameShapeOfIntermediateOutAndOut) {
     if (d_intermediate) {
-      inter_val = paddle::platform::reduceSum(inter_val, tid, h);
+      inter_val = phi::backends::gpu::reduceSum(inter_val, tid, h);
       if (threadIdx.x == 0) {
         d_intermediate[j] = inter_val;
       }

@@ -35,25 +35,26 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                           "but the received is %s",
                           ctx->Inputs("X").front(),
                           ctx->GetInputsVarType("X").front()));
-    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The output Out(%s)'s type should be LoDTensor, "
-                          "but the received is %s",
-                          ctx->Outputs("Out").front(),
-                          ctx->GetOutputsVarType("Out").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetOutputsVarType("Out").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The output Out(%s)'s type should be phi::DenseTensor, "
+            "but the received is %s",
+            ctx->Outputs("Out").front(),
+            ctx->GetOutputsVarType("Out").front()));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
+template <typename T, typename DeviceContext>
 class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -72,7 +73,7 @@ class GetTensorFromSelectedRowsOpProtoMaker
  public:
   void Make() override {
     AddInput("X", "The input type is SelectedRows.");
-    AddOutput("Out", "The output type is LoDTensor.");
+    AddOutput("Out", "The output type is phi::DenseTensor.");
     AddComment(
         R"DOC(
 GetTensorFromSelectedRows Operator
@@ -101,24 +102,22 @@ REGISTER_OPERATOR(get_tensor_from_selected_rows,
                   ops::GetTensorFromSelectedRowsOpProtoMaker,
                   ops::GetTensorFromSelectedRowsOpVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
-                               float,
-                               ops::GetTensorFromSelectedRowsKernel,
-                               double,
-                               ops::GetTensorFromSelectedRowsKernel,
-                               int,
-                               ops::GetTensorFromSelectedRowsKernel,
-                               int64_t,
-                               ops::GetTensorFromSelectedRowsKernel);
+PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GetTensorFromSelectedRowsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
-                                float,
-                                ops::GetTensorFromSelectedRowsKernel,
-                                double,
-                                ops::GetTensorFromSelectedRowsKernel,
-                                int,
-                                ops::GetTensorFromSelectedRowsKernel,
-                                int64_t,
-                                ops::GetTensorFromSelectedRowsKernel);
+PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GetTensorFromSelectedRowsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 #endif

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import contextlib
+
 import paddle.distributed as dist
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
@@ -78,12 +78,12 @@ class P2POp:
 @contextlib.contextmanager
 def _with_batch_p2p_guard(backend):
     if backend == "NCCL":
-        core.ProcessGroupNCCL.group_start()
+        framework.core.ProcessGroupNCCL.group_start()
     try:
         yield
     finally:
         if backend == "NCCL":
-            core.ProcessGroupNCCL.group_end()
+            framework.core.ProcessGroupNCCL.group_end()
 
 
 def _check_p2p_op_list(p2p_op_list):

@@ -14,13 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard, core
-
-from test_attribute_var import UnittestBase
+from paddle.fluid import Program, core, program_guard
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -129,10 +130,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
@@ -192,6 +193,20 @@ class TestUnpoolOpException(unittest.TestCase):
             ).astype("int32")
             F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
+        def x_rank_error():
+            data = paddle.rand(shape=[1, 1, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+
+        def indices_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 3, 3]
+            ).astype("int32")
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
             indices = paddle.reshape(
@@ -231,6 +246,16 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The x should have \[N, C, H, W\] format",
+            x_rank_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The indices should have \[N, C, H, W\] format",
+            indices_rank_error,
+        )
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
                 ValueError,
@@ -252,11 +277,12 @@ class TestUnpoolOpException(unittest.TestCase):
 
 class TestUnpoolOpAPI_dy(unittest.TestCase):
     def test_case(self):
+        import numpy as np
+
         import paddle
         import paddle.nn.functional as F
-        import paddle.fluid.core as core
-        import paddle.fluid as fluid
-        import numpy as np
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -292,11 +318,12 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
 
 class TestUnpoolOpAPI_dy2(unittest.TestCase):
     def test_case(self):
+        import numpy as np
+
         import paddle
         import paddle.nn.functional as F
-        import paddle.fluid.core as core
-        import paddle.fluid as fluid
-        import numpy as np
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -332,10 +359,11 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
 
 class TestUnpoolOpAPI_dy3(unittest.TestCase):
     def test_case(self):
-        import paddle
-        import paddle.fluid.core as core
-        import paddle.fluid as fluid
         import numpy as np
+
+        import paddle
+        from paddle import fluid
+        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -374,8 +402,8 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
     def test_case(self):
         import paddle
         import paddle.nn.functional as F
-        import paddle.fluid.core as core
-        import paddle.fluid as fluid
+        from paddle import fluid
+        from paddle.fluid import core
 
         paddle.enable_static()
 
@@ -383,7 +411,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
         ).astype("float32")
 
-        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
         output, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, return_mask=True
         )
@@ -410,6 +438,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
         ).astype("float64")
         np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
+        paddle.disable_static()
 
 
 class TestOutputSizeTensor(UnittestBase):

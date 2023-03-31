@@ -14,25 +14,50 @@
 
 import itertools
 import re
+from typing import Dict, List, Sequence
 
 from type_mapping import (
-    input_types_map,
-    optional_input_types_map,
     attr_types_map,
-    opmaker_attr_types_map,
-    output_type_map,
-)
-from type_mapping import (
     dense_input_types_map,
     dense_optional_input_types_map,
     dense_output_types_map,
-    sr_output_types_map,
+    input_types_map,
+    opmaker_attr_types_map,
+    optional_input_types_map,
+    output_type_map,
     phi_attr_types_map,
+    sr_output_types_map,
 )
 
 
+def get_infer_var_type_func(op_name):
+    if op_name == "assign":
+        return f"""
+ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SyncTypeAndDataType("X", "Out");
+  }}
+}};
+"""
+    elif op_name == "merge_selected_rows":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType
+        : public framework::PassInDtypeAndVarTypeToOutput {{
+    protected:
+    std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+        const override {{
+        static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
+        return m;
+    }}
+    }};
+    """
+    else:
+        return None
+
+
 def quote(s):
-    return '"{}"'.format(s)
+    return f'"{s}"'
 
 
 # ------------------------------ attr -------------------------------------
@@ -66,6 +91,25 @@ def to_dense_input_type(s, optional=False):
         return dense_optional_input_types_map[s]
 
 
+def assert_dense_or_sr(input_type):
+    return (
+        "ctx.IsSelectedRowsInput"
+        if input_type == "selected_rows"
+        else "ctx.IsDenseTensorInput"
+    )
+
+
+def find_optinal_inputs_name(inputs):
+    optional_inputs_name = [
+        input["fluid_name"] for input in inputs if input["optional"] is True
+    ]
+    return optional_inputs_name
+
+
+def delete_last_underline(op_name):
+    return op_name if op_name[-1] != '_' else op_name[:-1]
+
+
 # ------------------------------ output  ----------------------------------
 def to_paddle_output_type(s):
     return output_type_map[s]
@@ -81,19 +125,23 @@ def to_sr_output_type(s):
     return sr_output_types_map[s]
 
 
+def filter_intermediate(items: Sequence):
+    return tuple([item for item in items if not item.get('intermediate')])
+
+
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(s[:-5])
+        return f'GradVarName("{s[:-5]}")'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(s[:-5])
+        return f'"{s[:-5]}@GRAD"'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_pascal_case(s):
@@ -116,17 +164,61 @@ def to_input_name(s):
     return match.group(2)
 
 
+def to_scalar_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensors_name(attr):
+    if 'tensors_name' in attr:
+        return attr['tensors_name']
+    return to_pascal_case(attr['name']) + 'TensorList'
+
+
+def to_composite_grad_opmaker_name(backward_op_name):
+    words = backward_op_name.split("_")
+    for i in range(len(words)):
+        words[i] = words[i].strip()
+        words[i] = words[i].capitalize()
+    composite_grad_opmaker_name = "".join(word for word in words[:-1])
+    composite_grad_opmaker_name += "CompositeGradOpMaker"
+    return composite_grad_opmaker_name
+
+
+def to_variable_names(dict_list: List[Dict], key: str) -> List[str]:
+    names = []
+    for var in dict_list:
+        names.append(var[key])
+    return names
+
+
 def cartesian_prod_attrs(attrs):
     items = []
     for attr in attrs:
         type_name = attr["typename"]
-        name = attr["name"]
+        name = attr["fluid_name"]
         if type_name == "Scalar":
-            items.append((name, "{}Tensor".format(name)))
+            items.append((name, to_scalar_tensor_name(attr)))
         elif type_name == "IntArray":
-            items.append(
-                (name, "{}Tensor".format(name), "{}TensorList".format(name))
-            )
+            if 'tensor_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensors_name(attr)))
+            elif 'tensors_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensor_name(attr)))
+            else:
+                items.append(
+                    (
+                        name,
+                        to_int_array_tensor_name(attr),
+                        to_int_array_tensors_name(attr),
+                    )
+                )
         else:
             items.append((name,))
 
@@ -140,11 +232,15 @@ def cartesian_prod_attrs(attrs):
 def cartesian_prod_mapping(op):
     kernels = op["kernel"]["func"]
     inputs = [
-        x["name"] for x in op["inputs"] if x["name"] in op["kernel"]["param"]
+        x["fluid_name"]
+        for x in op["inputs"]
+        if x["fluid_name"] in op["kernel"]["param"]
     ]
     inputs = [to_opmaker_name_cstr(input) for input in inputs]
     attrs = cartesian_prod_attrs(op["attrs"])
-    outputs = [to_opmaker_name_cstr(output["name"]) for output in op["outputs"]]
+    outputs = [
+        to_opmaker_name_cstr(output["fluid_name"]) for output in op["outputs"]
+    ]
 
     def vec(items):
         return "{" + ', '.join(items) + "}"

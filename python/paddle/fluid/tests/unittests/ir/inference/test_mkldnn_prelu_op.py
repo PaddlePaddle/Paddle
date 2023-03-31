@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial
 
-from hypothesis import given
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnPreluOp(MkldnnAutoScanTest):
@@ -42,7 +42,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             elif kwargs["mode"] == "channel":
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
-                    return np.zeros((1)).astype(np.float32)
+                    return np.zeros(1).astype(np.float32)
                 if kwargs['data_format'] == 'NCHW':
                     return np.random.random(kwargs['in_shape'][1]).astype(
                         np.float32
@@ -54,7 +54,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             else:
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
-                    return np.zeros((1)).astype(np.float32)
+                    return np.zeros(1).astype(np.float32)
                 return np.random.random(kwargs['in_shape']).astype(np.float32)
 
         prelu_op = OpConfig(

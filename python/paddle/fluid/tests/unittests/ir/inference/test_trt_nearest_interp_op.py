@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TRTNearestInterpTest(InferencePassTest):
@@ -40,9 +43,9 @@ class TRTNearestInterpTest(InferencePassTest):
                     self.origin_shape[1],
                     self.channels,
                 ]
-            data = fluid.data(name='data', shape=shape, dtype='float32')
+            data = paddle.static.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
-            out = fluid.layers.batch_norm(resize_out, is_test=True)
+            out = nn.batch_norm(resize_out, is_test=True)
 
         if self.data_layout == 'NCHW':
             shape = [
@@ -80,16 +83,14 @@ class TRTNearestInterpTest(InferencePassTest):
 
     def append_nearest_interp(self, data):
         if self.scale > 0.0:
-            return fluid.layers.resize_nearest(
+            return paddle.nn.functional.interpolate(
                 data,
-                scale=self.scale,
-                align_corners=self.align_corners,
+                scale_factor=self.scale,
                 data_format=self.data_layout,
             )
-        return fluid.layers.resize_nearest(
+        return paddle.nn.functional.interpolate(
             data,
-            out_shape=self.resize_shape,
-            align_corners=self.align_corners,
+            size=self.resize_shape,
             data_format=self.data_layout,
         )
 

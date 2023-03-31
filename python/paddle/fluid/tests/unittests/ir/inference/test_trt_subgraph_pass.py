@@ -15,22 +15,24 @@
 import os
 import shutil
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TensorRTSubgraphPassFcTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            fc_out = fluid.layers.fc(input=[data], act=None, size=1000)
-            reshape_out = fluid.layers.reshape(x=fc_out, shape=[1, 1000])
+            fc_out = paddle.static.nn.fc(x=[data], activation=None, size=1000)
+            reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -41,7 +43,7 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
         self.fetch_list = [reshape_out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             # TRT output shape of fc is (1, 1000, 1, 1). To compare the output value only, flatten the results.
             self.check_output_with_option(use_gpu, flatten=True)
@@ -53,14 +55,14 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            concat_out = fluid.layers.concat([data1, data2], axis=2)
-            out = fluid.layers.batch_norm(concat_out, is_test=True)
+            concat_out = paddle.concat([data1, data2], axis=2)
+            out = nn.batch_norm(concat_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -72,7 +74,7 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -83,11 +85,11 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
 class TensorRTSubgraphPassSplitTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -98,7 +100,7 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -109,11 +111,11 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
 class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -124,7 +126,7 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
@@ -137,11 +139,11 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
 class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -160,7 +162,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             if os.path.exists(self.path + "_opt_cache"):
                 shutil.rmtree(self.path + "_opt_cache")
@@ -173,18 +175,18 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
 class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
                 name='instance_norm_w',
-                initializer=fluid.initializer.Constant(value=1.0),
+                initializer=paddle.nn.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='instance_norm_b',
-                initializer=fluid.initializer.Constant(value=0.0),
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             )
-            out = fluid.layers.instance_norm(
+            out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr
             )
         self.feeds = {
@@ -199,7 +201,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=1e-4, flatten=True)
             self.assertTrue(
@@ -210,11 +212,11 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
 class TensorRTSubgraphPassTransposeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             transpose_out = self.append_transpose(data)
-            out = fluid.layers.batch_norm(transpose_out, is_test=True)
+            out = nn.batch_norm(transpose_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -225,10 +227,10 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_transpose(self, data):
-        return fluid.layers.transpose(data, [0, 3, 1, 2])
+        return paddle.transpose(data, [0, 3, 1, 2])
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -240,10 +242,10 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            out = fluid.layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 data, begin_norm_axis=self.begin_norm_axis
             )
         self.feeds = {
@@ -259,7 +261,7 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
         self.begin_norm_axis = 1
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -271,10 +273,10 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            out = fluid.layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 data, begin_norm_axis=self.begin_norm_axis
             )
         self.feeds = {
@@ -313,7 +315,7 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -332,7 +334,7 @@ class TensorRTSubgraphPassLayerNormDynamicFP16Test(
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.01, rtol=0.01)
             self.assertTrue(
@@ -357,14 +359,14 @@ class TensorRTSubgraphPassLayerNormBeginNormAxis3Test(
 class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -376,10 +378,10 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
@@ -391,7 +393,7 @@ class TensorRTSubgraphPassElementwiseMulTest(
     TensorRTSubgraphPassElementwiseTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_mul(x=data1, y=data2)
+        return paddle.multiply(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseSerializeTest(
@@ -412,12 +414,14 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
 class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(name="data2", shape=[64, 64], dtype="float32")
+            data2 = paddle.static.data(
+                name="data2", shape=[64, 64], dtype="float32"
+            )
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([64, 64]).astype("float32"),
@@ -437,40 +441,12 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
-            )
-
-
-class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32"
-            )
-            sc_out = fluid.layers.shuffle_channel(data, group=3)
-            out = fluid.layers.batch_norm(sc_out, is_test=True)
-        self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = (
-            TensorRTSubgraphPassShuffleChannelTest.TensorRTParam(
-                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
-            )
-        )
-        self.fetch_list = [out]
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(

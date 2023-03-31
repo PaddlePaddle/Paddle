@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import zipfile
 import re
+import zipfile
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -133,7 +134,7 @@ class Movielens(Dataset):
 
                 model = SimpleNet()
                 category, title, rating = model(category, title, rating)
-                print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
+                print(category.shape, title.shape, rating.shape)
 
     """
 
@@ -148,7 +149,7 @@ class Movielens(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
@@ -169,10 +170,10 @@ class Movielens(Dataset):
 
     def _load_meta_info(self):
         pattern = re.compile(r'^(.*)\((\d+)\)$')
-        self.movie_info = dict()
-        self.movie_title_dict = dict()
-        self.categories_dict = dict()
-        self.user_info = dict()
+        self.movie_info = {}
+        self.movie_title_dict = {}
+        self.categories_dict = {}
+        self.user_info = {}
         with zipfile.ZipFile(self.data_file) as package:
             for info in package.infolist():
                 assert isinstance(info, zipfile.ZipInfo)

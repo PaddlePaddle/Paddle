@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import shutil
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTPool3dTest(InferencePassTest):
@@ -36,7 +37,6 @@ class TensorRTPool3dTest(InferencePassTest):
         self.pool_type = 'max'
         self.pool_stride = 1
         self.pool_padding = 0
-        self.global_pooling = False
         self.ceil_mode = False
         self.exclusive = False
         self.enable_trt = True
@@ -58,22 +58,29 @@ class TensorRTPool3dTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
             )
-            pool_out = fluid.layers.pool3d(
-                input=data,
-                pool_size=self.pool_size,
-                pool_type=self.pool_type,
-                pool_stride=self.pool_stride,
-                pool_padding=self.pool_padding,
-                global_pooling=self.global_pooling,
-                ceil_mode=self.ceil_mode,
-                exclusive=self.exclusive,
-            )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            if self.pool_type == "max":
+                pool_out = paddle.nn.functional.max_pool3d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                )
+            else:
+                pool_out = paddle.nn.functional.avg_pool3d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                    exclusive=self.exclusive,
+                )
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -86,9 +93,7 @@ class TensorRTPool3dTest(InferencePassTest):
             elif self.precision == AnalysisConfig.Precision.Half:
                 atol, rtol = (1e-3, 1e-3)
             else:
-                raise ValueError(
-                    "Unsupported precision {}".format(self.precision)
-                )
+                raise ValueError(f"Unsupported precision {self.precision}")
             self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
@@ -157,62 +162,6 @@ class TensorRTAvgPool3dTest(TensorRTPool3dTest):
         self.pool_type = 'avg'
         self.pool_stride = 1
         self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTGlobalPool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = True
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTCeilPool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = True
-        self.exclusive = False
-
-
-class TensorRTExclusivePool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = True
-
-
-class TensorRTSamePaddingPool3dTest(InferencePassTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 'SAME'
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTValidPaddingPool3dTest(InferencePassTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 'VALID'
-        self.global_pooling = False
         self.ceil_mode = False
         self.exclusive = False
 
@@ -239,7 +188,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -247,7 +196,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
             pool_out = paddle.nn.functional.adaptive_avg_pool3d(
                 x=data, output_size=[3, 3, 3]
             )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -339,7 +288,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -347,7 +296,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
             pool_out = paddle.nn.functional.adaptive_max_pool3d(
                 x=data, output_size=[3, 3, 3]
             )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):

@@ -68,7 +68,7 @@ function download() {
   if [[ -e "${model_name}.tgz" ]]; then
     echo "${model_name}.tgz has been downloaded."
   else
-      if [ $WIN_DETECT != "" ]; then
+      if [ "$WIN_DETECT" != "" ]; then
         wget -q -Y off ${url_prefix}/${model_name}.tgz
         tar xzf *.tgz
       else
@@ -135,7 +135,7 @@ function compile_test() {
     mkdir -p ${build_dir}
     cd ${build_dir}
     TEST_NAME=$1
-    if [ $WIN_DETECT != "" ]; then
+    if [ "$WIN_DETECT" != "" ]; then
         cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
@@ -161,7 +161,7 @@ function compile_test() {
                  -DWITH_GTEST=ON \
                  -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         make -j$(nproc)
-    fi;
+    fi
     cd -
 }
 
@@ -208,7 +208,7 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-if [ $WIN_DETECT != "" ]; then
+if [ "$WIN_DETECT" != "" ]; then
     #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
     echo "  skip test_ernie_text_cls  "
 else
@@ -222,7 +222,7 @@ else
         echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
         EXIT_CODE=8
     fi
-fi;
+fi
 
 printf "${YELLOW} start test_yolov3 ${NC} \n";
 compile_test "test_yolov3"

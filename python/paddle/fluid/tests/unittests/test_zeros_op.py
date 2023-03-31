@@ -13,23 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
-
-
-class TestZerosOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            shape = [4]
-            dtype = 'int8'
-            self.assertRaises(TypeError, fluid.layers.zeros, shape, dtype)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
 
 
 class ApiZerosTest(unittest.TestCase):
@@ -49,11 +38,11 @@ class ApiZerosTest(unittest.TestCase):
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
-            zeros = paddle.zeros(shape=[10], dtype='int64')
+            zeros = paddle.zeros(shape=[10], dtype='int8')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[zeros])
-            expected_result = np.zeros(10, dtype='int64')
+            expected_result = np.zeros(10, dtype='int8')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
             out_np = np.zeros(shape=1, dtype='float32')
@@ -72,11 +61,6 @@ class ApiZerosTest(unittest.TestCase):
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_out()
-            self.test_fluid_out()
-
 
 class ApiZerosError(unittest.TestCase):
     def test_errors(self):
@@ -86,12 +70,6 @@ class ApiZerosError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error1)
 
-        def test_error2():
-            with paddle.static.program_guard(fluid.Program()):
-                ones = fluid.layers.zeros(shape=[10], dtype='int8')
-
-        self.assertRaises(TypeError, test_error2)
-
     def test_shape_errors(self):
         with fluid.dygraph.guard():
             try:
@@ -100,11 +78,6 @@ class ApiZerosError(unittest.TestCase):
             except Exception as e:
                 error_msg = str(e)
                 assert error_msg.find("expected to be no less than 0") > 0
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
-            self.test_shape_errors()
 
 
 if __name__ == '__main__':

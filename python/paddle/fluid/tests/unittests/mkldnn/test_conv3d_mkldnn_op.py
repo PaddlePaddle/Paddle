@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.test_conv3d_op import (
     TestCase1,
     TestConv3DOp,

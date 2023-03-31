@@ -36,10 +36,10 @@ class AllToAllOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -69,9 +69,12 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker)
 
-REGISTER_OP_CPU_KERNEL(alltoall,
-                       ops::AllToAllOpCPUKernel<float>,
-                       ops::AllToAllOpCPUKernel<double>,
-                       ops::AllToAllOpCPUKernel<int>,
-                       ops::AllToAllOpCPUKernel<int64_t>,
-                       ops::AllToAllOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(alltoall,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AllToAllOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -13,23 +13,27 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig
+from paddle.static import nn
 
 
 class PadOpTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[1, 3, 128, 128], dtype="float32"
             )
-            pad_out = fluid.layers.pad(
-                x=data, paddings=[0, 0, 0, 0, 0, 1, 1, 2], pad_value=0.0
+            pad_out = paddle.nn.functional.pad(
+                x=data, pad=[0, 0, 0, 0, 0, 1, 1, 2], value=0.0
             )
-            out = fluid.layers.batch_norm(pad_out, is_test=True)
+            out = nn.batch_norm(pad_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((1, 3, 128, 128)).astype("float32")

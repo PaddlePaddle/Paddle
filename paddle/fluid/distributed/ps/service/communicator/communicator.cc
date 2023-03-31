@@ -28,7 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using LoDTensor = phi::DenseTensor;
 using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
@@ -97,11 +96,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
-      LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+      phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       paddle::distributed::Region reg(temp_data, tensor->numel());
@@ -122,7 +121,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 
   for (auto &t : varnames) {
     Variable *var = scope->FindVar(t);
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     VLOG(3) << "Communicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
@@ -132,8 +131,8 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-      LoDTensor *temp_tensor =
-          xpu_temp_scope_->FindVar(t)->GetMutable<LoDTensor>();
+      phi::DenseTensor *temp_tensor =
+          xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
       framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
@@ -157,11 +156,11 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
-      LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+      phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
@@ -175,7 +174,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       float *w = tensor->mutable_data<float>(place);
       paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(reg);
-      VLOG(1) << "rpc_send_dense_param Var " << t << " talbe_id " << table_id
+      VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << w[0] << " Temp_data[-1] "
               << w[tensor->numel() - 1];
     }
@@ -203,7 +202,8 @@ void Communicator::RpcSendDense(const CommContext &ctx,
   float *data = dense_data->data();
   uint32_t pos = 0;
   for (size_t i = 0; i < var_names.size(); ++i) {
-    const LoDTensor tensor = scope.FindVar(var_names[i])->Get<LoDTensor>();
+    const phi::DenseTensor tensor =
+        scope.FindVar(var_names[i])->Get<phi::DenseTensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
@@ -472,13 +472,13 @@ void AsyncCommunicator::RecvNoBarrier() {
     auto var_names = iter.second;
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
       VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
               << platform::is_gpu_place(tensor->place());
       if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-        LoDTensor *temp_tensor =
-            xpu_temp_scope_->FindVar(t)->GetMutable<LoDTensor>();
+        phi::DenseTensor *temp_tensor =
+            xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
         framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
 #endif
       }
@@ -591,8 +591,8 @@ void AsyncCommunicator::PullSparseToTensorSync(
     uint64_t padding_id,
     platform::Place place,
     bool is_training,
-    std::vector<const LoDTensor *> *inputs,
-    std::vector<LoDTensor *> *outputs) {
+    std::vector<const phi::DenseTensor *> *inputs,
+    std::vector<phi::DenseTensor *> *outputs) {
   std::vector<uint64_t> fea_keys;
   std::vector<float *> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
@@ -1514,7 +1514,7 @@ void FLCommunicator::InitBrpcClient(
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
-        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted
+        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be executed
                              // before, but no need for Coordinator
   }
   if (coordinator_client_ptr_ == nullptr) {

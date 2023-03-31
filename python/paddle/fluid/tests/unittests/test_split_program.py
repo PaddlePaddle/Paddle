@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import nn
 from paddle.distributed.passes.pass_utils import split_program
 from paddle.vision.models import resnet18 as resnet
-import paddle
-import paddle.nn as nn
-import unittest
-import numpy as np
 
 
 class TestSplitProgram(unittest.TestCase):
@@ -67,7 +69,7 @@ class TestSplitProgram(unittest.TestCase):
                 np.testing.assert_array_equal(
                     actual,
                     expected,
-                    err_msg='{}\n{}\n'.format(actual, expected),
+                    err_msg=f'{actual}\n{expected}\n',
                 )
 
     def get_places(self):

@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-import gradient_checker
-
-from decorator_helper import prog_scope
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
@@ -35,8 +34,8 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.nn.conv2d_transpose(
             x, 2, filter_size=1, groups=1, bias_attr=False
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -91,8 +90,8 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -144,8 +143,8 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -197,8 +196,8 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -250,8 +249,8 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,

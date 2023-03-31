@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
-import paddle.distributed.fleet as fleet
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -44,18 +44,16 @@ def create_model(data, rank):
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    np_weight_part
-                )
+                initializer=paddle.nn.initializer.Assign(np_weight_part)
             ),
             bias_attr=False,
         )
     else:
-        result = fluid.layers.fc(
+        result = paddle.static.nn.fc(
             data,
             size=OUT_SIZE,
-            param_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(np_weight)
             ),
             bias_attr=False,
         )
@@ -67,7 +65,7 @@ def create_model(data, rank):
 class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
         )
 

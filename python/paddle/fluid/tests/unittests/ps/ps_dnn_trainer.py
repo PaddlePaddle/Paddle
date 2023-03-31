@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.fleet.base.role_maker as role_maker
+import argparse
+import ast
+import copy
+import os
+import struct
+import sys
+
+import numpy as np
+import yaml
+
+import paddle
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.ps.utils.ps_program_builder import (
     debug_program,
     logger,
     new_pass,
     ps_log_root_dir,
 )
-import paddle.distributed.fleet as fleet
-import argparse
-import sys
-import yaml
-import copy
-import paddle
-import os
-import ast
-import numpy as np
-import struct
 
 sys.path.append("..")
 from ps_dnn_model import StaticModel
@@ -39,7 +41,7 @@ sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
 
 def is_distributed_env():
     node_role = os.getenv("TRAINING_ROLE")
-    print("-- Role: {} --".format(node_role))
+    print(f"-- Role: {node_role} --")
     if node_role is None:
         return False
     else:
@@ -78,7 +80,7 @@ class YamlHelper:
                     _config = yaml.load(rb.read())
                 return _config
         else:
-            raise ValueError("config {} can not be supported".format(config))
+            raise ValueError(f"config {config} can not be supported")
 
     def get_all_inters_from_yaml(self, file, filters):
         _envs = self.parse_yaml(file)
@@ -120,7 +122,7 @@ class YamlHelper:
         h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
-        l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
+        l_format = "    " + f"|{{:>{max_k}s}}{{}}{{:^{max_v}s}}|\n"
         length = max_k + max_v + spacing
 
         border = "    +" + "".join(["="] * length) + "+"
@@ -146,7 +148,7 @@ class YamlHelper:
 
         draws += border
 
-        _str = "\n{}\n".format(draws)
+        _str = f"\n{draws}\n"
         return _str
 
 
@@ -186,7 +188,7 @@ def get_user_defined_strategy(config):
             "accumulate_steps": config.get('runner.micro_num')
         }
     elif sync_mode == "gpubox":
-        print("sync_mode = {}".format(sync_mode))
+        print(f"sync_mode = {sync_mode}")
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"use_ps_gpu": 1}
@@ -231,7 +233,7 @@ def get_user_defined_strategy(config):
 
 
 def get_distributed_strategy(user_defined_strategy):  # pslib
-    from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
         StrategyFactory,
     )
 
@@ -338,9 +340,9 @@ class DnnTrainer:
             fleet.init()
 
         if fleet.is_server():
-            print("server: {} started".format(fleet.server_index()))
+            print(f"server: {fleet.server_index()} started")
         else:
-            print("worker: {} started".format(fleet.worker_index()))
+            print(f"worker: {fleet.worker_index()} started")
 
     def run_minimize(self):
         self.init_fleet_with_gloo()
@@ -442,8 +444,8 @@ class DnnTrainer:
             print(
                 "entering run {} - old".format(str(config["applied_pass_name"]))
             )
-            from paddle.fluid.incubate.fleet.parameter_server.ir import (
-                public as public,
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
+                public,
             )
 
             dist_strategy = get_distributed_strategy(user_defined_strategy)
@@ -456,7 +458,7 @@ class DnnTrainer:
 
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
-            from paddle.fluid.incubate.fleet.parameter_server.ir import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
                 trainer_pass as worker,
             )
 

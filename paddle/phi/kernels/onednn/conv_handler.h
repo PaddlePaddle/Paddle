@@ -40,7 +40,7 @@ class ConvOneDNNHandlerT
                                    dnnl::convolution_backward_weights> {
  public:
   ConvOneDNNHandlerT(const OneDNNContext& dev_ctx,
-                     const dnnl::engine mkldnn_engine,
+                     const dnnl::engine onednn_engine,
                      Place cpu_place,
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
@@ -63,7 +63,7 @@ class ConvOneDNNHandlerT
                               dnnl::convolution_backward_data,
                               dnnl::convolution_backward_weights>(
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             cpu_place,
             funcs::CreateKey(
                 dev_ctx, phi::vectorize(input->dims()), unique_name)) {
@@ -726,8 +726,7 @@ class ConvOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual_param) {
     void* residual_data =
-        residual_param->dtype() ==
-                paddle::experimental::CppTypeToDataType<T_out>::Type()
+        residual_param->dtype() == phi::CppTypeToDataType<T_out>::Type()
             ? funcs::to_void_cast<T_out>(residual_param->data<T_out>())
             : funcs::to_void_cast<T>(residual_param->data<T>());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");

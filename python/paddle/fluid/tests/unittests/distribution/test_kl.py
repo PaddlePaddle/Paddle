@@ -14,15 +14,15 @@
 
 import unittest
 
-import numpy as np
-import paddle
-import scipy.special
-import scipy.stats
-from paddle.distribution import kl
-
 import config
 import mock_data as mock
+import numpy as np
 import parameterize as param
+import scipy.special
+import scipy.stats
+
+import paddle
+from paddle.distribution import kl
 
 np.random.seed(2022)
 paddle.seed(2022)

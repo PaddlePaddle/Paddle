@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -75,7 +77,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
-    input_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(input_grad);
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
@@ -106,7 +108,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   }
 
   if (filter_grad) {
-    filter_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(filter_grad);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
       paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>
@@ -142,4 +144,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    phi::DepthwiseConvGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

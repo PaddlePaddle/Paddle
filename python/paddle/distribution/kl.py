@@ -20,10 +20,10 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
-from paddle.distribution.normal import Normal
-from paddle.distribution.lognormal import LogNormal
-from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
+from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.normal import Normal
+from paddle.distribution.uniform import Uniform
 from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
@@ -56,7 +56,7 @@ def kl_divergence(p, q):
             q = paddle.distribution.Beta(alpha=0.3, beta=0.7)
 
             print(paddle.distribution.kl_divergence(p, q))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.21193528])
 
     """

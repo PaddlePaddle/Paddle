@@ -19,6 +19,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -264,6 +265,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
@@ -323,6 +326,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(ExtendedTensor);
 
   /* End case */
   template <typename T>
@@ -335,5 +339,17 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     }
   };
 };
+
+inline bool recompute_reduce_all(const DenseTensor& x,
+                                 const IntArray& dims,
+                                 bool reduce_all = false) {
+  if (dims.size() == 0 || x.dims().size() == 0 ||
+      static_cast<int>(dims.size()) == x.dims().size() || reduce_all) {
+    // when input 0D, it can only reduce_all
+    return true;
+  } else {
+    return false;
+  }
+}
 
 }  // namespace phi

@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
+from paddle import fluid
 from paddle.distributed.utils.launch_utils import (
-    find_free_ports,
-    watch_local_trainers,
-    get_cluster,
     TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
 )
 
 
@@ -73,14 +73,14 @@ def start_local_trainers_cpu(
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         assert (
             os.getenv('WITH_COVERAGE', 'OFF') == 'OFF'
         ), "Gloo don't support WITH_COVERAGE."
         cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -102,7 +102,7 @@ def start_local_trainers(
     pod,
     training_script,
     training_script_args,
-    eager_mode=True,
+    allocator_strategy="auto_growth",
     log_dir=None,
 ):
     current_env = copy.copy(os.environ.copy())
@@ -123,19 +123,20 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
+        proc_env["FLAGS_allocator_strategy"] = allocator_strategy
+        if allocator_strategy == "auto_growth":
+            proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -153,7 +154,11 @@ def start_local_trainers(
 
 
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
+    def run_mnist_2gpu(
+        self,
+        target_file_name,
+        allocator_strategy="auto_growth",
+    ):
         if (
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
@@ -169,7 +174,7 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
-            eager_mode=eager_mode,
+            allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],
         )
@@ -178,7 +183,7 @@ class TestMultipleGpus(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 
@@ -200,23 +205,17 @@ class TestMultipleWithGloo(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
-
-
-class TestDataParallelGradientCheck(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu(
-            'parallel_dygraph_gradient_check.py', eager_mode=False
-        )
 
 
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
         self.run_mnist_2gpu(
-            'parallel_dygraph_dataparallel_with_pylayer.py', eager_mode=False
+            'parallel_dygraph_dataparallel_with_pylayer.py',
+            allocator_strategy="naive_best_fit",
         )
 
 
@@ -226,5 +225,4 @@ class TestGradientCheckInEagerMode(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

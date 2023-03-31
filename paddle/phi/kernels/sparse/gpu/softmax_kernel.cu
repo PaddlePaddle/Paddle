@@ -57,7 +57,7 @@ __global__ void SoftmaxGpuKernel(const IntT* x_crows,
       max_val = val;
     }
   }
-  T row_max_val = phi::funcs::warpReduceMax<T>(max_val, 0xFFFFFFFF);
+  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
 
   T exp_sum = 0;
   for (int i = 0; i < kIteration; ++i) {
@@ -69,7 +69,7 @@ __global__ void SoftmaxGpuKernel(const IntT* x_crows,
     exp_sum += exp;
     out_values[row_first + idx] = exp;
   }
-  T row_exp_sum = phi::funcs::warpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;

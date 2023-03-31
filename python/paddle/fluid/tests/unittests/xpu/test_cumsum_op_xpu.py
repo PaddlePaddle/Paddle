@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.fluid.core as core
-
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -39,7 +39,6 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
     class TestCumsumOPBase(XPUOpTest):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
-            self.xpu_version = core.get_xpu_device_version(0)
             self.init_dtype()
             self.set_case()
 
@@ -47,9 +46,9 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
             self.op_type = 'cumsum'
             self.init_config()
 
-            self.data = np.random.uniform(
-                -100.0, 100.0, self.input_shape
-            ).astype(self.dtype)
+            self.data = np.random.uniform(-1.0, 1.0, self.input_shape).astype(
+                self.dtype
+            )
             reference_out = np.cumsum(self.data, axis=self.axis)
             self.inputs = {
                 'X': self.data,
@@ -66,6 +65,9 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
         def init_config(self):
             self.input_shape = (2, 5)

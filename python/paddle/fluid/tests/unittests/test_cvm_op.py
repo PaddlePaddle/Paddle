@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from math import log
-from op_test import OpTest
 import unittest
+from math import log
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 def cvm_compute(X, item_width, use_cvm):

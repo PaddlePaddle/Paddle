@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from parallel_dygraph_no_sync import TestNoSync
+from test_dist_base import runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
-from test_dist_base import runtime_main
-from parallel_dygraph_no_sync import TestNoSync
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20
@@ -26,14 +25,14 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNetUnusedParam(fluid.Layer):
+class SimpleNetUnusedParam(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.net_a = Linear(input_dim=10, output_dim=20)
-        self.net_b = Linear(input_dim=20, output_dim=5)
-        self.net_c = Linear(input_dim=5, output_dim=10)
+        self.net_a = Linear(10, 20)
+        self.net_b = Linear(20, 5)
+        self.net_c = Linear(5, 10)
 
-        self.net_d = Linear(input_dim=20, output_dim=10)
+        self.net_d = Linear(20, 10)
 
     def forward(self, x):
         x = self.net_a(x)
@@ -55,7 +54,7 @@ class TestNoSyncUnusedParam(TestNoSync):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        x_data = np.array([x for x in batch])
+        x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
         x = paddle.to_tensor(x_data)
         out = model(x)

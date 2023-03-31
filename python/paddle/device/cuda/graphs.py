@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import os
+import warnings
+
 import paddle
 from paddle.fluid import core
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.core import (
+    CUDAPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
-    CUDAPlace,
 )
-import warnings
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
     from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
@@ -72,7 +72,7 @@ class CUDAGraph:
         os.makedirs(name=dirname, exist_ok=True)
         assert os.path.isdir(
             dirname
-        ), "The dirname {} should be a directory".format(dirname)
+        ), f"The dirname {dirname} should be a directory"
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
@@ -81,7 +81,7 @@ class CUDAGraph:
 def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     assert mode in ALL_MODES
     if not paddle.in_dynamic_mode():
-        # static mode
+        # static graph mode
         from paddle.fluid.framework import _cuda_graph_guard
 
         global cuda_graph_id
@@ -93,7 +93,7 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
             memory_pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
         else:
             raise ValueError(
-                "memory_pool should be one of default or new under static mode, but got",
+                "memory_pool should be one of default or new under static graph mode, but got",
                 memory_pool,
             )
         return _cuda_graph_guard(
@@ -394,7 +394,7 @@ def replace_cuda_graph_section(
         stop_gradient=True,
     )
 
-    program_id = _hash_with_id(section_program, ins_and_outs)
+    program_id = paddle.utils._hash_with_id(section_program, ins_and_outs)
 
     # insert the run_program_op into the block
     origin_block._insert_op(

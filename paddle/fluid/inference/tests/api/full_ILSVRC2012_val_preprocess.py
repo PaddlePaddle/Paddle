@@ -10,15 +10,17 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import os
-import io
-import numpy as np
-import sys
-from PIL import Image
-from paddle.dataset.common import download
-import tarfile
 import argparse
+import io
+import os
 import shutil
+import sys
+import tarfile
+
+import numpy as np
+from PIL import Image
+
+from paddle.dataset.common import download
 
 np.random.seed(0)
 
@@ -85,7 +87,7 @@ def download_concat(cache_folder, zip_path):
         download(data_urls[i], cache_folder, data_md5s[i])
         file_name = os.path.join(cache_folder, data_urls[i].split('/')[-1])
         file_names.append(file_name)
-        print("Downloaded part {0}\n".format(file_name))
+        print(f"Downloaded part {file_name}\n")
     with open(zip_path, "wb") as outfile:
         for fname in file_names:
             shutil.copyfileobj(open(fname, 'rb'), outfile)
@@ -172,13 +174,13 @@ def run_convert():
             retry = retry + 1
         else:
             raise RuntimeError(
-                "Can not convert the dataset to binary file with try limit {0}".format(
+                "Can not convert the dataset to binary file with try limit {}".format(
                     try_limit
                 )
             )
         download_concat(cache_folder, zip_path)
         convert_Imagenet_tar2bin(zip_path, output_file)
-    print("\nSuccess! The binary file can be found at {0}".format(output_file))
+    print(f"\nSuccess! The binary file can be found at {output_file}")
 
 
 def convert_Imagenet_local2bin(args):
@@ -229,7 +231,7 @@ def convert_Imagenet_local2bin(args):
         )
         if os.path.getsize(bin_file_path) == target_size:
             print(
-                "Success! The user data output binary file can be found at: {0}".format(
+                "Success! The user data output binary file can be found at: {}".format(
                     bin_file_path
                 )
             )

@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class StackMLUKernel : public framework::OpKernel<T> {
  public:
@@ -31,10 +29,10 @@ class StackMLUKernel : public framework::OpKernel<T> {
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
 
-    PADDLE_ENFORCE_GT(
-        num,
-        0,
-        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+    PADDLE_ENFORCE_GT(num,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "number of input phi::DenseTensor <= 0"));
 
     std::vector<MLUCnnlTensorDesc> x_descs;
     std::vector<cnnlTensorDescriptor_t> x_raw_descs;

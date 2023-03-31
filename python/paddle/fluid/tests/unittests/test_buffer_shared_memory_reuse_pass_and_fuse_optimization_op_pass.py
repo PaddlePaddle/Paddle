@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_buffer_shared_memory_reuse_pass import InplaceTestBase
 import unittest
+
+from test_buffer_shared_memory_reuse_pass import InplaceTestBase
 
 
 class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
@@ -21,9 +22,6 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = True
         self.fuse_all_reduce_ops = False
-
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
 
     def test_single_card_fetch_var(self):
         self.check_single_card_fetch_var()
@@ -34,9 +32,6 @@ class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = True
         self.fuse_all_reduce_ops = False
-
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
 
     # TODO(zcd): should check why this test failed.
     @unittest.skip("should fix this later.")

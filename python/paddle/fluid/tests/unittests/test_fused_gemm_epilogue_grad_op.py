@@ -14,10 +14,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest, skip_check_grad_ci
+
 import paddle
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid import core
 
 
 def get_outputs(DOut, X, Y):
@@ -44,7 +46,7 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
         }
 
-        self.attrs = {"activation": 'none'}
+        self.attrs = {"activation_grad": 'none'}
 
         DX, DY, DBias = get_outputs(
             self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -60,7 +62,9 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -103,7 +107,7 @@ class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
         }
 
-        self.attrs = {"activation": 'none'}
+        self.attrs = {"activation_grad": 'none'}
 
         _, DY, DBias = get_outputs(
             self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -119,7 +123,9 @@ class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -162,7 +168,7 @@ class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
         }
 
-        self.attrs = {"activation": 'none'}
+        self.attrs = {"activation_grad": 'none'}
 
         _, DY, _ = get_outputs(
             self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -178,7 +184,9 @@ class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -217,7 +225,7 @@ class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
         }
 
-        self.attrs = {"activation": 'none'}
+        self.attrs = {"activation_grad": 'none'}
 
         DX, DY, _ = get_outputs(
             self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -233,7 +241,9 @@ class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")

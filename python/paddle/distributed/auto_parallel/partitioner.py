@@ -13,22 +13,23 @@
 # limitations under the License
 
 import copy
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
+
+import paddle
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from .dist_attribute import OperatorDistributedAttribute
+from paddle.framework import Program, core
+from paddle.static import Parameter
+
+from .dist_attribute import OperatorDistAttr
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 from .utils import (
+    __no_shape_var_type__,
     is_backward_op,
     is_forward_op,
     is_loss_op,
     is_optimize_op,
-    __no_shape_var_type__,
 )
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue"]
@@ -51,12 +52,12 @@ class Partitioner:
     def __init__(self, dist_context, rank_id=0):
         """
         Args:
-            dist_context (paddle.fluid.DistributedContext): used to access the distributed_attr of var & op, every Partitioner object could maintain its own DistributedContext member, and partition program base on that shard scenario.
+            dist_context (DistributedContext): used to access the distributed_attr of var & op, every Partitioner object could maintain its own DistributedContext member, and partition program base on that shard scenario.
             rank_id (int): global rank id to which the partitioned distributed program belong.
         """
         if not isinstance(dist_context, DistributedContext):
             raise TypeError(
-                "dist_context be paddle.fluid.DistributedContext, got %s here"
+                "dist_context be DistributedContext, got %s here"
                 % type(dist_context)
             )
 
@@ -70,7 +71,7 @@ class Partitioner:
     ):
         if not isinstance(serial_main_program, (Program)):
             raise TypeError(
-                "main_program be paddle.fluid.framework.program, got %s here"
+                "main_program be paddle.framework.Program, got %s here"
                 % type(serial_main_program)
             )
 
@@ -112,11 +113,11 @@ class Partitioner:
 
         if not isinstance(serial_startup_program, (Program)):
             raise TypeError(
-                "dist_context be paddle.fluid.framework.program, got %s here"
+                "dist_context be paddle.framework.Program, got %s here"
                 % type(serial_startup_program)
             )
 
-        partitioned_startup_prog = fluid.Program()
+        partitioned_startup_prog = paddle.framework.Program()
         ref_block = serial_main_program.global_block()
         target_block = partitioned_startup_prog.global_block()
         var2shape = {}
@@ -164,7 +165,7 @@ class Partitioner:
             output_var_attr = (
                 self._dist_context.get_tensor_dist_attr_for_program(output_var)
             )
-            op_attr = OperatorDistributedAttribute()
+            op_attr = OperatorDistAttr()
             op_attr.process_mesh = output_var_attr.process_mesh
             op_attr.set_output_dims_mapping(
                 output_var.name, output_var_attr.dims_mapping
@@ -182,7 +183,7 @@ class Partitioner:
         2. replace local op with corresponding dist op
         """
 
-        partitioned_main_prog = fluid.Program()
+        partitioned_main_prog = paddle.framework.Program()
         dist_op_context = self._dist_context.dist_op_context
         dist_op_context.dst_main_program = partitioned_main_prog
 
@@ -250,7 +251,7 @@ class Partitioner:
                     serial_ops[idx].desc.original_id()
                 ] = serial_ops[idx]
 
-        # partiiton
+        # partition
         appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
 
@@ -262,7 +263,7 @@ class Partitioner:
                 if not op_dist_attr.is_recompute:
                     appended_grad_times += 1
 
-            # partititon input variables
+            # partition input variables
             for serial_input_varname in op.desc.input_arg_names():
                 if (
                     serial_input_varname
@@ -283,7 +284,7 @@ class Partitioner:
                         for varname_not_in_block in __varname_not_in_block__:
                             assert (
                                 varname_not_in_block in serial_input_varname
-                            ), "{} is not found".format(serial_input_varname)
+                            ), f"{serial_input_varname} is not found"
 
                     self._serial2dist_varname_mapping[
                         serial_input_varname
@@ -333,7 +334,7 @@ class Partitioner:
                     self._dist_context,
                     **kinputs,
                     **koutputs,
-                    **{"grad_var_to_var": grad_var_to_var}
+                    **{"grad_var_to_var": grad_var_to_var},
                 )
             elif is_optimize_op(op):
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
@@ -345,7 +346,7 @@ class Partitioner:
                     self._dist_context,
                     **kinputs,
                     **koutputs,
-                    **{"grad_var_to_var": {}}
+                    **{"grad_var_to_var": {}},
                 )
             else:
                 raise NotImplementedError(
@@ -390,7 +391,7 @@ def _get_dist_shape(var, dist_attr):
 
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     if mapping == []:
         return var_shape
 
@@ -406,8 +407,13 @@ def _get_dist_shape(var, dist_attr):
         else:
             assert (
                 var_shape[idx] % mesh[mapping[idx]] == 0
-            ), "un-event partition: var_shape[idx]=[{}], mesh[{}]".format(
-                var_shape[idx], mesh[mapping[idx]]
+            ), "un-event partition: var_shape[idx]=[{}], mesh[{}], {}, {}, {}, {}".format(
+                var_shape[idx],
+                mesh[mapping[idx]],
+                var.name,
+                var_shape,
+                mesh,
+                mapping,
             )
             new_shape.append(var_shape[idx] // mesh[mapping[idx]])
 
@@ -437,7 +443,7 @@ def _partition_parameter(
         stop_gradient=src_var.stop_gradient,
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer,
-        **copied_kwargs
+        **copied_kwargs,
     )
 
     return param

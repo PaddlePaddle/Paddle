@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import re
 import string
 import tarfile
-import numpy as np
-import collections
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -66,7 +67,7 @@ class Imdb(Dataset):
 
                 model = SimpleNet()
                 image, label = model(doc, label)
-                print(doc.numpy().shape, label.numpy().shape)
+                print(doc.shape, label.shape)
 
     """
 
@@ -74,7 +75,7 @@ class Imdb(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
@@ -128,8 +129,8 @@ class Imdb(Dataset):
         return data
 
     def _load_anno(self):
-        pos_pattern = re.compile(r"aclImdb/{}/pos/.*\.txt$".format(self.mode))
-        neg_pattern = re.compile(r"aclImdb/{}/neg/.*\.txt$".format(self.mode))
+        pos_pattern = re.compile(fr"aclImdb/{self.mode}/pos/.*\.txt$")
+        neg_pattern = re.compile(fr"aclImdb/{self.mode}/neg/.*\.txt$")
 
         UNK = self.word_idx['<unk>']
 

@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import argparse
-import paddle
-import pickle
 import importlib
 import os
-from paddle.distributed.fleet.launch_utils import run_with_coverage
+import pickle
+
 from dist_pass_test_base import (
-    prepare_python_path_and_return_module,
     DistPassTestBase,
+    prepare_python_path_and_return_module,
 )
+
+import paddle
+from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 def parse_args():
@@ -70,7 +72,7 @@ def run_main(args):
     with open(args.input_file, "rb") as f:
         kwargs = pickle.load(f)
 
-    output_file = "{}/{}.bin".format(args.output_dir, rank)
+    output_file = f"{args.output_dir}/{rank}.bin"
     if args.model_file:
         with open(args.model_file, "rb") as f:
             model = pickle.load(f)

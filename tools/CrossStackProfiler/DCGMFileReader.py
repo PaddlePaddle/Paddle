@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import multiprocessing
 import os
 import re
-import logging
 import tempfile
-import pandas as pd
-import multiprocessing
 from multiprocessing import Process
 
-from CspFileReader import FileReader
-from CspFileReader import getLogger
-from CspFileReader import dcgmMetricParameterMap
-from CspFileReader import PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYTRAINER
+import pandas as pd
+from CspFileReader import (
+    FILEORGANIZEFORM_BYTRAINER,
+    PIPELINEINFO_TRACE_NUM,
+    FileReader,
+    dcgmMetricParameterMap,
+    getLogger,
+)
 
 
 class dcgmFileReader(FileReader):
@@ -174,7 +176,7 @@ class dcgmFileReader(FileReader):
         gpuDcgmData = dcgm_data[dcgm_data['Entity'].isin([gpuId])]
 
         traceEventList = []
-        for metric, parameteList in dcgmMetricParameterMap.items():
+        for metric, parameterList in dcgmMetricParameterMap.items():
             metaInfo = {}
             metaInfo['name'] = 'process_name'
             metaInfo['ph'] = 'M'
@@ -183,7 +185,7 @@ class dcgmFileReader(FileReader):
             traceEventList.append(metaInfo)
 
         for index, row in gpuDcgmData.iterrows():
-            for metric, parameteList in dcgmMetricParameterMap.items():
+            for metric, parameterList in dcgmMetricParameterMap.items():
                 trainerId = int(row['trainerId']) % self._groupSize
                 if trainerId >= self._displaySize:
                     continue
@@ -201,7 +203,7 @@ class dcgmFileReader(FileReader):
                 di['id'] = trainerId
 
                 args = {}
-                for p in parameteList:
+                for p in parameterList:
                     args[p[0]] = row[p[1]]
                 di['args'] = args
 

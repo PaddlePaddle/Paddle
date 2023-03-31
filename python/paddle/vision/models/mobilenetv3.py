@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
-from paddle.utils.download import get_weights_path_from_url
 from functools import partial
 
-from .utils import _make_divisible
+import paddle
+from paddle import nn
+from paddle.utils.download import get_weights_path_from_url
+
 from ..ops import ConvNormActivation
+from ._utils import _make_divisible
 
 __all__ = []
 
@@ -406,7 +407,7 @@ def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
     else:
         model = MobileNetV3Small(scale=scale, **kwargs)
     if pretrained:
-        arch = "{}_x{}".format(arch, scale)
+        arch = f"{arch}_x{scale}"
         assert (
             arch in model_urls
         ), "{} model do not have a pretrained model now, you should set pretrained=False".format(

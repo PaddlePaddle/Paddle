@@ -14,10 +14,9 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
-from ..fluid.dygraph.container import Sequential  # noqa: F401
+from .layer.container import LayerList  # noqa: F401
+from .layer.container import ParameterList  # noqa: F401
+from .layer.container import Sequential  # noqa: F401
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
@@ -106,6 +105,7 @@ from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
+from .layer.loss import RNNTLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
@@ -149,6 +149,8 @@ from .layer.vision import PixelUnshuffle  # noqa: F401
 from .layer.vision import ChannelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
 
+from .layer.layers import Layer  # noqa: F401
+
 from .utils.spectral_norm_hook import spectral_norm
 
 # TODO: remove loss, keep it for too many used in unitests
@@ -160,7 +162,7 @@ from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
 # TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 
 @deprecated(
@@ -285,6 +287,7 @@ __all__ = [  # noqa
     'Silu',
     'Conv2DTranspose',
     'CTCLoss',
+    'RNNTLoss',
     'ThresholdedReLU',
     'AdaptiveAvgPool2D',
     'MaxPool1D',

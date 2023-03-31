@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
-from op_test import OpTest
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 class TestDensityPriorBoxOp(OpTest):

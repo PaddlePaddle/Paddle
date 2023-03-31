@@ -65,11 +65,15 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
+bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
+
 bool IsCommunicationOp(const std::string& op_name);
 
 bool IsCommunicationOp(const Instruction& instr);
 
 bool IsCpuOp(const Instruction& instr);
+
+bool IsGradOp(const std::string& op_name);
 
 bool IsMemcpyD2H(const Instruction& instr);
 
@@ -88,14 +92,27 @@ void BuildOpFuncList(const platform::Place& place,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
                      const ExecutionConfig& execution_config,
-                     bool use_local_scope = true);
+                     bool use_local_scope = true,
+                     bool static_build = false);
 
 void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope = true);
+                        const ExecutionConfig& execution_config,
+                        VariableScope* var_scope);
+
+void FakeInitializeOutputsForFunctionKernel(
+    const phi::Kernel& phi_kernel,
+    const phi::KernelSignature& kernel_sig,
+    const RuntimeContext& ctx,
+    const platform::DeviceContext& dev_ctx);
+
+void FakeInitializeOutputsForStructureKernel(
+    const framework::OpKernelType& op_kernel_type,
+    ExecutionContext* execution_context);
 
 void LogDeviceMemoryStats(const platform::Place& place);
 
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

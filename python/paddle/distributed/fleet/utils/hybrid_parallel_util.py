@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import framework
 import paddle
-from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import (
+from paddle import framework
+from paddle.distributed.parallel import (
     _split_tensors,
-    sync_params_buffers,
     build_groups,
+    in_dygraph_mode,
+    sync_params_buffers,
 )
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
+
 from .log_util import logger
 
 __all__ = []
@@ -74,8 +77,13 @@ def _apply_collective_grads_eager(
     grad_vars = []
 
     for param in parameters:
+        g_var = None
         if param.trainable and (param._grad_ivar() is not None):
             g_var = param._grad_ivar()
+        if param.trainable and hasattr(param, "main_grad"):
+            assert param._grad_ivar() is None, "param.grad is not None"
+            g_var = param.main_grad
+        if g_var is not None:
             assert (
                 not g_var.is_sparse()
             ), "Now, it doesn't support sparse parameters"
@@ -133,38 +141,52 @@ def _broadcast_data_help(data, shape, dtype, hcg):
             )
 
 
+def _broadcast_object_list_help(object_list, hcg):
+    model_parallel_group = hcg.get_model_parallel_group()
+    src_rank = hcg.get_model_parallel_group_src_rank()
+    mp_rank = hcg.get_model_parallel_rank()
+
+    paddle.distributed.broadcast_object_list(
+        object_list, src=src_rank, group=model_parallel_group
+    )
+
+
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
+    dev = cur_device.split(":")[0]
+    assert dev in [
+        "xpu",
+        "gpu",
+        "npu",
+    ], f"Only support xpu, gpu and npu now, but this is {dev}"
+    dev_idx = int(cur_device.split(':')[1])
+    if dev == "gpu":
+        place = paddle.CUDAPlace(dev_idx)
+    else:
+        place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
+
     for v in inputs:
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if (
-                    "gpu" in cur_device
-                    and in_dygraph_mode()
-                    and not v.place.is_gpu_place()
-                ):
-                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                    v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            _broadcast_object_list_help(v, hcg)
 
     for k, v in kwargs.items():
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if (
-                    "gpu" in cur_device
-                    and in_dygraph_mode()
-                    and not v.place.is_gpu_place()
-                ):
-                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                    v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            kwargs[k] = _broadcast_object_list_help(v, hcg)
     return inputs, kwargs
 
 
@@ -211,39 +233,12 @@ def sharding_reduce_gradients(parameter_list, hcg):
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
             if param.trainable and (param._grad_ivar() is not None):
-                if in_dygraph_mode():
-                    param.grad.scale_(1.0 / sharding_nrank)
-                    paddle.distributed.all_reduce(
-                        param.grad,
-                        group=hcg.get_sharding_parallel_group(),
-                        sync_op=True,
-                    )
-
-                elif _in_legacy_dygraph():
-                    g_var = param._grad_ivar()
-                    # need use trace_op to allreduce
-                    # paddle.distributed.all_reduce(
-                    #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
-                        type="c_allreduce_sum",
-                        inputs={'X': g_var},
-                        outputs={'Out': g_var},
-                        attrs={
-                            'ring_id': hcg.get_sharding_parallel_group().id,
-                            'use_calc_stream': True,
-                        },
-                    )
-
-                    # grad / sharding_rank
-                    div_factor = paddle.to_tensor(
-                        sharding_nrank, dtype=g_var.dtype
-                    )
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
-                        type="elementwise_div",
-                        inputs={'X': g_var, 'Y': div_factor},
-                        outputs={'Out': g_var},
-                        attrs={'axis': -1},
-                    )
+                param.grad.scale_(1.0 / sharding_nrank)
+                paddle.distributed.all_reduce(
+                    param.grad,
+                    group=hcg.get_sharding_parallel_group(),
+                    sync_op=True,
+                )
 
 
 def broadcast_sharding_parameters(model, hcg):

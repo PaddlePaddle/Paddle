@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 static void CumsumImp(const phi::DenseTensor& input,
                       phi::DenseTensor* output,
                       const framework::NPUAttributeMap& attr_input,
@@ -30,7 +28,7 @@ static void CumsumImp(const phi::DenseTensor& input,
           .stream();
   if (framework::TransToProtoVarType(input.dtype()) ==
       framework::proto::VarType::INT64) {
-    Tensor tmp_input;
+    phi::DenseTensor tmp_input;
     tmp_input.mutable_data<float>(input.dims(), ctx.GetPlace());
     auto dst_acl_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(tmp_input.type()));
@@ -41,7 +39,7 @@ static void CumsumImp(const phi::DenseTensor& input,
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
     cast_runner_1.Run(stream);
 
-    Tensor tmp_output;
+    phi::DenseTensor tmp_output;
     tmp_output.mutable_data<float>(output->dims(), ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("CumsumD", {tmp_input}, {tmp_output}, attr_input);
@@ -86,7 +84,7 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
               -1,
               axis));
 
-      Tensor new_x(x->type());
+      phi::DenseTensor new_x(x->type());
       new_x.ShareDataWith(*x);
 
       new_x.Resize(phi::make_ddim({x->numel()}));

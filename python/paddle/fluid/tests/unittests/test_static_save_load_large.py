@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-from test_imperative_base import new_program_scope
-
-import numpy as np
 import os
 import tempfile
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
+import paddle
+from paddle import fluid
+from paddle.fluid import framework
 
 LARGE_PARAM = 2**26
 
 
 class TestStaticSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_static_save(self):
-        # enable static mode
+        # enable static graph mode
         paddle.enable_static()
         with new_program_scope():
             # create network
@@ -57,7 +58,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
             )
             path = os.path.join(path, "static_save")
             protocol = 4
-            paddle.fluid.save(prog, path, pickle_protocol=protocol)
+            paddle.static.save(prog, path, pickle_protocol=protocol)
             # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -69,7 +70,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            paddle.fluid.load(prog, path)
+            paddle.static.load(prog, path)
 
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -90,8 +91,8 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            program_state = fluid.load_program_state(path)
-            fluid.set_program_state(prog, program_state)
+            program_state = paddle.static.load_program_state(path)
+            paddle.static.set_program_state(prog, program_state)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(

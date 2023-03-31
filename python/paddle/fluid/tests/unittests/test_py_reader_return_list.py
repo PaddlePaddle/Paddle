@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestPyReader(unittest.TestCase):
@@ -36,8 +38,8 @@ class TestPyReader(unittest.TestCase):
 
         for return_list in [True, False]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                image = fluid.layers.data(
-                    name='image', shape=[784, 784], dtype='float32'
+                image = paddle.static.data(
+                    name='image', shape=[-1, 784, 784], dtype='float32'
                 )
                 reader = fluid.io.PyReader(
                     feed_list=[image],

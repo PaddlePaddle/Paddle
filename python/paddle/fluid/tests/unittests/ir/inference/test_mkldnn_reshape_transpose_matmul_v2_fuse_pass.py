@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -27,14 +29,16 @@ class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
         self.pass_name = 'reshape_transpose_matmul_mkldnn_fuse_pass'
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=self.data_shape, dtype="float32"
             )
-            weight = fluid.layers.create_parameter(
+            weight = paddle.create_parameter(
                 shape=self.weight_shape, dtype="float32"
             )
-            reshape = fluid.layers.reshape(data, shape=self.reshape_shape)
-            transpose = fluid.layers.transpose(reshape, self.tranpose_perm)
+
+            reshape = paddle.reshape(data, shape=self.reshape_shape)
+            transpose = paddle.transpose(reshape, self.tranpose_perm)
+
             matmul = paddle.matmul(
                 transpose,
                 weight,

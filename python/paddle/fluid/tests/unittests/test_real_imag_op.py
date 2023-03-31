@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
-from op_test import OpTest
+from paddle import fluid, static
 
 numpy_apis = {
     "real": np.real,
@@ -57,7 +57,7 @@ class TestRealOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -65,7 +65,6 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
@@ -144,7 +143,7 @@ class TestRealAPI(unittest.TestCase):
             self.assertTrue("real_res" in out.name)
 
     def test_dtype_error(self):
-        # in static mode
+        # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="float32")

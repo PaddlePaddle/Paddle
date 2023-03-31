@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
+from eager_op_test import OpTest
+
+from paddle.fluid import core
 from paddle.fluid.op import Operator
-from op_test import OpTest
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
@@ -114,7 +116,7 @@ class TestFTRLOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestSparseFTRLOp(unittest.TestCase):

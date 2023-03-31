@@ -22,9 +22,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(pool2d);
@@ -32,7 +31,9 @@ PD_DECLARE_KERNEL(pool2d, OneDNN, ONEDNN);
 USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(transpose);
-USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
+PD_DECLARE_KERNEL(transpose, OneDNN, ONEDNN);
+USE_OP_ITSELF(fused_transpose);
+PD_DECLARE_KERNEL(fused_transpose, OneDNN, ONEDNN);
 USE_OP_ITSELF(shape);
 PD_DECLARE_KERNEL(shape, OneDNN, ONEDNN);
 USE_OP_ITSELF(crop);
@@ -50,10 +51,10 @@ struct InputVars {
   phi::DenseTensor *tensor;
 };
 
-TEST(test_pool2d_transpose_nhwc, cpu_place) {
+void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   framework::Scope scope;
 
   InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
@@ -90,7 +91,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   axis[2] = 3;
   axis[3] = 1;
   auto op_transpose = framework::OpRegistry::CreateOp(
-      "transpose",
+      transpose_type,
       {{"X", {"y"}}},
       {{"Out", {"z"}}},
       {{"axis", {axis}}, {"use_mkldnn", {true}}});
@@ -106,10 +107,15 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
                         "Computed shape does not match expected shape"));
 }
 
+TEST(test_pool2d_transpose_nhwc, cpu_place) {
+  Test_Pool2d_Transpose_NHWC({"transpose"});
+  Test_Pool2d_Transpose_NHWC({"fused_transpose"});
+}
+
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   framework::Scope scope;
 
   InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
@@ -172,7 +178,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
 TEST(test_pool2d_shape_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});              // NHWC shape
   std::vector<int32_t> expected_dims{1, 3, 7, 512};  // NHWC expected shape
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   framework::Scope scope;
 
   InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
@@ -227,7 +233,7 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
 TEST(test_pool2d_crop_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 3, 7, 512});  // NCHW expected shape
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   framework::Scope scope;
 
   InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 from paddle.static import Program, program_guard
-import paddle.fluid.core as core
 
 DYNAMIC = 1
 STATIC = 2
@@ -42,7 +42,7 @@ def _run_power(mode, x, y, device='cpu'):
             y_ = paddle.to_tensor(y)
             res = paddle.pow(x_, y_)
             return res.numpy()
-    # static mode
+    # static graph mode
     elif mode == STATIC:
         paddle.enable_static()
         # y is scalar

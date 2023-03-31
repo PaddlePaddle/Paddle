@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.common_ops_import import check_variable_and_dtype
+from paddle.framework import LayerHelper, in_dygraph_mode
 
 
 def global_scatter(
@@ -103,7 +102,7 @@ def global_scatter(
         return
 
     ring_id = 0 if group is None else group.id
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.global_scatter(
             x,
             local_count,
@@ -220,7 +219,7 @@ def global_gather(
         return
 
     ring_id = 0 if group is None else group.id
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.global_gather(
             x,
             local_count,

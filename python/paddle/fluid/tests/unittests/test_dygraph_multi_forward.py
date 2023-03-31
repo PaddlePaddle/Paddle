@@ -13,20 +13,21 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
+from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Linear
 
 SEED = 123123111
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -60,13 +61,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -75,7 +73,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -93,19 +91,17 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             SIZE,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
         )
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 
@@ -142,7 +138,9 @@ class TestDygraphMultiForward(unittest.TestCase):
                     label.stop_gradient = True
 
                     cost = mnist(img)
-                    loss = fluid.layers.cross_entropy(cost, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        cost, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
@@ -166,12 +164,16 @@ class TestDygraphMultiForward(unittest.TestCase):
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             # initialize params and fetch them

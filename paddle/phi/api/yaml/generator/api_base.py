@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import collections
+import re
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
@@ -166,6 +166,7 @@ class BaseAPI:
             'float[]': 'const std::vector<float>&',
             'double': 'double',
             'bool': 'bool',
+            'bool[]': 'const std::vector<bool>&',
             'str': 'const std::string&',
             'str[]': 'const std::vector<std::string>&',
             'Place': 'const Place&',
@@ -307,7 +308,6 @@ class BaseAPI:
             'backend': None,
             'layout': None,
             'data_type': None,
-            'use_gpudnn': 'false',
             'dispatch': {},
         }
         if 'backend' in kernel_config and len(kernel_config['backend']) > 0:
@@ -318,10 +318,6 @@ class BaseAPI:
             kernel['data_type'] = kernel_config['data_type']
         if 'param' in kernel_config:
             kernel['param'] = kernel_config['param']
-        if 'use_gpudnn' in kernel_config:
-            kernel['use_gpudnn'] = kernel_config['use_gpudnn']
-            if isinstance(kernel['use_gpudnn'], bool):
-                kernel['use_gpudnn'] = str(kernel['use_gpudnn']).lower()
         kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
             kernel_config['func']
         )
@@ -490,6 +486,17 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 )
 
         if kernel['data_type'] is not None:
+
+            def process_data_type_args(args_item):
+                args_item = args_item.strip()
+                complex_match_result = re.match(
+                    r"complex\((?P<param_name>\w+)\)", args_item
+                )
+                if complex_match_result:
+                    return f"phi::dtype::ToComplex(ParseDataType({complex_match_result.group('param_name')}))"
+                else:
+                    return f"ParseDataType({args_item})"
+
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
                 assert (
@@ -515,7 +522,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
-  kernel_data_type = ParseDataType({vars_list[0].strip()});
+  kernel_data_type = {process_data_type_args(vars_list[0])};
 """
                 )
 
@@ -694,7 +701,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
         )
         return input_tensor_code
 
@@ -715,7 +722,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareDataForSelectedRows({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareDataForSelectedRows({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
 """
         )
         return input_tensor_code
@@ -746,7 +753,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -784,7 +791,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -865,7 +872,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         sr_out_trans_map = {'Tensor': 'phi::SelectedRows*'}
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
-        kernel_args_type_list = ['const platform::DeviceContext&']
+        kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -879,7 +886,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{"""
+{code_indent}  if(phi::RecordOpInfoSupplement::IsEnabled()){{"""
         )
         single_tensor_names = []
         list_tensor_names = []
@@ -1022,10 +1029,74 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
             )
 
+        input_tensor_code += f"""
+{code_indent}     phi::AttributeMap attrs;"""
+
+        for attr_name in self.attrs['names']:
+            if 'IntArray' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name}.GetData();"""
+            elif 'vector<phi::Scalar>' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = "";"""  # TODO(kuizhiqing)
+            elif 'Scalar' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}    switch ({attr_name}.dtype()) {{
+{code_indent}      case DataType::FLOAT32:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<float>());
+{code_indent}          break;
+{code_indent}      case DataType::FLOAT64:
+{code_indent}          attrs["{attr_name}"] = static_cast<double>({attr_name}.to<double>());
+{code_indent}          break;
+{code_indent}      case DataType::FLOAT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<float16>());
+{code_indent}          break;
+{code_indent}      case DataType::BFLOAT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<bfloat16>());
+{code_indent}          break;
+{code_indent}      case DataType::INT32:
+{code_indent}          attrs["{attr_name}"] = static_cast<int32_t>({attr_name}.to<int32_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT64:
+{code_indent}          attrs["{attr_name}"] = static_cast<int64_t>({attr_name}.to<int64_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<int16_t>({attr_name}.to<int16_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT8:
+{code_indent}          attrs["{attr_name}"] = static_cast<int8_t>({attr_name}.to<int8_t>());
+{code_indent}          break;
+{code_indent}      case DataType::UINT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<uint16_t>({attr_name}.to<uint16_t>());
+{code_indent}          break;
+{code_indent}      case DataType::UINT8:
+{code_indent}          attrs["{attr_name}"] = static_cast<uint8_t>({attr_name}.to<uint8_t>());
+{code_indent}          break;
+{code_indent}      case DataType::BOOL:
+{code_indent}          attrs["{attr_name}"] = static_cast<bool>({attr_name}.to<bool>());
+{code_indent}          break;
+{code_indent}      case DataType::COMPLEX64:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<complex64>());
+{code_indent}          break;
+{code_indent}      case DataType::COMPLEX128:
+{code_indent}          attrs["{attr_name}"] = static_cast<double>({attr_name}.to<complex128>());
+{code_indent}          break;
+{code_indent}      default:
+{code_indent}          attrs["{attr_name}"] = "";
+{code_indent}          break;
+{code_indent}    }}"""
+            elif 'DataType' in self.attrs['attr_info'][attr_name][0]:
+                pass  # no need
+            elif 'Place' in self.attrs['attr_info'][attr_name][0]:
+                pass  # no need
+            else:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name};"""
+
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);
+{code_indent}     phi::RecordOpInfoSupplement("{self.api}", input_shapes, attrs);
 {code_indent}  }}"""
         )
         kernel_args = ["*dev_ctx"]
@@ -1108,6 +1179,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     ):
         return None, None, None
 
+    def reset_view_after_fallback(
+        self, out_dtype_list, code_indent='', inplace_flag=False
+    ):
+        return ''
+
     def gen_kernel_code(self, kernel_name, code_indent, inplace_flag=False):
         kernel_dispatch = self.kernel['dispatch'][kernel_name]
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
@@ -1124,23 +1200,21 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
-        cudnn_args = (
-            ''
-            if self.kernel['use_gpudnn'] == 'false'
-            else ', ' + self.kernel['use_gpudnn']
-        )
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  const auto& kernel = kernel_result.kernel;
+{code_indent}  if (FLAGS_low_precision_op_list) {{
+{code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
+{code_indent}  }}
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
-{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
 {code_indent}  if(infer_shape_record_event != nullptr){{
@@ -1148,9 +1222,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  paddle::platform::RecordEvent* kernel_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    kernel_record_event = new paddle::platform::RecordEvent(\"{self.api} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent* kernel_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    kernel_record_event = new phi::RecordEvent(\"{self.api} compute\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
 {code_indent}  if(kernel_record_event != nullptr){{
@@ -1158,6 +1232,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
+{self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
 {code_indent}  }}
 {code_indent}  {self.gene_return_code()}"""
 
@@ -1260,4 +1335,5 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             else:
                 invoke_code = self.invoke
                 params_code = self.get_define_args()
+
             return self.gene_invoke_code(invoke_code, params_code)

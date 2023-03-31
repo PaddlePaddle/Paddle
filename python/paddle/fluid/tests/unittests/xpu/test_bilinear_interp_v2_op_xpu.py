@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
-import paddle
+
 from op_test_xpu import XPUOpTest
-import unittest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -139,7 +141,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             scale_h = 0
             scale_w = 0
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0.0:
                         scale_h = scale_w = float(self.scale)
                 if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -180,7 +182,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
                 'data_layout': self.data_layout,
             }
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0.0:
                         self.scale = [self.scale]
                 if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -387,7 +389,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             if self.scale_by_1Dtensor:
                 self.inputs['Scale'] = np.array([self.scale]).astype("float32")
             elif self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0:
                         scale_h = scale_w = float(self.scale)
                 if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -407,14 +409,14 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
                 size_tensor = []
                 for index, ele in enumerate(self.out_size):
                     size_tensor.append(
-                        ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                        ("x" + str(index), np.ones(1).astype('int32') * ele)
                     )
                 self.inputs['SizeTensor'] = size_tensor
 
             self.attrs['out_h'] = self.out_h
             self.attrs['out_w'] = self.out_w
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if isinstance(self.scale, (float, int)):
                     if self.scale > 0:
                         self.scale = [self.scale]
                 if isinstance(self.scale, list) and len(self.scale) == 1:

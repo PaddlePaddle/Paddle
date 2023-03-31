@@ -26,8 +26,8 @@ void SampleUniqueNeighbors(
     bidiiter begin,
     bidiiter end,
     int num_samples,
-    std::mt19937& rng,
-    std::uniform_int_distribution<int>& dice_distribution) {
+    std::mt19937& rng,                                        // NOLINT
+    std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
   int left_num = std::distance(begin, end);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
@@ -46,8 +46,8 @@ void SampleUniqueNeighborsWithEids(
     bidiiter eid_begin,
     bidiiter eid_end,
     int num_samples,
-    std::mt19937& rng,
-    std::uniform_int_distribution<int>& dice_distribution) {
+    std::mt19937& rng,                                        // NOLINT
+    std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
   int left_num = std::distance(src_begin, src_end);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r1 = src_begin, r2 = eid_begin;
@@ -226,4 +226,6 @@ PD_REGISTER_KERNEL(graph_sample_neighbors,
                    ALL_LAYOUT,
                    phi::GraphSampleNeighborsKernel,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

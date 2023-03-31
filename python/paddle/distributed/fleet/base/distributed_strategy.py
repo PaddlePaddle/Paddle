@@ -13,13 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
+import google.protobuf
+import google.protobuf.text_format
+
 import paddle
-from paddle.distributed.fleet.utils.log_util import logger
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
-import google.protobuf.text_format
-import google.protobuf
+
+protobuf_version = google.protobuf.__version__
+if protobuf_version >= "4.21.0":
+    from google._upb import _message
+else:
+    from google.protobuf.pyext import _message
 
 __all__ = []
 
@@ -55,7 +64,8 @@ def assign_configs_value(msg, config):
                 # LABEL_REPEATED = 3
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
-                    getattr(msg, f.name).extend(config[f.name])
+                    if config[f.name] is not None:
+                        getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 
@@ -63,7 +73,7 @@ def assign_configs_value(msg, config):
 def check_configs_key(msg, config, field_name):
     key_list = msg.DESCRIPTOR.fields_by_name.keys()
     for key in config:
-        assert key in key_list, "key:{} not in {}".format(key, field_name)
+        assert key in key_list, f"key:{key} not in {field_name}"
 
 
 class DistributedJobInfo:
@@ -103,7 +113,6 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
@@ -112,6 +121,7 @@ class DistributedStrategy:
 
     def __init__(self):
         """
+
         DistributedStrategy is the main configuration entry for distributed training of Paddle.
         All of the distributed training configurations can be configured in DistributedStrategy,
         such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS),
@@ -141,45 +151,48 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
-                "%s is not a attribute of %s" % (key, self.__class__.__name__)
+                f"{key} is not a attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
     def save_to_prototxt(self, output):
         """
+
         Serialize current DistributedStrategy to string and save to output file
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.dgc = True
+                strategy.recompute = True
+                strategy.recompute_configs = {"checkpoints": ["x"]}
+                strategy.save_to_prototxt("dist_strategy.prototxt")
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.dgc = True
-            strategy.recompute = True
-            strategy.recompute_configs = {"checkpoints": ["x"]}
-            strategy.save_to_prototxt("dist_strategy.prototxt")
         """
         with open(output, "w") as fout:
             fout.write(str(self.strategy))
 
     def load_from_prototxt(self, pb_file):
         """
+
         Load from prototxt file for DistributedStrategy initialization
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.load_from_prototxt("dist_strategy.prototxt")
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.load_from_prototxt("dist_strategy.prototxt")
         """
         with open(pb_file, 'r') as f:
             self.strategy = google.protobuf.text_format.Merge(
@@ -192,19 +205,19 @@ class DistributedStrategy:
         Configure ExecutionStrategy for DistributedStrategy
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                exe_strategy = paddle.static.ExecutionStrategy()
+                exe_strategy.num_threads = 10
+                exe_strategy.num_iteration_per_drop_scope = 10
+                exe_strategy.num_iteration_per_run = 10
 
-            import paddle
-            exe_strategy = paddle.static.ExecutionStrategy()
-            exe_strategy.num_threads = 10
-            exe_strategy.num_iteration_per_drop_scope = 10
-            exe_strategy.num_iteration_per_run = 10
+                strategy = paddle.distributed.fleet.DistributedStrategy()
+                strategy.execution_strategy = exe_strategy
 
-            strategy = paddle.distributed.fleet.DistributedStrategy()
-            strategy.execution_strategy = exe_strategy
         """
-        execution_strategy = paddle.fluid.ExecutionStrategy()
+        execution_strategy = paddle.static.ExecutionStrategy()
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
             setattr(
@@ -228,35 +241,36 @@ class DistributedStrategy:
     @property
     def build_strategy(self):
         """
+
         Configure BuildStrategy for DistributedStrategy
         Note that the properties of BuildStrategy are valid in DistributedStrategy
         only if the property is non-distributed strategy.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                build_strategy = paddle.static.BuildStrategy()
+                build_strategy.enable_sequential_execution = True
+                build_strategy.fuse_elewise_add_act_ops = True
+                build_strategy.fuse_bn_act_ops = True
+                build_strategy.enable_auto_fusion = True
+                build_strategy.fuse_relu_depthwise_conv = True
+                build_strategy.fuse_broadcast_ops = True
+                build_strategy.fuse_all_optimizer_ops = True
+                build_strategy.enable_inplace = True
 
-            import paddle
-            build_strategy = paddle.static.BuildStrategy()
-            build_strategy.enable_sequential_execution = True
-            build_strategy.fuse_elewise_add_act_ops = True
-            build_strategy.fuse_bn_act_ops = True
-            build_strategy.enable_auto_fusion = True
-            build_strategy.fuse_relu_depthwise_conv = True
-            build_strategy.fuse_broadcast_ops = True
-            build_strategy.fuse_all_optimizer_ops = True
-            build_strategy.enable_inplace = True
+                strategy = paddle.distributed.fleet.DistributedStrategy()
+                strategy.build_strategy = build_strategy
 
-            strategy = paddle.distributed.fleet.DistributedStrategy()
-            strategy.build_strategy = build_strategy
         """
 
-        build_strategy = paddle.fluid.BuildStrategy()
+        build_strategy = paddle.static.BuildStrategy()
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
             if f.name == 'reduce_strategy':
-                value = ReduceStrategyFluid(value)
+                value = paddle.static.BuildStrategy.ReduceStrategy(value)
             setattr(build_strategy, f.name, value)
         return build_strategy
 
@@ -278,15 +292,18 @@ class DistributedStrategy:
     @property
     def gradient_scale_configs(self):
         """
-        Set the strategy of gradient scale
-        Examples:
 
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
+        Set the strategy of gradient scale
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
 
         Note that, strategy must be in 'avg', 'sum' or 'customized'
+
         """
         return get_msg_dict(self.strategy.gradient_scale_configs)
 
@@ -303,24 +320,25 @@ class DistributedStrategy:
     @property
     def a_sync(self):
         """
+
         Indicating whether we are using asynchronous stocastic gradient descent updates
         for training. This property is valid when we are using parameter server training,
         which is implied by setting approperate RoleMaker
         Default value: True
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                role_maker = fleet.PaddleCloudRoleMaker()
+                fleet.init(role_maker)
 
-            import paddle.distributed.fleet as fleet
-            role_maker = fleet.PaddleCloudRoleMaker()
-            fleet.init(role_maker)
+                strategy = fleet.DistributedStrategy()
+                strategy.a_sync = True  # by default this is True
 
-            strategy = fleet.DistributedStrategy()
-            strategy.a_sync = True  # by default this is True
+                # code block for defining loss and local optimizer
+                # sgd = fleet.distributed_optimizer(optimizer, strategy)
 
-            # code block for defining loss and local optimizer
-            # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
         return self.strategy.a_sync
 
@@ -340,6 +358,7 @@ class DistributedStrategy:
     @property
     def a_sync_configs(self):
         """
+
         Set a_sync update configurations. In general, asynchronous parameter server
         training has serveral configurable settings that can be configured through
         a dict.
@@ -360,20 +379,19 @@ class DistributedStrategy:
             runtime_split_send_recv(bool): if we are using Tensor split for send and recv during runtime
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                role_maker = fleet.PaddleCloudRoleMaker()
+                fleet.init(role_maker)
 
-            import paddle.distributed.fleet as fleet
-            role_maker = fleet.PaddleCloudRoleMaker()
-            fleet.init(role_maker)
+                strategy = fleet.DistributedStrategy()
+                strategy.a_sync = True  # by default this is True
+                configs = {"k_steps": 1024, "send_queue_size": 32}
+                strategy.a_sync_configs = configs
 
-            strategy = fleet.DistributedStrategy()
-            strategy.a_sync = True  # by default this is True
-            configs = {"k_steps": 1024, "send_queue_size": 32}
-            strategy.a_sync_configs = configs
-
-            # code block for defining loss and local optimizer
-            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+                # code block for defining loss and local optimizer
+                # sgd = fleet.distributed_optimizer(optimizer, strategy)
 
         """
         return get_msg_dict(self.strategy.a_sync_configs)
@@ -389,6 +407,7 @@ class DistributedStrategy:
     @property
     def trainer_desc_configs(self):
         """
+
         Set trainer desc configurations.
 
         **Notes**:
@@ -401,19 +420,18 @@ class DistributedStrategy:
             stat_var_names(list(str)):
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                role_maker = fleet.PaddleCloudRoleMaker()
+                fleet.init(role_maker)
 
-            import paddle.distributed.fleet as fleet
-            role_maker = fleet.PaddleCloudRoleMaker()
-            fleet.init(role_maker)
+                strategy = fleet.DistributedStrategy()
+                configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
+                strategy.trainer_desc_configs = configs
 
-            strategy = fleet.DistributedStrategy()
-            configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
-            strategy.trainer_desc_configs = configs
-
-            # code block for defining loss and local optimizer
-            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+                # code block for defining loss and local optimizer
+                # sgd = fleet.distributed_optimizer(optimizer, strategy)
 
         """
         return get_msg_dict(self.strategy.trainer_desc_configs)
@@ -421,22 +439,23 @@ class DistributedStrategy:
     @property
     def adam_d2sum(self):
         """
+
         set adam_d2sum
         Default value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                role_maker = fleet.PaddleCloudRoleMaker()
+                fleet.init(role_maker)
 
-            import paddle.distributed.fleet as fleet
-            role_maker = fleet.PaddleCloudRoleMaker()
-            fleet.init(role_maker)
+                strategy = fleet.DistributedStrategy()
+                strategy.adam_d2sum = True  # by default this is False
 
-            strategy = fleet.DistributedStrategy()
-            strategy.adam_d2sum = True  # by default this is False
+                # code block for defining loss and local optimizer
+                # sgd = fleet.distributed_optimizer(optimizer, strategy)
 
-            # code block for defining loss and local optimizer
-            # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
         return self.strategy.adam_d2sum
 
@@ -463,22 +482,30 @@ class DistributedStrategy:
     @property
     def fs_client_param(self):
         """
+
         Set fs client configurations.
-        **Notes**:
+
+        Note:
             uri(str): the uri of fs client
+
             user(str): the user_name of fs client
+
             passwd(str): the passwd of fs client
+
             hadoop_bin(str):
+
         Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            role_maker = fleet.PaddleCloudRoleMaker()
-            fleet.init(role_maker)
-            strategy = fleet.DistributedStrategy()
-            configs = {"uri": "xxx", "user": "xxx", passwd: "xxx"}
-            strategy.fs_client_param = configs
-            # code block for defining loss and local optimizer
-            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                role_maker = fleet.PaddleCloudRoleMaker()
+                fleet.init(role_maker)
+                strategy = fleet.DistributedStrategy()
+                configs = {"uri": "xxx", "user": "xxx", passwd: "xxx"}
+                strategy.fs_client_param = configs
+                # code block for defining loss and local optimizer
+                # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
         """
         return self.strategy.fs_client_param
 
@@ -519,7 +546,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
@@ -590,8 +617,12 @@ class DistributedStrategy:
             'embedx_sparse_beta2_decay_rate',
             'feature_learning_rate',
             'nodeid_slot',
+            'sparse_load_filter_slots',
         ]
-        support_sparse_table_class = ['DownpourSparseTable']
+        support_sparse_table_class = [
+            'DownpourSparseTable',
+            'DownpourSparseSSDTable',
+        ]
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
             'DownpourCtrAccessor',
@@ -711,10 +742,13 @@ class DistributedStrategy:
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
+                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
                     % (table_class)
                 )
-            table_data.table_class = 'MemorySparseTable'
+            if table_class == "DownpourSparseSSDTable":
+                table_data.table_class = 'SSDSparseTable'
+            else:
+                table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
                 'sparse_enable_cache', True
@@ -782,6 +816,10 @@ class DistributedStrategy:
             )
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
                 config.get('sparse_ssd_unseenday_threshold', 1)
+            )
+            load_filter_slots = config.get('sparse_load_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
+                load_filter_slots
             )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
@@ -858,6 +896,7 @@ class DistributedStrategy:
     @property
     def amp_configs(self):
         """
+
         Set automatic mixed precision training configurations. In general, amp has serveral configurable
         settings that can be configured through a dict.
 
@@ -886,28 +925,27 @@ class DistributedStrategy:
                    Default True. Only takes effect when `use_pure_fp16` is turned on.
 
         Examples 1:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.amp = True
-            strategy.amp_configs = {
-                "init_loss_scaling": 32768,
-                "custom_white_list": ['conv2d']}
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.amp = True
+                strategy.amp_configs = {
+                    "init_loss_scaling": 32768,
+                    "custom_white_list": ['conv2d']}
 
         Examples 2:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.amp = True
+                # pure fp16
+                strategy.amp_configs = {
+                    "init_loss_scaling": 32768,
+                    "use_pure_fp16": True
+                }
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.amp = True
-            # pure fp16
-            strategy.amp_configs = {
-                "init_loss_scaling": 32768,
-                "use_pure_fp16": True
-            }
         """
         return get_msg_dict(self.strategy.amp_configs)
 
@@ -920,16 +958,16 @@ class DistributedStrategy:
     @property
     def asp(self):
         """
+
         Indicating whether we are using automatic sparsity training
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.asp = True # by default this is false
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.asp = True # by default this is false
 
         """
         return self.strategy.asp
@@ -949,30 +987,31 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.recompute = True
+                # suppose x and y are names of checkpoint tensors for recomputation
+                strategy.recompute_configs = {"checkpoints": ["x", "y"]}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.recompute = True
-            # suppose x and y are names of checkpoint tensors for recomputation
-            strategy.recompute_configs = {"checkpoints": ["x", "y"]}
         """
         return self.strategy.recompute
 
     @property
     def sync_nccl_allreduce(self):
         """
+
         Indicating whether we are using synchronized all reduce in each communication thread
         We note that system overhead is usually lower when sync_nccl_allreduce = True
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.sync_nccl_allreduce = True
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.sync_nccl_allreduce = True
         """
         return self.strategy.sync_nccl_allreduce
 
@@ -987,17 +1026,18 @@ class DistributedStrategy:
     @property
     def use_hierarchical_allreduce(self):
         """
+
         Indicating whether we are using hierarchical allreduce in collective communication
         Hierarchical allreduce often does allreduce within a certain node group and then do
         allreduce among the leaders of each group
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.use_hierarchical_allreduce = True
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.use_hierarchical_allreduce = True
         """
         return self.strategy.use_hierarchical_allreduce
 
@@ -1014,16 +1054,17 @@ class DistributedStrategy:
     @property
     def hierarchical_allreduce_inter_nranks(self):
         """
+
         Number of ranks for low level node groups in hierarchical allreduce
         Default value: number of GPU cards on each single GPU machine
 
         Example:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.hierarchical_allreduce_inter_nranks = 8
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.hierarchical_allreduce_inter_nranks = 8
         """
         return self.strategy.hierarchical_allreduce_inter_nranks
 
@@ -1040,17 +1081,18 @@ class DistributedStrategy:
     @property
     def sync_batch_norm(self):
         """
+
         Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
 
         Default value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.sync_batch_norm = True
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.sync_batch_norm = True
         """
 
         return self.strategy.sync_batch_norm
@@ -1066,16 +1108,17 @@ class DistributedStrategy:
     @property
     def fuse_all_reduce_ops(self):
         """
+
         Indicating whether we are using fuse_all_reduce_ops for gradient fusion during backward phase of training
         Default value: True
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.fuse_all_reduce_ops = False
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.fuse_all_reduce_ops = False
         """
         return self.strategy.fuse_all_reduce_ops
 
@@ -1090,17 +1133,18 @@ class DistributedStrategy:
     @property
     def fuse_grad_size_in_MB(self):
         """
+
         Specifying the size of gradient to fuse in Mega-Bytes
 
         Default value: 32
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.fuse_grad_size_in_MB = 50
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.fuse_grad_size_in_MB = 50
         """
         return self.strategy.fuse_grad_size_in_MB
 
@@ -1115,6 +1159,7 @@ class DistributedStrategy:
     @property
     def last_comm_group_size_MB(self):
         """
+
         Specifying the size of gradient to fuse in Mega-Bytes when
         the last group of each batch communicates. Making the last group
         small is useful to improve performance.
@@ -1122,11 +1167,12 @@ class DistributedStrategy:
         Default value: 1
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.last_comm_group_size_MB = 2
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.last_comm_group_size_MB = 2
+
         """
         return self.strategy.last_comm_group_size_MB
 
@@ -1141,18 +1187,19 @@ class DistributedStrategy:
     @property
     def find_unused_parameters(self):
         """
+
         Indicating whether we are using find_unused_parameters to
         find unused parameters in DataParallel.
 
         Default value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.find_unused_parameters = True
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.find_unused_parameters = True
         """
 
         return self.strategy.find_unused_parameters
@@ -1184,17 +1231,18 @@ class DistributedStrategy:
     @property
     def nccl_comm_num(self):
         """
+
         Specifying the number of NCCL communicator
 
         Default value: 1
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.nccl_comm_num = 2
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.nccl_comm_num = 2
         """
 
         return self.strategy.nccl_comm_num
@@ -1218,6 +1266,7 @@ class DistributedStrategy:
     @property
     def recompute_configs(self):
         """
+
         Set recompute configurations.
 
         **Note**:
@@ -1234,16 +1283,15 @@ class DistributedStrategy:
         specific here should be determined ("-1" is not allowed).
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.recompute = True
-            strategy.recompute_configs = {
-                "checkpoints": ["x", "y"],
-                "enable_offload": True,
-                "checkpoint_shape": [100, 512, 1024] }
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.recompute = True
+                strategy.recompute_configs = {
+                    "checkpoints": ["x", "y"],
+                    "enable_offload": True,
+                    "checkpoint_shape": [100, 512, 1024] }
 
         """
         return get_msg_dict(self.strategy.recompute_configs)
@@ -1259,6 +1307,7 @@ class DistributedStrategy:
     @property
     def sharding(self):
         """
+
         Indicating whether we are using sharding Optimizer for memory
         optimization. We implement the sharding optimizer following the ZeRO-DP
         idea from [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054).
@@ -1269,12 +1318,12 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.sharding = True
 
-            import paddle.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.sharding = True
         """
         return self.strategy.sharding
 
@@ -1289,6 +1338,7 @@ class DistributedStrategy:
     @property
     def sharding_configs(self):
         """
+
         Set sharding configurations.
 
         **Note**:
@@ -1326,20 +1376,20 @@ class DistributedStrategy:
 
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                # sharding-DP, 2 nodes with 8 gpus per node
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.sharding = True
+                strategy.sharding_configs = {
+                    "sharding_segment_strategy": "segment_broadcast_MB",
+                    "segment_broadcast_MB": 32,
+                    "sharding_degree": 8,
+                    "dp_degree": 2,
+                    "gradient_merge_acc_step": 4,
+                    }
 
-            # sharding-DP, 2 nodes with 8 gpus per node
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.sharding = True
-            strategy.sharding_configs = {
-                "sharding_segment_strategy": "segment_broadcast_MB",
-                "segment_broadcast_MB": 32,
-                "sharding_degree": 8,
-                "dp_degree": 2,
-                "gradient_merge_acc_step": 4,
-                }
         """
         return get_msg_dict(self.strategy.sharding_configs)
 
@@ -1354,15 +1404,15 @@ class DistributedStrategy:
     @property
     def without_graph_optimization(self):
         """
+
         Run program using Executor other than ParallelExecutor.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.without_graph_optimization = True
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.without_graph_optimization = True
 
         """
         return self.strategy.without_graph_optimization
@@ -1380,14 +1430,18 @@ class DistributedStrategy:
     @property
     def _calc_comm_same_stream(self):
         """
+
         This based on raw_program_optimizer program
         Set whether use same stream for calc and comm when fuse allreduce
         The default value for the calc_comm_same_stream is False
+
         Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.calc_comm_same_stream = True
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.calc_comm_same_stream = True
+
         """
         return self.strategy.calc_comm_same_stream
 
@@ -1404,14 +1458,18 @@ class DistributedStrategy:
     @property
     def fuse_grad_merge(self):
         """
+
         Set whether fuse the grad for gradient merge.
         Note: this flag will only effect the gradient merge under pipeline mode
         The default value for the fuse_grad_merge is False
+
         Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.fuse_param_grad = True
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.fuse_param_grad = True
+
         """
         return self.strategy.fuse_grad_merge
 
@@ -1426,12 +1484,17 @@ class DistributedStrategy:
     @property
     def fuse_grad_size_in_num(self):
         """
+
         This based on raw_program_optimizer program and allreduce the num of the fused op
+
         Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.fuse_grad_size_in_num = 2
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+
+                strategy = fleet.DistributedStrategy()
+                strategy.fuse_grad_size_in_num = 2
+
         """
         return self.strategy.fuse_grad_size_in_num
 
@@ -1448,18 +1511,18 @@ class DistributedStrategy:
     @property
     def pipeline(self):
         """
+
         Indicating whether we are using pipeline parallelism for distributed training.
         Current implementation mainly focus on single GPU machine pipeline parallelism and
         data parallelism across GPU machine. The pipeline information is indicated through
         device_guard information in user-defined program.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.pipeline = True
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.pipeline = True
 
         """
         return self.strategy.pipeline
@@ -1499,6 +1562,7 @@ class DistributedStrategy:
     @property
     def pipeline_configs(self):
         """
+
         Set pipeline parallelism configurations. In pipeline parallelism,
         different parts of neural networks are running on different GPUS.
         There are Tensor queue buffer between each pair of neighborhood GPUS
@@ -1514,13 +1578,12 @@ class DistributedStrategy:
             **micro_batch_size**: the number of small batches in each user defined batch
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.pipeline = True
-            strategy.pipeline_configs = {"micro_batch_size": 12}
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.pipeline = True
+                strategy.pipeline_configs = {"micro_batch_size": 12}
 
         """
 
@@ -1537,15 +1600,15 @@ class DistributedStrategy:
     @property
     def tensor_parallel(self):
         """
+
         Indicating whether we are using tensor parallel for distributed training.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.tensor_parallel = True
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.tensor_parallel = True
 
         """
         return self.strategy.tensor_parallel
@@ -1561,23 +1624,25 @@ class DistributedStrategy:
     @property
     def tensor_parallel_configs(self):
         """
+
         Set tensor_parallel configurations.
 
         **Notes**:
             **Detailed arguments for tensor_parallel_configs**
+
             **tensor_parallel_degree**: degree of tensor parallel
+
             **tensor_init_seed**: parameter initialization random seed
 
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.tensor_parallel = True
-            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4,
-                                                "tensor_init_seed": 123}
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.tensor_parallel = True
+                strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4,
+                                                    "tensor_init_seed": 123}
 
         """
         return get_msg_dict(self.strategy.tensor_parallel_configs)
@@ -1595,53 +1660,65 @@ class DistributedStrategy:
     @property
     def hybrid_configs(self):
         """
+
         Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism
         needs to meet the following relationships
 
         total_number_GPUs = dp_degree * mp_degree * pp_degree
 
         **Note**:
-            dp_degree(int): set number of GPUs in a data parallel group. Default -1.
+            **dp_degree(int)**: set number of GPUs in a data parallel group. Default -1.
                                     This value should be an integer greater than 0.
                                     If it is not set, or set to -1, its value will be inferred
                                     based on the total number of cards.
-            mp_degree(int): set number of GPUs in a model parallel group. Default 1
-            pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
 
+            **mp_degree(int)**: set number of GPUs in a model parallel group. Default 1
+
+            **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
+
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
 
         Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.hybrid_configs = {
-                "dp_degree": 1,
-                "mp_degree": 2,
-                "pp_degree": 1}
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.hybrid_configs = {
+                    "dp_degree": 1,
+                    "mp_degree": 2,
+                    "pp_degree": 1,
+                    "order":['dp','pp','sharding','mp']}
+
         """
         return get_msg_dict(self.strategy.hybrid_configs)
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
+        hybrid_config = copy.deepcopy(configs)
+        if "order" in hybrid_config:
+            self.hybrid_parallel_order = hybrid_config["order"]
+            hybrid_config.pop('order')
+
         check_configs_key(
-            self.strategy.hybrid_configs, configs, "hybrid_configs"
+            self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
     def localsgd(self):
         """
+
         Indicating whether we are using Local SGD training. Default Value: False
         For more details, please refer to
         `Don't Use Large Mini-Batches, Use Local SGD <https://arxiv.org/pdf/1808.07217.pdf>`_.
 
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.localsgd = True # by default this is false
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.localsgd = True # by default this is false
 
         """
         return self.strategy.localsgd
@@ -1657,6 +1734,7 @@ class DistributedStrategy:
     @property
     def localsgd_configs(self):
         """
+
         Set LocalSGD training configurations. LocalSGD has a configurable
         setting that can be configured through a dict.
 
@@ -1665,14 +1743,14 @@ class DistributedStrategy:
             begin_step(int) The step of beginning training by localsgd. Default 1.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.localsgd = True
+                strategy.localsgd_configs = {"k_steps": 4,
+                                            "begin_step": 30}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.localsgd = True
-            strategy.localsgd_configs = {"k_steps": 4,
-                                         "begin_step": 30}
         """
 
         return get_msg_dict(self.strategy.localsgd_configs)
@@ -1688,18 +1766,17 @@ class DistributedStrategy:
     @property
     def adaptive_localsgd(self):
         """
+
         Indicating whether we are using Adaptive Local SGD training. Default Value: False
         For more details, please refer to `Adaptive Communication Strategies to Achieve
         the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
 
-
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.adaptive_localsgd = True # by default this is false
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.adaptive_localsgd = True # by default this is false
 
         """
         return self.strategy.adaptive_localsgd
@@ -1715,6 +1792,7 @@ class DistributedStrategy:
     @property
     def adaptive_localsgd_configs(self):
         """
+
         Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
         setting that can be configured through a dict.
 
@@ -1722,17 +1800,18 @@ class DistributedStrategy:
             init_k_steps(int) The initial steps for training before adaptive localsgd.
                               Then, the adaptive localsgd method will modify init_k_steps automatically.
                               Default 1.
+
             begin_step(int) The step of beginning training by adaptive localsgd. Default 1.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.adaptive_localsgd = True
+                strategy.adaptive_localsgd_configs = {"init_k_steps": 1,
+                                                    "begin_step": 30}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.adaptive_localsgd = True
-            strategy.adaptive_localsgd_configs = {"init_k_steps": 1,
-                                                  "begin_step": 30}
         """
 
         return get_msg_dict(self.strategy.adaptive_localsgd_configs)
@@ -1750,18 +1829,18 @@ class DistributedStrategy:
     @property
     def dgc(self):
         """
+
         Indicating whether we are using Deep Gradient Compression training. For more details, please refer to
         [Deep Gradient Compression](https://arxiv.org/abs/1712.01887).
 
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.dgc = True # by default this is false
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.dgc = True # by default this is false
 
         """
         return self.strategy.dgc
@@ -1777,6 +1856,7 @@ class DistributedStrategy:
     @property
     def dgc_configs(self):
         r"""
+
         Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
         settings that can be configured through a dict.
 
@@ -1793,13 +1873,13 @@ class DistributedStrategy:
                     element will be transmitted.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.dgc = True
+                strategy.dgc_configs = {"rampup_begin_step": 1252}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.dgc = True
-            strategy.dgc_configs = {"rampup_begin_step": 1252}
         """
         return get_msg_dict(self.strategy.dgc_configs)
 
@@ -1812,16 +1892,17 @@ class DistributedStrategy:
     @property
     def fp16_allreduce(self):
         """
+
         Indicating whether we are using fp16 gradient allreduce training
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.fp16_allreduce = True # by default this is false
+                strategy = fleet.DistributedStrategy()
+                strategy.fp16_allreduce = True # by default this is false
 
         """
         return self.strategy.fp16_allreduce
@@ -1836,6 +1917,7 @@ class DistributedStrategy:
     @property
     def gradient_merge(self):
         """
+
         Gradient Merge, also called as Gradient Accumulation,
         is a strategy for large batch training. With this strategy,
         model parameter will not be updated until user-defined steps.
@@ -1846,13 +1928,13 @@ class DistributedStrategy:
         to model parameters.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.gradient_merge = True
+                strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.gradient_merge = True
-            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
         """
         return self.strategy.gradient_merge
 
@@ -1867,6 +1949,7 @@ class DistributedStrategy:
     @property
     def gradient_merge_configs(self):
         """
+
         the key-value configs of distribute_strategy
 
         **Note**:
@@ -1875,13 +1958,13 @@ class DistributedStrategy:
             avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.gradient_merge = True
+                strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.gradient_merge = True
-            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
         """
         return get_msg_dict(self.strategy.gradient_merge_configs)
 
@@ -1896,6 +1979,7 @@ class DistributedStrategy:
     @property
     def lars(self):
         """
+
         Set lars configurations. lars is used to deal with the convergence problems when the global
         batch size is larger than 8k.  For more details, please refer to
         [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
@@ -1903,12 +1987,12 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.lars = True # by default this is false
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.lars = True # by default this is false
         """
         return self.strategy.lars
 
@@ -1923,6 +2007,7 @@ class DistributedStrategy:
     @property
     def lars_configs(self):
         """
+
         Set Lars training configurations.
 
         **Notes**:
@@ -1934,18 +2019,18 @@ class DistributedStrategy:
         will be exclude from weight decay in lars formula.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.lars = True
+                strategy.lars_configs = {
+                            "lars_coeff": 0.01,
+                            "lars_weight_decay": 0.0005,
+                            "epsilon": 0,
+                            "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                        }
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.lars = True
-            strategy.lars_configs = {
-                        "lars_coeff": 0.01,
-                        "lars_weight_decay": 0.0005,
-                        "epsilon": 0,
-                        "exclude_from_weight_decay": ['batch_norm', '.b_0']
-                    }
         """
         return get_msg_dict(self.strategy.lars_configs)
 
@@ -1958,6 +2043,7 @@ class DistributedStrategy:
     @property
     def lamb(self):
         """
+
         Set lamb configurations. lamb is used to deal with the convergence problems for large
         batch size training, specially for attention-related model like BERT. For more details,
         please refer to
@@ -1966,12 +2052,12 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.lamb = True # by default this is false
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.lamb = True # by default this is false
         """
 
         return self.strategy.lamb
@@ -1987,6 +2073,7 @@ class DistributedStrategy:
     @property
     def lamb_configs(self):
         """
+
         Set Lars training configurations.
 
         **Notes**:
@@ -1995,16 +2082,16 @@ class DistributedStrategy:
         will be exclude from weight decay in lamb formula.
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.lamb = True
+                strategy.lamb_configs = {
+                        'lamb_weight_decay': 0.01,
+                        'exclude_from_weight_decay': [],
+                    }
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.lamb = True
-            strategy.lamb_configs = {
-                    'lamb_weight_decay': 0.01,
-                    'exclude_from_weight_decay': [],
-                }
         """
         return get_msg_dict(self.strategy.lamb_configs)
 
@@ -2017,8 +2104,10 @@ class DistributedStrategy:
     @property
     def elastic(self):
         """
+
         Indicating whether we want to do current distributed training on clusters with elastic resources.
         Currently, this is configuration is not valid.
+
         """
         return self.strategy.elastic
 
@@ -2033,6 +2122,7 @@ class DistributedStrategy:
     @property
     def auto(self):
         """
+
         Indicating whether we are using auto-parallel configuration
         This feature is currently an experimental feature. Currently,
         auto-parallelism can be used only when a user does not set any other
@@ -2041,20 +2131,20 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.auto = True
+                # if set other strategy at the same time, auto will not apply
+                # strategy.amp = True
 
-            strategy = fleet.DistributedStrategy()
-            strategy.auto = True
-            # if set other strategy at the same time, auto will not apply
-            # strategy.amp = True
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy)
         """
         return self.strategy.auto
 
@@ -2068,6 +2158,7 @@ class DistributedStrategy:
     @property
     def semi_auto(self):
         """
+
         Indicating whether we are using semi-auto parallel function
         This feature is currently an experimental feature. Currently,
         auto-parallelism can be used only when a user does not set any other
@@ -2076,20 +2167,20 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.semi_auto = True
+                # if set other strategy at the same time, auto will not apply
+                # strategy.amp = True
 
-            strategy = fleet.DistributedStrategy()
-            strategy.semi_auto = True
-            # if set other strategy at the same time, auto will not apply
-            # strategy.amp = True
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy)
         """
         return self.strategy.semi_auto
 
@@ -2103,16 +2194,21 @@ class DistributedStrategy:
     @property
     def auto_search(self):
         """
+
         Indicating whether we are using auto-search parallel function
         For details, please reference the following code example
         Default Value: False
+
         Examples:
-          .. code-block:: python
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.auto_search = True
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.auto_search = True
+
         """
         return self.strategy.auto_search
 
@@ -2126,15 +2222,20 @@ class DistributedStrategy:
     @property
     def split_data(self):
         """
+
         Indicating whether we split the data. If True, we split the data.
         Default Value: True
+
         Examples:
-          .. code-block:: python
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.split_data = True
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.split_data = True
+
         """
         return self.strategy.split_data
 
@@ -2148,8 +2249,10 @@ class DistributedStrategy:
     @property
     def qat(self):
         """
+
         Indicating whether we are using quantization training
         Default Value: False
+
         """
         return self.strategy.qat
 
@@ -2163,6 +2266,7 @@ class DistributedStrategy:
     @property
     def qat_configs(self):
         """
+
         Set quantization training configurations. In general, qat has serveral configurable
         settings that can be configured through a dict.
 
@@ -2179,17 +2283,17 @@ class DistributedStrategy:
             algo(str): Other quantization training algorithm.
 
         Exampless:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle.distributed.fleet as fleet
 
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.qat = True
-            strategy.qat_configs = {
-                "channel_wise_abs_max": True,
-                "weight_bits": 8,
-                "activation_bits: 8,
-                "not_quant_pattern": ['skip_quant']}
+                strategy = fleet.DistributedStrategy()
+                strategy.qat = True
+                strategy.qat_configs = {
+                    "channel_wise_abs_max": True,
+                    "weight_bits": 8,
+                    "activation_bits: 8,
+                    "not_quant_pattern": ['skip_quant']}
 
         """
         return get_msg_dict(self.strategy.qat_configs)
@@ -2202,24 +2306,25 @@ class DistributedStrategy:
     @property
     def heter_ccl_mode(self):
         """
+
         Indicating whether we are using heter_ccl_mode for model training.
         This feature is currently an experimental feature. Currently,
         heter_ccl_mode can be used only for dataparallel with dygraph mode.
         Default Value: False
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.heter_ccl_mode = True
 
-            strategy = fleet.DistributedStrategy()
-            strategy.heter_ccl_mode = True
+                # for initialize parallel env, only need to call
+                paddle.distributed.init_parallel_env()
+                # then the heterogenous context will be created.
 
-            # for initialize parallel env, only need to call
-            paddle.distributed.init_parallel_env()
-            # then the heterogenous context will be created.
         """
         return self.strategy.heter_ccl_mode
 
@@ -2233,6 +2338,7 @@ class DistributedStrategy:
     @property
     def cudnn_exhaustive_search(self):
         """
+
         Indicating whether to use exhaustive search method to choose convolution algorithms.
         Exhaustive search attempts all cuDNN algorithms to choose the fastest algorithm.
         This method is time-consuming, the choosed algorithm will be cached for the given layer specifications.
@@ -2240,17 +2346,18 @@ class DistributedStrategy:
         Default Value: True
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.cudnn_exhaustive_search = False
+                strategy = fleet.DistributedStrategy()
+                strategy.cudnn_exhaustive_search = False
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+
         """
         return self.strategy.cudnn_exhaustive_search
 
@@ -2267,6 +2374,7 @@ class DistributedStrategy:
     @property
     def conv_workspace_size_limit(self):
         """
+
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
         The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
@@ -2274,17 +2382,17 @@ class DistributedStrategy:
         Default Value: 4000
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.conv_workspace_size_limit = 1024
+                strategy = fleet.DistributedStrategy()
+                strategy.conv_workspace_size_limit = 1024
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
         """
         return self.strategy.conv_workspace_size_limit
@@ -2302,22 +2410,23 @@ class DistributedStrategy:
     @property
     def cudnn_batchnorm_spatial_persistent(self):
         """
+
         Indicates whether to use the mode CUDNN_BATCHNORM_SPATIAL_PERSISTENT function in batchnorm.
         This is only useful in cudnn.
         Default Value: True
 
         Examples:
+            .. code-block:: python
 
-          .. code-block:: python
+                import paddle
+                paddle.enable_static()
+                import paddle.distributed.fleet as fleet
 
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.cudnn_batchnorm_spatial_persistent = True
+                strategy = fleet.DistributedStrategy()
+                strategy.cudnn_batchnorm_spatial_persistent = True
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
         """
         return self.strategy.cudnn_batchnorm_spatial_persistent
@@ -2368,7 +2477,7 @@ class DistributedStrategy:
 
         length = max_k + max_v + spacing
 
-        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h1_format = "    " + f"|{{:^{length}s}}|\n"
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
@@ -2396,7 +2505,7 @@ class DistributedStrategy:
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{}=True <-> {}_configs".format(f.name, f.name)
+                                f"{f.name}=True <-> {f.name}_configs"
                             )
                             draws += line + "\n"
                             my_configs = getattr(
@@ -2406,7 +2515,7 @@ class DistributedStrategy:
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                    _message.RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

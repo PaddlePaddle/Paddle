@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -109,6 +111,16 @@ class TestSqueeze2OneDNNOp3(TestSqueeze2OneDNNOp):
         self.new_shape = (25, 1, 4)
 
 
+class TestSqueeze2OneDNNOp4(TestSqueeze2OneDNNOp):
+    def set_outputs(self):
+        self.outputs = {"Out": self.x.reshape(self.new_shape)}
+
+    def init_test_case(self):
+        self.ori_shape = (25, 1, 1, 4, 1)
+        self.axes = (1, -1)
+        self.new_shape = (25, 1, 4)
+
+
 class TestSqueezeOneDNNOp3(TestSqueezeOneDNNOp):
     def init_test_case(self):
         self.ori_shape = (25, 1, 1, 4, 1)
@@ -138,7 +150,7 @@ def create_squeeze_bf16_test_classes(parent):
                 user_defined_grad_outputs=[self.dout],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Squeeze2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Squeeze2_BF16")
     TestSqueeze2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueeze2BF16OneDNNOp
 
@@ -153,7 +165,7 @@ def create_squeeze_bf16_test_classes(parent):
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Squeeze_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Squeeze_BF16")
     TestSqueezeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueezeBF16OneDNNOp
 

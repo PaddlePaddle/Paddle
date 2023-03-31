@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TRTReshapeTest(InferencePassTest):
@@ -33,11 +36,11 @@ class TRTReshapeTest(InferencePassTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
@@ -48,7 +51,7 @@ class TRTReshapeTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_reshape(self, data, reshape):
-        return fluid.layers.reshape(data, reshape)
+        return paddle.reshape(data, reshape)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -71,11 +74,11 @@ class TRTReshapeTest1(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
@@ -98,11 +101,11 @@ class TRTReshapeTest2(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
-            reshape_out = fluid.layers.reshape(x=data, shape=self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            reshape_out = paddle.reshape(x=data, shape=self.reshape)
+            out = nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32')
         }
@@ -125,10 +128,10 @@ class TRTReshapeTest3(TRTReshapeTest):
             self.input_shape[2],
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
-            bn_out = fluid.layers.batch_norm(data, is_test=True)
+            bn_out = nn.batch_norm(data, is_test=True)
             out = self.append_reshape(bn_out, self.reshape)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),

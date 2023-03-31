@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import unittest
 import os
+import unittest
+
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -61,24 +62,20 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             if (
                 int(
                     (
-                        (
-                            input_shape[2]
-                            - (dilations[0] * (filter_shape[2] - 1) + 1)
-                        )
-                        / strides[0]
-                        + 1
+                        input_shape[2]
+                        - (dilations[0] * (filter_shape[2] - 1) + 1)
                     )
+                    / strides[0]
+                    + 1
                 )
                 <= 0
                 or int(
                     (
-                        (
-                            input_shape[3]
-                            - (dilations[1] * (filter_shape[3] - 1) + 1)
-                        )
-                        / strides[1]
-                        + 1
+                        input_shape[3]
+                        - (dilations[1] * (filter_shape[3] - 1) + 1)
                     )
+                    / strides[1]
+                    + 1
                 )
                 <= 0
             ):
@@ -87,28 +84,24 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             if (
                 int(
                     (
-                        (
-                            input_shape[2]
-                            + paddings[0]
-                            + paddings[1]
-                            - (dilations[0] * (filter_shape[2] - 1) + 1)
-                        )
-                        / strides[0]
-                        + 1
+                        input_shape[2]
+                        + paddings[0]
+                        + paddings[1]
+                        - (dilations[0] * (filter_shape[2] - 1) + 1)
                     )
+                    / strides[0]
+                    + 1
                 )
                 <= 0
                 or int(
                     (
-                        (
-                            input_shape[3]
-                            + paddings[2]
-                            + paddings[3]
-                            - (dilations[1] * (filter_shape[3] - 1) + 1)
-                        )
-                        / strides[1]
-                        + 1
+                        input_shape[3]
+                        + paddings[2]
+                        + paddings[3]
+                        - (dilations[1] * (filter_shape[3] - 1) + 1)
                     )
+                    / strides[1]
+                    + 1
                 )
                 <= 0
             ):
@@ -199,33 +192,29 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             )
 
             # 9. Generate legal elemntwise_add: X of conv2d
-            bias_2_dict = dict()
+            bias_2_dict = {}
             bias_2_dict[1] = [
                 x_shape[0],
                 f_shape[0],
                 int(
                     (
-                        (
-                            x_shape[2]
-                            + padding[0]
-                            + padding[1]
-                            - (dilations[0] * (f_shape[2] - 1) + 1)
-                        )
-                        / strides[0]
-                        + 1
+                        x_shape[2]
+                        + padding[0]
+                        + padding[1]
+                        - (dilations[0] * (f_shape[2] - 1) + 1)
                     )
+                    / strides[0]
+                    + 1
                 ),
                 int(
                     (
-                        (
-                            x_shape[3]
-                            + padding[2]
-                            + padding[3]
-                            - (dilations[1] * (f_shape[3] - 1) + 1)
-                        )
-                        / strides[1]
-                        + 1
+                        x_shape[3]
+                        + padding[2]
+                        + padding[3]
+                        - (dilations[1] * (f_shape[3] - 1) + 1)
                     )
+                    / strides[1]
+                    + 1
                 ),
             ]
 
@@ -240,18 +229,14 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                 x_shape[0],
                 f_shape[0],
                 int(
-                    (
-                        (x_shape[2] - (dilations[0] * (f_shape[2] - 1) + 1))
-                        / strides[0]
-                        + 1
-                    )
+                    (x_shape[2] - (dilations[0] * (f_shape[2] - 1) + 1))
+                    / strides[0]
+                    + 1
                 ),
                 int(
-                    (
-                        (x_shape[3] - (dilations[1] * (f_shape[3] - 1) + 1))
-                        / strides[1]
-                        + 1
-                    )
+                    (x_shape[3] - (dilations[1] * (f_shape[3] - 1) + 1))
+                    / strides[1]
+                    + 1
                 ),
             ]
             bias_index = 1

@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
+from paddle import framework
 from paddle.autograd import PyLayer
-from paddle.fluid import framework
+from paddle.framework import core
+
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
+from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
     detach_variable,
     swith_rng_state_tracker,
 )
-from ..meta_parallel.pp_utils import utils
 
 __all__ = []
 
@@ -84,7 +85,7 @@ class _HPRecomputeFunction(PyLayer):
         offload,
         partition,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         # store for recomputing
@@ -93,10 +94,8 @@ class _HPRecomputeFunction(PyLayer):
         ctx.kwargs = kwargs
 
         # store the rng states
-        ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
-        ctx.fwd_cuda_rng_state_tracker = (
-            get_rng_state_tracker().get_states_tracker()
-        )
+        ctx.fwd_rng_state = paddle.get_rng_state()
+        ctx.fwd_rng_state_tracker = get_rng_state_tracker().get_states_tracker()
 
         # save config info
         ctx.mp_group = mp_group
@@ -111,7 +110,7 @@ class _HPRecomputeFunction(PyLayer):
 
         cur_device = paddle.get_device()
         assert (
-            'gpu:' in paddle.get_device()
+            'gpu:' in paddle.get_device() or 'xpu:' in paddle.get_device()
         ), "Recompute with RNG is not support current device: {}.".format(
             cur_device
         )
@@ -126,9 +125,8 @@ class _HPRecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+        ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -150,6 +148,18 @@ class _HPRecomputeFunction(PyLayer):
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
+
+                # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
+                #  which is inplace operating. When the inputs' stop_gradient is True, an
+                #  error will occurs because the stop_gradient=True and inpalce-op are not
+                #  supported in the same time. The solution is to mark the inputs non_differentiable
+                #  if its stop_gradient is True.
+                # Note:
+                #  If not marked non_differentiable, all output tensors' attr `stop gradient`
+                #  will be reset to `False` in c++ backend.
+                #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
+                if framework.in_dygraph_mode() and state:
+                    ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)
 
@@ -190,18 +200,25 @@ class _HPRecomputeFunction(PyLayer):
 
             # need restore auto_cast state as well as w/b list
             with swith_rng_state_tracker(
-                ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
             ):
-                with paddle.amp.auto_cast(
-                    enable=ctx.is_fw_autocast,
-                    custom_white_list=ctx.amp_white_list,
-                    custom_black_list=ctx.amp_black_list,
-                    level=ctx.amp_level,
-                ):
+                if ctx.is_fw_autocast:
+                    with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ):
+                        detached_inputs = detach_variable(tuple(inputs))
+                        outputs = ctx.run_function(
+                            *detached_inputs, **ctx.kwargs
+                        )
+                else:
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, core.eager.Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -210,7 +227,7 @@ class _HPRecomputeFunction(PyLayer):
 
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], core.eager.Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -226,13 +243,14 @@ class _HPRecomputeFunction(PyLayer):
             grads = tuple(
                 inp._grad_ivar()
                 for inp in detached_inputs
-                if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                if isinstance(inp, core.eager.Tensor)
             )
             return grads
 
 
 def recompute_hybrid(ctx, function, *args, **kwargs):
     """
+    recompute intermediate activations to save the memory in hybrid parallel scene.
     # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
@@ -242,8 +260,7 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
     Parameters:
         ctx(dict): include 'mp_group', 'offload', and 'partition' keys. the key 'mp_group' (Group), represents the avtivations are splitted
                    in which group. the key 'offload' (bool, optional, default=False), represents whether to offload to cpu. the key 'partition' (bool, optional, default=False),
-                   represents whether to split activations in the mp_group. and some keys such as 'segments' and 'preserve_rng_state' are invalid here, they are useful in
-                   'recompute_sequential' API.
+                   represents whether to split activations in the mp_group.
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.

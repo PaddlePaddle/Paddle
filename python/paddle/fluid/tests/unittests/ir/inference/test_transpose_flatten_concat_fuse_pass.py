@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
 import unittest
 
 import hypothesis.strategies as st
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
@@ -89,7 +89,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         inputs = {}
         x_shape_rank = draw(st.integers(min_value=2, max_value=5))
         #  Generate axis of transpose
-        trans_axis = [j for j in range(x_shape_rank)]
+        trans_axis = list(range(x_shape_rank))
         for j in range(x_shape_rank - 1):
             if draw(st.booleans()):
                 trans_axis[j], trans_axis[-1] = trans_axis[-1], trans_axis[j]

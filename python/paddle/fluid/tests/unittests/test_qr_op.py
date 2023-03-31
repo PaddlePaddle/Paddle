@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import itertools
+import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestQrOp(OpTest):
@@ -69,13 +71,12 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             ['Q', 'R'],
-            check_eager=True,
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
         )
@@ -223,7 +224,7 @@ class TestQrAPI(unittest.TestCase):
                             tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
                             np_q[coord] = tmp_q
                             np_r[coord] = tmp_r
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     if mode == "r":

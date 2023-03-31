@@ -13,19 +13,18 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from paddle.distributed.fleet import auto
 
-from paddle.incubate.autograd import enable_prim
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.distributed.fleet import auto
+import paddle
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
 from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     get_default_distributed_context,
 )
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from paddle.distributed.fleet import auto
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.incubate.autograd import enable_prim
 
 paddle.enable_static()
 enable_prim()
@@ -100,7 +99,7 @@ class TestPrimDistOp(unittest.TestCase):
         completer.complete_prim_annotation(self.main_program)
         dist_context.block_state.parse_forward_blocks(self.main_program)
         dist_context.block_state.parse_backward_blocks(self.main_program)
-        dist_context.grads_params = dict()
+        dist_context.grads_params = {}
         dist_context.grads_params[self.w_grad.name] = self.w.name
         dist_context.synced_gradient = set()
         dist_context.data_parallel_group = list(range(nranks))

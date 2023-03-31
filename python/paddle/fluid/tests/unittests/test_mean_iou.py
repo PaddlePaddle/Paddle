@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
 
 
 def compute_mean_iou(
@@ -137,24 +137,7 @@ class TestCase1(TestMeanIOUOp):
     # NOTE(dev): Skip check_dygraph becuase Python API doesn't expose
     # in_wrong_num/in_correct_num/in_mean_iou_num argument
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_eager=False)
-
-
-class TestMeanIOUOpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            # The input type of accuracy_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, fluid.layers.mean_iou, x1, y1)
-            # The input dtype of accuracy_op must be float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="float32")
-            y2 = fluid.layers.data(name='x2', shape=[4], dtype="float32")
-            self.assertRaises(TypeError, fluid.layers.mean_iou, x2, y2)
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

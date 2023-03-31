@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 
 class TestVarConv2DOp(OpTest):
@@ -291,43 +292,6 @@ class TestVarConv2DOpCase7(TestVarConv2DOp):
         col = [6, 7]
         self.init_data(
             input_channel, output_channel, filter_size, stride, row, col
-        )
-
-
-class TestVarConv2DApi(unittest.TestCase):
-    def test_api(self):
-        import paddle.fluid as fluid
-
-        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
-        row = fluid.layers.data(name='row', shape=[6], lod_level=1)
-        col = fluid.layers.data(name='col', shape=[6], lod_level=1)
-        out = fluid.contrib.var_conv_2d(
-            input=x,
-            row=row,
-            col=col,
-            input_channel=3,
-            output_channel=5,
-            filter_size=[3, 3],
-            stride=1,
-        )
-
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
-            np.random.rand(116, 1).astype('float32'), [[60, 56]], place
-        )
-        row_tensor = fluid.create_lod_tensor(
-            np.random.rand(9, 6).astype('float32'), [[5, 4]], place
-        )
-        col_tensor = fluid.create_lod_tensor(
-            np.random.rand(13, 6).astype('float32'), [[6, 7]], place
-        )
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={'x': x_tensor, 'row': row_tensor, 'col': col_tensor},
-            fetch_list=[out],
-            return_numpy=False,
         )
 
 

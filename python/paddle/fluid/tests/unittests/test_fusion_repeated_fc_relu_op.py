@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from test_fc_op import fc_refer, MatrixGenerate
+from eager_op_test import OpTest
+from test_fc_op import MatrixGenerate, fc_refer
 
 
 class TestFusionRepeatedFCReluOp(OpTest):
@@ -38,11 +39,11 @@ class TestFusionRepeatedFCReluOp(OpTest):
         inp = np.reshape(matrix.input, [self.bs, ics[i]])
         weights.append(
             (
-                'W_{0}'.format(i),
+                f'W_{i}',
                 np.reshape(matrix.weights, [ics[i], self.oc[i]]),
             )
         )
-        biases.append(('B_{0}'.format(i), matrix.bias))
+        biases.append((f'B_{i}', matrix.bias))
         outs.append(
             np.reshape(
                 np.maximum(fc_refer(matrix, True), 0), [self.bs, self.oc[i]]
@@ -55,18 +56,18 @@ class TestFusionRepeatedFCReluOp(OpTest):
             out = fc_refer(matrix, True)
             weights.append(
                 (
-                    'W_{0}'.format(i + 1),
+                    f'W_{i + 1}',
                     np.reshape(matrix.weights, [ics[i + 1], self.oc[i + 1]]),
                 )
             )
-            biases.append(('B_{0}'.format(i + 1), matrix.bias))
+            biases.append((f'B_{i + 1}', matrix.bias))
             outs.append(
                 np.reshape(np.maximum(out, 0), [self.bs, self.oc[i + 1]])
             )
 
         relu_outs = []
         for i in range(sz - 1):
-            relu_outs.append(('ReluOut_{0}'.format(i), outs[i]))
+            relu_outs.append((f'ReluOut_{i}', outs[i]))
 
         self.inputs = {
             'X': inp,

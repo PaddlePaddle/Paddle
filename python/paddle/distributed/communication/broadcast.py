@@ -13,8 +13,14 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
-import paddle.distributed.communication.stream as stream
+import paddle.distributed as dist
+from paddle import framework
+from paddle.distributed.communication import stream
+
+from .serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 
 
 def broadcast(tensor, src, group=None, sync_op=True):
@@ -55,31 +61,77 @@ def broadcast(tensor, src, group=None, sync_op=True):
             print(data)
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.broadcast(
-            tensor,
-            src,
-            group=group,
-            sync_op=sync_op,
-            use_calc_stream=False,
-        )
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-    use_calc_stream = sync_op
-    ring_id = 0 if group is None else group.id
-
-    gsrc = src if group is None else group.get_group_rank(src)
-    assert gsrc >= 0, "src rank out of group, need global rank"
-
-    return paddle._legacy_C_ops.c_broadcast(
+    return stream.broadcast(
         tensor,
-        tensor,
-        'root',
-        gsrc,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
-        ring_id,
+        src,
+        group=group,
+        sync_op=sync_op,
+        use_calc_stream=False,
     )
+
+
+def broadcast_object_list(object_list, src, group=None):
+    """
+
+    Broadcast picklable objects from the source to all others. Similiar to broadcast(), but python object can be passed in.
+
+    Args:
+        object_list (list): The list of objects to send if current rank is the source, or the list of objects to receive otherwise.
+        src (int): The source rank in global view.
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
+                object_list = [{"foo": [1, 2, 3]}]
+            else:
+                object_list = [{"bar": [4, 5, 6]}]
+            dist.broadcast_object_list(object_list, src=1)
+            print(object_list)
+            # [{"bar": [4, 5, 6]}] (2 GPUs)
+    """
+    assert (
+        framework.in_dygraph_mode()
+    ), "broadcast_object_list doesn't support static graph mode."
+
+    rank = dist.get_rank()
+    obj_tensors = []
+    obj_nums = len(object_list)
+
+    if rank == src:
+        obj_sizes = []
+        for obj in object_list:
+            obj_tensor, obj_size = convert_object_to_tensor(obj)
+            obj_tensors.append(obj_tensor)
+            obj_sizes.append(obj_size)
+        obj_size_tensor = paddle.stack(obj_sizes)
+    else:
+        obj_size_tensor = paddle.empty([obj_nums], dtype="int64")
+    broadcast(obj_size_tensor, src, group)
+
+    if rank == src:
+        # cast to uint8 to keep the same dtype
+        obj_data_tensor = paddle.concat(obj_tensors).cast("uint8")
+    else:
+        data_len = paddle.sum(obj_size_tensor).item()
+        obj_data_tensor = paddle.empty([data_len], dtype="uint8")
+    broadcast(obj_data_tensor, src, group)
+
+    offset = 0
+    for i in range(obj_nums):
+        data_len = obj_size_tensor[i]
+        object_list[i] = convert_tensor_to_object(
+            obj_data_tensor[offset : offset + data_len], data_len
+        )
+        offset += data_len

@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 from paddle.static import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplyApi(unittest.TestCase):
@@ -55,7 +54,7 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.multiply(x, y)
         return res.numpy()
 
-    def func_test_multiply(self):
+    def test_multiply(self):
         np.random.seed(7)
 
         # test static computation graph: 1-d array
@@ -106,14 +105,9 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
-    def test_multiply(self):
-        with _test_eager_guard():
-            self.func_test_multiply()
-        self.func_test_multiply()
-
 
 class TestMultiplyError(unittest.TestCase):
-    def func_test_errors(self):
+    def test_errors(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -186,10 +180,57 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float32)
         self.assertRaises(ValueError, paddle.multiply, x_data, y_data)
 
+
+class TestMultiplyInplaceApi(TestMultiplyApi):
+    def _run_static_graph_case(self, x_data, y_data):
+        with program_guard(Program(), Program()):
+            paddle.enable_static()
+            x = paddle.static.data(
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
+            y = paddle.static.data(
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
+            res = x.multiply_(y)
+
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+            exe = paddle.static.Executor(place)
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_data, 'y': y_data},
+                fetch_list=[res],
+            )
+            res = outs[0]
+            return res
+
+    def _run_dynamic_graph_case(self, x_data, y_data):
+        paddle.disable_static()
+        with paddle.no_grad():
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            x.multiply_(y)
+        return x.numpy()
+
+
+class TestMultiplyInplaceError(unittest.TestCase):
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
-        self.func_test_errors()
+        paddle.disable_static()
+        # test dynamic computation graph: inputs must be broadcastable
+        x_data = np.random.rand(3, 4)
+        y_data = np.random.rand(2, 3, 4)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        def multiply_shape_error():
+            with paddle.no_grad():
+                x.multiply_(y)
+
+        self.assertRaises(ValueError, multiply_shape_error)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

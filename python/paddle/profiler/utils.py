@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-from warnings import warn
 import functools
 from contextlib import ContextDecorator
+from typing import Any
+from warnings import warn
 
 from paddle.fluid import core
-from paddle.fluid.core import _RecordEvent, TracerEventType
+from paddle.fluid.core import TracerEventType, _RecordEvent
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
@@ -63,7 +63,7 @@ class RecordEvent(ContextDecorator):
             result = data1 + data2
             record_event.end()
 
-    **Note**:
+    Note:
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
@@ -184,7 +184,7 @@ def wrap_optimizers():
     global _has_optimizer_wrapped
     if _has_optimizer_wrapped:
         return
-    import paddle.optimizer as optimizer
+    from paddle import optimizer
 
     for classname in optimizer.__all__:
         if classname != 'Optimizer':

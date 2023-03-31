@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
-    _warn_cur_rank_not_in_group,
     _get_or_throw_group_rank,
+    _warn_cur_rank_not_in_group,
 )
-from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
+from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+from paddle.fluid import data_feeder
 
 
 def _reduce_in_dygraph(
@@ -63,7 +62,7 @@ def _reduce_in_static_mode(
     op_type = _get_reduce_op(op, "reduce")
     ring_id = 0 if group is None else group.id
 
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
@@ -139,7 +138,9 @@ def reduce(
             tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _reduce_in_static_mode(
             tensor, dst, op, group, sync_op, use_calc_stream
         )

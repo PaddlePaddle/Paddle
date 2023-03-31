@@ -12,20 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import numbers
-import collections
-from PIL import Image, ImageOps, ImageEnhance
+from collections.abc import Iterable, Sequence
 
 import numpy as np
-import paddle
+from PIL import Image, ImageEnhance, ImageOps
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
+import paddle
 
 try:
     # PIL version >= "9.1.0"
@@ -66,9 +59,7 @@ def to_tensor(pic, data_format='CHW'):
     """
 
     if data_format not in ['CHW', 'HWC']:
-        raise ValueError(
-            'data_format should be CHW or HWC. Got {}'.format(data_format)
-        )
+        raise ValueError(f'data_format should be CHW or HWC. Got {data_format}')
 
     # PIL Image
     if pic.mode == 'I':
@@ -126,7 +117,7 @@ def resize(img, size, interpolation='bilinear'):
     if not (
         isinstance(size, int) or (isinstance(size, Iterable) and len(size) == 2)
     ):
-        raise TypeError('Got inappropriate size arg: {}'.format(size))
+        raise TypeError(f'Got inappropriate size arg: {size}')
 
     if isinstance(size, int):
         w, h = img.size
@@ -189,7 +180,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a "
-            + "{} element tuple".format(len(padding))
+            + f"{len(padding)} element tuple"
         )
 
     assert padding_mode in [
@@ -402,9 +393,7 @@ def adjust_hue(img, hue_factor):
 
     """
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError(
-            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
-        )
+        raise ValueError(f'hue_factor:{hue_factor} is not in [-0.5, 0.5].')
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:

@@ -20,8 +20,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class MeanMLUKernel : public framework::OpKernel<T> {
  public:
@@ -79,12 +77,13 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto output_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(output_grad->numel(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "Mean Gradient Input Tensor len should be 1. But "
-                          "received Out@Grad's elements num is %d.",
-                          output_grad->numel()));
+    PADDLE_ENFORCE_EQ(
+        output_grad->numel(),
+        1,
+        platform::errors::InvalidArgument(
+            "Mean Gradient Input phi::DenseTensor len should be 1. But "
+            "received Out@Grad's elements num is %d.",
+            output_grad->numel()));
     auto input_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>(context.GetPlace());
@@ -102,7 +101,7 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     }
 
     // means
-    Tensor mean_var(output_grad->dtype());
+    phi::DenseTensor mean_var(output_grad->dtype());
     mean_var.mutable_data<T>(input_grad->dims(), context.GetPlace());
     MLUCnnlTensorDesc mean_var_desc(
         mean_var, CNNL_LAYOUT_ARRAY, ToCnnlDataType(mean_var.dtype()));

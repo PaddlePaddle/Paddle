@@ -23,16 +23,15 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -62,7 +61,18 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = paddle::operators::RoIArea(offset_roi, pixel_offset);
+    T roi_area;
+    if (offset_roi[2] < offset_roi[0] || offset_roi[3] < offset_roi[1]) {
+      roi_area = static_cast<T>(0.);
+    } else {
+      const T w = offset_roi[2] - offset_roi[0];
+      const T h = offset_roi[3] - offset_roi[1];
+      if (pixel_offset) {
+        roi_area = (w + 1) * (h + 1);
+      } else {
+        roi_area = w * h;
+      }
+    }
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
         log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
@@ -155,7 +165,7 @@ void DistributeFpnProposalsKernel(
   index_in_t.Resize({roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
   funcs::ForRange<phi::GPUContext> for_range(dev_ctx, roi_num);
-  for_range(paddle::operators::RangeInitFunctor{0, 1, idx_in});
+  for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   DenseTensor keys_out_t;
   keys_out_t.Resize({roi_num});
@@ -177,7 +187,7 @@ void DistributeFpnProposalsKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
   // Allocate temporary storage
-  auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort target level to get corresponding index
@@ -209,12 +219,12 @@ void DistributeFpnProposalsKernel(
   int start = 0;
 
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       sub_lod_list_cpu.data(),
-                       place,
-                       sub_lod_list_data,
-                       sizeof(int) * lod_size * num_level,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     sub_lod_list_cpu.data(),
+                     place,
+                     sub_lod_list_data,
+                     sizeof(int) * lod_size * num_level,
+                     dev_ctx.stream());
   dev_ctx.Wait();
 
   for (int i = 0; i < num_level; ++i) {
@@ -256,4 +266,7 @@ PD_REGISTER_KERNEL(distribute_fpn_proposals,
                    ALL_LAYOUT,
                    phi::DistributeFpnProposalsKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

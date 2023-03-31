@@ -13,31 +13,40 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from quant_dequant_test import QuantDequantTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import PassVersionChecker
+import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            fc_out = fluid.layers.fc(
-                input=self.data,
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
+            fc_out = paddle.static.nn.fc(
+                x=self.data,
                 size=10,
                 num_flatten_dims=1,
                 bias_attr=False,
-                act="relu",
+                activation="relu",
             )
-            result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            result = F.relu(fc_out)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -91,20 +100,27 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
 class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            fc_out = fluid.layers.fc(
-                input=self.data,
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
+            fc_out = paddle.static.nn.fc(
+                x=self.data,
                 size=28,
                 num_flatten_dims=2,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
-            c_out = fluid.layers.reshape(fc_out, shape=[0, 784])
-            result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            c_out = paddle.reshape(fc_out, shape=[0, 784])
+            result = F.relu(c_out)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -158,22 +174,29 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
 class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
-            reshape_out = fluid.layers.reshape(self.data, shape=[1, 14, 14, 4])
-            fc_out = fluid.layers.fc(
-                input=reshape_out,
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
+            label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
+            reshape_out = paddle.reshape(self.data, shape=[1, 14, 14, 4])
+            fc_out = paddle.static.nn.fc(
+                x=reshape_out,
                 size=14,
                 num_flatten_dims=3,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
-            c_out = fluid.layers.reshape(fc_out, shape=[1, 1, 2744])
-            result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            c_out = paddle.reshape(fc_out, shape=[1, 1, 2744])
+            result = F.relu(c_out)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 

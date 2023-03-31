@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
-from paddle import fluid, nn
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import paddle.fluid.initializer as I
-import unittest
+from paddle import fluid, nn
 
 
 class Conv2DTransposeTestCase(unittest.TestCase):
@@ -97,14 +99,16 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
                 else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
 
-                y_var = fluid.layers.conv2d_transpose(
+                y_var = paddle.static.nn.conv2d_transpose(
                     x_var,
                     self.num_filters,
                     filter_size=self.filter_size,
@@ -133,11 +137,13 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
 

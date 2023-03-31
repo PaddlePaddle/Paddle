@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
-import paddle.nn.functional as functional
+from paddle import fluid, nn
+from paddle.fluid import core
+from paddle.nn import functional
 
 
 class TestNNSigmoidAPI(unittest.TestCase):

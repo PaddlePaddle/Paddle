@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core, Variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import static_only
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -25,7 +24,6 @@ __all__ = []
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
-    **Data Layer**
 
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
@@ -37,15 +35,14 @@ def data(name, shape, dtype=None, lod_level=0):
        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
-           set "None" or -1 at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as "None" or -1.
+           set None or -1 at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as None or -1.
        dtype (np.dtype|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: None. When `dtype` is not set, the dtype will get
            from the global dtype by `paddle.get_default_dtype()`.
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. For more details about when and how to
-           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
+           don't have to set this value. Default: 0.
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -151,7 +148,7 @@ class InputSpec:
             print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
     """
 
-    def __init__(self, shape, dtype='float32', name=None):
+    def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
         # convert dtype into united represention
@@ -160,13 +157,18 @@ class InputSpec:
                 dtype = convert_np_dtype_to_dtype_(dtype)
         self.dtype = dtype
         self.name = name
+        self.stop_gradient = stop_gradient
 
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)
 
     def __repr__(self):
-        return '{}(shape={}, dtype={}, name={})'.format(
-            type(self).__name__, self.shape, self.dtype, self.name
+        return '{}(shape={}, dtype={}, name={}, stop_gradient={})'.format(
+            type(self).__name__,
+            self.shape,
+            self.dtype,
+            self.name,
+            self.stop_gradient,
         )
 
     @classmethod
@@ -193,7 +195,7 @@ class InputSpec:
                 print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
-        if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
+        if isinstance(tensor, (Variable, core.eager.Tensor)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(
@@ -301,12 +303,6 @@ class InputSpec:
                     type(shape).__name__
                 )
             )
-        if len(shape) == 0:
-            raise ValueError(
-                "`shape` in InputSpec should contain at least 1 element, but received {}.".format(
-                    shape
-                )
-            )
 
         for i, ele in enumerate(shape):
             if ele is not None:
@@ -336,10 +332,10 @@ class InputSpec:
         #      foo(x_var)
         #      foo(x_np)  # x_np is a numpy.ndarray.
         #  x_var and x_np hold same shape and dtype, they should also share a same program.
-        return hash((tuple(self.shape), self.dtype))
+        return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
     def __eq__(self, other):
-        slots = ['shape', 'dtype', 'name']
+        slots = ['shape', 'dtype', 'name', 'stop_gradient']
         return type(self) is type(other) and all(
             getattr(self, attr) == getattr(other, attr) for attr in slots
         )

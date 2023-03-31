@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-import paddle.fluid as fluid
-from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle import fluid
 
 paddle.enable_static()
 

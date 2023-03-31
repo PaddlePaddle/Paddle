@@ -22,9 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename T>
 bool GT_E(T a, T b) {
   return (a > b) || fabs(a - b) < 1e-4;
@@ -259,7 +256,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    const auto& in_dims = in->dims();
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];
@@ -406,7 +403,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int>(in->dims());
     int batch_size = in_dims[0];
     int channels = in_dims[1];
     int in_height = in_dims[2];
@@ -504,7 +501,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
@@ -512,7 +509,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims[1],
         8,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -562,11 +559,10 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -588,11 +584,10 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -601,16 +596,16 @@ class ROIPerspectiveTransformOpMaker
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "the input of ROIPerspectiveTransformOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"
@@ -618,28 +613,28 @@ class ROIPerspectiveTransformOpMaker
              "(x4, y4) is the bottom left coordinates.");
     AddOutput(
         "Out",
-        "(Tensor), "
+        "(phi::DenseTensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
     AddOutput("Mask",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
               "with shape "
               "(num_rois, 1, transformed_h, transformed_w).");
     AddOutput("TransformMatrix",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output transform matrix of ROIPerspectiveTransformOp is a "
               "1-D tensor with shape "
               "(num_rois, 9).");
     AddOutput("Out2InIdx",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to map indexes of input feature map "
               "and indexes of output feature map."
               "The shape of the tensor is [out_size, 4] and out_size is the "
               "number of elements in output feature map.")
         .AsIntermediate();
     AddOutput("Out2InWeights",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to record the weights of bilinear "
               "interpolatein for each element in output. The shape of the "
               "tensor is [out_size, 4] and out_size is the number of elements "

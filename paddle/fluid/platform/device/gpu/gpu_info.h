@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -140,8 +141,8 @@ gpuError_t GpuGetLastError();
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags,
-                              int dev_id);  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id);
 
 //! cuMemRelease with recorded info
 CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,

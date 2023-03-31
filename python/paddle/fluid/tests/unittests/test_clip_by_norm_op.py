@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-from op_test import OpTest
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn import clip
 
 
 class TestClipByNormOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
-        self.python_api = fluid.layers.clip_by_norm
+        self.python_api = clip.clip_by_norm
         self.init_dtype()
         self.initTestCase()
         input = np.random.random(self.shape).astype(self.dtype)
@@ -43,7 +45,7 @@ class TestClipByNormOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def initTestCase(self):
         self.shape = (100,)
@@ -79,9 +81,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place, atol=0.001, check_eager=True
-                )
+                self.check_output_with_place(place, atol=0.001)
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):

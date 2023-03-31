@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
+
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import in_dygraph_mode
 

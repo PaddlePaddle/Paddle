@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.distributed import fleet
-from paddle.fluid.dygraph.container import Sequential
-import paddle.nn as nn
-from paddle.fluid.dygraph.layers import Layer
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+
 import paddle.nn.functional as F
+from paddle import nn
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.nn import Layer, Sequential
 
 
 class ReshapeHelp(Layer):

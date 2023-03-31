@@ -12,19 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, is_parameter_related
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from .dist_default import DistributedDefaultImpl0
-from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
-from ..cost import Reshape2OpCost
-from ..cost import Reshape2GradOpCost
-from ..cost import build_dp_costs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    Reshape2GradOpCost,
+    Reshape2OpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import (
+    compute_compatible_and_update_dim_mapping,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):
@@ -53,13 +62,12 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -73,7 +81,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -92,7 +100,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -103,7 +111,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
@@ -112,7 +119,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -211,6 +218,13 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -226,7 +240,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -235,7 +249,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -246,9 +260,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -259,7 +273,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
         # got dist attribute info
         dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -270,7 +284,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -279,6 +294,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -303,13 +319,12 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -323,7 +338,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -342,7 +357,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -353,7 +368,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -362,7 +376,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -464,6 +478,13 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -479,7 +500,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -488,7 +509,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -499,9 +520,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -512,7 +533,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         # got dist attribute info
         dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -523,7 +544,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -532,6 +554,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -556,13 +579,12 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -576,7 +598,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -595,7 +617,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -606,7 +628,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -615,7 +636,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -711,6 +732,13 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         for i in range(len(out_dims_mapping)):
             x_shape_dims_mapping[i + 1] = out_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -725,7 +753,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -734,7 +762,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -745,9 +773,9 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -758,7 +786,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
 
         # got dist attribute info
         out_dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(out_dim_mapping):
@@ -769,7 +797,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -778,6 +807,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

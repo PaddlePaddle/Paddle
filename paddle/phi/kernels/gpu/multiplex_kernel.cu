@@ -14,9 +14,10 @@
 
 #include "paddle/phi/kernels/multiplex_kernel.h"
 
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -38,10 +39,10 @@ void MultiplexKernel(const Context& ctx,
   auto rows = ins[0]->dims()[0];
   auto cols = ins[0]->numel() / rows;
   DenseTensor index_t_cpu;
-  paddle::framework::TensorCopySync(ids, phi::CPUPlace(), &index_t_cpu);
+  phi::Copy(ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
   auto stream = ctx.stream();
-  for (auto i = 0; i < rows; i++) {
+  for (auto i = 0; i < ids.dims()[0]; i++) {
     int32_t k = index[i];
     PADDLE_ENFORCE_GE(
         k, 0, errors::PreconditionNotMet("index must be nonnegative."));
@@ -49,12 +50,12 @@ void MultiplexKernel(const Context& ctx,
                       ins.size(),
                       errors::PreconditionNotMet(
                           "index exceeds the number of candidate tensors."));
-    paddle::memory::Copy(ctx.GetPlace(),
-                         out->data<T>() + i * cols,
-                         ctx.GetPlace(),
-                         ins[k]->data<T>() + i * cols,
-                         cols * sizeof(T),
-                         stream);
+    memory_utils::Copy(ctx.GetPlace(),
+                       out->data<T>() + i * cols,
+                       ctx.GetPlace(),
+                       ins[k]->data<T>() + i * cols,
+                       cols * sizeof(T),
+                       stream);
   }
 }
 

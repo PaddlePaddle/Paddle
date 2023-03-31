@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
+
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
+from paddle.distributed import fleet
 
 
 def set_random_seed(seed, dp_id, rank_id):

@@ -430,8 +430,8 @@ void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
 
   phi::DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
-  float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
-  float* in_data = input->mutable_data<float>(platform::CPUPlace());
+  float* trans_data = trans_tensor.mutable_data<float>(phi::CPUPlace());
+  float* in_data = input->mutable_data<float>(phi::CPUPlace());
 
   for (int64_t out_idx = 0; out_idx < count; ++out_idx) {
     int64_t in_idx = 0;
@@ -493,8 +493,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
 
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
-    auto* new_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -536,8 +535,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
-    auto* new_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -582,8 +580,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
           weight_var_name,
           op_desc->Type()));
   auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  float* fp32_weight_data =
-      weight_tensor->mutable_data<float>(platform::CPUPlace());
+  float* fp32_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
   ConvertFromINT8ToFP32(
       scales, weight_tensor, nullptr, fp32_weight_data, weight_var_name);
 }
@@ -628,7 +625,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
           op_desc->Type()));
   auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   int8_t* int8_weight_data =
-      weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
+      weight_tensor->mutable_data<int8_t>(phi::CPUPlace());
 
   ConvertFromINT8ToFP32(
       scales, weight_tensor, int8_weight_data, nullptr, weight_var_name);
@@ -651,7 +648,8 @@ void QuantDequantMkldnnPass::DequantizeWeights(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
-    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
+    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d" ||
+        op_node->Name() == "fused_conv2d") {
       if (onnx_format_quantize_model) {
         DequantizeOpWeightsFromONNXFormat(op_node,
                                           scope,
@@ -711,8 +709,12 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "quant_dequant_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);
 
-  const std::unordered_set<std::string> skip_ops = {
-      "conv2d", "depthwise_conv2d", "mul", "matmul", "matmul_v2"};
+  const std::unordered_set<std::string> skip_ops = {"conv2d",
+                                                    "depthwise_conv2d",
+                                                    "fused_conv2d",
+                                                    "mul",
+                                                    "matmul",
+                                                    "matmul_v2"};
 
   const std::unordered_set<std::string> fake_quantize_types = {
       "fake_quantize_moving_average_abs_max", "fake_quantize_range_abs_max"};
@@ -752,9 +754,9 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
 
-  // save var_quant_scales in the first op's attr
+  // save var_quant_scales in the temporary save op's attr
   // for compute_propagate_scales_mkldnn_pass
-  SaveInfoInTheFirstOp(
+  SaveInfoInTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 

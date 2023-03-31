@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import math
-import numpy as np
 import unittest
 
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def reduce_lr_on_plateau(
@@ -108,7 +108,7 @@ class TestReduceOnPlateauDecay:
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = fluid.layers.create_global_var(
+            x = paddle.static.create_global_var(
                 [1], 1, 'float32', persistable=True
             )
             paddle.increment(x)
@@ -507,54 +507,28 @@ class TestLRScheduler(unittest.TestCase):
             num += 1
 
         if isinstance(place, paddle.CPUPlace):
-            compiled_train_prog = paddle.static.CompiledProgram(
-                main_prog
-            ).with_data_parallel(
-                loss_name=loss.name, places=fluid.cpu_places(4)
-            )
+            compiled_train_prog = main_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_train_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_train_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
 
-            compiled_test_prog = paddle.static.CompiledProgram(
-                test_prog
-            ).with_data_parallel(
-                loss_name=loss.name,
-                share_vars_from=compiled_train_prog,
-                places=fluid.cpu_places(4),
-            )
+            compiled_test_prog = test_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_test_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_test_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
@@ -726,6 +700,17 @@ class TestLRScheduler(unittest.TestCase):
                 step_size_up=500,
                 step_size_down=-1,
                 scale_mode='test',
+            )
+        # check empty boundaries
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(boundaries=[], values=[])
+        # check non-empty boundaries but empty values
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(boundaries=[100, 200], values=[])
+        # check boundaries and values has same length
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=[100, 200], values=[0.5, 0.1]
             )
 
         func_api_kwargs = [

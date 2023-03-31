@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+from simple_nets import init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
-from simple_nets import simple_fc_net, init_data
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -36,7 +35,7 @@ class TestPrintOpCPU(unittest.TestCase):
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
     def build_network(self, only_forward, **kargs):
-        x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
+        x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
         x.stop_gradient = False
         paddle.static.Print(input=x, **kargs)
         loss = paddle.mean(x)
@@ -60,7 +59,7 @@ class TestPrintOpCPU(unittest.TestCase):
         )
 
     def test_all_parameters(self):
-        x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
+        x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
         x.stop_gradient = False
 
         for print_tensor_name in [True, False]:
@@ -132,9 +131,7 @@ class TestPrintOpBackward(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup)
 
-        binary = paddle.static.CompiledProgram(main).with_data_parallel(
-            loss_name=loss.name
-        )
+        binary = paddle.static.CompiledProgram(main)
 
         img, label = init_data()
         feed_dict = {"image": img, "label": label}

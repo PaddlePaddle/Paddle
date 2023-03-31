@@ -91,7 +91,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
             "is %d",
             multi_layer_rois.size(),
             multi_layer_scores.size()));
-    // Check if the lod information of two LoDTensor is same
+    // Check if the lod information of two phi::DenseTensor is same
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
     for (int i = 0; i < num_fpn_level; ++i) {

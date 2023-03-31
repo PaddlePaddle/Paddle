@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flip_kernel.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
@@ -101,6 +99,9 @@ void FlipKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
+    case 0:
+      LaunchFlipCudaKernel<T, Context, 0>(dev_ctx, x, axis, out);
+      break;
     case 1:
       LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;

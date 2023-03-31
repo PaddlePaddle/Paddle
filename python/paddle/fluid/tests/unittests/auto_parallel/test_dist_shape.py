@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.distributed.fleet import auto
 
@@ -34,8 +35,8 @@ def make_program():
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program = program_func()
 
@@ -59,8 +60,8 @@ class TestDistShape(unittest.TestCase):
         ops = dist_main_prog.global_block().ops
         shape_op = ops[0]
         dist_op = dist_context.get_dist_op_for_program(shape_op)
-        dist_op.dist_attr.impl_type == "shape"
-        dist_op.dist_attr.impl_idx == 0
+        assert dist_op.dist_attr.impl_type == "shape"
+        assert dist_op.dist_attr.impl_idx == 0
 
         in_name = shape_op.input_arg_names[0]
         out_name = shape_op.output_arg_names[0]

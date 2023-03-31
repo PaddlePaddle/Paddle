@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 void HuberLossSub(const platform::Place& place,
                   const aclrtStream& stream,
@@ -117,9 +115,9 @@ class HuberLossGradNPUKernel : public framework::OpKernel<T> {
             .stream();
     auto place = ctx.GetPlace();
 
-    Tensor t_grad_rd;
+    phi::DenseTensor t_grad_rd;
     if (dx || dy) {
-      Tensor t_zero;
+      phi::DenseTensor t_zero;
       HuberLossZerosLike<T>(place, stream, residual, &t_zero);
       HuberLossSmoothL1LossGrad<T>(
           place, stream, residual, &t_zero, dout, delta, &t_grad_rd);

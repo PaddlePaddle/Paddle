@@ -19,10 +19,10 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-from .base_gate import BaseGate
-
 import paddle
-import paddle.nn as nn
+from paddle import nn
+
+from .base_gate import BaseGate
 
 
 class NaiveGate(BaseGate):

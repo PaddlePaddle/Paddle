@@ -14,31 +14,35 @@
 
 import os
 import unittest
+
 import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+from paddle import fluid
+from paddle.fluid import core
 
 
 def fc_with_batchnorm(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     hidden = img
     for _ in range(3):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='tanh',
+            activation='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
 
-        hidden = fluid.layers.batch_norm(input=hidden)
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        hidden = paddle.static.nn.batch_norm(input=hidden)
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

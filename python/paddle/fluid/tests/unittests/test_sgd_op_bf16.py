@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import struct
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
-    convert_float_to_uint16,
-    convert_uint16_to_float,
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
 )
-import paddle
-import paddle.static.amp as amp
-import struct
+from paddle.static import amp
 
 
 @unittest.skipIf(
@@ -191,7 +193,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
         self.grad_height = 10
         self.grad_rows = [0, 4, 7]
         self.grad_row_numel = 12
-        self.param_rows = [a for a in range(self.grad_height)]
+        self.param_rows = list(range(self.grad_height))
 
     def test_sparse_param_grad_sgd(self):
         scope = core.Scope()
@@ -226,7 +228,7 @@ class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
         self.grad_height = 14
         self.grad_rows = [1, 4, 12, 7, 8]
         self.grad_row_numel = 16
-        self.param_rows = [a for a in range(self.grad_height)]
+        self.param_rows = list(range(self.grad_height))
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -320,7 +322,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 print(e)
 
     def _set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def _data_reader(self):
         for sample in range(self.sample_count):
@@ -332,9 +334,13 @@ class TestSGDOpBF16API(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='X', shape=self.ids_shape, dtype='int64')
-            label = fluid.layers.data(
-                name='Y', shape=self.y_shape, dtype='uint16'
+            ids_shape = list(self.ids_shape)
+            x = paddle.static.data(
+                name='X', shape=[-1] + ids_shape, dtype='int64'
+            )
+            y_shape = list(self.y_shape)
+            label = paddle.static.data(
+                name='Y', shape=[-1] + y_shape, dtype='uint16'
             )
             emb = fluid.layers.embedding(
                 input=x,
@@ -345,7 +351,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
-            cost = fluid.layers.elementwise_add(emb, label)
+            cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = paddle.optimizer.SGD(

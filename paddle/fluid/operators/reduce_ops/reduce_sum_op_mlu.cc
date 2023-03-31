@@ -52,7 +52,7 @@ class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor tmp_out(out_grad->dtype());
+    phi::DenseTensor tmp_out(out_grad->dtype());
     auto tmp_output_dims = in_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;

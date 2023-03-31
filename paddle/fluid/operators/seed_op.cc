@@ -17,7 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class SeedOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -27,10 +26,9 @@ class SeedOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::INT32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::INT32, ctx.GetPlace());
   }
 };
 

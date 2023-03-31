@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class GetFloatStatusKernel : public framework::OpKernel<T> {
  public:
@@ -35,7 +33,7 @@ class GetFloatStatusKernel : public framework::OpKernel<T> {
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
                           "should be the same."));
-    Tensor tmp;
+    phi::DenseTensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

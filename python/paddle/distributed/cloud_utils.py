@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import os
+
 from paddle.distributed.utils.launch_utils import (
     get_cluster,
-    get_gpus,
     get_cluster_from_args,
+    get_gpus,
+    logger,
 )
-from paddle.distributed.utils.launch_utils import logger
 
 __all__ = []
 
@@ -76,9 +77,7 @@ paddlecloud environment.".format(
                     paddle_ports_num >= len(selected_devices)
                     and paddle_port != args_port
                 ):
-                    logger.warning(
-                        "Use Cloud specified port:{}.".format(paddle_port)
-                    )
+                    logger.warning(f"Use Cloud specified port:{paddle_port}.")
                     started_port = paddle_port
 
             except Exception as e:
@@ -86,9 +85,7 @@ paddlecloud environment.".format(
 
         if started_port is None:
             started_port = 6170
-        ports = [
-            x for x in range(started_port, started_port + len(selected_devices))
-        ]
+        ports = list(range(started_port, started_port + len(selected_devices)))
         trainer_endpoints = []
         for ip in node_ips:
             trainer_endpoints.append(["%s:%d" % (ip, port) for port in ports])
@@ -140,9 +137,9 @@ def get_cluster_and_pod(args):
             args.started_port,
             selected_devices,
         )
-        logger.info("get cluster from cloud:{}".format(cluster))
+        logger.info(f"get cluster from cloud:{cluster}")
     else:
         cluster, pod = get_cluster_from_args(args, selected_devices)
-        logger.info("get cluster from args:{}".format(cluster))
+        logger.info(f"get cluster from args:{cluster}")
 
     return cluster, pod

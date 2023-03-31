@@ -20,6 +20,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
 | emailweixu | Wei Xu |
+| engineer1109 | Jia-Liang Wang |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
@@ -28,7 +29,9 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
+| heliqi | Li-Qi He |
 | houj04 | HOU Jue |
+| HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
@@ -119,3 +122,5 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
 | [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
+| [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
+| [gouzil](https://github.com/gouzil) | Chuan Tian |

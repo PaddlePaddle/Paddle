@@ -18,15 +18,17 @@ import sys
 sys.path.append("..")
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle.fluid import core
 
 
 def get_outputs(DOut, X, Y):
@@ -58,7 +60,7 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
-            self.attrs = {"activation": 'none'}
+            self.attrs = {"activation_grad": 'none'}
 
             DX, DY, DBias = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -79,7 +81,7 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
-            self.attrs = {"activation": 'none'}
+            self.attrs = {"activation_grad": 'none'}
 
             _, DY, DBias = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -94,7 +96,7 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
-            self.attrs = {"activation": 'none'}
+            self.attrs = {"activation_grad": 'none'}
 
             _, DY, _ = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
@@ -109,7 +111,7 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
-            self.attrs = {"activation": 'none'}
+            self.attrs = {"activation_grad": 'none'}
 
             DX, DY, _ = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']

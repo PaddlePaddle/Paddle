@@ -13,9 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
+
+import paddle
+from paddle import fluid
+
+paddle.enable_static()
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
@@ -69,28 +74,20 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
     def setUp(self):
         pass
 
-    def calc_add_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[3, 3], dtype='float32')
-        y = fluid.layers.ones(shape=[3, 3], dtype='float32')
-        out = fluid.layers.elementwise_add(x=x, y=y)
+    def calc_add_out(self, place=None):
+        x = paddle.ones(shape=[3, 3], dtype='float32')
+        y = paddle.ones(shape=[3, 3], dtype='float32')
+        out = paddle.add(x=x, y=y)
         program = fluid.default_main_program()
-        if parallel:
-            program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place
-            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
 
-    def calc_sub_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[2, 2], dtype='float32')
-        y = fluid.layers.ones(shape=[2, 2], dtype='float32')
-        out = fluid.layers.elementwise_sub(x=x, y=y)
+    def calc_sub_out(self, place=None):
+        x = paddle.ones(shape=[2, 2], dtype='float32')
+        y = paddle.ones(shape=[2, 2], dtype='float32')
+        out = paddle.subtract(x=x, y=y)
         program = fluid.default_main_program()
-        if parallel:
-            program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place
-            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
@@ -101,13 +98,13 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
 
         for place in places:
-            for parallel in [True, False]:
-                add_out = self.calc_add_out(place, parallel)
-                add_out1 = np.array(add_out[0])
-                sub_out = self.calc_sub_out(place, parallel)
-                add_out2 = np.array(add_out[0])
-                np.testing.assert_array_equal(add_out1, add_out2)
+            add_out = self.calc_add_out(place)
+            add_out1 = np.array(add_out[0])
+            sub_out = self.calc_sub_out(place)
+            add_out2 = np.array(add_out[0])
+            np.testing.assert_array_equal(add_out1, add_out2)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

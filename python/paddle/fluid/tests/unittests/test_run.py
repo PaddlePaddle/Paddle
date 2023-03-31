@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import subprocess
-import sys, os
-import tempfile
-
+import os
 import random
-
+import subprocess
+import sys
+import tempfile
+import unittest
 from os import listdir
 from os.path import isfile, join
 
@@ -78,7 +77,7 @@ class Collective_Test(unittest.TestCase):
 
     def test_collective_1(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = "--job_id test1 --log_dir {}".format(log_dir.name)
+        args = f"--job_id test1 --log_dir {log_dir.name}"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -135,7 +134,7 @@ class PS_Test(unittest.TestCase):
 
     def test_ps_1(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = "--run_mode ps --log_dir {}".format(log_dir.name)
+        args = f"--run_mode ps --log_dir {log_dir.name}"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)

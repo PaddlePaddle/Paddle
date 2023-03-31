@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import multiprocessing
+import unittest
+
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dataloader.dataloader_iter import _worker_loop
+from paddle.io import BatchSampler, DataLoader, Dataset, IterableDataset
 
 
 class RandomDataset(Dataset):

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
 
-#include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 
@@ -64,7 +64,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
   DenseTensor out_2d(*out);
   out_2d.Resize({n, d / axis_dim});
 
-  paddle::operators::math::CrossEntropyFunctor<CPUContext, T>()(
+  phi::funcs::CrossEntropyFunctor<CPUContext, T>()(
       dev_ctx, &out_2d, &x_2d, &label_2d, soft_label, ignore_index, axis_dim);
 }
 

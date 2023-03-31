@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 
 namespace paddle {
 namespace inference {
@@ -48,7 +48,7 @@ class CustomPluginCreater : public OpConverter {
     auto &op_info = meta_info_map.at(op_desc.Type()).front();
 
     // set inputs
-    auto &op_input_names = framework::OpMetaInfoHelper::GetInputs(op_info);
+    auto &op_input_names = OpMetaInfoHelper::GetInputs(op_info);
     for (auto &param_name : op_input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
         inputs.push_back(engine_->GetITensor(arg_name));
@@ -60,7 +60,7 @@ class CustomPluginCreater : public OpConverter {
 
     // set attrs
     std::vector<nvinfer1::PluginField> plugindatas;
-    auto &op_attrs_names = framework::OpMetaInfoHelper::GetAttrs(op_info);
+    auto &op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
     auto &attrs = op_desc.GetAttrMap();
 
     std::list<int> int_attrs;
@@ -147,7 +147,7 @@ class CustomPluginCreater : public OpConverter {
     CHECK(layer);
 
     // set outputs
-    auto &op_output_names = framework::OpMetaInfoHelper::GetOutputs(op_info);
+    auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
     std::vector<std::string> output_names;
     for (auto &param_name : op_output_names) {
       for (auto &arg_name : op_desc.Output(param_name))
@@ -181,6 +181,8 @@ class GenericPluginCreater : public OpConverter {
       phi_kernel_signature =
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
+
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
     plugin::GenericPlugin::InputOutPutVarInfo in_out_info;
 
@@ -218,7 +220,8 @@ class GenericPluginCreater : public OpConverter {
         in_out_info.outputs_data_type.push_back(var->GetDataType());
       }
     }
-    plugin::GenericPlugin *plugin = new plugin::GenericPlugin(op, in_out_info);
+    plugin::GenericPlugin *plugin =
+        new plugin::GenericPlugin(op, in_out_info, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);

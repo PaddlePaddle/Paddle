@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
+
+import paddle
 
 paddle.enable_static()
 
@@ -27,32 +28,33 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def test_pipeline_optimizer(self):
-        import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
+        from paddle.distributed import fleet
+        from paddle.distributed.fleet.base import role_maker
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         with paddle.fluid.device_guard("gpu:0"):
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            fc_3 = paddle.fluid.layers.fc(input=fc_2, size=64, act='tanh')
-            fc_4 = paddle.fluid.layers.fc(input=fc_3, size=64, act='tanh')
-            fc_5 = paddle.fluid.layers.fc(input=fc_4, size=64, act='tanh')
-            fc_6 = paddle.fluid.layers.fc(input=fc_5, size=64, act='tanh')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
+            fc_4 = paddle.static.nn.fc(x=fc_3, size=64, activation='tanh')
+            fc_5 = paddle.static.nn.fc(x=fc_4, size=64, activation='tanh')
+            fc_6 = paddle.static.nn.fc(x=fc_5, size=64, activation='tanh')
 
         with paddle.fluid.device_guard("gpu:1"):
-            fc_7 = paddle.fluid.layers.fc(input=fc_6, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_7], size=2, act='softmax'
+            fc_7 = paddle.static.nn.fc(x=fc_6, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_7], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 

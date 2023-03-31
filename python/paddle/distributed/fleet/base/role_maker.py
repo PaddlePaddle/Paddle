@@ -11,18 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of Role Makers."""
+"""Definition of Role Makers."""
 import os
 import time
-import numpy as np
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Manager, Process
+
+import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
+from paddle.fluid import core
 
 __all__ = []
 
@@ -128,7 +129,7 @@ class Gloo:
 
     def _init_fs(self, fs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -156,7 +157,7 @@ class Gloo:
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -184,7 +185,7 @@ class Gloo:
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
         def __start_kv_server(http_server_d, size_d):
-            print("start http_server: {}, {}".format(port, size_d))
+            print(f"start http_server: {port}, {size_d}")
             from paddle.distributed.fleet.utils.http_server import KVServer
 
             http_server = KVServer(port, size_d)
@@ -202,7 +203,7 @@ class Gloo:
             size_d = {
                 worker_key: self._worker_num,
             }
-            print("worker_key:{}, size: {}".format(worker_key, size_d))
+            print(f"worker_key:{worker_key}, size: {size_d}")
 
             http_server_d["running"] = True
             # child process for http server
@@ -216,7 +217,7 @@ class Gloo:
             return _http_server
 
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -1059,9 +1060,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -1077,9 +1076,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
         self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
         self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
         self._world_device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
@@ -1175,7 +1172,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.fluid.framework._non_static_mode():
+            if not paddle.framework.in_dynamic_mode():
                 self._gloo_init()
 
 
@@ -1205,18 +1202,14 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._worker_endpoints[self._current_id]
         elif self._role == Role.SERVER:
             self._cur_endpoint = self._server_endpoints[self._current_id]
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.WORKER
-        self._nodes_num = len(
-            set([x.split(':')[0] for x in self._worker_endpoints])
-        )
+        self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
 
     def _generate_role(self):
         """

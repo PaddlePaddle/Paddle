@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid
 
 paddle.enable_static()
 

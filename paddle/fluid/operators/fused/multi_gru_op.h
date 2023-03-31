@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using framework::ExecutionContext;
-using LoDTensor = phi::DenseTensor;
 
 class MultiGRUOp : public framework::OperatorWithKernel {
  public:
@@ -29,7 +28,7 @@ class MultiGRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override;
 };
 

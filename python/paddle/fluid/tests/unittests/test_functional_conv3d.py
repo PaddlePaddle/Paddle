@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn.functional as F
-from paddle import fluid
-import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-import numpy as np
 import unittest
 from unittest import TestCase
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestFunctionalConv3D(TestCase):
@@ -76,18 +77,18 @@ class TestFunctionalConv3D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = fluid.data(
+                    x = paddle.static.data(
                         "input",
                         (-1, -1, -1, -1, self.in_channels),
                         dtype=self.dtype,
                     )
                 else:
-                    x = fluid.data(
+                    x = paddle.static.data(
                         "input",
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                y = fluid.layers.conv3d(
+                y = paddle.static.nn.conv3d(
                     x,
                     self.out_channels,
                     self.filter_shape,
@@ -95,10 +96,10 @@ class TestFunctionalConv3D(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.weight),
+                    param_attr=paddle.nn.initializer.Assign(self.weight),
                     bias_attr=False
                     if self.no_bias
-                    else I.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=self.act,
                     data_format=self.data_format,
                 )
@@ -113,22 +114,24 @@ class TestFunctionalConv3D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = x = fluid.data(
+                    x = x = paddle.static.data(
                         "input",
                         (-1, -1, -1, -1, self.in_channels),
                         dtype=self.dtype,
                     )
                 else:
-                    x = fluid.data(
+                    x = paddle.static.data(
                         "input",
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                weight = fluid.data(
+                weight = paddle.static.data(
                     "weight", self.weight.shape, dtype=self.dtype
                 )
                 if not self.no_bias:
-                    bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
+                    bias = paddle.static.data(
+                        "bias", self.bias.shape, dtype=self.dtype
+                    )
                 y = F.conv3d(
                     x,
                     weight,
@@ -233,22 +236,24 @@ class TestFunctionalConv3DError(TestCase):
             with fluid.program_guard(main, start):
                 self.channel_last = self.data_format == "NDHWC"
                 if self.channel_last:
-                    x = x = fluid.data(
+                    x = x = paddle.static.data(
                         "input",
                         (-1, -1, -1, -1, self.in_channels),
                         dtype=self.dtype,
                     )
                 else:
-                    x = fluid.data(
+                    x = paddle.static.data(
                         "input",
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                weight = fluid.data(
+                weight = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
                 if not self.no_bias:
-                    bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
+                    bias = paddle.static.data(
+                        "bias", self.bias_shape, dtype=self.dtype
+                    )
                 y = F.conv3d(
                     x,
                     weight,
@@ -479,8 +484,10 @@ class TestFunctionalConv3DErrorCase11(TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv3d(
+                x = paddle.static.data(
+                    "input", self.input.shape, dtype=paddle.float32
+                )
+                y = paddle.static.nn.conv3d(
                     x,
                     self.num_filters,
                     self.filter_size,
@@ -488,10 +495,10 @@ class TestFunctionalConv3DErrorCase11(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.filter),
+                    param_attr=paddle.nn.initializer.Assign(self.filter),
                     bias_attr=False
                     if self.bias is None
-                    else I.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=None,
                     data_format=self.data_format,
                 )
@@ -540,6 +547,20 @@ class TestFunctionalConv3DErrorCase12(TestFunctionalConv3DErrorCase11):
         self.stride = 1
         self.dilation = 1
         self.groups = 0
+        self.data_format = "NCDHW"
+
+
+class TestFunctionalConv3DErrorCase13(TestFunctionalConv3DErrorCase11):
+    def setUp(self):
+        self.input = np.random.randn(0, 0, 0, 0, 0)
+        self.filter = np.random.randn(1, 0, 0, 0, 0)
+        self.num_filters = 1
+        self.filter_size = 1
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
         self.data_format = "NCDHW"
 
 

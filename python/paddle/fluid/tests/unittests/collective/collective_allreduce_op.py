@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
-import paddle.fluid.layers as layers
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -28,9 +28,10 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             toutdata = main_prog.current_block().create_var(
                 name="outofallreduce",
                 dtype='float32',

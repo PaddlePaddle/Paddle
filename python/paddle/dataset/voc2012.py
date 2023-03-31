@@ -19,12 +19,14 @@ to training/test sets has been maintained. The total number of images
 with segmentation has been increased from 7,062 to 9,993.
 """
 
-import tarfile
 import io
+import tarfile
+
 import numpy as np
-from paddle.dataset.common import download
-import paddle.utils.deprecated as deprecated
 from PIL import Image
+
+from paddle.dataset.common import download
+from paddle.utils import deprecated
 
 __all__ = []
 

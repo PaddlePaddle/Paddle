@@ -13,18 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
-
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+from paddle.nn import BatchNorm
 
 batch_size = 8
 train_parameters = {
@@ -67,7 +64,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -98,39 +95,41 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class SqueezeExcitation(fluid.dygraph.Layer):
+class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
-        self._squeeze = Linear(
+        self._pool = paddle.nn.AdaptiveAvgPool2D(1)
+        self._squeeze = paddle.nn.Linear(
             num_channels,
             num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
-            act='relu',
         )
-        self._excitation = Linear(
+        self.act_1 = paddle.nn.ReLU()
+        self._excitation = paddle.nn.Linear(
             num_channels // reduction_ratio,
             num_channels,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
-            act='sigmoid',
         )
+        self.act_2 = paddle.nn.Softmax()
 
     def forward(self, input):
         y = self._pool(input)
-        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
+        y = paddle.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
+        y = self.act_1(y)
         y = self._excitation(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = self.act_2(y)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -186,14 +185,14 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=scale)
+        y = paddle.add(x=short, y=scale)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         y = layer_helper.append_activation(y)
         return y
 
 
-class SeResNeXt(fluid.dygraph.Layer):
+class SeResNeXt(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
@@ -217,9 +216,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
@@ -232,9 +229,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
@@ -261,9 +256,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.bottleneck_block_list = []
         num_channels = 64
@@ -286,24 +279,21 @@ class SeResNeXt(fluid.dygraph.Layer):
                 num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         import math
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
+        self.out_act = paddle.nn.Softmax()
 
     def forward(self, inputs):
         if self.layers == 50 or self.layers == 101:
@@ -318,9 +308,9 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
-        return y
+        return self.out_act(y)
 
 
 class TestImperativeResneXt(unittest.TestCase):
@@ -377,9 +367,12 @@ class TestImperativeResneXt(unittest.TestCase):
                     label.stop_gradient = True
 
                     out = se_resnext(img)
-                    softmax_out = fluid.layers.softmax(out, use_cudnn=False)
-                    loss = fluid.layers.cross_entropy(
-                        input=softmax_out, label=label
+                    softmax_out = paddle.nn.functional.softmax(out)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=softmax_out,
+                        label=label,
+                        reduction='none',
+                        use_softmax=False,
                     )
                     avg_loss = paddle.mean(x=loss)
 
@@ -424,13 +417,12 @@ class TestImperativeResneXt(unittest.TestCase):
             ) = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                    eager_grad_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+                eager_grad_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -452,13 +444,20 @@ class TestImperativeResneXt(unittest.TestCase):
                 drop_last=True,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = se_resnext(img)
-            softmax_out = fluid.layers.softmax(out, use_cudnn=False)
-            loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+            softmax_out = paddle.nn.function.softmax(out)
+            loss = paddle.nn.functional.cross_entropy(
+                input=softmax_out,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 

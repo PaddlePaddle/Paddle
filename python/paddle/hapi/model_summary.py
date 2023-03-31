@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import numpy as np
 import numbers
+import warnings
+from collections import OrderedDict
+
+import numpy as np
 
 import paddle
-import paddle.nn as nn
-from paddle.static import InputSpec
+from paddle import nn
 from paddle.autograd import no_grad
-from collections import OrderedDict
+from paddle.static import InputSpec
 
 __all__ = []
 
@@ -179,7 +180,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     if not paddle.in_dynamic_mode():
         warnings.warn(
-            "Your model was created in static mode, this may not get correct summary information!"
+            "Your model was created in static graph mode, this may not get correct summary information!"
         )
         in_train_mode = False
     else:
@@ -260,7 +261,9 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(x, (paddle.fluid.Variable, paddle.fluid.core.VarBase)):
+        if isinstance(
+            x, (paddle.fluid.Variable, paddle.fluid.core.eager.Tensor)
+        ):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]
@@ -311,8 +314,8 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 params += np.prod(v.shape)
 
                 try:
-                    if (getattr(getattr(layer, k), 'trainable')) and (
-                        not getattr(getattr(layer, k), 'stop_gradient')
+                    if (getattr(layer, k).trainable) and (
+                        not getattr(layer, k).stop_gradient
                     ):
                         summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
@@ -436,7 +439,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
             table_width['output_shape_width'],
-            "{0:,}".format(summary[layer]["nb_params"]),
+            "{:,}".format(summary[layer]["nb_params"]),
             table_width['params_width'],
         )
         total_params += summary[layer]["nb_params"]
@@ -470,11 +473,10 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
-    summary_str += "Total params: {0:,}".format(total_params) + "\n"
-    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
+    summary_str += f"Total params: {total_params:,}" + "\n"
+    summary_str += f"Trainable params: {trainable_params:,}" + "\n"
     summary_str += (
-        "Non-trainable params: {0:,}".format(total_params - trainable_params)
-        + "\n"
+        f"Non-trainable params: {total_params - trainable_params:,}" + "\n"
     )
     summary_str += "-" * table_width['table_width'] + "\n"
     summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"

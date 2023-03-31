@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
+import unittest
 
 import paddle
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
     is_elementwise_op,
 )
-
+from paddle.distributed.fleet import auto
 from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
@@ -100,7 +98,7 @@ class TestDistOpCost(unittest.TestCase):
             ):
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
-                processes = op_dist_attr.process_mesh.processes
+                processes = op_dist_attr.process_mesh.process_ids
                 if is_elementwise_op(op.type):
                     container = get_distributed_operator_impl_container(
                         "elementwise"
@@ -151,12 +149,10 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -164,7 +160,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -172,10 +168,8 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, "x"],
                 )
-                out1 = paddle.fluid.layers.matmul(
-                    out, param1
-                )  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
@@ -183,14 +177,11 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, None],
                 )
-                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
-                out2 = paddle.fluid.layers.matmul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                tmp_out = paddle.scale(tmp_out, 0.5)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
@@ -215,7 +206,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"
@@ -266,12 +257,10 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul_v2
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -279,7 +268,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -288,7 +277,7 @@ class TestDistOpCost(unittest.TestCase):
                     [None, "x"],
                 )
                 out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
@@ -298,11 +287,10 @@ class TestDistOpCost(unittest.TestCase):
                 )
 
                 tmp_out = paddle.matmul(out1, tmp_param)
+                tmp_out = paddle.scale(tmp_out, 0.5)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
@@ -327,7 +315,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"
@@ -377,12 +365,10 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # mul
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -390,7 +376,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -399,8 +385,8 @@ class TestDistOpCost(unittest.TestCase):
                     [None, "x"],
                 )
 
-                out1 = paddle.fluid.layers.mul(out, param1)  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
@@ -409,14 +395,10 @@ class TestDistOpCost(unittest.TestCase):
                     [None, None],
                 )
 
-                tmp_out = paddle.fluid.layers.mul(out1, tmp_param)
-                out2 = paddle.fluid.layers.mul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
@@ -441,7 +423,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"

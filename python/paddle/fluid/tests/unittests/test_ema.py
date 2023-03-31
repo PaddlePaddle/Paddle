@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestExponentialMovingAverage(unittest.TestCase):
@@ -30,9 +32,11 @@ class TestExponentialMovingAverage(unittest.TestCase):
         self._startup_prog = fluid.Program()
         with fluid.program_guard(self._train_program, self._startup_prog):
             with fluid.unique_name.guard():
-                data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-                hidden = fluid.layers.fc(
-                    input=data, size=10, param_attr=self._param_name
+                data = paddle.static.data(
+                    name='x', shape=[-1, 5], dtype='float32'
+                )
+                hidden = paddle.static.nn.fc(
+                    x=data, size=10, weight_attr=self._param_name
                 )
                 cost = paddle.mean(hidden)
 

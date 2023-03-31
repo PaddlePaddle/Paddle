@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -40,8 +40,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
                           "to send the shape info."));
   }
 
-  paddle::experimental::DataType shape_dytpe =
-      paddle::experimental::DataType::INT32;
+  phi::DataType shape_dytpe = phi::DataType::INT32;
   ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
 
@@ -157,8 +156,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }

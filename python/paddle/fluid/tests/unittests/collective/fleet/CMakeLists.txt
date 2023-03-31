@@ -2,8 +2,8 @@
 # Please don't modify this file manually.
 # If you need to change unittests in this file, please modify testslist.csv in the current directory
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
-set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
+set(LOCAL_ALL_ARCH ON)
 if((WITH_GPU
     OR WITH_XPU
     OR WITH_ASCEND
@@ -49,20 +49,6 @@ if(WITH_NCCL)
     )
     set_tests_properties(test_parallel_margin_cross_entropy PROPERTIES TIMEOUT
                                                                        "120")
-  endif()
-endif()
-if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_dygraph_sharding_stage3
-      START_BASH
-      ../../dist_test.sh
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "PADDLE_DIST_UT_PORT=21202;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_dygraph_sharding_stage3 PROPERTIES TIMEOUT "350")
   endif()
 endif()
 if(WITH_NCCL)
@@ -152,22 +138,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
                                                                          "350")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_fleet_graph_execution_meta_optimizer
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21216;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
 if(WITH_NCCL)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -180,16 +150,6 @@ if(WITH_NCCL)
     set_tests_properties(test_communicator_half_async
                          PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
   endif()
-endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -400,19 +360,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_sharding_optimizer_stage2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21238;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_sharding_optimizer_stage2 PROPERTIES TIMEOUT
-                                                                         "120")
 endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
@@ -667,18 +614,6 @@ if((WITH_GPU
     test_fleet_recompute_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_group_sharded_api
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21266;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_private_function MODULES test_fleet_private_function ENVS
@@ -762,14 +697,6 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
-    test_imperative_auto_mixed_precision MODULES
-    test_imperative_auto_mixed_precision ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_imperative_auto_mixed_precision
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
-  py_test_modules(
     test_imperative_auto_mixed_precision_for_eager MODULES
     test_imperative_auto_mixed_precision_for_eager ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -779,11 +706,6 @@ endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_mixed_precision MODULES test_mixed_precision ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
@@ -959,4 +881,16 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+endif()
+if(WITH_GPU)
+  bash_test_modules(
+    test_fused_attention_pass_with_mp
+    START_BASH
+    test_fused_attention_pass_with_mp.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
+  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
+                                                                    "120")
 endif()

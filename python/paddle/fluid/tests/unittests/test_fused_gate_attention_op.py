@@ -17,14 +17,18 @@ import os
 os.environ['NVIDIA_TF32_OVERRIDE'] = "0"
 os.environ['FLAGS_new_einsum'] = "0"
 
+import unittest
+
 import numpy as np
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
+from test_sparse_attention_op import get_cuda_version
 
 import paddle
-import paddle.nn as nn
-import unittest
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
-from test_sparse_attention_op import get_cuda_version
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, nn
 from paddle.fluid import core
 
 
@@ -96,7 +100,7 @@ class TestFusedGateAttentionOp(OpTest):
             self.gating_b = _random((self.num_heads, self.head_dim))
 
         self.output_w = _random((self.num_heads, self.head_dim, self.out_dim))
-        self.output_b = _random((self.out_dim))
+        self.output_b = _random(self.out_dim)
 
         self.dout = _random(
             (self.batch_size, self.msa_len, self.res_len, self.q_dim)
@@ -307,7 +311,7 @@ class TestFusedGateAttentionOp(OpTest):
         if check_equal:
             self.assertTrue(
                 np.equal(_convert(ref), _convert(out)).all(),
-                "Checking < {} > failed!".format(name),
+                f"Checking < {name} > failed!",
             )
         else:
             np.testing.assert_allclose(
@@ -315,7 +319,7 @@ class TestFusedGateAttentionOp(OpTest):
                 _convert(out),
                 atol=atol,
                 rtol=rtol,
-                err_msg="Checking < {} > failed!".format(name),
+                err_msg=f"Checking < {name} > failed!",
             )
 
     def check_output_and_grad(self, atol, rtol):
@@ -337,7 +341,7 @@ class TestFusedGateAttentionOp(OpTest):
                 # matmul(x, y, transpose_x=False, transpose_y=True). With different
                 # transpose_x and transpose_y, cublas will launch different kernels
                 # and the result cannot be exactly equal.
-                # Because the arguments of matmul in einsum is the the same as
+                # Because the arguments of matmul in einsum are the same as
                 # that in fused ops, check_equal is set to False and we use allclose
                 # to check the correctness.
                 check_equal = False
@@ -401,7 +405,9 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11000
+    or paddle.device.cuda.get_device_capability()[0] < 8,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):

@@ -34,15 +34,20 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+function collect_kernel_registry_info {
+  LOG "[INFO] Collect kernel registry info ..."
+  python ${PADDLE_ROOT}/tools/parse_kernel_info.py
+  [ $? -ne 0 ] && LOG "[FATAL] Collect kernel registry info fail."
+}
+
 # Limit cu file directory
 function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  for sub_dir in "" "/elementwise" "/reduce_ops"
-  do
-    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
-  done
+  # the operators under paddle/fluid/operators directory
+  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
+  # the operators under paddle/phi/kernels directory
   for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
@@ -110,18 +115,24 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  exit 0
+  if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
+    LOG "[INFO] Uninstall PaddlePaddle ..."
+    pip uninstall -y paddlepaddle paddlepaddle_gpu
+    LOG "[INFO] Install PaddlePaddle ..."
+    pip install build/pr_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    collect_kernel_registry_info
+    LOG "[INFO] No op to test, skip this ci." && exit 0
+  fi
 }
 
 # Clone benchmark repo
-function prepare_benchmark_environment {
+function clone_and_collect_op_info {
   LOG "[INFO] Clone benchmark repo ..."
   git clone https://github.com/PaddlePaddle/benchmark.git
   [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
   python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name dynamic_tests_v2         \
+      --test_module_name tests                    \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
   [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
@@ -197,14 +208,14 @@ function run_op_benchmark_test {
   # pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "dev_whl" "pr_whl"
   do
-    LOG "[INFO] Uninstall Paddle ..."
+    LOG "[INFO] Uninstall PaddlePaddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install Paddle ..."
+    LOG "[INFO] Install PaddlePaddle ..."
     pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh dynamic_tests_v2 \
+    bash deploy/main_control.sh tests \
                                 tests_v2/configs \
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
@@ -231,7 +242,7 @@ function check_op_benchmark_result {
       # there is no need to recompile and install paddle
       LOG "[INFO] retry ${retry_time} times ..."
       pushd benchmark/api > /dev/null
-      bash deploy/main_control.sh dynamic_tests_v2 \
+      bash deploy/main_control.sh tests \
                                   tests_v2/configs \
                                   ${logs_dir} \
                                   $VISIBLE_DEVICES \
@@ -285,13 +296,13 @@ function summary_problems {
 }
 
 
-function cpu_op_benchmark {
-  LOG "[INFO] Start run op benchmark cpu test ..."
+function prepare_env {
+  LOG "[INFO] Start preparing op benchmark environment ..."
   load_CHANGE_OP_FILES
-  prepare_benchmark_environment
+  clone_and_collect_op_info
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
-  LOG "[INFO] Op benchmark run success and no error!"
+  LOG "[INFO] Op benchmark environment is prepared success!"
 }
 
 
@@ -300,6 +311,7 @@ function gpu_op_benchmark {
   run_op_benchmark_test
   summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
+  collect_kernel_registry_info
   exit 0
 }
 
@@ -321,7 +333,7 @@ fi
 
 case $1 in
   run_op_benchmark)
-    cpu_op_benchmark
+    prepare_env
     gpu_op_benchmark 
   ;;
 esac

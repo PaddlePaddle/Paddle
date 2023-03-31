@@ -22,8 +22,8 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -38,7 +38,7 @@ __global__ void NormalizeGradient(const T* x,
                                   const int axis_n,
                                   const int post,
                                   T* x_grad) {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   int num = pre * post;
@@ -116,4 +116,5 @@ PD_REGISTER_KERNEL(norm_grad,
                    phi::NormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

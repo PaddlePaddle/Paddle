@@ -38,17 +38,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
-import math
-import re
 import glob
+import math
 import os
+import re
 from functools import partial
 
 import paddle
-from paddle.fluid.dygraph.layers import Layer
-from ...utils.log_util import logger, layer_to_str
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import framework, nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
+
+from ...utils.log_util import layer_to_str, logger
 
 __all__ = []
 
@@ -59,7 +59,7 @@ class LayerDesc:
         self.inputs = inputs
         self.kwargs = kwargs
 
-        if not issubclass(layer_func, Layer):
+        if not issubclass(layer_func, nn.Layer):
             raise TypeError(
                 "The input(layer_func) should be a derived class of Layer."
             )
@@ -81,7 +81,7 @@ class SharedLayerDesc(LayerDesc):
         forward_func=None,
         shared_weight_attr='weight',
         *inputs,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
@@ -150,7 +150,7 @@ class SegmentLayers:
         regex = re.compile(layername, re.IGNORECASE)
         for idx, layer in enumerate(self._layers_desc):
             name = None
-            if isinstance(layer, Layer):
+            if isinstance(layer, nn.Layer):
                 name = layer.__class__.__name__
             elif isinstance(layer, LayerDesc):
                 name = layer.layer_func.__name__
@@ -179,7 +179,7 @@ class SegmentLayers:
         return result
 
 
-class PipelineLayerChunk(Layer):
+class PipelineLayerChunk(nn.Layer):
     def __init__(self):
         super().__init__()
         self.run_function = []
@@ -188,7 +188,7 @@ class PipelineLayerChunk(Layer):
         # This method is used to unify codes in _build_layer_impl.
         # For 1f1b scheduler, it will call append method of a List.
         # For interleave scheduler, it will call append method of this class.
-        if isinstance(sublayer, Layer):
+        if isinstance(sublayer, nn.Layer):
             self.add_sublayer(str(len(self.run_function)), sublayer)
         self.run_function.append(sublayer)
 
@@ -205,7 +205,7 @@ class PipelineLayerChunk(Layer):
         )
 
 
-class PipelineLayer(Layer):
+class PipelineLayer(nn.Layer):
     """PipelineLayer
     Args:
         layers(Iterable): A sequence of layers description to define the structure for pipeline.
@@ -219,9 +219,8 @@ class PipelineLayer(Layer):
     Examples:
         .. code-block:: python
         import paddle.nn as nn
-        from paddle.distributed import fleet
-        from paddle.fluid.dygraph.layers import Layer
         import paddle.nn.functional as F
+        from paddle.distributed import fleet
         from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 
         pipeline_parallel_size = 2
@@ -240,7 +239,7 @@ class PipelineLayer(Layer):
 
         hcg = fleet.get_hybrid_communicate_group()
 
-        class ReshapeHelp(Layer):
+        class ReshapeHelp(nn.Layer):
             def __init__(self, shape):
                 super().__init__()
                 self.shape = shape
@@ -433,9 +432,9 @@ class PipelineLayer(Layer):
             return
 
         layers_desc = self._layers_desc
-        shared_layer_names = set(
+        shared_layer_names = {
             s.layer_name for s in layers_desc if isinstance(s, SharedLayerDesc)
-        )
+        }
         for key in shared_layer_names:
             shared_layers = []
             for idx, layer in enumerate(layers_desc):
@@ -445,9 +444,9 @@ class PipelineLayer(Layer):
                 ):
                     shared_layers.append(idx)
 
-            shared_stages = set(
+            shared_stages = {
                 self.get_stage_from_index(idx) for idx in shared_layers
-            )
+            }
             self._dp_degree = self._topo.get_dim('data')
             self._mp_degree = self._topo.get_dim('model')
             self._sharding_degree = self._topo.get_dim('sharding')
@@ -493,20 +492,23 @@ class PipelineLayer(Layer):
 
             for param in comm['layer'].parameters():
                 if self.global_rank != min(comm['ranks']):
-                    setattr(param, 'is_firstly_shared', False)
+                    param.is_firstly_shared = False
 
     def allreduce_shared_weight_gradients(self):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
-            if in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad, group=comm['group']
+                        param.grad
+                        if not hasattr(param, "main_grad")
+                        else param.main_grad,
+                        group=comm['group'],
                     )
             else:
                 with paddle.framework.no_grad():
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                    framework._dygraph_tracer().trace_op(
                         type="c_allreduce_sum",
                         inputs={'X': param._grad_ivar()},
                         outputs={'Out': param._grad_ivar()},
@@ -579,26 +581,26 @@ class PipelineLayer(Layer):
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
-                logger.info("{}: {}".format(index + start, str(layer)))
+                logger.info(f"{index + start}: {str(layer)}")
 
         if self._num_virtual_pipeline_stages > 1:
             for stage in range(self._num_stages):
                 stage_to_virtual_stage_info = (
-                    "stage {} contains virtual stages: ".format(stage)
+                    f"stage {stage} contains virtual stages: "
                 )
                 for i in range(
                     stage,
                     self._total_stages_with_virtual_stages,
                     self._num_stages,
                 ):
-                    stage_to_virtual_stage_info += " {},".format(i)
+                    stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
         if self._loss_fn:
             try:
-                logger.info("loss: {}".format(self._loss_fn.__name__))
+                logger.info(f"loss: {self._loss_fn.__name__}")
             except AttributeError:
-                logger.info("loss: {}".format(self._loss_fn.__class__.__name__))
+                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
         for i in range(len(self._start_poss)):
@@ -626,7 +628,7 @@ class PipelineLayer(Layer):
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
-            if isinstance(layer, Layer):
+            if isinstance(layer, nn.Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
@@ -641,7 +643,7 @@ class PipelineLayer(Layer):
                     for param in self.shared_layers[
                         layer.layer_name
                     ].parameters():
-                        setattr(param, "is_firstly_shared", True)
+                        param.is_firstly_shared = True
 
                 if layer.forward_func is None:
                     run_function.append(self.shared_layers[layer.layer_name])
@@ -713,7 +715,7 @@ class PipelineLayer(Layer):
                     input = recompute_hybrid(
                         self.recompute_ctx,
                         self.forward_function(start_idx, end_idx),
-                        *input
+                        *input,
                     )
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
@@ -728,7 +730,7 @@ class PipelineLayer(Layer):
         ):
             return False
 
-        params = [f.parameters() for f in funcs if isinstance(f, Layer)]
+        params = [f.parameters() for f in funcs if isinstance(f, nn.Layer)]
         return any(len(list(p)) > 0 for p in params)
 
     def save_state_dict(self, path):
@@ -744,17 +746,15 @@ class PipelineLayer(Layer):
                 pos_offset = self._start_poss[local_chunk_id]
             idx = local_layer_idx + pos_offset
             model_rank = self._topo.get_coord(self.global_rank).model
-            rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
+            rank_message = "-tensor_" + f"{model_rank:0>2d}"
             virtual_pipeline_stage_message = ""
             if self._num_virtual_pipeline_stages > 1:
                 # add virtual pipeline info to the save path
                 assert local_chunk_id is not None
                 virtual_pipeline_stage_message = (
-                    "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                    f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                 )
-            layer_save_path = os.path.join(
-                ckpt_dir, 'layer_{:0>2d}'.format(idx)
-            )
+            layer_save_path = os.path.join(ckpt_dir, f'layer_{idx:0>2d}')
             layer_save_path = (
                 layer_save_path
                 + virtual_pipeline_stage_message
@@ -782,9 +782,7 @@ class PipelineLayer(Layer):
         logger.info("save model state successfully...")
 
     def set_state_dir(self, path):
-        assert os.path.exists(
-            path
-        ), "{} not found, please check the path".format(path)
+        assert os.path.exists(path), f"{path} not found, please check the path"
 
         def _load_model(run_functions, local_chunk_id=None):
             for idx, layer in enumerate(run_functions):
@@ -797,15 +795,13 @@ class PipelineLayer(Layer):
                     assert local_chunk_id < len(self._start_poss)
                     pos_offset = self._start_poss[local_chunk_id]
                 layer_idx = idx + pos_offset
-                layer_save_path = os.path.join(
-                    path, 'layer_{0:0>2d}'.format(layer_idx)
-                )
+                layer_save_path = os.path.join(path, f'layer_{layer_idx:0>2d}')
                 if self._num_virtual_pipeline_stages > 1:
                     # add virtual pipeline info to the path
                     assert local_chunk_id is not None
                     layer_save_path = (
                         layer_save_path
-                        + "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                        + f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                     )
                 model_files = glob.glob(
                     layer_save_path + "*model_states.pdparams"

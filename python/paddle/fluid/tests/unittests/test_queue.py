@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestQueue(unittest.TestCase):
@@ -30,14 +31,14 @@ class TestQueue(unittest.TestCase):
         startup_program = fluid.Program()
         value = np.random.rand(1)
         with fluid.program_guard(main_program, startup_program):
-            data_in = layers.create_global_var(
+            data_in = paddle.static.create_global_var(
                 shape=[2, 3],
                 value=value,
                 dtype="float32",
                 persistable=True,
                 name='var_in',
             )
-            data_out = layers.create_global_var(
+            data_out = paddle.static.create_global_var(
                 shape=[2, 3],
                 value=value - 1.0,
                 dtype="float32",

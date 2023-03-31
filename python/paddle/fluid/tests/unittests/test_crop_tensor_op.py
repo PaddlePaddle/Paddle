@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
@@ -68,7 +69,7 @@ class TestCropTensorOp(OpTest):
         else:
             self.attrs['offsets'] = self.offsets
 
-        crop_shape = [val for val in self.crop_shape]
+        crop_shape = list(self.crop_shape)
         for i in range(len(self.crop_shape)):
             if self.crop_shape[i] == -1:
                 crop_shape[i] = self.x_shape[i] - self.offsets[i]
@@ -80,10 +81,10 @@ class TestCropTensorOp(OpTest):
         self.offsets = [1, 2]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropTensorOp):
@@ -146,7 +147,7 @@ class TestCropTensorOpTensorAttr(OpTest):
             shape_tensor = []
             for index, ele in enumerate(self.crop_shape):
                 shape_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
@@ -158,7 +159,7 @@ class TestCropTensorOpTensorAttr(OpTest):
             offsets_tensor = []
             for index, ele in enumerate(self.offsets):
                 offsets_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
@@ -168,7 +169,7 @@ class TestCropTensorOpTensorAttr(OpTest):
 
         self.attrs['shape'] = self.crop_shape
         self.attrs['offsets'] = self.offsets
-        crop_shape = [val for val in self.crop_shape]
+        crop_shape = list(self.crop_shape)
         for i in range(len(self.crop_shape)):
             if self.crop_shape[i] == -1:
                 crop_shape[i] = self.x_shape[i] - self.offsets[i]
@@ -181,10 +182,10 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.shape_attr = [0, 0]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
@@ -225,10 +226,14 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 class TestCropTensorException(unittest.TestCase):
     def test_exception(self):
-        input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
-        input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")
-        dim = fluid.data(name='dim', shape=[1], dtype='int32')
-        offset = fluid.data(name='offset', shape=[1], dtype='int32')
+        input1 = paddle.static.data(
+            name="input1", shape=[2, 3, 6, 6], dtype="float32"
+        )
+        input2 = paddle.static.data(
+            name="input2", shape=[2, 3, 6, 6], dtype="float16"
+        )
+        dim = paddle.static.data(name='dim', shape=[1], dtype='int32')
+        offset = paddle.static.data(name='offset', shape=[1], dtype='int32')
 
         def attr_shape_type():
             out = paddle.crop(input1, shape=3)
@@ -269,7 +274,5 @@ class TestCropTensorException(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

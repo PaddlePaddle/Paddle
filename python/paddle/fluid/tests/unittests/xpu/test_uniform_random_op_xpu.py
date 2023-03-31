@@ -16,12 +16,14 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle
 from test_uniform_random_op import (
     TestUniformRandomOp,
     TestUniformRandomOpSelectedRows,
 )
+
+import paddle
 
 paddle.enable_static()
 

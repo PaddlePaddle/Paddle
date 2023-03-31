@@ -20,21 +20,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class AllReduceOp : public framework::OperatorWithKernel {
+class AllReduceDelOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
-class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllReduceDelOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
@@ -70,12 +70,15 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(allreduce,
-                             ops::AllReduceOp,
-                             ops::AllReduceOpMaker);
+                             ops::AllReduceDelOp,
+                             ops::AllReduceDelOpMaker);
 
-REGISTER_OP_CPU_KERNEL(allreduce,
-                       ops::AllReduceOpKernel<phi::CPUContext, float>,
-                       ops::AllReduceOpKernel<phi::CPUContext, double>,
-                       ops::AllReduceOpKernel<phi::CPUContext, int>,
-                       ops::AllReduceOpKernel<phi::CPUContext, int64_t>,
-                       ops::AllReduceOpKernel<phi::CPUContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(allreduce,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AllReduceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -14,19 +14,14 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
-import paddle.fluid.core as core
-from paddle.fluid import layers
+from paddle import nn, static, utils
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
+from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
-from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+from paddle.framework import core
 
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
@@ -85,7 +80,7 @@ def mlp_forward(train_program, start_program):
             shape=[hidden_size, hidden_size],
             dtype='float32',
         )
-        input = layers.matmul(x=input, y=matmulinput)
+        input = paddle.matmul(x=input, y=matmulinput)
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )
@@ -120,7 +115,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly3", shape=[6, 6], dtype='float32'
             )
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
-            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 2, 6], dtype='float32'
             )
@@ -128,7 +122,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
-            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -137,7 +130,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
                 out = op.output_arg_names[0]
@@ -280,7 +273,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly3", shape=[6, 6], dtype='float32'
             )
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
-            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 6, 6], dtype='float32'
             )
@@ -288,7 +280,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
-            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -297,7 +288,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
                 out = op.output_arg_names[0]
@@ -418,7 +409,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly3", shape=[6, 6], dtype='float32'
             )
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
-            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 2, 6], dtype='float32'
             )
@@ -426,7 +416,6 @@ class TestCompatible(unittest.TestCase):
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
-            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -435,7 +424,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
                 out = op.output_arg_names[0]

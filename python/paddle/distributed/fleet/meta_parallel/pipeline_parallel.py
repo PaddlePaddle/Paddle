@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 
 import paddle
-import paddle.fluid as fluid
+from paddle import framework
+
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from ..utils.hybrid_parallel_util import (
+    broadcast_dp_parameters,
+    broadcast_mp_parameters,
+    broadcast_sharding_parameters,
+)
+from ..utils.log_util import logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
-
-from ..utils.hybrid_parallel_util import broadcast_mp_parameters
-from ..utils.hybrid_parallel_util import broadcast_dp_parameters
-from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
-from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
-import paddle.fluid.framework as framework
 from .pp_utils import p2p_communication as p2p
-import paddle.fluid.core as core
 
 __all__ = []
 
@@ -206,7 +206,7 @@ class PipelineParallel(MetaParallelBase):
         ), 'optimizer should be HybridParallelOptimizer subclass.'
 
         assert (
-            fluid.framework._dygraph_tracer()._has_grad
+            framework._dygraph_tracer()._has_grad
         ), 'Please enable the generation of gradients.'
 
         if self.is_pipeline_first_stage(
@@ -306,7 +306,7 @@ class PipelineParallel(MetaParallelBase):
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
-                    output_tensor, (paddle.Tensor, core.eager.Tensor)
+                    output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
@@ -337,7 +337,7 @@ class PipelineParallel(MetaParallelBase):
                     assert len(outputs) == len(output_tensor_grad)
                     paddle.autograd.backward(
                         tensors=outputs,
-                        grad_tensors=[t for t in output_tensor_grad],
+                        grad_tensors=list(output_tensor_grad),
                     )
                 else:
                     paddle.autograd.backward(
@@ -415,9 +415,9 @@ class PipelineParallel(MetaParallelBase):
             ), "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
             is_fp32 = (
-                paddle.to_tensor(1)
+                paddle.full([], 1, 'int64')
                 if loss.dtype == paddle.float32
-                else paddle.to_tensor(0)
+                else paddle.full([], 0, 'int64')
             )
             paddle.distributed.broadcast(
                 is_fp32, src=self.global_rank, sync_op=True, group=self.pp_group
@@ -426,7 +426,7 @@ class PipelineParallel(MetaParallelBase):
                 loss, src=self.global_rank, sync_op=True, group=self.pp_group
             )
         else:
-            is_fp32 = paddle.to_tensor(1)
+            is_fp32 = paddle.full([], 1, 'int64')
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
@@ -435,7 +435,7 @@ class PipelineParallel(MetaParallelBase):
             )
             loss = (
                 paddle.zeros(shape=[1], dtype="float32")
-                if is_fp32.numpy()[0]
+                if is_fp32.item()
                 else paddle.zeros(shape=[1], dtype="float16")
             )
             paddle.distributed.broadcast(

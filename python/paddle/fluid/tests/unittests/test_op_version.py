@@ -14,8 +14,7 @@
 
 import unittest
 
-import paddle.utils as utils
-import paddle.fluid as fluid
+from paddle import fluid, utils
 
 
 class OpLastCheckpointCheckerTest(unittest.TestCase):

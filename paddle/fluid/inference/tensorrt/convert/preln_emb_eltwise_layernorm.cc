@@ -15,15 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -33,7 +24,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert fluid PrelnEmbEltwiseLayerNorm op to tensorrt layer";
+    VLOG(4) << "convert PrelnEmbEltwiseLayerNorm op to tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dim) -> TensorRTEngine::Weight {
@@ -194,10 +185,10 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
 
     auto creator = GetPluginRegistry()->getPluginCreator(
-        "ManyEmbLayerNormPluginDynamic", "2");
+        "ManyEmbLayerNormVarlenPluginDynamic", "2");
 
-    auto plugin_obj =
-        creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);
+    auto plugin_obj = creator->createPlugin(
+        "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr);
 
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);

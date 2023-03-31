@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 from parallel_dygraph_sparse_embedding import (
     SimpleNet,
-    fake_sample_reader,
     TestSparseEmbedding,
+    fake_sample_reader,
 )
-
 from test_dist_base import runtime_main
+
+import paddle
+from paddle import fluid
 
 # global configs
 # using small `vocab_size` to test rows number over height

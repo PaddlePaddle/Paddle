@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
-import paddle.utils.deprecated as deprecated
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.utils import deprecated
 
 
 @deprecated(
@@ -35,6 +35,7 @@ def graph_reindex(
     name=None,
 ):
     """
+
     Graph Reindex API.
 
     This API is mainly used in Graph Learning domain, which should be used
@@ -42,11 +43,11 @@ def graph_reindex(
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**:
+    Notes:
         The number in x should be unique, otherwise it would cause potential errors.
-    Besides, we also support multi-edge-types neighbors reindexing. If we have different
-    edge_type neighbors for x, we should concatenate all the neighbors and count of x.
-    We will reindex all the nodes from 0.
+        Besides, we also support multi-edge-types neighbors reindexing. If we have different
+        edge_type neighbors for x, we should concatenate all the neighbors and count of x.
+        We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
     If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
@@ -60,53 +61,52 @@ def graph_reindex(
                             should be the same with `x`.
         count (Tensor): The neighbor count of the input nodes `x`. And the
                         data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should
-                                    be int32, and should be filled with -1.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should
-                                    be int32, and should be filled with -1.
-        flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should
+                                    be int32, and should be filled with -1. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should
+                                    be int32, and should be filled with -1. Default is None.
+        flag_buffer_hashtable (bool, optional): Whether to use buffer for hashtable to speed up.
                                       Default is False. Only useful for gpu version currently.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        reindex_src (Tensor): The source node index of graph edges after reindex.
-        reindex_dst (Tensor): The destination node index of graph edges after reindex.
-        out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
-                            where we put the input nodes `x` in the front, and put neighbor
-                            nodes in the back.
+        - reindex_src (Tensor), The source node index of graph edges after reindex.
+        - reindex_dst (Tensor), The destination node index of graph edges after reindex.
+        - out_nodes (Tensor), The index of unique input nodes and neighbors before reindex,
+          where we put the input nodes `x` in the front, and put neighbor
+          nodes in the back.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = [0, 1, 2]
-        neighbors_e1 = [8, 9, 0, 4, 7, 6, 7]
-        count_e1 = [2, 3, 2]
-        x = paddle.to_tensor(x, dtype="int64")
-        neighbors_e1 = paddle.to_tensor(neighbors_e1, dtype="int64")
-        count_e1 = paddle.to_tensor(count_e1, dtype="int32")
+            x = [0, 1, 2]
+            neighbors_e1 = [8, 9, 0, 4, 7, 6, 7]
+            count_e1 = [2, 3, 2]
+            x = paddle.to_tensor(x, dtype="int64")
+            neighbors_e1 = paddle.to_tensor(neighbors_e1, dtype="int64")
+            count_e1 = paddle.to_tensor(count_e1, dtype="int32")
 
-        reindex_src, reindex_dst, out_nodes = \
-             paddle.incubate.graph_reindex(x, neighbors_e1, count_e1)
-        # reindex_src: [3, 4, 0, 5, 6, 7, 6]
-        # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
-        # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
+            reindex_src, reindex_dst, out_nodes = \
+                paddle.incubate.graph_reindex(x, neighbors_e1, count_e1)
+            # reindex_src: [3, 4, 0, 5, 6, 7, 6]
+            # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
+            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
 
-        neighbors_e2 = [0, 2, 3, 5, 1]
-        count_e2 = [1, 3, 1]
-        neighbors_e2 = paddle.to_tensor(neighbors_e2, dtype="int64")
-        count_e2 = paddle.to_tensor(count_e2, dtype="int32")
+            neighbors_e2 = [0, 2, 3, 5, 1]
+            count_e2 = [1, 3, 1]
+            neighbors_e2 = paddle.to_tensor(neighbors_e2, dtype="int64")
+            count_e2 = paddle.to_tensor(count_e2, dtype="int32")
 
-        neighbors = paddle.concat([neighbors_e1, neighbors_e2])
-        count = paddle.concat([count_e1, count_e2])
-        reindex_src, reindex_dst, out_nodes = \
-             paddle.incubate.graph_reindex(x, neighbors, count)
-        # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
-        # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-        # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+            neighbors = paddle.concat([neighbors_e1, neighbors_e2])
+            count = paddle.concat([count_e1, count_e2])
+            reindex_src, reindex_dst, out_nodes = \
+                paddle.incubate.graph_reindex(x, neighbors, count)
+            # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
+            # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
+            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
     """
     if flag_buffer_hashtable:

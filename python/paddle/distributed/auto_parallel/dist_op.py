@@ -13,26 +13,35 @@
 # limitations under the License
 
 import copy
+
 import paddle
-from paddle.fluid.framework import Variable
-from .dist_attribute import OperatorDistributedAttribute
-from .dist_attribute import append_op_input_suffix
-from .dist_attribute import append_op_output_suffix
+from paddle.static import Variable
+
+from .dist_attribute import OperatorDistAttr
 from .utils import (
+    __no_shape_var_type__,
     convert_to_shard_spec,
     verify_shard_spec,
-    __no_shape_var_type__,
 )
 
 
 class DistributedOperator:
     def __init__(self, serial_op, dist_attr=None):
         self._serial_op = serial_op
+        if dist_attr is not None and isinstance(dist_attr, OperatorDistAttr):
+            pass
+
+            # TODO: remove this deepcopy after we fix the issue
+            self._dist_attr = copy.deepcopy(dist_attr)
+            # self._dist_attr = dist_attr
+            # TODO: Do we really need to write back to serial op？
+            self._serial_op.dist_attr = dist_attr
+        else:
+            assert dist_attr is None, f"{dist_attr}"
+            # Use the dist attr of serial_op to do the initialization
+            self._dist_attr = self._serial_op.dist_attr
         self._serial_inputs = {}
         self._serial_outputs = {}
-        self._dist_attr = None
-        # Reuse the dist_attr setter to initialize _dist_attr
-        self.dist_attr = dist_attr
 
     @property
     def serial_op(self):
@@ -44,102 +53,110 @@ class DistributedOperator:
 
     @dist_attr.setter
     def dist_attr(self, dist_attr):
-        if self._dist_attr is None:
-            self._dist_attr = OperatorDistributedAttribute()
-        # Create new dist_attr related to current serial_op
-        dist_attr = self._filter_dist_attr(dist_attr)
-        # Append suffix to mark the inputs or outputs
-        if isinstance(dist_attr, dict):
-            # Copy the keys since we may add new ones
-            for key in list(dist_attr.keys()):
-                if isinstance(key, Variable):
-                    if key.name in self._serial_op.input_arg_names:
-                        dist_attr[append_op_input_suffix(key.name)] = True
-                    if key.name in self._serial_op.output_arg_names:
-                        dist_attr[append_op_output_suffix(key.name)] = True
-        self._dist_attr.init(dist_attr)
-        self._init_default_dist_attr()
+        self._dist_attr = dist_attr
+        # TODO: Do we really need to write back to serial op？
+        self._serial_op.dist_attr = dist_attr
+        # if self._dist_attr is None:
+        #     self._dist_attr = OperatorDistAttr()
+        # # Create new dist_attr related to current serial_op
+        # dist_attr = self._filter_dist_attr(dist_attr)
+        # # Append suffix to mark the inputs or outputs
+        # if isinstance(dist_attr, dict):
+        #     # Copy the keys since we may add new ones
+        #     for key in list(dist_attr.keys()):
+        #         if isinstance(key, Variable):
+        #             if key.name in self._serial_op.input_arg_names:
+        #                 dist_attr[append_op_input_suffix(key.name)] = True
+        #             if key.name in self._serial_op.output_arg_names:
+        #                 dist_attr[append_op_output_suffix(key.name)] = True
+        # self._dist_attr.init(dist_attr)
+        # self._init_default_dist_attr()
 
     def get_serial_input(self, name):
-        return self._serial_inputs.get(name, None)
+        if self._serial_op.type == "create_py_reader":
+            tensor = None
+        else:
+            tensor = self._serial_op.block._var_recursive(name)
+        return tensor
 
     def get_serial_output(self, name):
-        return self._serial_outputs.get(name, None)
+        tensor = self._serial_op.block._var_recursive(name)
+        return tensor
 
-    def _init_default_dist_attr(self):
-        for tensor_name in self._serial_op.input_arg_names:
-            if self._serial_op.type == "create_py_reader":
-                tensor = None
-            else:
-                tensor = self._serial_op.block._var_recursive(tensor_name)
-            self._serial_inputs[tensor_name] = tensor
-            if tensor is None:
-                tensor_shape = []
-            else:
-                if tensor.type in __no_shape_var_type__:
-                    tensor_shape = []
-                else:
-                    tensor_shape = tensor.shape
-            if self._dist_attr.get_input_dims_mapping(tensor_name) is None:
-                tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-                self._dist_attr.set_input_dims_mapping(
-                    tensor_name, tensor_dims_mapping
-                )
-        for tensor_name in self._serial_op.output_arg_names:
-            tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type in __no_shape_var_type__:
-                tensor_shape = []
-            else:
-                tensor_shape = tensor.shape
-            self._serial_outputs[tensor_name] = tensor
-            if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
-                tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-                self._dist_attr.set_output_dims_mapping(
-                    tensor_name, tensor_dims_mapping
-                )
-        if self._dist_attr.op_type is None:
-            self._dist_attr.op_type = self.serial_op.type
-        if self._dist_attr.impl_type is None:
-            self._dist_attr.impl_type = "default"
-        if self._dist_attr.impl_idx is None:
-            self._dist_attr.impl_idx = 0
-        if self._dist_attr.is_recompute is None:
-            self._dist_attr.is_recompute = False
+    # def _init_default_dist_attr(self):
+    #     for tensor_name in self._serial_op.input_arg_names:
+    #         if self._serial_op.type == "create_py_reader":
+    #             tensor = None
+    #         else:
+    #             tensor = self._serial_op.block._var_recursive(tensor_name)
+    #         self._serial_inputs[tensor_name] = tensor
+    #         if tensor is None:
+    #             tensor_shape = []
+    #         else:
+    #             if tensor.type in __no_shape_var_type__:
+    #                 tensor_shape = []
+    #             else:
+    #                 tensor_shape = tensor.shape
+    #         if self._dist_attr.get_input_dims_mapping(tensor_name) is None:
+    #             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
+    #             self._dist_attr.set_input_dims_mapping(
+    #                 tensor_name, tensor_dims_mapping
+    #             )
+    #     for tensor_name in self._serial_op.output_arg_names:
+    #         tensor = self._serial_op.block._var_recursive(tensor_name)
+    #         if tensor.type in __no_shape_var_type__:
+    #             tensor_shape = []
+    #         else:
+    #             tensor_shape = tensor.shape
+    #         self._serial_outputs[tensor_name] = tensor
+    #         if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
+    #             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
+    #             self._dist_attr.set_output_dims_mapping(
+    #                 tensor_name, tensor_dims_mapping
+    #             )
+    #     if self._dist_attr.op_type is None:
+    #         self._dist_attr.op_type = self.serial_op.type
+    #     if self._dist_attr.impl_type is None:
+    #         self._dist_attr.impl_type = "default"
+    #     if self._dist_attr.impl_idx is None:
+    #         self._dist_attr.impl_idx = 0
+    #     if self._dist_attr.is_recompute is None:
+    #         self._dist_attr.is_recompute = False
 
-    def _filter_dist_attr(self, dist_attr):
-        if dist_attr is None:
-            return None
-        new_dist_attr = None
-        if isinstance(dist_attr, dict):
-            new_dist_attr = {}
-            for key, value in dist_attr.items():
-                if isinstance(key, Variable):
-                    if (
-                        key.name in self._serial_op.input_arg_names
-                        or key.name in self._serial_op.output_arg_names
-                    ):
-                        new_dist_attr[key] = value
-                else:
-                    new_dist_attr[key] = value
-        elif isinstance(dist_attr, OperatorDistributedAttribute):
-            new_dist_attr = copy.deepcopy(dist_attr)
-            new_dist_attr._inputs_dist_attrs.clear()
-            new_dist_attr._outputs_dist_attrs.clear()
-            for tensor_name in self._serial_op.input_arg_names:
-                tensor_dist_attr = dist_attr.get_input_dist_attr(tensor_name)
-                if tensor_dist_attr:
-                    new_dist_attr.set_input_dist_attr(
-                        tensor_name, tensor_dist_attr
-                    )
-            for tensor_name in self._serial_op.output_arg_names:
-                tensor_dist_attr = dist_attr.get_output_dist_attr(tensor_name)
-                if tensor_dist_attr:
-                    new_dist_attr.set_output_dist_attr(
-                        tensor_name, tensor_dist_attr
-                    )
-        else:
-            assert False, "Cannot recognize the {} parameter.".format(dist_attr)
-        return new_dist_attr
+    # def _filter_dist_attr(self, dist_attr):
+    #     if dist_attr is None:
+    #         return None
+    #     new_dist_attr = None
+    #     if isinstance(dist_attr, dict):
+    #         new_dist_attr = {}
+    #         for key, value in dist_attr.items():
+    #             if isinstance(key, Variable):
+    #                 if (
+    #                     key.name in self._serial_op.input_arg_names
+    #                     or key.name in self._serial_op.output_arg_names
+    #                 ):
+    #                     new_dist_attr[key] = value
+    #             else:
+    #                 new_dist_attr[key] = value
+    #     elif isinstance(dist_attr, OperatorDistAttr):
+    #         new_dist_attr = copy.deepcopy(dist_attr)
+    #         new_dist_attr._inputs_dist_attrs.clear()
+    #         new_dist_attr._outputs_dist_attrs.clear()
+    #         for tensor_name in self._serial_op.input_arg_names:
+    #             tensor_dist_attr = dist_attr.get_input_dist_attr(tensor_name)
+    #             if tensor_dist_attr:
+    #                 new_dist_attr.set_input_dist_attr(
+    #                     tensor_name, tensor_dist_attr
+    #                 )
+    #         for tensor_name in self._serial_op.output_arg_names:
+    #             tensor_dist_attr = dist_attr.get_output_dist_attr(tensor_name)
+    #             if tensor_dist_attr:
+    #                 new_dist_attr.set_output_dist_attr(
+    #                     tensor_name, tensor_dist_attr
+    #                 )
+    #     else:
+    #         assert False, "Cannot recognize the {} parameter.".format(dist_attr)
+    #     return new_dist_attr
 
     def validate_dist_attr(self):
         if "read" in self.serial_op.type or "while" == self.serial_op.type:
@@ -155,10 +172,10 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                    self.dist_attr.process_mesh.topology
+                    self.dist_attr.process_mesh.shape
                 ):
                     return False
-            for i in range(len(self.dist_attr.process_mesh.topology)):
+            for i in range(len(self.dist_attr.process_mesh.shape)):
                 if dims_mapping.count(i) > 1:
                     return False
             if self.dist_attr.process_mesh != input_dist_attr.process_mesh:
@@ -175,10 +192,10 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                    self.dist_attr.process_mesh.topology
+                    self.dist_attr.process_mesh.shape
                 ):
                     return False
-            for i in range(len(self.dist_attr.process_mesh.topology)):
+            for i in range(len(self.dist_attr.process_mesh.shape)):
                 if dims_mapping.count(i) > 1:
                     return False
             if self.dist_attr.process_mesh != output_dist_attr.process_mesh:
@@ -186,8 +203,10 @@ class DistributedOperator:
         return True
 
     def __str__(self):
-        str = "{{op type: {}, op id: {}".format(
-            self.serial_op.desc.type(), self.serial_op.desc.id()
+        str = "{{op type: {}, op id: {}, op original_id: {}".format(
+            self.serial_op.desc.type(),
+            self.serial_op.desc.id(),
+            self.serial_op.desc.original_id(),
         )
 
         # str += ", {}".format(self.dist_attr)
@@ -202,7 +221,14 @@ class DistributedOperator:
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():
-            dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
+            try:
+                dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
+            except IndexError:
+                raise IndexError(
+                    "There is not input var '{}''s dist_attr in current op '{}'".format(
+                        arg_name, self.serial_op.desc.type()
+                    )
+                )
             if self.dist_attr.is_annotated_input_dims_mapping(arg_name):
                 annotated_str = "annotated"
             else:
@@ -219,7 +245,14 @@ class DistributedOperator:
             )
 
         for arg_name in self.serial_op.desc.output_arg_names():
-            dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
+            try:
+                dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
+            except IndexError:
+                raise IndexError(
+                    "There is not output var '{}''s dist_attr in current op '{}'".format(
+                        arg_name, self.serial_op.desc.type()
+                    )
+                )
             if self.dist_attr.is_annotated_output_dims_mapping(arg_name):
                 annotated_str = "annotated"
             else:
@@ -235,10 +268,8 @@ class DistributedOperator:
                 arg_name, annotated_str, is_parameter_str, dims_mapping
             )
 
-        str += ", pipeline stage: {}".format(None)
-
         str += ", dist_impl idx: {} , dist_impl type {} }}".format(
-            self.dist_attr._impl_idx, self.dist_attr._impl_type
+            self.dist_attr.impl_idx, self.dist_attr.impl_type
         )
 
         return str
@@ -286,18 +317,18 @@ class DistributedOperatorHelper:
                 tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
             index += 1
 
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
         output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
-        if isinstance(output, tuple) or isinstance(output, list):
+        if isinstance(output, (tuple, list)):
             new_output = list(output)
         elif isinstance(output, Variable):
             new_output = [output]
         else:
-            raise ValueError("Unrecognized outpout.")
+            raise ValueError("Unrecognized output.")
 
         if self._out_dims_mappings:
             assert len(new_output) == len(

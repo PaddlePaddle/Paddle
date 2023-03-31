@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
 class TestAdamaxAPI(unittest.TestCase):
-    def func_adamax_api_dygraph(self):
+    def test_adamax_api_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
@@ -35,12 +36,7 @@ class TestAdamaxAPI(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
-    def test_adamax_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_adamax_api_dygraph()
-        self.func_adamax_api_dygraph()
-
-    def func_adamax_api(self):
+    def test_adamax_api(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
         shape = [2, 3, 8, 8]
@@ -49,8 +45,8 @@ class TestAdamaxAPI(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                data = paddle.static.data(name="data", shape=shape)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
                 beta1 = 0.85
                 beta2 = 0.95
@@ -68,14 +64,9 @@ class TestAdamaxAPI(unittest.TestCase):
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
 
-    def test_adamax_api(self):
-        with _test_eager_guard():
-            self.func_adamax_api()
-        self.func_adamax_api()
-
 
 class TestAdamaxAPIGroup(TestAdamaxAPI):
-    def func_adamax_api_dygraph(self):
+    def test_adamax_api_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
@@ -100,11 +91,6 @@ class TestAdamaxAPIGroup(TestAdamaxAPI):
         out.backward()
         adam.step()
         adam.clear_gradients()
-
-    def test_adamax_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_adamax_api_dygraph()
-        self.func_adamax_api_dygraph()
 
 
 if __name__ == "__main__":

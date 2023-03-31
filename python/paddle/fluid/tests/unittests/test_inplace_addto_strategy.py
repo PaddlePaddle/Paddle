@@ -14,12 +14,13 @@
 
 import unittest
 
-import paddle
-import paddle.fluid as fluid
 import numpy as np
 
+import paddle
+from paddle import fluid
 
-class ConvBNLayer(fluid.Layer):
+
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -56,11 +57,11 @@ def create_program(data_format="NCHW"):
     main = fluid.Program()
     startup = fluid.Program()
     with fluid.program_guard(main, startup):
-        x = fluid.data(name='img', shape=[-1, 3, 224, 224])
+        x = paddle.static.data(name='img', shape=[-1, 3, 224, 224])
         x.stop_gradient = False
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])
-        x = fluid.layers.prelu(x, mode="channel")
+        x = paddle.static.nn.prelu(x, mode="channel")
         conv = ConvBNLayer(
             num_channels=3,
             num_filters=3,
@@ -69,7 +70,7 @@ def create_program(data_format="NCHW"):
         )
         y = conv(x) + x
 
-        loss = fluid.layers.reduce_sum(y)
+        loss = paddle.sum(y)
 
         sgd = fluid.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)
@@ -96,9 +97,7 @@ class TestInplaceAddto(unittest.TestCase):
 
             strategy = fluid.BuildStrategy()
             strategy.enable_addto = enable_addto
-            compiled = fluid.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name, build_strategy=strategy
-            )
+            compiled = fluid.CompiledProgram(main, build_strategy=strategy)
 
             exe.run(startup)
             img = np.random.uniform(-128, 128, [8, 3, 224, 224]).astype(

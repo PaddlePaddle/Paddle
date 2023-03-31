@@ -15,7 +15,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -31,8 +30,6 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP32, ACL_FLOAT},
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
-
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {

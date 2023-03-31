@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-import paddle
-from paddle.fluid.framework import _test_eager_guard
+from eager_op_test import OpTest
 
-from op_test import OpTest
+import paddle
 
 
 def graph_send_recv_wrapper(
@@ -50,12 +49,10 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestGraphSendRecvMinOp(OpTest):
@@ -80,12 +77,10 @@ class TestGraphSendRecvMinOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestGraphSendRecvSumOp(OpTest):
@@ -108,10 +103,10 @@ class TestGraphSendRecvSumOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestGraphSendRecvMeanOp(OpTest):
@@ -136,10 +131,10 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):
@@ -381,12 +376,6 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             )
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
-
 
 class API_GeometricSendURecvTest(unittest.TestCase):
     def test_static(self):
@@ -532,12 +521,6 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                 fetch_list=[res_sum],
             )
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
 
 
 if __name__ == '__main__':

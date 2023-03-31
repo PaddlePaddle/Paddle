@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import json
+import os
 import sys
 
 
@@ -47,7 +45,6 @@ def classify_cases_by_mem(rootPath):
 
     case_exec_200 = [
         'test_post_training_quantization_mnist',
-        'test_imperative_auto_mixed_precision',
         'test_trt_dynamic_shape_ernie_fp16_ser_deser',
         'test_trt_dynamic_shape_ernie',
         'test_layer_norm_op',

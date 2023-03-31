@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
-from paddle.distributed.fleet import fleet
+
 from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
+
+import paddle
+from paddle import fluid
+from paddle.distributed.fleet import fleet
 
 
 class TestSparseLoadProgramMomentum(TestSparseLoadProgram):

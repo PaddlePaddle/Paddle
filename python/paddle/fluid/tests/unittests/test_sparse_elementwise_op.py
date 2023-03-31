@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-from operator import __add__, __sub__, __mul__, __truediv__
+from operator import __add__, __mul__, __sub__, __truediv__
 
 import numpy as np
+
 import paddle
-import paddle.sparse as sparse
+from paddle import sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
@@ -36,23 +37,33 @@ def get_actual_res(x, y, op):
     return res
 
 
+def mask_to_zero(x, mask):
+    x[mask == 0] = 0
+    return x
+
+
 class TestSparseElementWiseAPI(unittest.TestCase):
     """
     test paddle.sparse.add, subtract, multiply, divide
     """
 
     def setUp(self):
-        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         np.random.seed(2022)
         self.op_list = op_list
-        self.csr_shape = [128, 256]
+        self.csr_shape = [8, 8]
         self.coo_shape = [4, 8, 3, 5]
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
     def func_test_csr(self, op):
         for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
+            x = np.random.randint(-255, 255, size=self.csr_shape)
+            y = np.random.randint(-255, 255, size=self.csr_shape)
+            mask_x = x / x
+            mask_y = y / y
+            mask_x[mask_x != 1] = 0
+            mask_y[mask_y != 1] = 0
+            x = x.astype(dtype)
+            y = y.astype(dtype)
 
             dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
             dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
@@ -63,9 +74,10 @@ class TestSparseElementWiseAPI(unittest.TestCase):
             csr_y = s_dense_y.to_sparse_csr()
 
             actual_res = get_actual_res(csr_x, csr_y, op)
+            actual_res.backward()
 
             expect_res = op(dense_x, dense_y)
-            expect_res.backward(expect_res)
+            expect_res.backward()
 
             np.testing.assert_allclose(
                 expect_res.numpy(),
@@ -74,15 +86,14 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 equal_nan=True,
             )
             if not (op == __truediv__ and dtype in ['int32', 'int64']):
-                actual_res.backward(actual_res)
                 np.testing.assert_allclose(
-                    dense_x.grad.numpy(),
+                    mask_to_zero(dense_x.grad.numpy(), mask_x),
                     csr_x.grad.to_dense().numpy(),
                     rtol=1e-05,
                     equal_nan=True,
                 )
                 np.testing.assert_allclose(
-                    dense_y.grad.numpy(),
+                    mask_to_zero(dense_y.grad.numpy(), mask_y),
                     csr_y.grad.to_dense().numpy(),
                     rtol=1e-05,
                     equal_nan=True,
@@ -108,7 +119,9 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                     y, dtype=dtype, stop_gradient=False
                 )
                 coo_x = s_dense_x.to_sparse_coo(sparse_dim)
+                coo_x.retain_grads()
                 coo_y = s_dense_y.to_sparse_coo(sparse_dim)
+                coo_y.retain_grads()
 
                 actual_res = get_actual_res(coo_x, coo_y, op)
                 actual_res.backward(actual_res)
@@ -122,12 +135,14 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                     rtol=1e-05,
                     equal_nan=True,
                 )
+                np.testing.assert_allclose(coo_x.shape, coo_x.grad.shape)
                 np.testing.assert_allclose(
                     dense_x.grad.numpy(),
                     coo_x.grad.to_dense().numpy(),
                     rtol=1e-05,
                     equal_nan=True,
                 )
+                np.testing.assert_allclose(coo_y.shape, coo_y.grad.shape)
                 np.testing.assert_allclose(
                     dense_y.grad.numpy(),
                     coo_y.grad.to_dense().numpy(),
@@ -156,9 +171,12 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         sp_a = sparse.sparse_coo_tensor(
             indices_data, values1_data, shape, stop_gradient=False
         )
+        sp_a.retain_grads()
+
         sp_b = sparse.sparse_coo_tensor(
             indices_data, values2_data, shape, stop_gradient=False
         )
+        sp_b.retain_grads()
 
         values1 = paddle.to_tensor(values1_data, stop_gradient=False)
         values2 = paddle.to_tensor(values2_data, stop_gradient=False)
@@ -184,6 +202,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         sp_a = sparse.sparse_coo_tensor(
             indices_data, values_data, shape, stop_gradient=False
         )
+        sp_a.retain_grads()
 
         bias_values = [1.0, 2.0]
 

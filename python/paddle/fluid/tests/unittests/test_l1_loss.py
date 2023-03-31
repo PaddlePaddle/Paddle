@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestFunctionalL1Loss(unittest.TestCase):
@@ -42,10 +44,10 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.assertTrue(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=[10, 10, 5], dtype='float32'
         )
         result0 = paddle.nn.functional.l1_loss(input, label)
@@ -92,10 +94,10 @@ class TestFunctionalL1Loss(unittest.TestCase):
     # test case the raise message
     def test_errors(self):
         def test_value_error():
-            input = paddle.fluid.data(
+            input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
             )
-            label = paddle.fluid.data(
+            label = paddle.static.data(
                 name='label', shape=[10, 10, 5], dtype='float32'
             )
             loss = paddle.nn.functional.l1_loss(
@@ -132,10 +134,10 @@ class TestClassL1Loss(unittest.TestCase):
         self.assertTrue(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=[10, 10, 5], dtype='float32'
         )
         l1_loss = paddle.nn.loss.L1Loss()

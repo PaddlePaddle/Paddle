@@ -1,3 +1,49 @@
+- op : allclose
+  version :
+    - checkpoint : Upgrade allclose, add two new inputs [Rtol] and [Atol].
+      action:
+        - add_input : Rtol
+          comment : The added input 'Rtol' is not dispensable.
+        - add_input : Atol
+          comment : The added input 'Atol' is not dispensable.
+    - checkpoint : Delete two float attributes [rtol] and [atol],
+        then add 2 string attributes [atol, rtol]. Don't be surprised.
+        This is because float cannot represent hight-precision
+        floating-point values, and our framework doesn't support
+        the use of double attributes. As a result, string instead
+        of double is used here to represent high-precision
+        floating-point values.
+      action :
+        - add_attr : rtol
+          comment : The relative tolerance. Default::math:`1e-5` .
+          default : std::string("1e-5")
+        - delete_attr : rtol
+          comment : The attribute 'rtol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+        - add_attr : atol
+          comment : (string) The absolute tolerance. Default::math:`1e-8` .
+          default : std::string("1e-5")
+        - delete_attr : atol
+          comment : The attribute 'atol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+
+- op : clip
+  version :
+    - checkpoint :  Upgrade clip add a new input [Min]
+      action :
+        - add_input : Min
+          comment : Pass the mix, min value as input, not attribute. Min is dispensable.
+        - add_input : Max
+          comment : Pass the mix, min value as input, not attribute. Max is dispensable.
+
+- op : equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
 - op : flip
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -8,6 +54,22 @@
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
 
+- op : greater_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : greater_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
 - op : grid_sample
   version :
     - checkpoint : Upgrade grid_sampler add a new attribute [mode]
@@ -16,6 +78,77 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : lamb
+  version :
+    - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
+      action :
+        - add_output : Beta1PowOut
+          comment : The Output beta1 power accumulator. 'Beta1PowOut' is dispensable.
+        - add_output : Beta2PowOut
+          comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
+
+- op : less_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : less_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : linspace
+  version :
+    - checkpoint : Upgrade linspace to add a new attribute [dtype]
+      action :
+        - add_attr : dtype
+          comment : In order to change output data type
+          default : 5
+
+- op : not_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : p_norm
+  version :
+    - checkpoint : Upgrade p_norm, add 1 attribute [asvector].
+      action :
+        - add_attr : asvector
+          comment : Compute as vector when axis is None and input is matrix.
+          default : "false"
+
+- op : pixel_shuffle
+  version :
+    - checkpoint : Compatible upgrade of pixel_shuffle, add a new attribute [data_format]
+      action :
+        - add_attr : data_format
+          comment : Specify the data format of the input data
+          default : "true"
+
+- op : roll
+  version :
+    - checkpoint : Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
+      action :
+        - add_attr : axis
+          comment : Axis along which to roll. It must have the same size with shifts, or size = 0.
+          default : std::vector<float>()
+        - delete_attr : dims
+          comment : Dims along which to roll. It must have the same size with shifts, or size = 0
+    - checkpoint : Upgrade roll add a dispensable input "ShiftsTensor"
+      action :
+        - add_input : ShiftsTensor
+          comment : The number of places by which the elements of the tensor are shifted.
+
 - op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]
@@ -23,11 +156,26 @@
         - add_attr : axis1
           comment : The added attribute 'axis1' is not yet registered.
           default : std::vector<float>{0.0f}
-        - add_attr :
-          name : axis2
+        - add_attr : axis2
           comment : The added attribute 'axis2' is not yet registered.
           default : std::vector<float>{1.0f}
         - delete_attr : dim1
           comment : The attribute 'dim1' is not recommend according to the specification 2.0.
         - delete_attr : dim2
           comment : The attribute 'dim2' is not recommend according to the specification 2.0.
+
+- op : unique_consecutive
+  version :
+    - checkpoint : Upgrade unique_consecutive, add 2 outputs [Indices, Counts] and 3 attribute [return_inverse, return_counts, axis].
+      action :
+        - add_output : Counts
+          comment : The counts for each unique element.
+        - add_attr : return_inverse
+          comment : If True, also return the indices for where elements in the original input ended up in the returned unique tensor.
+          default : "false"
+        - add_attr : return_counts
+          comment : If True, also return the counts for each unique element.
+          default : "false"
+        - add_attr : axis
+          comment : The axis to apply unique. If None, the input will be flattened.
+          default : std::vector<int>{}

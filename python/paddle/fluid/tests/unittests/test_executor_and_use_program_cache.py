@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
+from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
+
+import paddle
+from paddle import fluid
 
 
 class TestExecutor(unittest.TestCase):
@@ -25,21 +26,18 @@ class TestExecutor(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.data(name='a', shape=[784], dtype='float32')
-            b = fluid.layers.data(
-                name='b',
-                shape=[784, 100],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            output = fluid.layers.mul(x=a, y=b)
+            a = paddle.static.data(name='a', shape=[-1, 784], dtype='float32')
+            b = paddle.static.data(name='b', shape=[784, 100], dtype='float32')
+            a.desc.set_need_check_feed(False)
+            b.desc.set_need_check_feed(False)
+            output = paddle.matmul(x=a, y=b)
 
         # Compute with numpy
         a_np = np.random.random((100, 784)).astype('float32')
         b_np = np.random.random((784, 100)).astype('float32')
         out_np = np.dot(a_np, b_np)
 
-        place = core.CPUPlace()
+        place = paddle.CPUPlace()
         exe = fluid.Executor(place)
 
         def _train(use_program_cache, max_iters=1):
@@ -85,11 +83,11 @@ class TestExecutor(unittest.TestCase):
 
 class ExecutorPaddingRNNTest(PaddingRNNTestBase):
     def train_and_save_inference_program(
-        self, rnn_model="static", parallel=True, use_program_cache=True
+        self, rnn_model="static", use_program_cache=True
     ):
         config = RNNConfig("test", rnn_model)
         with fluid.scope_guard(fluid.Scope()):
-            self.train(config, parallel, use_program_cache)
+            self.train(config, use_program_cache)
             fluid.io.save_inference_model(
                 main_program=self.main_program,
                 feeded_var_names=self.feed_order,
@@ -103,7 +101,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
         for rnn_model in ["static", "padding"]:
             # Set parallel to False to use the default executor.
             self.train_and_save_inference_program(
-                rnn_model=rnn_model, parallel=True, use_program_cache=True
+                rnn_model=rnn_model, use_program_cache=True
             )
 
             x_np = np.random.random(

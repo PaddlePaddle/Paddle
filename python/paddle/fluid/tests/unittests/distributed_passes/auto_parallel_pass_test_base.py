@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import os
-import sys
 import pickle
-import numpy as np
+import sys
 from collections import OrderedDict
+
+import numpy as np
 from dist_pass_test_base import DistPassTestBase
 
-import paddle.distributed.fleet as fleet
+import paddle
+from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 
@@ -105,9 +106,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
                     fetch_values = exe.run(main_prog, fetch_list=outputs)
                     if paddle.distributed.get_rank() == 0:
                         output_dict = OrderedDict(zip(outputs, fetch_values))
-                        print(
-                            'batch {}, outputs {}'.format(batch_id, output_dict)
-                        )
+                        print(f'batch {batch_id}, outputs {output_dict}')
                     all_fetch_values.append(fetch_values)
                     batch_id += 1
                 except paddle.fluid.core.EOFException:

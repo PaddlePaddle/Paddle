@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 from test_dist_base import TestDistBase
 
-import os
 import paddle
 
 paddle.enable_static()
@@ -31,7 +32,7 @@ class TestStaticModelParallel(TestDistBase):
         self._pipeline_mode = True
 
     def test_dist_static_model_parallel_fused_feedforward(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

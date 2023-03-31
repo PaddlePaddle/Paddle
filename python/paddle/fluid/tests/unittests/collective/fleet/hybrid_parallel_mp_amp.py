@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from hybrid_parallel_mp_model import TestDistMPTraning
-import paddle.distributed.fleet as fleet
 import unittest
+
+from hybrid_parallel_mp_model import TestDistMPTraning
+
+import paddle
+from paddle.distributed import fleet
 
 
 class TestMPClipGrad(TestDistMPTraning):

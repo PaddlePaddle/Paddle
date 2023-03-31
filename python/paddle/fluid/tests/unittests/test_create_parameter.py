@@ -13,47 +13,43 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+
 import paddle
+from paddle.fluid import Program, program_guard
 
 
 class TestCreateParameterError(unittest.TestCase):
-    def func_errors(self):
+    def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_shape():
-                fluid.layers.create_parameter(1, np.float32)
+                paddle.create_parameter(1, np.float32)
 
             self.assertRaises(TypeError, test_shape)
 
             def test_shape_item():
-                fluid.layers.create_parameter([1.0, 2.0, 3.0], "float32")
+                paddle.create_parameter([1.0, 2.0, 3.0], "float32")
 
             self.assertRaises(TypeError, test_shape_item)
 
             def test_attr():
-                fluid.layers.create_parameter(
-                    [1, 2, 3], np.float32, attr=np.array([i for i in range(6)])
+                paddle.create_parameter(
+                    [1, 2, 3], np.float32, attr=np.array(list(range(6)))
                 )
 
             self.assertRaises(TypeError, test_attr)
 
             def test_default_initializer():
-                fluid.layers.create_parameter(
+                paddle.create_parameter(
                     [1, 2, 3],
                     np.float32,
-                    default_initializer=np.array([i for i in range(6)]),
+                    default_initializer=np.array(list(range(6))),
                 )
 
             self.assertRaises(TypeError, test_default_initializer)
-
-    def test_errors(self):
-        with fluid.framework._test_eager_guard():
-            self.func_errors()
-        self.func_errors()
 
 
 if __name__ == '__main__':

@@ -35,6 +35,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
                     DataType out_dtype,
                     DenseTensor* out,
                     std::vector<int>* reduce_dims) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // Resize Input Tensor
   auto new_x = x;
   int added_dims = EigenDimSize - x.dims().size();
@@ -79,6 +80,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
@@ -145,7 +147,7 @@ void SumRawKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
 using float16 = phi::dtype::float16;
@@ -167,6 +169,6 @@ PD_REGISTER_KERNEL(sum_raw,
                    int64_t,
                    complex64,
                    complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

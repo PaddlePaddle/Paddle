@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
@@ -102,6 +104,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                     "normalized": False,
                                     "nms_eta": nms_eta,
                                 },
+                                "outputs_dtype": {"nms_output_index": np.int32},
                             }
                         ]
                         ops = self.generate_op_config(ops_config)

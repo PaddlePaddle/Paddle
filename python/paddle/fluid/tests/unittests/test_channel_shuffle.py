@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-from op_test import OpTest
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
 import paddle.nn.functional as F
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -46,6 +47,7 @@ class TestChannelShuffleOp(OpTest):
         self.op_type = "channel_shuffle"
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
+        self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
             shape = [n, c, h, w]
@@ -90,10 +92,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             out_1 = F.channel_shuffle(x_1, 3)
@@ -125,10 +127,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             # init instance
@@ -191,9 +193,9 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            channel_shuffle_str = 'groups={}'.format(groups)
+            channel_shuffle_str = f'groups={groups}'
             if data_format != 'NCHW':
-                channel_shuffle_str += ', data_format={}'.format(data_format)
+                channel_shuffle_str += f', data_format={data_format}'
             self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
 
     def test_dygraph1(self):

@@ -31,7 +31,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
-#include "paddle/fluid/pybind/op_function_generator.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -443,9 +443,9 @@ GenerateOpFunctions() {
     // In this case, output will reuse input varbase.
     // Dygraph mode needs to be aligned with the in-place strategy in static
     // mode, and the mapping relationships between output and input that have
-    // been defined in static mode should be used in dygraph mode.
-    // Find which ops need to use Inplace strategy in static mode, and get the
-    // mapping relationship between Inplace output and input.
+    // been defined in static graph mode should be used in dygraph mode.
+    // Find which ops need to use Inplace strategy in static graph mode, and get
+    // the mapping relationship between Inplace output and input.
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
     std::map<std::string, std::string> inplace_map;

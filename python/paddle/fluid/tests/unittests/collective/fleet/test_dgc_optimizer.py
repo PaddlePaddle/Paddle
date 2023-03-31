@@ -15,16 +15,16 @@
 import unittest
 
 import paddle
-import paddle.fluid.framework as framework
-import paddle.fluid.optimizer as optimizer
-import paddle.fluid.regularizer as regularizer
-import paddle.fluid.clip as clip
+from paddle.fluid import framework, optimizer, regularizer
+from paddle.nn import clip
 
 paddle.enable_static()
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):
-    class MockDGCMomentum(optimizer.DGCMomentumOptimizer):
+    class MockDGCMomentum(
+        paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer
+    ):
         def get_accumulators(self):
             return self._accumulators
 
@@ -74,7 +74,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             rampup_begin_step=0,
             num_trainers=2,
             regularization=regularization,
-            grad_clip=clip.GradientClipByNorm(1.0),
+            grad_clip=clip.ClipGradByNorm(1.0),
         )
 
         if use_recompute:
@@ -142,14 +142,14 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
                 print("dgc regular_coeff=" + str(coeff))
 
     def test_tpyeError(self):
-        # the type of DGCMomentumOptimizer(grad_clip=) must be 'GradientClipByNorm'
+        # the type of DGCMomentumOptimizer(grad_clip=) must be 'ClipGradByNorm'
         with self.assertRaises(TypeError):
             dgc_momentum_optimizer = self.MockDGCMomentum(
                 learning_rate=0.01,
                 momentum=0.2,
                 rampup_begin_step=0,
                 num_trainers=2,
-                grad_clip=clip.GradientClipByGlobalNorm(1.0),
+                grad_clip=clip.ClipGradByGlobalNorm(1.0),
             )
 
     def test_momentum_without_dgc(self):

@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -77,8 +77,7 @@ __global__ void CEmbeddingGrad(T *table,
     auto id = ids[row];
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      paddle::platform::CudaAtomicAdd(&table[real_idx * columns + col],
-                                      output[i]);
+      phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
     }
   }
 }
@@ -87,9 +86,9 @@ template <typename T>
 class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_t = context.Input<LoDTensor>("W");
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *table_t = context.Input<phi::DenseTensor>("W");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto *output_t = context.Output<phi::DenseTensor>("Out");
 
     const auto &dev_ctx = context.template device_context<phi::GPUContext>();
     const int64_t start_idx = context.Attr<int64_t>("start_index");
@@ -143,9 +142,11 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto &dev_ctx = context.template device_context<phi::GPUContext>();
     const int64_t start_idx = context.Attr<int64_t>("start_index");
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto d_output_t =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto d_table_t =
+        context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
     int N = d_table_t->dims()[0];
     int D = d_table_t->dims()[1];
@@ -197,8 +198,14 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_embedding,
                         ops::CEmbeddingCUDAKernel<float>,
                         ops::CEmbeddingCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CEmbeddingCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CEmbeddingCUDAKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(c_embedding_grad,
                         ops::CEmbeddingGradCUDAKernel<float>,
                         ops::CEmbeddingGradCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CEmbeddingGradCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CEmbeddingGradCUDAKernel<plat::float16>);

@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn.functional import avg_pool2d, max_pool2d
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
     max_pool2D_forward_naive,
     pool2D_forward_naive,
 )
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn.functional import avg_pool2d, max_pool2d
 
 
 class TestPool2D_API(unittest.TestCase):
@@ -35,7 +36,7 @@ class TestPool2D_API(unittest.TestCase):
 
     def check_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
             result = avg_pool2d(input, kernel_size=2, stride=2, padding=0)
@@ -127,7 +128,7 @@ class TestPool2D_API(unittest.TestCase):
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
             result = max_pool2d(input, kernel_size=2, stride=2, padding=0)
@@ -370,10 +371,6 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool2d()
-
 
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
@@ -600,9 +597,29 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_stride_out_of_range)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool2d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool2d(
+                    x, 1, stride=(0, 0), return_mask=False, data_format='NHWC'
+                )
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
 
 
 if __name__ == '__main__':

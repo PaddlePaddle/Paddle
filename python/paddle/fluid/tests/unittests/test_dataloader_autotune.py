@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tempfile
-import warnings
 import json
-import paddle
-import paddle.nn as nn
-from paddle.io import DataLoader, Dataset
-import sys
 import os
+import sys
+import tempfile
+import unittest
+import warnings
+
+import numpy as np
+
+import paddle
+from paddle import nn
+from paddle.io import DataLoader, Dataset
 
 
 class RandomDataset(Dataset):

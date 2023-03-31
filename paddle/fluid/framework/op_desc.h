@@ -76,6 +76,8 @@ class OpDesc {
 
   bool HasOutput(const std::string &name) const;
 
+  bool HasInput(const std::string &name) const;
+
   std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
@@ -200,6 +202,8 @@ class OpDesc {
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
+  void ResetBlock() { this->block_ = nullptr; }
+
  private:
   friend class ProgramDesc;
   // Find VarDesc from OpDesc located Block into global Block
@@ -217,7 +221,7 @@ class OpDesc {
     return ret_val;
   }
 
-  // it it really needed? or just mantain a ptr from block?
+  // Is it really needed? Or just maintain a ptr from the block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names

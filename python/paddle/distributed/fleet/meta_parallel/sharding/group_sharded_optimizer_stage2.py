@@ -24,29 +24,25 @@
 
 import logging
 import warnings
-
 from collections import OrderedDict
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
+from paddle.distributed import ParallelMode, fleet
+from paddle.framework import core
+from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
-from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed import fleet, ParallelMode
 
 HybridParallelClipGrad = (
     fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
 )
-from paddle.distributed.collective import (
-    _get_global_group,
-    new_group,
-)
+from paddle.distributed.collective import _get_global_group, new_group
 
-from .group_sharded_storage import ParamStorage, GradStorage
-from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
+from .group_sharded_storage import GradStorage, ParamStorage
+from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
-alignment = {"gpu": 256, "cpu": 4096}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
     Type.fp16.value: 2,
     Type.bf16.value: 2,
@@ -85,7 +81,9 @@ class GroupShardedOptimizerStage2(Optimizer):
     ):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
-        assert core.is_compiled_with_cuda(), "Only GPU is supported now"
+        assert (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+        ), "Only GPU and XPU is supported now"
 
         # Segmentation information
         self._dtype_rank_params = (
@@ -151,6 +149,11 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[0]
 
+        if self._dp_group is not None and self._dp_group.nranks > 1:
+            assert (
+                not offload
+            ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
+
         # Synchronous all ranks models
         if pertrain_sync_models:
             self._sync_params_and_buffers()
@@ -166,6 +169,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if (
                 hcg
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+                and not offload
             ):
                 self._optim._grad_clip = HybridParallelClipGrad(
                     self._optim._grad_clip, hcg
@@ -198,6 +202,10 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
+
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self._optim._set_auxiliary_var(key, val)
 
     @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
@@ -430,7 +438,7 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         if self.offload:
             self._optim._master_weights = self._master_params
-            cpu_master_params = [p for p in self._master_params.values()]
+            cpu_master_params = list(self._master_params.values())
             for param in cpu_master_params:
                 size = param._numel() * align[Type.fp32.value]
                 remaining = size % alignment[self.offload_device]
@@ -581,6 +589,13 @@ class GroupShardedOptimizerStage2(Optimizer):
                 task.wait()
 
         return __impl__
+
+    def set_lr(self, lr):
+        super().set_lr(lr)
+        self._optim.set_lr(lr)
+
+    def get_lr(self):
+        return self._optim.get_lr()
 
     @paddle.autograd.no_grad()
     def _broadcast_params_overlap_forward(self):

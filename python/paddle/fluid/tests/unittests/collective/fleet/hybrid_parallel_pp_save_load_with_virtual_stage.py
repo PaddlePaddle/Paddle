@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import os
 import shutil
 import tempfile
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+import unittest
+
+import numpy as np
 from hybrid_parallel_pp_transformer_with_virtual_stage import (
     ModelPipe,
     set_random_seed,
 )
+
+import paddle
+import paddle.distributed as dist
+from paddle.distributed import fleet
 
 batch_size = 8
 length = 8

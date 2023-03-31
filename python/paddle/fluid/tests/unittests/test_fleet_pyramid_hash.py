@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+
+import paddle
+from paddle import fluid
+from paddle.incubate.distributed.fleet import role_maker
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
 
@@ -28,7 +30,9 @@ class TestPyramidHashOpApi(unittest.TestCase):
         num_voc = 128
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
-        x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=x_shape, dtype='int32', lod_level=1
+        )
         hash_embd = fluid.contrib.layers.search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
@@ -55,7 +59,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
             name=None,
         )
 
-        cost = fluid.layers.reduce_sum(hash_embd)
+        cost = paddle.sum(hash_embd)
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
@@ -76,4 +80,5 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

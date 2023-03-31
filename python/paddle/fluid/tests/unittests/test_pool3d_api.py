@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.fluid.framework import _test_eager_guard
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
     pool3D_forward_naive,
 )
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn.functional import avg_pool3d, max_pool3d
 
 
 class TestPool3D_API(unittest.TestCase):
@@ -36,7 +36,7 @@ class TestPool3D_API(unittest.TestCase):
 
     def check_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
             result = avg_pool3d(input, kernel_size=2, stride=2, padding=0)
@@ -141,7 +141,7 @@ class TestPool3D_API(unittest.TestCase):
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
             result = max_pool3d(input, kernel_size=2, stride=2, padding=0)
@@ -366,9 +366,31 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool3d()
+    def test_static_pf16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([1, 2, 3, 32, 32]).astype("float16")
+
+                x = paddle.static.data(
+                    name="x", shape=[1, 2, 3, 32, 32], dtype="float16"
+                )
+
+                m = paddle.nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
 
 class TestPool3DError_API(unittest.TestCase):
@@ -567,9 +589,27 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_size_out_of_range)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(x, 1, stride=(0, 0, 0), ceil_mode=False)
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
 
 
 if __name__ == '__main__':

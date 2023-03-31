@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-
-from paddle.distributed.fleet import auto
 from engine_api_dp import MyDataset
+
+import paddle
+import paddle.nn.functional as F
+from paddle import nn
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 batch_size = 16
@@ -98,7 +98,7 @@ def train(fetch):
     tuning.profile_start_step = 1
     tuning.profile_end_step = 5
     tuning.run_after_tuning = True
-    tuning.verbose = True
+    tuning.debug = True
 
     dataset = MyDataset(batch_num * batch_size)
     engine = auto.Engine(

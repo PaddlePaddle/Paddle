@@ -13,11 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/selected_rows_impl.h"
-
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 
@@ -94,8 +91,9 @@ struct TensorFillVisitor {
 
 void* SelectedRowsImpl::AllocateFrom(Allocator* allocator,
                                      DataType dtype,
-                                     size_t requested_size) {
-  return value_->AllocateFrom(allocator, dtype, requested_size);
+                                     size_t requested_size,
+                                     bool fake_alloc) {
+  return value_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
 }
 
 bool SelectedRowsImpl::HasKey(int64_t key) const {

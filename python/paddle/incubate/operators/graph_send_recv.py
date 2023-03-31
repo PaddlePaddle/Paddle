@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.framework import Variable
+
+import paddle
+from paddle import _C_ops
 from paddle.fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
     check_dtype,
+    check_type,
+    check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.layers.tensor import cast
-from paddle import _C_ops, _legacy_C_ops
-import paddle.utils.deprecated as deprecated
+from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.utils import deprecated
 
 
 @deprecated(
@@ -124,19 +124,6 @@ def graph_send_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if _in_legacy_dygraph():
-        out_size = convert_out_size_to_list(out_size)
-        out, tmp = _legacy_C_ops.graph_send_recv(
-            x,
-            src_index,
-            dst_index,
-            None,
-            'reduce_op',
-            pool_type.upper(),
-            'out_size',
-            out_size,
-        )
-        return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
@@ -195,14 +182,14 @@ def convert_out_size_to_list(out_size):
     elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
     else:
-        out_size = [out_size.numpy().astype(int)[0]]
+        out_size = [int(out_size)]
     return out_size
 
 
 def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
     """
     Convert out_size(int, np.int32, np.int64, Variable) to inputs
-    and attrs in static mode.
+    and attrs in static graph mode.
     """
     if out_size is None:
         attrs['out_size'] = [0]
@@ -218,7 +205,7 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
             '(When type of out_size in' + op_type + ' is Variable.)',
         )
         if convert_dtype(out_size.dtype) == 'int64':
-            out_size = cast(out_size, 'int32')
+            out_size = paddle.cast(out_size, 'int32')
         inputs["Out_size"] = out_size
     else:
         raise TypeError("Out_size only supports Variable or int.")

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import unittest
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestFcFusePass(PassAutoScanTest):
@@ -90,7 +90,7 @@ class TestFcFusePass(PassAutoScanTest):
         if begin_norm_axis == x_shape_rank - 1 and draw(st.booleans()):
             reduce_mean_dim = [-1]
         else:
-            reduce_mean_dim = [i for i in range(x_shape_rank)]
+            reduce_mean_dim = list(range(x_shape_rank))
             reduce_mean_dim = reduce_mean_dim[begin_norm_axis:]
         error_test_ratio = draw(st.integers(min_value=1, max_value=10))
         if error_test_ratio > 9:

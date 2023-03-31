@@ -14,11 +14,12 @@
 
 import os
 import shlex
-import sys
 import shutil
-import unittest
-import paddle
+import sys
 import tempfile
+import unittest
+
+import paddle
 
 
 def get_test_file():
@@ -47,7 +48,7 @@ def run_test(
     if os.name == 'nt':
         return
     args = locals()
-    log_dir = os.path.join(temp_dir.name, 'log_{}'.format(os.getpid()))
+    log_dir = os.path.join(temp_dir.name, f'log_{os.getpid()}')
     cmd = [
         sys.executable,
         '-u',
@@ -68,13 +69,13 @@ def run_test(
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = os.path.join(
         temp_dir.name,
-        'distributed_fused_lamb_touch_file_{}'.format(os.getpid()),
+        f'distributed_fused_lamb_touch_file_{os.getpid()}',
     )
     os.environ[touch_file_env] = touch_file_name
     try:
         assert os.system(cmd) == 0 and os.path.exists(
             touch_file_name
-        ), 'Test failed when {}'.format(args)
+        ), f'Test failed when {args}'
     finally:
         temp_dir.cleanup()
 

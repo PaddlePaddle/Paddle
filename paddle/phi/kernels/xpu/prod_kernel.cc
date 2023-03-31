@@ -22,22 +22,32 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ProdRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out) {
-  int r = XPUReduce<Context, T>(dev_ctx,
-                                x,
-                                dims.GetData(),
-                                keep_dim,
-                                reduce_all,
-                                out,
-                                xpu::reduce_prod<T>);
+void ProdKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const IntArray& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  auto f = [](xpu::Context* ctx,
+              const T* x,
+              T* y,
+              const std::vector<int>& xdims,
+              const std::vector<int>& reduce_dims) {
+    return xpu::reduce_prod<XPUType>(ctx,
+                                     reinterpret_cast<const XPUType*>(x),
+                                     reinterpret_cast<XPUType*>(y),
+                                     xdims,
+                                     reduce_dims);
+  };
+
+  int r = XPUReduce<Context, T>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_prod");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prod_raw, XPU, ALL_LAYOUT, phi::ProdRawKernel, float) {}
+PD_REGISTER_KERNEL(prod, XPU, ALL_LAYOUT, phi::ProdKernel, float) {}

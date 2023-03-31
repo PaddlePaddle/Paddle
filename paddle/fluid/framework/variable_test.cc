@@ -22,10 +22,10 @@ namespace framework {
 TEST(Variable, GetMutable) {
   std::unique_ptr<Variable> v(new Variable());
 
-  auto* t = v->GetMutable<std::string>();
+  auto* t = v->GetMutable<String>();
   *t = "1234";
 
-  const auto& tt = v->Get<std::string>();
+  const auto& tt = v->Get<String>();
   EXPECT_EQ("1234", tt);
 
   try {

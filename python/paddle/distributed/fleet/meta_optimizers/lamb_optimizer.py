@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import logging
+
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.optimizer import LambOptimizer as LAMB
+
 from .meta_optimizer_base import MetaOptimizerBase
-import logging
 
 __all__ = []
 
@@ -25,7 +27,7 @@ class LambOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.lamb_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = ["GraphExecutionOptimizer"]
+        self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
     def _set_basic_info(

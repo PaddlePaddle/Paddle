@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
+import paddle
+from paddle import fluid
 
 
 class TestProgram(unittest.TestCase):
     def test_program_to_string(self):
         prog = fluid.default_main_program()
-        a = fluid.layers.data(
-            name="X", shape=[2, 3], dtype="float32", append_batch_size=False
-        )
-        c = fluid.layers.fc(a, size=3)
+        a = paddle.static.data(name="X", shape=[2, 3], dtype="float32")
+        c = paddle.static.nn.fc(a, size=3)
         prog_string = prog.to_string(throw_on_error=True, with_details=False)
         prog_string_with_details = prog.to_string(
             throw_on_error=False, with_details=True

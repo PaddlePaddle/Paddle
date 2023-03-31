@@ -13,39 +13,18 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
 import paddle.distributed as dist
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-
-
-def _check_tensor_shape(tensor, shape, nranks=1):
-    if tensor.shape != shape:
-        raise RuntimeError('The tensor for alltoall is not correctly-sized.')
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            'The tensor_list for alltoall is not correctly-sized.'
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                'The tensor_list for alltoall is not correctly-sized.'
-            )
+from paddle.fluid import data_feeder
 
 
 def _all_to_all_tensor_in_dygraph(
     out_tensor, in_tensor, group, sync_op, use_calc_stream
 ):
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
-
     if use_calc_stream:
         return group.process_group.all_to_all_tensor_on_calc_stream(
             in_tensor, out_tensor
@@ -68,18 +47,14 @@ def _all_to_all_in_dygraph(
         out_tensor_list += [
             paddle.empty_like(tensor) for tensor in in_tensor_list
         ]
-    else:
-        _check_tensor_list_shape(
-            out_tensor_list, in_tensor_list[0].shape, group.nranks
-        )
 
     if use_calc_stream:
         return group.process_group.all_to_all_on_calc_stream(
-            in_tensor_list, out_tensor_list
+            out_tensor_list, in_tensor_list
         )
 
     task = group.process_group.all_to_all(
-        in_tensor_list, out_tensor_list, sync_op
+        out_tensor_list, in_tensor_list, sync_op
     )
     if sync_op:
         task.wait()
@@ -97,7 +72,7 @@ def _all_to_all_in_static_mode(
     op_type = 'alltoall'
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
 
     in_tensor = in_tensor_or_tensor_list
     if isinstance(in_tensor_or_tensor_list, list):
@@ -224,7 +199,9 @@ def alltoall(
                 "The output and input should be both tensor or tensor list."
             )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_to_all_in_static_mode(
             out_tensor_or_tensor_list,
             in_tensor_or_tensor_list,
@@ -243,18 +220,23 @@ def _alltoall_single_in_dygraph(
     sync_op,
     use_calc_stream,
 ):
+    world_size = dist.get_world_size()
     if out_split_sizes is None:
-        out_split_sizes = []
+        out_split_sizes = [
+            out_tensor.shape[0] // world_size for _ in range(world_size)
+        ]
     if in_split_sizes is None:
-        in_split_sizes = []
+        in_split_sizes = [
+            in_tensor.shape[0] // world_size for _ in range(world_size)
+        ]
 
     if use_calc_stream:
         return group.process_group.all_to_all_single_on_calc_stream(
-            in_tensor, out_tensor, in_split_sizes, out_split_sizes
+            out_tensor, in_tensor, out_split_sizes, in_split_sizes
         )
 
     task = group.process_group.all_to_all_single(
-        in_tensor, out_tensor, in_split_sizes, out_split_sizes, sync_op
+        out_tensor, in_tensor, out_split_sizes, in_split_sizes, sync_op
     )
     if sync_op:
         task.wait()

@@ -69,7 +69,7 @@ class PartialRecvOp : public framework::OperatorWithKernel {
                             out_shape[i]));
     }
     auto out_dims = phi::make_ddim(out_shape);
-    int numel = phi::product(out_dims);
+    int64_t numel = phi::product(out_dims);
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
@@ -80,12 +80,12 @@ class PartialRecvOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return framework::OpKernelType(type, ctx.GetPlace());
+    return phi::KernelKey(type, ctx.GetPlace());
   }
 };
 

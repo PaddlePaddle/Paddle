@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-from op_test import OpTest
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
@@ -100,10 +102,10 @@ class TensorFillDiagTensor_Test(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):

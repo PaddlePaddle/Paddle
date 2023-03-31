@@ -20,6 +20,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.framework import global_var
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
@@ -27,7 +28,6 @@ from ..data_feeder import convert_dtype
 import warnings
 from ..framework import (
     _get_paddle_place,
-    _in_legacy_dygraph,
     _in_eager_without_dygraph_check,
 )
 import paddle
@@ -44,16 +44,15 @@ __all__ = [
     'to_variable',
 ]
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
+# Flag that indicates whether running code under `@to_static`
 
 
 def in_declarative_mode():
     """
-    Return a bool value that indicates whether running code under `@declarative`
+    Return a bool value that indicates whether running code under `@to_static`
 
     """
-    return _in_declarative_mode_
+    return global_var._in_declarative_mode_
 
 
 def declarative_unsupport_argument_warning(
@@ -87,11 +86,11 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
 
-    global _in_declarative_mode_
-    original_val = _in_declarative_mode_
-    _in_declarative_mode_ = is_declarative
+    global global_var
+    original_val = global_var._in_declarative_mode_
+    global_var._in_declarative_mode_ = is_declarative
     yield
-    _in_declarative_mode_ = original_val
+    global_var._in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -107,17 +106,10 @@ def program_desc_tracing_guard(enable):
             tracer._enable_program_desc_tracing = original_val
 
 
-_functional_dygraph_context_manager = None
-
-
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if (
-        in_declarative_mode()
-        and not framework._non_static_mode()
-        and parameters
-    ):
+    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, list):
@@ -135,20 +127,18 @@ def _convert_into_variable(tensor):
     """
     Convert Varbase into Variable.
     """
-    if isinstance(tensor, (core.eager.Tensor, core.VarBase)):
+    if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
-        # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(
-            tensor, (framework.EagerParamBase, framework.ParamBase)
-        ):
+        # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+        elif isinstance(tensor, framework.EagerParamBase):
             new_var = tensor._to_static_var(to_parameter=True)
         else:
-            # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
+            # Note(Aurelius84): Convert Tensor in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
-            # Because users can create a VarBase in `__init__`  like a
+            # Because users can create a Tensor in `__init__`  like a
             # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
             # and necessary for inferring. It will be pruned if it's not necessary for inferring.
 
@@ -158,6 +148,18 @@ def _convert_into_variable(tensor):
 
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
+            )
+        # add param into parameter recorder to collect all the params used in this program.
+        if new_var.persistable is True:
+            # TODO(@xiongkun): 0d-tensor may be affected at present,
+            # but there is no particularly good method to identify whether 0d-tensor
+            # is used as buffer or "drop_out_state" in LSTM buffer variable.
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            ProgramTranslator.get_instance()._params_recorder.add(
+                tensor.block.program, tensor
             )
         return new_var
     else:
@@ -189,7 +191,7 @@ def enabled():
             print(fluid.dygraph.enabled())  # False
     """
     # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
-    return framework._non_static_mode()
+    return framework.in_dygraph_mode()
 
 
 def enable_dygraph(place=None):
@@ -215,18 +217,18 @@ def enable_dygraph(place=None):
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(
+    global global_var
+    if global_var._functional_dygraph_context_manager is None:
+        global_var._functional_dygraph_context_manager = guard(
             place=_get_paddle_place(place)
         )
-        _functional_dygraph_context_manager.__enter__()
+        global_var._functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
         CleanupFuncRegistrar.register(disable_dygraph)
@@ -250,16 +252,16 @@ def disable_dygraph():
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is not None:
-        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
-        _functional_dygraph_context_manager = None
+    global global_var
+    if global_var._functional_dygraph_context_manager is not None:
+        global_var._functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        global_var._functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager
@@ -339,7 +341,114 @@ def no_grad(func=None):
         return __impl__(func)
 
 
-class no_grad_:
+class _DecoratorContextManager:
+    """Allow a context manager to be used as a decorator"""
+
+    def __call__(self, func):
+        @decorator.decorator
+        def _decorate_function(func, *args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
+            gen = func(*args, **kwargs)
+            with self:
+                for x in gen:
+                    yield x
+
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
+
+    def __enter__(self):
+        raise NotImplementedError
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        raise NotImplementedError
+
+    def clone(self):
+        # override this method if your children class takes __init__ parameters
+        return self.__class__()
+
+
+def is_grad_enabled():
+    """
+    Returns whether current dygraph gradient calculation mode is enabled.
+
+    Returns:
+        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # Dygraph gradient calculation mode is enabled by default.
+            paddle.is_grad_enabled() # True
+
+            with paddle.set_grad_enabled(False):
+                paddle.is_grad_enabled() # False
+
+            paddle.enable_static()
+            paddle.is_grad_enabled() # False
+    """
+    tracer = framework._dygraph_tracer()
+    return tracer._has_grad if tracer else False
+
+
+def _set_grad_enabled(mode):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        tracer._has_grad = mode
+
+
+class set_grad_enabled(_DecoratorContextManager):
+    """
+    Create a context which enables or disables dygraph gradient calculation.
+
+    Args:
+        mode(bool): whether to enable (`True`), or disable (`False`) grad.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([1.], stop_gradient=False)
+            is_train = False
+            with paddle.set_grad_enabled(is_train):
+                y = x * 2
+            assert(y.stop_gradient == True)
+
+            paddle.set_grad_enabled(True)
+            y = x * 2
+            assert(y.stop_gradient == False)
+
+            paddle.set_grad_enabled(False)
+            y = x * 2
+            assert(y.stop_gradient == True)
+    """
+
+    def __init__(self, mode):
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(mode)
+        self.mode = mode
+
+    def __enter__(self):
+        ...
+
+    def __exit__(self, *args):
+        _set_grad_enabled(self.prev)
+
+    def clone(self):
+        return self.__class__(self.mode)
+
+
+class no_grad_(_DecoratorContextManager):
     """
     :api_attr: imperative
 
@@ -385,34 +494,60 @@ class no_grad_:
         test_layer()
     """
 
-    def __call__(self, func):
-        @decorator.decorator
-        def _decorate_function(func, *args, **kwargs):
-            with self:
-                return func(*args, **kwargs)
-
-        @decorator.decorator
-        def _decorate_generator(func, *args, **kwargs):
-            gen = func(*args, **kwargs)
-            with self:
-                for x in gen:
-                    yield x
-
-        if inspect.isgeneratorfunction(func):
-            return _decorate_generator(func)
-        else:
-            return _decorate_function(func)
-
     def __enter__(self):
-        tracer = framework._dygraph_tracer()
-        if tracer:
-            self.orig = tracer._has_grad
-            tracer._has_grad = False
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(False)
 
     def __exit__(self, *args):
-        tracer = framework._dygraph_tracer()
-        if tracer:
-            tracer._has_grad = self.orig
+        _set_grad_enabled(self.prev)
+
+
+class enable_grad(_DecoratorContextManager):
+    """
+    :api_attr: imperative
+
+    Create a context which enable dygraph gradient calculation,
+    if it has been disabled by `no_grad` or `set_grad_enabled`.
+
+    In this mode, the result of every computation will have `stop_gradient` set
+    to `False`.
+
+    Also functions as a decorator. (Make sure to use an instance.)
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        # use as generator
+
+        x = paddle.to_tensor([1.], stop_gradient=False)
+        with paddle.no_grad():
+            with paddle.enable_grad():
+                y = x * 2
+        assert(y.stop_gradient == False)
+        y.backward()
+        assert(x.grad is not None)
+
+        # use as decorator
+
+        @paddle.enable_grad()
+        def double(x):
+            return x * 2
+
+        with paddle.no_grad():
+            z = double(x)
+
+        assert(z.stop_gradient == False)
+    """
+
+    def __enter__(self):
+        self.prev = is_grad_enabled()
+        _set_grad_enabled(True)
+
+    def __exit__(self, *args):
+        _set_grad_enabled(self.prev)
 
 
 @signature_safe_contextmanager
@@ -450,7 +585,6 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
-    VarBase = core.VarBase
 
     if place is not None:
         expected_place = _get_paddle_place(place)
@@ -620,24 +754,14 @@ def grad(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                if _in_eager_without_dygraph_check():
-                    assert isinstance(
-                        each_var, core.eager.Tensor
-                    ), "Elements of {} must be Tensor".format(name)
-                else:
-                    assert isinstance(
-                        each_var, core.VarBase
-                    ), "Elements of {} must be Variable".format(name)
+                assert isinstance(
+                    each_var, core.eager.Tensor
+                ), "Elements of {} must be Tensor".format(name)
             return in_out_list
         else:
-            if _in_eager_without_dygraph_check():
-                assert isinstance(
-                    in_out_list, core.eager.Tensor
-                ), "{} must be Tensor or list of Tensor".format(name)
-            else:
-                assert isinstance(
-                    in_out_list, core.VarBase
-                ), "{} must be Variable or list of Variable".format(name)
+            assert isinstance(
+                in_out_list, core.eager.Tensor
+            ), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -649,14 +773,9 @@ def grad(
 
         for each_var in grad_outputs:
             if each_var is not None:
-                if _in_eager_without_dygraph_check():
-                    assert isinstance(
-                        each_var, core.eager.Tensor
-                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
-                else:
-                    assert isinstance(
-                        each_var, core.VarBase
-                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                assert isinstance(
+                    each_var, core.eager.Tensor
+                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
 
@@ -667,21 +786,16 @@ def grad(
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, (core.VarBase, core.eager.Tensor)):
+    elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            if _in_eager_without_dygraph_check():
-                assert isinstance(
-                    var, core.eager.Tensor
-                ), "no_grad_vars can only contains Tensor"
-            else:
-                assert isinstance(
-                    var, core.VarBase
-                ), "no_grad_vars can only contains Variable"
+            assert isinstance(
+                var, core.eager.Tensor
+            ), "no_grad_vars can only contains Tensor"
     else:
         if _in_eager_without_dygraph_check():
             raise AssertionError(
@@ -795,7 +909,6 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
         tuple,
         np.ndarray,
         core.eager.Tensor,
-        core.VarBase,
         framework.Variable,
         core.Tensor,
         core.LoDTensor,
@@ -805,10 +918,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value))
         )
-    if isinstance(value, (core.eager.Tensor, core.VarBase, framework.Variable)):
+    if isinstance(value, (core.eager.Tensor, framework.Variable)):
         return value
     elif isinstance(value, (core.Tensor, core.LoDTensor)):
-        return core.VarBase(value)
+        return core.eager.Tensor(value)
     else:
         if isinstance(
             framework._current_expected_place(), framework.core.CPUPlace
@@ -837,21 +950,11 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        if _in_eager_without_dygraph_check():
-            return core.eager.Tensor(
-                value,
-                framework._current_expected_place(),
-                False,
-                zero_copy,
-                name if name else None,
-                True,
-            )
-        else:
-            py_var = core.VarBase(
-                value=value,
-                place=framework._current_expected_place(),
-                persistable=False,
-                zero_copy=zero_copy,
-                name=name if name else '',
-            )
-            return py_var
+        return core.eager.Tensor(
+            value,
+            framework._current_expected_place(),
+            False,
+            zero_copy,
+            name if name else None,
+            True,
+        )

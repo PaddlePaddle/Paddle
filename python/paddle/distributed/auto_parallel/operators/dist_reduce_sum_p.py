@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import set_dist_op_desc_original_id
-from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
+from ..utils import set_dist_op_desc_original_id
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedReduceSumPrimtive(DistributedOperatorImplContainer):
@@ -54,7 +57,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             return False
 
         output_name = outputs[0]
-        output_var = dist_op.serial_op.block.var(output_name)
+        output_var = dist_op.serial_op.block._var_recursive(output_name)
         if output_var.shape != (1,):
             return False
 
@@ -89,7 +92,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -101,13 +104,15 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             )
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
+        # TODO: should we add a new dist attr for the new op here?
 
         # batch dimension synchronization
         var_name = src_op.output_arg_names[0]
@@ -124,10 +129,10 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         )
 
         # dist attr
-        var = main_block.var(var_name)
+        var = main_block._var_recursive(var_name)
         tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        new_op_attr = OperatorDistributedAttribute()
+        new_op_attr = OperatorDistAttr()
         new_op_attr.process_mesh = op_dist_attr.process_mesh
         new_op_attr.set_output_dims_mapping(
             var.name, tensor_dist_attr.dims_mapping

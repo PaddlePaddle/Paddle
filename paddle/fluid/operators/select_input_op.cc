@@ -73,7 +73,7 @@ class SelectInputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // Because this op is blocking whole control flow. I am implementing MVP
     // (minimal viable product) here.
     AddComment(R"DOC(
-Merge branches of LoDTensor into a single Output with a mask integer
+Merge branches of phi::DenseTensor into a single Output with a mask integer
 specifying the output branchi.
 )DOC");
   }

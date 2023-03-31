@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
-import paddle.fluid.framework as framework
-import paddle.distributed.communication.stream as stream
-from paddle.distributed.communication.group import _get_global_group
+import paddle.distributed as dist
+from paddle import framework
+from paddle.distributed.communication import stream
+
+from .serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
@@ -61,34 +68,80 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
             # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
             # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.scatter(tensor, tensor_list, src, group, sync_op)
+    return stream.scatter(tensor, tensor_list, src, group, sync_op)
 
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    gsrc = src if group is None else group.get_group_rank(src)
-    rank = _get_global_group().rank if group is None else group.rank
-    nranks = _get_global_group().nranks if group is None else group.nranks
-    assert gsrc >= 0, "src rank out of group, need global rank"
 
-    if rank != gsrc:
-        tensor_list = []
-        for _ in range(nranks):
-            tensor_list.append(tensor)
-    temp = paddle.concat(tensor_list, axis=0)
+def scatter_object_list(
+    out_object_list, in_object_list=None, src=0, group=None
+):
+    """
 
-    use_calc_stream = sync_op
-    return framework._legacy_C_ops.c_scatter(
-        temp,
-        tensor,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
-        ring_id,
-        'nranks',
-        nranks,
-        'root',
-        gsrc,
+    Scatter picklable objects from the source to all others. Similiar to scatter(), but python object can be passed in.
+
+    Args:
+        out_object_list (list): The list of objects to store the scattered objects.
+        in_object_list (list): The list of objects to scatter. Only objects on the src rank will be scattered.
+        src (int): The source rank in global view.
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
+            out_object_list = []
+            if dist.get_rank() == 0:
+                in_object_list = [{'foo': [1, 2, 3]}, {'foo': [4, 5, 6]}]
+            else:
+                in_object_list = [{'bar': [1, 2, 3]}, {'bar': [4, 5, 6]}]
+            dist.scatter_object_list(out_object_list, in_object_list, src=1)
+            print(out_object_list)
+            # [{'bar': [1, 2, 3]}] (2 GPUs, out for rank 0)
+            # [{'bar': [4, 5, 6]}] (2 GPUs, out for rank 1)
+    """
+    assert (
+        framework.in_dygraph_mode()
+    ), "scatter_object_list doesn't support static graph mode."
+
+    rank = dist.get_rank()
+    in_obj_tensors = []
+    in_obj_sizes = []
+
+    if rank == src:
+        for obj in in_object_list:
+            obj_tensor, obj_size = convert_object_to_tensor(obj)
+            in_obj_tensors.append(obj_tensor)
+            in_obj_sizes.append(obj_size)
+        max_obj_size_tensor = max(in_obj_sizes)
+    else:
+        # NOTE: shape can be [] after 0D tensor support
+        max_obj_size_tensor = paddle.empty([1], dtype="int64")
+    stream.broadcast(max_obj_size_tensor, src)
+    max_obj_size = int(max_obj_size_tensor.item())
+
+    # resize to the same size
+    in_tensor_list = []
+    for tensor in in_obj_tensors:
+        numpy_data = tensor.numpy()
+        numpy_data = np.resize(numpy_data, [max_obj_size])
+        in_tensor = paddle.to_tensor(numpy_data)
+        in_tensor_list.append(in_tensor)
+    out_tensor = paddle.empty([max_obj_size], dtype="uint8")
+    scatter(out_tensor, in_tensor_list if rank == src else None, src, group)
+
+    # NOTE: shape can be [] after 0D tensor support
+    out_tensor_size = paddle.empty([1], dtype="int64")
+    scatter(out_tensor_size, in_obj_sizes if rank == src else None, src, group)
+
+    out_object_list.clear()
+    out_object_list.append(
+        convert_tensor_to_object(out_tensor, out_tensor_size.item())
     )

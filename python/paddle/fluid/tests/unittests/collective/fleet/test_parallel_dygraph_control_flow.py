@@ -15,8 +15,9 @@
 import os
 import unittest
 
-import paddle.fluid as fluid
 from test_dist_base import TestDistBase
+
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 

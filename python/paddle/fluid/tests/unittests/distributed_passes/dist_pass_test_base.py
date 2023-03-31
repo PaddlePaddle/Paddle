@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
+import inspect
 import os
-import sys
 import pickle
 import shlex
 import shutil
-import inspect
-import numpy as np
+import sys
+import unittest
 from collections import OrderedDict
+
+import numpy as np
+
+import paddle
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 from paddle.distributed.passes.pass_base import PassBase, PassManager
 
@@ -103,13 +105,15 @@ class DistPassTestBase(unittest.TestCase):
                 if out_var_no_pass is None:
                     self.assertIsNone(out_var_pass)
                 else:
-                    np.testing.assert_allclose(
-                        out_var_no_pass,
-                        out_var_pass,
-                        rtol=self.rtol,
-                        atol=self.atol,
-                        equal_nan=self.equal_nan,
-                    )
+                    self.assertEqual(len(out_var_pass), len(out_var_no_pass))
+                    for i in range(0, len(out_var_pass)):
+                        np.testing.assert_allclose(
+                            out_var_no_pass[i],
+                            out_var_pass[i],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                            equal_nan=self.equal_nan,
+                        )
 
     @classmethod
     def _to_var_names(cls, names_or_vars):
@@ -154,7 +158,7 @@ class DistPassTestBase(unittest.TestCase):
                 fetch_values = exe.run(main_prog, feed=feed, fetch_list=outputs)
                 if paddle.distributed.get_rank() == 0:
                     output_dict = OrderedDict(zip(outputs, fetch_values))
-                    print('batch {}, outputs {}'.format(batch_id, output_dict))
+                    print(f'batch {batch_id}, outputs {output_dict}')
                 all_fetch_values.append(fetch_values)
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
@@ -182,11 +186,11 @@ class DistPassTestBase(unittest.TestCase):
 
         pid = os.getpid()
         if apply_pass:
-            output_dir = "test_with_pass_{}".format(pid)
+            output_dir = f"test_with_pass_{pid}"
         else:
-            output_dir = "test_without_pass_{}".format(pid)
+            output_dir = f"test_without_pass_{pid}"
         remove_path_if_exists(output_dir)
-        os.makedirs(output_dir, mode=777)
+        os.makedirs(output_dir, mode=0o777)
 
         input_dump_file = os.path.join(output_dir, 'inputs.bin')
         model_dump_file = os.path.join(output_dir, 'model.bin')
@@ -248,7 +252,7 @@ class DistPassTestBase(unittest.TestCase):
 
             results = []
             for i in range(num_gpus):
-                dump_file = '{0}/{1}.bin'.format(output_dir, i)
+                dump_file = f'{output_dir}/{i}.bin'
                 self.assertTrue(
                     os.path.exists(dump_file),
                     "Pass test failed with apply_pass = {}, please view log in {}".format(
@@ -265,7 +269,7 @@ class DistPassTestBase(unittest.TestCase):
 
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
-        os.environ['DEBUG'] = '1'  # to save the debug directory
+        os.environ['DEBUG'] = '0'
         super().setUp()
 
     def pass_config(self):

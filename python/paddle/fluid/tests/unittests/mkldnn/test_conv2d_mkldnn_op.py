@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    skip_check_grad_ci,
+)
 from paddle.fluid.tests.unittests.test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,
@@ -98,6 +102,13 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = np.minimum(np.maximum(output, 0), self.fuse_alpha).astype(
                 self.dsttype
             )
+        if (
+            self.fuse_activation != ""
+            or self.fuse_bias
+            or self.fuse_residual_connection
+        ):
+            self.op_type = 'fused_conv2d'
+
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias

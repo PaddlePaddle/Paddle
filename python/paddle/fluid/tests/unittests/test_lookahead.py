@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
 import paddle
-import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid, nn
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
@@ -34,8 +34,10 @@ class TestLookAhead(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_program, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = fluid.layers.fc(input=data, size=10)
+                data = paddle.static.data(
+                    name='X', shape=[None, 1], dtype='float32'
+                )
+                hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
@@ -69,7 +71,7 @@ class TestLookAhead(unittest.TestCase):
                 )
             fast_param = latest_b - SGD_LR * b_grad
 
-    def func_test_look_ahead_dygraph(self):
+    def test_look_ahead_dygraph(self):
         BATCH_SIZE = 16
         BATCH_NUM = 4
         EPOCH_NUM = 4
@@ -149,11 +151,6 @@ class TestLookAhead(unittest.TestCase):
         )
 
         train(layer, loader, loss_fn, lookahead)
-
-    def test_look_ahead_dygraph(self):
-        with _test_eager_guard():
-            self.func_test_look_ahead_dygraph()
-        self.func_test_look_ahead_dygraph()
 
 
 if __name__ == "__main__":

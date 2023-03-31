@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import multiprocessing
-import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.reader import _reader_process_loop
-from paddle.fluid.framework import _test_eager_guard
-
 import queue
+import unittest
+
+import numpy as np
+
+from paddle import fluid
+from paddle.fluid.reader import _reader_process_loop
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -48,7 +48,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
         self.epoch_num = 2
         self.capacity = 2
 
-    def func_test_reader_process_loop(self):
+    def test_reader_process_loop(self):
         # This unittest's memory mapped files needs to be cleaned manually
         def __clear_process__(util_queue):
             while True:
@@ -79,12 +79,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             )
             clear_process.start()
 
-    def test_reader_process_loop(self):
-        with _test_eager_guard():
-            self.func_test_reader_process_loop()
-        self.func_test_reader_process_loop()
-
-    def func_test_reader_process_loop_simple_none(self):
+    def test_reader_process_loop_simple_none(self):
         def none_sample_genarator(batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -106,11 +101,6 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             except ValueError as ex:
                 exception = ex
             self.assertIsNotNone(exception)
-
-    def test_reader_process_loop_simple_none(self):
-        with _test_eager_guard():
-            self.func_test_reader_process_loop_simple_none()
-        self.func_test_reader_process_loop_simple_none()
 
 
 if __name__ == '__main__':

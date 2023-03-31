@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 struct IouFunction {
  public:
@@ -182,21 +180,21 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
     auto M = y->dims()[0];
 
     out->mutable_data<T>({N, M}, place);
-    Tensor xt(_type);
-    Tensor yt(_type);
+    phi::DenseTensor xt(_type);
+    phi::DenseTensor yt(_type);
     xt.mutable_data<T>({4, N}, place);
     yt.mutable_data<T>({4, M}, place);
     std::vector<int> vec_trans = {1, 0};
     F.Transpose(x, &xt, vec_trans);
     F.Transpose(y, &yt, vec_trans);
-    Tensor xmin1 = xt.Slice(0, 1);
-    Tensor ymin1 = xt.Slice(1, 2);
-    Tensor xmax1 = xt.Slice(2, 3);
-    Tensor ymax1 = xt.Slice(3, 4);
-    Tensor xmin2 = yt.Slice(0, 1);
-    Tensor ymin2 = yt.Slice(1, 2);
-    Tensor xmax2 = yt.Slice(2, 3);
-    Tensor ymax2 = yt.Slice(3, 4);
+    phi::DenseTensor xmin1 = xt.Slice(0, 1);
+    phi::DenseTensor ymin1 = xt.Slice(1, 2);
+    phi::DenseTensor xmax1 = xt.Slice(2, 3);
+    phi::DenseTensor ymax1 = xt.Slice(3, 4);
+    phi::DenseTensor xmin2 = yt.Slice(0, 1);
+    phi::DenseTensor ymin2 = yt.Slice(1, 2);
+    phi::DenseTensor xmax2 = yt.Slice(2, 3);
+    phi::DenseTensor ymax2 = yt.Slice(3, 4);
     xmin1.Resize({N, 1});
     ymin1.Resize({N, 1});
     xmax1.Resize({N, 1});
@@ -206,12 +204,12 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
     xmax2.Resize({1, M});
     ymax2.Resize({1, M});
 
-    Tensor w1(_type);
-    Tensor h1(_type);
-    Tensor w2(_type);
-    Tensor h2(_type);
-    Tensor area1(_type);
-    Tensor area2(_type);
+    phi::DenseTensor w1(_type);
+    phi::DenseTensor h1(_type);
+    phi::DenseTensor w2(_type);
+    phi::DenseTensor h2(_type);
+    phi::DenseTensor area1(_type);
+    phi::DenseTensor area2(_type);
     w1.mutable_data<T>({N, 1}, place);
     h1.mutable_data<T>({N, 1}, place);
     w2.mutable_data<T>({1, M}, place);
@@ -231,10 +229,10 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
     F.Mul(&w1, &h1, &area1);
     F.Mul(&w2, &h2, &area2);
 
-    Tensor inter_xmax(_type);
-    Tensor inter_ymax(_type);
-    Tensor inter_xmin(_type);
-    Tensor inter_ymin(_type);
+    phi::DenseTensor inter_xmax(_type);
+    phi::DenseTensor inter_ymax(_type);
+    phi::DenseTensor inter_xmin(_type);
+    phi::DenseTensor inter_ymin(_type);
     inter_xmax.mutable_data<T>({N, M}, place);
     inter_ymax.mutable_data<T>({N, M}, place);
     inter_xmin.mutable_data<T>({N, M}, place);
@@ -244,8 +242,8 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
     F.Maximum(&xmin1, &xmin2, &inter_xmin);
     F.Maximum(&ymin1, &ymin2, &inter_ymin);
 
-    Tensor inter_w(_type);
-    Tensor inter_h(_type);
+    phi::DenseTensor inter_w(_type);
+    phi::DenseTensor inter_h(_type);
     inter_w.mutable_data<T>({N, M}, place);
     inter_h.mutable_data<T>({N, M}, place);
     F.Sub(&inter_xmax, &inter_xmin, &inter_w);
@@ -255,14 +253,14 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
       F.Adds(&inter_w, 1.0f, &inter_w);
       F.Adds(&inter_h, 1.0f, &inter_h);
     }
-    Tensor zeros(_type);
+    phi::DenseTensor zeros(_type);
     zeros.mutable_data<T>({1}, place);
     FillMLUTensorWithHostValue<T>(ctx, static_cast<T>(0), &zeros);
     F.Maximum(&inter_w, &zeros, &inter_w);
     F.Maximum(&inter_h, &zeros, &inter_h);
 
     F.Mul(&inter_w, &inter_h, out);
-    Tensor union_area(_type);
+    phi::DenseTensor union_area(_type);
     union_area.mutable_data<T>({N, M}, place);
     F.Add(&area1, &area2, &union_area);
     F.Sub(&union_area, out, &union_area);

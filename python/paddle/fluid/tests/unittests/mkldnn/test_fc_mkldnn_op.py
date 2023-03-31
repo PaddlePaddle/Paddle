@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def fully_connected_naive(input, weights, bias_data):

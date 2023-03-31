@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -48,8 +50,10 @@ class GridSampleTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("x", self.x_shape, dtype=self.dtype)
-                grid = fluid.data("grid", self.grid_shape, dtype=self.dtype)
+                x = paddle.static.data("x", self.x_shape, dtype=self.dtype)
+                grid = paddle.static.data(
+                    "grid", self.grid_shape, dtype=self.dtype
+                )
                 y_var = F.grid_sample(
                     x,
                     grid,

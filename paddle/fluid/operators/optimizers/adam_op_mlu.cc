@@ -19,9 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename T>
 class AdamMLUKernel : public framework::OpKernel<T> {
  public:
@@ -30,32 +27,32 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
-    auto* param = ctx.Input<LoDTensor>("Param");
+    auto* param = ctx.Input<phi::DenseTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Grad(%s)'s type should be LoDTensor, "
+                          "The Grad(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(param_var->Type())));
-    auto* grad = ctx.Input<LoDTensor>("Grad");
-    auto* mom1 = ctx.Input<LoDTensor>("Moment1");
-    auto* mom2 = ctx.Input<LoDTensor>("Moment2");
-    auto* lr = ctx.Input<LoDTensor>("LearningRate");
+    auto* grad = ctx.Input<phi::DenseTensor>("Grad");
+    auto* mom1 = ctx.Input<phi::DenseTensor>("Moment1");
+    auto* mom2 = ctx.Input<phi::DenseTensor>("Moment2");
+    auto* lr = ctx.Input<phi::DenseTensor>("LearningRate");
 
     auto* beta1_pow = ctx.Input<phi::DenseTensor>("Beta1Pow");
     auto* beta2_pow = ctx.Input<phi::DenseTensor>("Beta2Pow");
 
-    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
-    auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
-    auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
-    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
-    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* mom1_out = ctx.Output<phi::DenseTensor>("Moment1Out");
+    auto* mom2_out = ctx.Output<phi::DenseTensor>("Moment2Out");
+    auto* beta1_pow_out = ctx.Output<phi::DenseTensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<phi::DenseTensor>("Beta2PowOut");
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
@@ -110,8 +107,8 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     mom1_out->ShareDataWith(*mom1);
     mom2_out->ShareDataWith(*mom2);
 
-    LoDTensor beta1_pow_tmp;
-    LoDTensor beta2_pow_tmp;
+    phi::DenseTensor beta1_pow_tmp;
+    phi::DenseTensor beta2_pow_tmp;
     if (beta1_pow->place() == platform::CPUPlace()) {
       T beta1 = *beta1_pow->data<T>();
       beta1_pow_tmp.mutable_data<T>({1}, ctx.GetPlace());
@@ -157,9 +154,9 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    Tensor beta1_tmp(experimental::DataType::FLOAT32);
-    Tensor beta2_tmp(experimental::DataType::FLOAT32);
-    Tensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
@@ -292,13 +289,13 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
     }
     bool with_decay = ctx.Attr<bool>("with_decay");
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
-    auto* master_param_out = ctx.Output<LoDTensor>("MasterParamOut");
-    const auto* master_param = ctx.Input<LoDTensor>("MasterParam");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* master_param_out = ctx.Output<phi::DenseTensor>("MasterParamOut");
+    const auto* master_param = ctx.Input<phi::DenseTensor>("MasterParam");
 
     VLOG(3) << "Skip update: " << skip_update << ", With decay: " << with_decay;
     if (!skip_update && with_decay) {
-      auto* param = ctx.Input<LoDTensor>("Param");
+      auto* param = ctx.Input<phi::DenseTensor>("Param");
       MLUCnnlTensorDesc param_desc(*param);
       if (multi_precision) {
         VLOG(3) << "[adamw] multi_precision, cast masterparam to param.";
@@ -328,12 +325,12 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
         PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                           true,
                           platform::errors::InvalidArgument(
-                              "The Var(%s)'s type should be LoDTensor, "
+                              "The Var(%s)'s type should be phi::DenseTensor, "
                               "but the received is %s",
                               ctx.InputNames("Param").front(),
                               framework::ToTypeName(param_var->Type())));
 
-        auto* lr = ctx.Input<LoDTensor>("LearningRate");
+        auto* lr = ctx.Input<phi::DenseTensor>("LearningRate");
         float coeff = ctx.Attr<float>("coeff");
 
         // update param with decay coeff: mul(-1 * lr, coeff * param) + param
@@ -463,9 +460,9 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    Tensor beta1_tmp(experimental::DataType::FLOAT32);
-    Tensor beta2_tmp(experimental::DataType::FLOAT32);
-    Tensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
@@ -502,8 +499,8 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
       mom1_outs[i]->ShareDataWith(*mom1s[i]);
       mom2_outs[i]->ShareDataWith(*mom2s[i]);
 
-      LoDTensor beta1_pow_tmp;
-      LoDTensor beta2_pow_tmp;
+      phi::DenseTensor beta1_pow_tmp;
+      phi::DenseTensor beta2_pow_tmp;
       if (beta1_pows[i]->place() == platform::CPUPlace()) {
         T beta1 = *beta1_pows[i]->data<T>();
         beta1_pow_tmp.mutable_data<T>({1}, ctx.GetPlace());

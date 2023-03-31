@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 from simple_nets import simple_fc_net
+
+from paddle import fluid
+from paddle.distributed import transpiler
 
 
 class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
     def setUp(self):
-        self.method = fluid.memory_optimize
+        self.method = transpiler.memory_optimize
 
     def build_network(self, call_interface):
         startup_prog = fluid.Program()
@@ -37,21 +40,21 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
 
     def assert_program_equal(self, prog1, prog2):
         block_num = prog1.num_blocks
-        self.assertEquals(block_num, prog2.num_blocks)
+        self.assertEqual(block_num, prog2.num_blocks)
 
         for block_id in range(block_num):
             block1 = prog1.block(block_id)
             block2 = prog2.block(block_id)
-            self.assertEquals(len(block1.ops), len(block2.ops))
+            self.assertEqual(len(block1.ops), len(block2.ops))
             for op1, op2 in zip(block1.ops, block2.ops):
-                self.assertEquals(op1.input_arg_names, op2.input_arg_names)
-                self.assertEquals(op1.output_arg_names, op2.output_arg_names)
+                self.assertEqual(op1.input_arg_names, op2.input_arg_names)
+                self.assertEqual(op1.output_arg_names, op2.output_arg_names)
 
-            self.assertEquals(len(block1.vars), len(block2.vars))
+            self.assertEqual(len(block1.vars), len(block2.vars))
             for var1 in block1.vars.values():
                 self.assertTrue(var1.name in block2.vars)
                 var2 = block2.vars.get(var1.name)
-                self.assertEquals(var1.name, var2.name)
+                self.assertEqual(var1.name, var2.name)
 
     def test_main(self):
         prog1 = self.build_network(False)
@@ -61,7 +64,7 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
 
 class ReleaseMemoryTest(DeprecatedMemoryOptimizationInterfaceTest):
     def setUp(self):
-        self.method = fluid.release_memory
+        self.method = transpiler.release_memory
 
 
 if __name__ == '__main__':

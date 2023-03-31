@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestCCommInitAllOp(unittest.TestCase):

@@ -14,6 +14,7 @@
 
 import math
 import warnings
+import numpy as np
 
 import paddle
 from .. import unique_name
@@ -68,7 +69,7 @@ class LearningRateDecay:
         """
         from .. import layers
 
-        lr = layers.create_global_var(
+        lr = paddle.static.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
@@ -92,12 +93,12 @@ class LearningRateDecay:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Variable):
-                assert value.shape == [
-                    1
-                ], "shape of Variable in state_dict must be [1] {}".format(
-                    value.shape
+                assert (
+                    value.size == 1
+                ), "the size of Variable in state_dict must be 1, but its size is {} with shape {}".format(
+                    value.size, value.shape
                 )
-                value = value.numpy()[0]
+                value = value.item()
             state_dict[key] = value
 
         return state_dict
@@ -170,10 +171,11 @@ class PiecewiseDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           boundaries = [10000, 20000]
           values = [1.0, 0.5, 0.1]
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding( [10, 10] )
+              emb = paddle.nn.Embedding(10, 10)
               optimizer = fluid.optimizer.SGD(
                  learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0),
                  parameter_list = emb.parameters() )
@@ -240,9 +242,10 @@ class NaturalExpDecay(LearningRateDecay):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             base_lr = 0.1
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 sgd_optimizer = fluid.optimizer.SGD(
                         learning_rate=fluid.dygraph.NaturalExpDecay(
                             learning_rate=base_lr,
@@ -270,12 +273,10 @@ class NaturalExpDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
-        decayed_lr = self.learning_rate * layers.exp(
+            div_res = paddle.floor(div_res)
+        decayed_lr = self.learning_rate * paddle.exp(
             -1 * self.decay_rate * div_res
         )
 
@@ -356,11 +357,9 @@ class ExponentialDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate * (self.decay_rate**div_res)
 
@@ -407,9 +406,10 @@ class InverseTimeDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           base_lr = 0.1
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding([10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               sgd_optimizer = fluid.optimizer.SGD(
                   learning_rate=fluid.dygraph.InverseTimeDecay(
                         learning_rate=base_lr,
@@ -437,11 +437,9 @@ class InverseTimeDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate / (1 + self.decay_rate * div_res)
 
@@ -493,11 +491,12 @@ class PolynomialDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           start_lr = 0.01
           total_step = 5000
           end_lr = 0
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding( [10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
                   start_lr, total_step, end_lr, power=1.0),
@@ -524,12 +523,10 @@ class PolynomialDecay(LearningRateDecay):
         self.cycle = cycle
 
     def step(self):
-        from .. import layers
-
         tmp_step_num = self.step_num
         tmp_decay_steps = self.decay_steps
         if self.cycle:
-            div_res = layers.ceil(
+            div_res = paddle.ceil(
                 self.create_lr_var(tmp_step_num / float(self.decay_steps))
             )
 
@@ -601,15 +598,13 @@ class CosineDecay(LearningRateDecay):
         self.epochs = epochs
 
     def step(self):
-        from .. import layers
-
-        cur_epoch = layers.floor(
+        cur_epoch = paddle.floor(
             self.create_lr_var(self.step_num / self.step_each_epoch)
         )
         decayed_lr = (
             self.learning_rate
             * 0.5
-            * (layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+            * (paddle.cos(cur_epoch * math.pi / self.epochs) + 1)
         )
         return decayed_lr
 
@@ -649,10 +644,11 @@ class NoamDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding([10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.NoamDecay(
                          1/(warmup_steps *(learning_rate ** 2)),
@@ -831,11 +827,12 @@ class ReduceLROnPlateau(LearningRateDecay):
     .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy as np
 
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             reduce_lr = fluid.dygraph.ReduceLROnPlateau(
@@ -852,7 +849,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 total_loss = 0
                 for bath_id in range(5):
                     out = linear(input)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
                     total_loss += loss
                     adam.minimize(loss)
 
@@ -861,7 +858,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 # adjust learning rate according to avg_loss
                 reduce_lr.step(avg_loss)
                 lr = adam.current_step_lr()
-                print("current avg_loss is %s, current lr is %s" % (avg_loss.numpy()[0], lr))
+                print("current avg_loss is %s, current lr is %s" % (float(avg_loss), lr))
 
     """
 
@@ -957,10 +954,9 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
-        assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-            "the loss.shape "
-            "should be (1L,), but the current loss.shape is {}. Maybe that "
-            "you should call paddle.mean to process it first.".format(
+        assert np.prod(loss.shape) == 1, (
+            "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
+            "Maybe that you should call paddle.mean to process it first.".format(
                 loss.shape
             )
         )
@@ -983,14 +979,11 @@ class ReduceLROnPlateau(LearningRateDecay):
                 )
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
-                        old_lr = (
-                            self.learning_rate.numpy()[0]
-                            if isinstance(self.learning_rate, Variable)
-                            else self.learning_rate
-                        )
                         print(
                             'Epoch {}: reducing learning rate from {} to {}.'.format(
-                                self.epoch_num, old_lr, new_lr.numpy()[0]
+                                self.epoch_num,
+                                float(self.learning_rate),
+                                float(new_lr),
                             )
                         )
                     self.learning_rate = new_lr
@@ -1100,9 +1093,10 @@ class StepDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1110,7 +1104,7 @@ class StepDecay(_LearningRateEpochDecay):
                 for epoch in range(9):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1180,9 +1174,10 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5])
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1190,7 +1185,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1265,9 +1260,10 @@ class LambdaDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.LambdaDecay(0.5, lr_lambda=lambda x: 0.95**x)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1275,7 +1271,7 @@ class LambdaDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 

@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
@@ -100,60 +100,66 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
                         framework::TransToPhiDataType(kernel_type.data_type_));
 }
 
-phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                             const phi::KernelKey& kernel_key,
+phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
-  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+  if (kernel_key.backend() == phi::Backend::XPU ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(expected_kernel_key.place_)) {
+  if (kernel_key.backend() == phi::Backend::NPU) {
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_MLU
-  if (platform::is_mlu_place(expected_kernel_key.place_)) {
+  if (kernel_key.backend() == phi::Backend::MLU) {
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_IPU
-  if (platform::is_ipu_place(expected_kernel_key.place_)) {
+  if (kernel_key.backend() == phi::Backend::IPU) {
     VLOG(3) << "phi missing IPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(expected_kernel_key.place_)) {
-    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
-            << " kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
+  auto place = phi::TransToPhiPlace(kernel_key.backend());
+  bool is_custom_place = platform::is_custom_place(place);
+  if (is_custom_place ||
+      phi::backends::custom_device::is_in_custom_black_list(op.Type())) {
+    std::string info = is_custom_place ? "phi missing " : "phi in black list ";
+    VLOG(3) << info << place.GetDeviceType() << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(expected_kernel_key.place_)) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "For GPU kernel, they must not fallback into CPU kernel."));
+  if (kernel_key.backend() == phi::Backend::GPU ||
+      kernel_key.backend() == phi::Backend::GPUDNN) {
+    PADDLE_THROW(
+        phi::errors::NotFound("The kernel (%s) with key %s is not found and "
+                              "GPU kernel cannot fallback to CPU one.",
+                              op.Type(),
+                              kernel_key));
   }
 #endif
 
@@ -265,7 +271,7 @@ static void SetAllocationForUninitializedDenseTensor(
     phi::DenseTensor* dense_tensor, const platform::Place& place) {
   int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
                        ? 0
-                       : experimental::SizeOf(dense_tensor->dtype());
+                       : phi::SizeOf(dense_tensor->dtype());
   int64_t numels = product(dense_tensor->dims());
   numels = numels < 0 ? 0 : numels;
   auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
@@ -275,6 +281,101 @@ static void SetAllocationForUninitializedDenseTensor(
       std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
   dense_tensor->ResetHolder(shared_allocation);
+}
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(
+        tensor.numel(),
+        1UL,
+        platform::errors::InvalidArgument("The DenseTensor used to construct "
+                                          "the Scalar contains more than 1 "
+                                          "value, it contains `%d` values.",
+                                          tensor.numel()));
+    if (!platform::is_same_place(tensor.place(), expected_place)) {
+      phi::DenseTensor tmp_tensor;
+      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      return {tmp_tensor};
+    } else {
+      return {tensor};
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to Scalar when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    return phi::IntArray(tensor);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to IntArray when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+// TODO(chentianyu03): Inplace with IntArray constructor
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list) {
+  if (variable_list.size() == 0) {
+    return phi::IntArray();
+  }
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+
+  std::vector<int64_t> vector_data;
+  vector_data.reserve(variable_list.size());
+
+  for (auto* var : variable_list) {
+    phi::DataType data_type;
+    if (var->IsType<phi::DenseTensor>()) {
+      const auto& tensor = var->Get<phi::DenseTensor>();
+      data_type = tensor.dtype();
+      if (data_type == phi::DataType::INT64) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int64_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int64_t>());
+        }
+      } else if (data_type == phi::DataType::INT32) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int32_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int32_t>());
+        }
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Data type error. When cast a LoDTensor to VectorTensor, "
+            "the data type of LoDTensor must be int32 or int64, "
+            "but now data type is %s.",
+            data_type));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupport casting input `%s` type to VectorTensor when call pt "
+          "kernel.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+
+  phi::IntArray result{vector_data};
+  result.SetFromTensor(true);
+
+  return result;
 }
 
 }  // namespace framework

@@ -14,10 +14,11 @@
 
 import unittest
 
-from paddle.fluid.framework import Program
-from paddle.fluid.executor import Executor
 import numpy as np
-import paddle.fluid.core as core
+
+from paddle.fluid import core
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program
 
 
 class RNNMemoryHelperOpTest(unittest.TestCase):

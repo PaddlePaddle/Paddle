@@ -239,35 +239,31 @@ template void SetDataLayout<VariableWrapper>(
 
 /* CheckCachedKey */
 template <typename VarType>
-bool CheckCachedKey(std::shared_ptr<VarType> var,
-                    const paddle::framework::OpKernelType &key) {
+bool CheckCachedKey(std::shared_ptr<VarType> var, const phi::KernelKey &key) {
   return GetVariableWrapper(var)->hasCacheKey(key);
 }
 template <>
 bool CheckCachedKey<egr::EagerVariable>(
-    std::shared_ptr<egr::EagerVariable> tensor,
-    const paddle::framework::OpKernelType &key) {
+    std::shared_ptr<egr::EagerVariable> tensor, const phi::KernelKey &key) {
   // TODO(jiabin): Support this later
   // VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key is
   // equal to self: " << key == key.
   return false;
 }
-template bool CheckCachedKey<VarBase>(
-    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+template bool CheckCachedKey<VarBase>(std::shared_ptr<VarBase> var,
+                                      const phi::KernelKey &key);
 template bool CheckCachedKey<VariableWrapper>(
-    std::shared_ptr<VariableWrapper> var,
-    const paddle::framework::OpKernelType &key);
+    std::shared_ptr<VariableWrapper> var, const phi::KernelKey &key);
 
 /* GetCachedValue */
 template <typename VarType>
-std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<VarType> var, const paddle::framework::OpKernelType &key) {
+std::shared_ptr<VariableWrapper> GetCachedValue(std::shared_ptr<VarType> var,
+                                                const phi::KernelKey &key) {
   return GetVariableWrapper(var)->getCacheValue(key);
 }
 template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<egr::EagerVariable> var,
-    const paddle::framework::OpKernelType &key) {
+    std::shared_ptr<egr::EagerVariable> var, const phi::KernelKey &key) {
   // TODO(jiabin): Support this later
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
@@ -277,22 +273,21 @@ std::shared_ptr<VariableWrapper> GetCachedValue(
   return std::make_shared<VariableWrapper>("");
 }
 template std::shared_ptr<VariableWrapper> GetCachedValue<VarBase>(
-    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+    std::shared_ptr<VarBase> var, const phi::KernelKey &key);
 template std::shared_ptr<VariableWrapper> GetCachedValue<VariableWrapper>(
-    std::shared_ptr<VariableWrapper> var,
-    const paddle::framework::OpKernelType &key);
+    std::shared_ptr<VariableWrapper> var, const phi::KernelKey &key);
 
 /* SetCachedValue */
 template <typename VarType>
 void SetCachedValue(std::shared_ptr<VarType> var,
-                    const paddle::framework::OpKernelType &key,
+                    const phi::KernelKey &key,
                     std::shared_ptr<VarType> res) {
   GetVariableWrapper(var)->setCacheValue(key, GetVariableWrapper(res));
 }
 template <>
 void SetCachedValue<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> tensor,
-    const paddle::framework::OpKernelType &key,
+    const phi::KernelKey &key,
     std::shared_ptr<egr::EagerVariable> res) {
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
@@ -300,13 +295,12 @@ void SetCachedValue<egr::EagerVariable>(
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
   //   is equal to self: " << key == key << " and res name is:" << res->Name().
 }
-template void SetCachedValue<VarBase>(
-    std::shared_ptr<VarBase> var,
-    const paddle::framework::OpKernelType &key,
-    std::shared_ptr<VarBase> res);
+template void SetCachedValue<VarBase>(std::shared_ptr<VarBase> var,
+                                      const phi::KernelKey &key,
+                                      std::shared_ptr<VarBase> res);
 template void SetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var,
-    const paddle::framework::OpKernelType &key,
+    const phi::KernelKey &key,
     std::shared_ptr<VariableWrapper> res);
 }  // namespace imperative
 }  // namespace paddle

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,11 +26,9 @@ void SumKernel(const Context& dev_ctx,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
-  if (dims.size() == 0) {
-    reduce_all = true;
-  }
-  SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
+  bool reduce_all = recompute_reduce_all(x, dims);
+  SumRawKernel<T, Context>(
+      dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 
 }  // namespace phi
@@ -51,7 +49,7 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    complex64,
                    complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -69,13 +67,13 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    complex64,
                    complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
 
@@ -85,5 +83,15 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float) {}
+PD_REGISTER_KERNEL(sum,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SumKernel,
+                   float,
+                   phi::dtype::float16,
+                   int8_t,
+                   int,
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 #endif

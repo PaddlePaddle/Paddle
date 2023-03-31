@@ -13,23 +13,24 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
-import numpy as np
-import paddle.fluid.core as core
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
         super().__init__()
-        self.emb = fluid.dygraph.Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            param_attr='emb.w',
-            is_sparse=True,
+        self.emb = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            weight_attr='emb.w',
+            sparse=True,
         )
 
     def forward(self, input):
@@ -38,7 +39,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestSimpleNet(unittest.TestCase):
-    def func_selectedrows_gradient1(self):
+    def test_selectedrows_gradient1(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -50,7 +51,7 @@ class TestSimpleNet(unittest.TestCase):
                     fluid.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
-                    # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
+                    # grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = paddle.to_tensor(input_word)
@@ -61,6 +62,7 @@ class TestSimpleNet(unittest.TestCase):
                         parameter_list=simplenet.parameters(),
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
+                    input_emb.retain_grads()
 
                     self.assertIsNone(emb.weight.gradient())
                     self.assertIsNone(input_emb.gradient())
@@ -76,14 +78,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
 
-    def test_selectedrows_gradient1(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient1()
-        self.func_selectedrows_gradient1()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
-
-    def func_selectedrows_gradient2(self):
+    def test_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -94,7 +89,7 @@ class TestSimpleNet(unittest.TestCase):
                     fluid.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
-                    grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
+                    grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)
@@ -106,6 +101,7 @@ class TestSimpleNet(unittest.TestCase):
                         grad_clip=grad_clip,
                     )
                     input_emb, emb = simplenet(input)
+                    input_emb.retain_grads()
 
                     self.assertIsNone(emb.weight.gradient())
                     self.assertIsNone(input_emb.gradient())
@@ -119,13 +115,6 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.clear_gradient()
                     self.assertIsNotNone(input_emb.gradient())
-
-    def test_selectedrows_gradient2(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient2()
-        self.func_selectedrows_gradient2()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
+
+from paddle import fluid
 
 fluid.core.globals()['FLAGS_allocator_strategy'] = 'naive_best_fit'
 

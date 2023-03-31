@@ -552,6 +552,29 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+struct QuantTranspose : public PatternBase {
+  QuantTranspose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_transpose") {}
+
+  PDNode* operator()(const std::string& transpose_type);
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(transpose_op);
+};
+
+struct TransposeDequant : public PatternBase {
+  TransposeDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose_dequant") {}
+  PDNode* operator()(const std::string& transpose_type);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+};
+
 struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
@@ -928,6 +951,27 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// the backward of ele_add(act(x), y)
+// the act is inplace.
+// op: elementwise_add_grad + act_grad
+// named nodes: elementwise_add_grad, act_grad
+//              ele_y, d_ele_y, d_intermeiate_out, intermediate_out, d_x
+struct ActElewiseAddInplaceGrad : public PatternBase {
+  ActElewiseAddInplaceGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "act_elewise_add_grad1") {}
+
+  // ele_add_grad: in["Y", "Out@GRAD"], out["IntermediateOut@GRAD", "Y@GRAD"]
+  // act_grad: in["IntermediateOut", "IntermediateOut@GRAD"], out["X@GRAD"]
+  PDNode* operator()(PDNode* d_out_var, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad_op);
+  PATTERN_DECL_NODE(act_grad_op);
+  // // declare variable node's name
+  PATTERN_DECL_NODE(intermediate_var);
+  PATTERN_DECL_NODE(d_intermediate_var);
+};
+
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
 // formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
@@ -1023,7 +1067,7 @@ struct Conv : public PatternBase {
   Conv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "convolution") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1036,7 +1080,7 @@ struct ConvResidual : public PatternBase {
   ConvResidual(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_residual") {}
 
-  PDNode* operator()(bool with_residual_data);
+  PDNode* operator()(const std::string& conv_type, bool with_residual_data);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1237,15 +1281,13 @@ struct Reshape2Matmul : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
-// Forward pass for two input ops and matmul op.
+// Forward pass for two input ops and fused_matmul op.
 // matmul_out is a result of the operator.
-struct MatmulWithInputOps : public PatternBase {
-  MatmulWithInputOps(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "matmul_with_input_ops") {}
+struct FusedMatmul : public PatternBase {
+  FusedMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fused_matmul") {}
 
   PDNode* operator()(bool with_residual);
-  PATTERN_DECL_NODE(prev_op_x);
-  PATTERN_DECL_NODE(prev_op_y);
   PATTERN_DECL_NODE(matmul_in_x);
   PATTERN_DECL_NODE(matmul_in_y);
   PATTERN_DECL_NODE(matmul_op);
@@ -1360,7 +1402,7 @@ struct QuantConv : public PatternBase {
   QuantConv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "quant_conv") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(quant_in);
   PATTERN_DECL_NODE(quant_op);
@@ -1455,7 +1497,8 @@ struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
@@ -1475,7 +1518,8 @@ struct ConvElementwiseadd2Act : public PatternBase {
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_filter);
@@ -1521,7 +1565,9 @@ struct ConvAffineChannel : public PatternBase {
   ConvAffineChannel(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_affine_channel") {}
 
-  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+  PDNode* operator()(PDNode* conv_input,
+                     const std::string& conv_type,
+                     bool with_eltwise_add);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
@@ -1713,13 +1759,12 @@ struct DeleteDropoutOpPattern : public PatternBase {
   DeleteDropoutOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_dropout_op_pattern") {}
 
-  void operator()();
+  void operator()(bool with_mask);
 
-  PATTERN_DECL_NODE(any_op_out);
+  PATTERN_DECL_NODE(dropout_op_x);
   PATTERN_DECL_NODE(dropout_op);
   PATTERN_DECL_NODE(dropout_op_out);
-  PATTERN_DECL_NODE(dropout_op_outmask);
-  PATTERN_DECL_NODE(any_op2);
+  PATTERN_DECL_NODE(dropout_op_mask);
 };
 
 struct DeleteQuantDequantOpPattern : public PatternBase {
@@ -1752,6 +1797,39 @@ struct DeleteQuantDequantFilterOpPattern : public PatternBase {
 struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   DeleteWeightQuantDequantLinearOpPattern(PDPattern* pattern,
                                           const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(while0);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
       : PatternBase(pattern,
                     name_scope,
                     "delete_weight_quant_dequant_linear_op_pattern") {}
@@ -1847,7 +1925,6 @@ struct FusionGru : public PatternBase {
 struct FusionLSTM : public PatternBase {
   FusionLSTM(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fusion_lstm") {}
-  // TODO(lidanqing): Is it enough to detect fusion_lstm with these things
   PDNode* operator()();
 
   // declare op
@@ -1964,6 +2041,23 @@ struct LayerNorm : public PatternBase {
 };
 
 //
+// \brief   Pattern looking for subgraph representing layer normalization
+//          operation.
+//
+struct SplitLayerNorm : public PatternBase {
+  SplitLayerNorm(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "split_layer_norm") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+};
+
+//
 // \brief   Pattern looking for subgraph representing layernorm_shift_partition
 //          operation with shift_size = 0.
 //
@@ -1995,6 +2089,34 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape3_out);
   PATTERN_DECL_NODE(reshape4_op);
   PATTERN_DECL_NODE(reshape4_out);
+};
+
+//
+// \bref pattern looking for reverse circlic shift in window attention.
+//       The reverse circlic shift based on roll op,
+//       therefore, reverse_roll were adopted as pattern and fused op name.
+//
+struct ReverseRollPattern : public PatternBase {
+  ReverseRollPattern(PDPattern* pattern,
+                     const std::string& name_scope,
+                     bool with_roll)
+      : PatternBase(pattern, name_scope, "reverse_roll"),
+        with_roll_(with_roll) {}
+
+  PDNode* operator()(PDNode* in);
+  bool with_roll_;
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(reshape2_10_op);
+  PATTERN_DECL_NODE(reshape2_10_out);
+  PATTERN_DECL_NODE(transpose2_20_op);
+  PATTERN_DECL_NODE(transpose2_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(roll_40_op);
+  PATTERN_DECL_NODE(roll_40_out);
+  PATTERN_DECL_NODE(reshape2_50_op);
+  PATTERN_DECL_NODE(reshaep2_50_out);
 };
 
 // pattern for merge_layernorm
@@ -2034,6 +2156,133 @@ struct AddSupportInt8 : public PatternBase {
   PATTERN_DECL_NODE(quant_out);
 };
 
+// The following patterns are used to fuse feedforward in forward
+// 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
+// -> residual_add (pre_layer_norm)
+// 2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
+// -> layer_norm (pOST_layer_norm)
+// other cases: may delete residual_add, dropout1, dropout2 operators
+struct FusedFeedForwardFwd : public PatternBase {
+  FusedFeedForwardFwd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fused_feedforward_fwd") {}
+
+  PDNode* operator()(PDNode* x,
+                     std::unordered_set<std::string> act_types,
+                     bool use_mp,
+                     bool pre_layer_norm,
+                     bool add_residual,
+                     bool use_dropout_1,
+                     bool use_dropout_2);
+
+#ifndef FEEDFORWARD_LINEAR_DROPOUT_NODE
+#define FEEDFORWARD_LINEAR_DROPOUT_NODE(suffix__) \
+  PATTERN_DECL_NODE(matmul_op_##suffix__);        \
+  PATTERN_DECL_NODE(matmul_w_##suffix__);         \
+  PATTERN_DECL_NODE(matmul_out_##suffix__);       \
+  PATTERN_DECL_NODE(ele_add_op_##suffix__);       \
+  PATTERN_DECL_NODE(ele_add_bias_##suffix__);     \
+  PATTERN_DECL_NODE(ele_add_out_##suffix__);      \
+  PATTERN_DECL_NODE(dropout_op_##suffix__);       \
+  PATTERN_DECL_NODE(dropout_out_##suffix__);      \
+  PATTERN_DECL_NODE(dropout_mask_##suffix__);
+
+  // LayerNorm: layer_norm
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+  PATTERN_DECL_NODE(layer_norm_mean);
+  PATTERN_DECL_NODE(layer_norm_variance);
+  // Mode parallelism
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(c_allreduce_sum_op);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  // Linear 1 and Dropout 1: matmul_v2 + elementwise_add + dropout
+  FEEDFORWARD_LINEAR_DROPOUT_NODE(1);
+  // Activation Grad: gelu or relu
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(act_out);
+  // Linear 2 and Dropout 2: matmul_v2 + elementwise_add + dropout
+  FEEDFORWARD_LINEAR_DROPOUT_NODE(2);
+  // ResidualAdd: elementwise_add
+  PATTERN_DECL_NODE(ele_add_op_3);
+  PATTERN_DECL_NODE(ele_add_out_3);
+#undef FEEDFORWARD_LINEAR_DROPOUT_NODE
+#endif
+};
+
+// The following patterns are used to fuse feedforward in backward
+// 1. residual_add_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
+// activation_grad -> linear1_grad -> layer_norm_grad
+// 2. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
+// dropout1_grad -> activation_grad -> linear1_grad
+// other cases: may delete residual_add_grad, dropout1_grad, dropout2_grad
+// operators
+struct FusedFeedForwardBwd : public PatternBase {
+  FusedFeedForwardBwd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fused_feedforward_bwd") {}
+
+  PDNode* operator()(PDNode* x,
+                     std::unordered_set<std::string> act_grad_types,
+                     bool use_mp,
+                     bool pre_layer_norm,
+                     bool add_residual,
+                     bool use_dropout_1,
+                     bool use_dropout_2);
+#ifndef FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE
+#define FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(suffix__) \
+  PATTERN_DECL_NODE(matmul_op_grad_##suffix__);        \
+  PATTERN_DECL_NODE(matmul_in_##suffix__);             \
+  PATTERN_DECL_NODE(matmul_w_##suffix__);              \
+  PATTERN_DECL_NODE(matmul_in_grad_##suffix__);        \
+  PATTERN_DECL_NODE(matmul_w_grad_##suffix__);         \
+  PATTERN_DECL_NODE(ele_add_op_grad_##suffix__);       \
+  PATTERN_DECL_NODE(ele_add_in_##suffix__);            \
+  PATTERN_DECL_NODE(ele_add_bias_##suffix__);          \
+  PATTERN_DECL_NODE(ele_add_in_grad_##suffix__);       \
+  PATTERN_DECL_NODE(ele_add_bias_grad_##suffix__);     \
+  PATTERN_DECL_NODE(dropout_op_grad_##suffix__);       \
+  PATTERN_DECL_NODE(dropout_mask_##suffix__);          \
+  PATTERN_DECL_NODE(dropout_in_grad_##suffix__);
+
+  // LayerNorm Grad: layer_norm_grad
+  PATTERN_DECL_NODE(layer_norm_op_grad);
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_mean);
+  PATTERN_DECL_NODE(layer_norm_variance);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_in_grad);
+  PATTERN_DECL_NODE(layer_norm_scale_grad);
+  PATTERN_DECL_NODE(layer_norm_bias_grad);
+  // Mode parallelism
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(c_allreduce_sum_op);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  // Linear 1 and Dropout 1: matmul_v2_grad + elementwise_add_grad +
+  // dropout_grad
+  FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(1);
+  // Activation Grad: gelu_grad or relu_add
+  PATTERN_DECL_NODE(act_op_grad);
+  PATTERN_DECL_NODE(act_in);
+  PATTERN_DECL_NODE(act_in_grad);
+  // Linear 2 and Dropout 2: matmul_v2_grad + elementwise_add_grad +
+  // dropout_grad
+  FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(2);
+  // Residual Add: elementwise_add
+  PATTERN_DECL_NODE(ele_add_op_grad_3);
+  PATTERN_DECL_NODE(ele_add_in_3);
+  PATTERN_DECL_NODE(ele_add_bias_3);
+  PATTERN_DECL_NODE(ele_add_in_grad_3);
+  PATTERN_DECL_NODE(ele_add_bias_grad_3);
+  PATTERN_DECL_NODE(sum_op);
+  PATTERN_DECL_NODE(sum_out);
+
+#undef FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE
+#endif
+};
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

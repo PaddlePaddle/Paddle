@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import multiprocessing
 import os
-import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
-import time
-import numpy as np
-import math
 import sys
+import time
+import unittest
+
+import numpy as np
 from feed_data_reader import FeedDataReader
+
+import paddle
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 __all__ = ['TestParallelExecutorBase']
 DeviceType = core.DeviceType
@@ -102,10 +103,9 @@ class TestParallelExecutorBase(unittest.TestCase):
         )
 
         if use_parallel_executor:
-            binary = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name,
+            binary = compiler.CompiledProgram(
+                main,
                 build_strategy=build_strategy,
-                exec_strategy=exec_strategy,
             )
         else:
             binary = main
@@ -202,10 +202,9 @@ class TestParallelExecutorBase(unittest.TestCase):
             use_device,
         )
 
-        binary = compiler.CompiledProgram(main).with_data_parallel(
-            loss_name=loss.name,
+        binary = compiler.CompiledProgram(
+            main,
             build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
         )
 
         exe.run(binary, feed=feed_dict, fetch_list=[loss.name])

@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-from paddle.fluid import framework, layers
-from paddle.fluid.framework import Program
-from paddle.fluid.layer_helper import LayerHelper
 import paddle
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid import framework
+from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.framework import Program, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -60,7 +59,7 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
         name (str, optional): Normally there is no need for user to set this property.
@@ -547,19 +546,19 @@ class ModelAverage(Optimizer):
             self._get_accumulator('old_num_accumulates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
-        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
-        sum = layers.sum(x=[sum_1, sum_2, sum_3])
-        tmp = layers.cast(
+        tmp = paddle.add_n([num_accumulates, old_num_accumulates])
+        sum = paddle.add_n([sum_1, sum_2, sum_3])
+        tmp = paddle.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
-        sum = layers.cast(
+        sum = paddle.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        layers.ops._elementwise_div(x=sum, y=tmp, out=param)
+        paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)
         grad = block._clone_variable(self._get_accumulator('restore', param))
-        layers.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)

@@ -16,16 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -35,7 +25,7 @@ class EqualOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(8000)
+    VLOG(3) << "convert equal op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
@@ -79,11 +69,63 @@ class EqualOpConverter : public OpConverter {
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kEQUAL);
     RreplenishLayerAndOutput(layer, "equal", {output_name}, test_mode);
-#else
-    PADDLE_THROW(
-        platform::errors::Fatal("ElementWise Equal Operation is only supported "
-                                "on TRT 8 or higher version."));
-#endif
+  }
+};
+
+class NotEqualOpConverter : public OpConverter {
+ public:
+  NotEqualOpConverter() {}
+  void operator()(const framework::proto::OpDesc& op,
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(3) << "convert not_equal op to tensorrt layer";
+    framework::OpDesc op_desc(op, nullptr);
+    nvinfer1::ILayer* layer = nullptr;
+
+    auto* X = engine_->GetITensor(op_desc.Input("X").front());
+    auto* Y = engine_->GetITensor(op_desc.Input("Y").front());
+    nvinfer1::Dims dims_x = X->getDimensions();
+    nvinfer1::Dims dims_y = Y->getDimensions();
+
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+    if (axis < 0) {
+      axis = std::abs(dims_x.nbDims - dims_y.nbDims);
+    }
+    auto output_name = op_desc.Output("Out")[0];
+    nvinfer1::IShuffleLayer* expand_layer = nullptr;
+    if (dims_x.nbDims > dims_y.nbDims) {
+      nvinfer1::Dims expand_shape;
+      expand_shape.nbDims = dims_x.nbDims;
+      for (int i = 0; i < expand_shape.nbDims; i++) {
+        expand_shape.d[i] = 1;
+      }
+      for (int i = 0; i < dims_y.nbDims; i++) {
+        expand_shape.d[i + axis] = dims_y.d[i];
+      }
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
+      expand_layer->setReshapeDimensions(expand_shape);
+      Y = expand_layer->getOutput(0);
+    } else if (dims_x.nbDims < dims_y.nbDims) {
+      nvinfer1::Dims expand_shape;
+      expand_shape.nbDims = dims_y.nbDims;
+      for (int i = 0; i < expand_shape.nbDims; i++) {
+        expand_shape.d[i] = 1;
+      }
+      for (int i = 0; i < dims_x.nbDims; i++) {
+        expand_shape.d[i + axis] = dims_x.d[i];
+      }
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      expand_layer->setReshapeDimensions(expand_shape);
+      X = expand_layer->getOutput(0);
+    }
+
+    layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kEQUAL);
+
+    layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Unary, *layer->getOutput(0), nvinfer1::UnaryOperation::kNOT);
+
+    RreplenishLayerAndOutput(layer, "not_equal", {output_name}, test_mode);
   }
 };
 
@@ -92,3 +134,4 @@ class EqualOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(equal, EqualOpConverter);
+REGISTER_TRT_OP_CONVERTER(not_equal, NotEqualOpConverter);

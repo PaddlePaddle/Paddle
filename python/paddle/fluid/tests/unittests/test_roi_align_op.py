@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy as np
 import math
-from op_test import OpTest
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 class TestROIAlignOp(OpTest):
@@ -231,10 +233,10 @@ class TestROIAlignOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestROIAlignInLodOp(TestROIAlignOp):

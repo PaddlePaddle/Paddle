@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -32,12 +31,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -61,8 +61,6 @@ PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             "Whether to print the message of gpu memory usage "
                             "MB as a unit of measurement.");
 
-constexpr static float fraction_reserve_gpu_memory = 0.05f;
-
 USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
@@ -77,20 +75,7 @@ void GpuMemoryUsage(size_t *available, size_t *total) {
 }
 
 size_t GpuAvailableMemToAlloc() {
-  size_t total = 0;
-  size_t available = 0;
-  GpuMemoryUsage(&available, &total);
-  size_t reserving =
-      static_cast<size_t>(fraction_reserve_gpu_memory * available);
-  // If available size is less than minimum chunk size, no usable memory exists
-  size_t available_to_alloc = available - reserving;
-  size_t min_chunk_size = GpuMinChunkSize();
-  if (available_to_alloc < min_chunk_size) {
-    available_to_alloc = 0;
-  }
-  VLOG(10) << "GPU usage " << (available >> 20) << "M/" << (total >> 20)
-           << "M, " << (available_to_alloc >> 20) << "M available to allocate";
-  return available_to_alloc;
+  return phi::backends::gpu::GpuAvailableMemToAlloc();
 }
 
 size_t GpuMaxAllocSize() {
@@ -124,10 +109,7 @@ size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
 size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
-size_t GpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
+size_t GpuMinChunkSize() { return phi::backends::gpu::GpuMinChunkSize(); }
 
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
@@ -235,7 +217,7 @@ class RecordedGpuMallocHelper {
       result = hipMalloc(ptr, size);
     }
 #else
-    CUDAGraphCaptureModeGuard capture_mode_guard;
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
@@ -410,8 +392,8 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags,
-                              int dev_id) {  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
       handle, size, prop, flags);
 }

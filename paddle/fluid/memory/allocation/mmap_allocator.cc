@@ -26,6 +26,8 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
+DECLARE_bool(use_shm_cache);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -74,6 +76,7 @@ void AllocateMemoryMap(
               "File descriptor %s open failed, unable in read-write mode",
               filename.c_str()));
       VLOG(6) << "shm_open: " << filename;
+      MemoryMapFdSet::Instance().Insert(filename);
     }
   } else {
     fd = -1;
@@ -110,20 +113,33 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
-                                      size_t size) {
+                                      size_t size,
+                                      int buffer_id) {
   int fd = -1;
   void *base_ptr = nullptr;
-  AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+  if (buffer_id == -1) {
+    AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+    VLOG(4) << "Create and mmap a new shm: " << filename;
+  } else {
+    base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
+    VLOG(4) << "Get a cached shm " << filename;
+  }
   void *aliged_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
   return std::make_shared<RefcountedMemoryMapAllocation>(
-      aliged_base_ptr, size, filename, flags, fd);
+      aliged_base_ptr, size, filename, flags, fd, buffer_id);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
-    void *ptr, size_t size, std::string ipc_name, int fd, int flags)
+    void *ptr,
+    size_t size,
+    std::string ipc_name,
+    int fd,
+    int flags,
+    int buffer_id)
     : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
   // must reset base ptr first.
+  buffer_id_ = buffer_id;
   resetBaseptr();
   initializeRefercount();
 }
@@ -164,45 +180,62 @@ void RefcountedMemoryMapAllocation::initializeRefercount() {
 }
 
 void RefcountedMemoryMapAllocation::close() {
+  VLOG(4) << "Close a RefcountedMemoryMapAllocation: " << ipc_name_;
   if (closed_) {
     return;
   }
   closed_ = true;
   void *data = map_ptr_;
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
-  if (--info->refcount == 0) {
-    PADDLE_ENFORCE_NE(
-        shm_unlink(ipc_name_.c_str()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unlink the shared memory file ", ipc_name_));
-    VLOG(6) << "shm_unlink file: " << ipc_name_;
-  }
+  --info->refcount;
+  if (FLAGS_use_shm_cache && buffer_id_ != -1) {
+    return;
+  } else {
+    if (FLAGS_use_shm_cache &&
+        MemoryMapAllocationPool::Instance().BufferSize() <
+            static_cast<size_t>(
+                MemoryMapAllocationPool::Instance().MaxPoolSize())) {
+      MemoryMapAllocationPool::Instance().Insert(MemoryMapInfo(
+          flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
+    } else {
+      if (info->refcount == 0) {
+        shm_unlink(ipc_name_.c_str());
+        VLOG(6) << "shm_unlink file: " << ipc_name_;
+      }
 
-  PADDLE_ENFORCE_NE(
-      munmap(map_ptr_, map_size_),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file: ",
-                                    strerror(errno),
-                                    " (",
-                                    errno,
-                                    ")"));
+      PADDLE_ENFORCE_NE(munmap(map_ptr_, map_size_),
+                        -1,
+                        platform::errors::Unavailable(
+                            "could not unmap the shared memory file: ",
+                            strerror(errno),
+                            " (",
+                            errno,
+                            ")"));
+    }
+  }
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
-  PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file %s",
-                                    this->ipc_name()));
+  try {
+    PADDLE_ENFORCE_NE(
+        munmap(this->ptr(), this->size()),
+        -1,
+        platform::errors::Unavailable(
+            "could not unmap the shared memory file %s", this->ipc_name()));
+  } catch (std::exception &e) {
+  }
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
-  PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file %s",
-                                    this->ipc_name()));
+  try {
+    PADDLE_ENFORCE_NE(
+
+        munmap(this->ptr(), this->size()),
+        -1,
+        platform::errors::Unavailable(
+            "could not unmap the shared memory file %s", this->ipc_name()));
+  } catch (std::exception &e) {
+  }
   /* Here we do not pay attention to the result of shm_unlink,
      because the memory mapped file may have been cleared due to the
      MemoryMapFdSet::Clear() */
@@ -301,6 +334,67 @@ void MemoryMapFdSet::Clear() {
 }
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
+
+MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
+
+void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  memory_map_allocations_.push_back(memory_map);
+  VLOG(4) << this << "Intsert a new shm: " << memory_map.file_name_;
+}
+
+int MemoryMapAllocationPool::FindFromCache(const int &flag,
+                                           const size_t &data_size,
+                                           const std::string &file_name,
+                                           bool check_refcount) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    if (memory_map_allocations_.at(idx).flags_ == flag &&
+        memory_map_allocations_.at(idx).data_size_ == data_size) {
+      if (file_name == "" ||
+          memory_map_allocations_.at(idx).file_name_ == file_name) {
+        if (!check_refcount || reinterpret_cast<CountInfo *>(
+                                   memory_map_allocations_.at(idx).mmap_ptr_)
+                                       ->refcount == 0) {
+          VLOG(4) << "Match at: " << idx;
+          return idx;
+        }
+      }
+    }
+  }
+  return -1;
+}
+
+const MemoryMapInfo &MemoryMapAllocationPool::GetById(int id) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  return memory_map_allocations_.at(id);
+}
+
+void MemoryMapAllocationPool::SetMaxPoolSize(const int &size) {
+  max_pool_size_ = size;
+  VLOG(4) << this << "Set max pool size is: " << max_pool_size_;
+}
+
+void MemoryMapAllocationPool::Clear() {
+  std::lock_guard<std::mutex> guard(mtx_);
+  for (auto mmap : memory_map_allocations_) {
+    int rlt = shm_unlink(mmap.file_name_.c_str());
+    if (rlt == 0) {
+      VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
+    }
+    PADDLE_ENFORCE_NE(munmap(mmap.mmap_ptr_, mmap.data_size_ + mmap_alignment),
+                      -1,
+                      platform::errors::Unavailable(
+                          "could not unmap the shared memory file: ",
+                          strerror(errno),
+                          " (",
+                          errno,
+                          ")"));
+  }
+  memory_map_allocations_.clear();
+}
+
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
 
 }  // namespace allocation
 }  // namespace memory

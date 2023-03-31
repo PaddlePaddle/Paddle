@@ -24,6 +24,7 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace imperative {
@@ -39,7 +40,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const framework::AttributeMap* attr,
       const framework::AttributeMap* default_attr,
       const std::string op_type,
-      const framework::OpKernelType* op_kernel_type = nullptr,
+      const phi::KernelKey* op_kernel_key = nullptr,
       const phi::ArgumentMappingFn* arg_map_fn = nullptr,
       const phi::KernelSignature* default_kernel_signature = nullptr)
       : var_map_in_(in),
@@ -47,7 +48,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         attrs_(attr),
         default_attrs_(default_attr),
         op_type_(op_type),
-        op_kernel_type_(op_kernel_type),
+        op_kernel_key_(op_kernel_key),
         arg_map_fn_(arg_map_fn),
         default_kernel_signature_(default_kernel_signature) {}
 
@@ -250,8 +251,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   bool IsRuntime() const override { return true; }
 
   bool IsRunMKLDNNKernel() const override {
-    return (op_kernel_type_ &&
-            (op_kernel_type_->data_layout_ == phi::DataLayout::ONEDNN));
+    return (op_kernel_key_ &&
+            (op_kernel_key_->layout() == phi::DataLayout::ONEDNN));
   }
 
   paddle::small_vector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
@@ -497,7 +498,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* attrs_;
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
-  const framework::OpKernelType* op_kernel_type_;
+  const phi::KernelKey* op_kernel_key_;
   // arg_map_fn_ and default_kernel_signature_ may be nullptr
   const phi::ArgumentMappingFn* arg_map_fn_;
   const phi::KernelSignature* default_kernel_signature_;

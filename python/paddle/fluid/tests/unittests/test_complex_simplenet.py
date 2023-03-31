@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import core
 
 
 class Optimization_ex1(paddle.nn.Layer):
@@ -69,10 +68,6 @@ class TestComplexSimpleNet(unittest.TestCase):
     def test_train_success(self):
         for dev in self.devices:
             self.train(dev)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_train_success()
 
 
 if __name__ == '__main__':

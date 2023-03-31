@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.distributed.auto_parallel.graph import Graph
 
 
@@ -70,7 +71,7 @@ class TestAutoParallelGraph(unittest.TestCase):
 
         self.assertEqual(graph[4][5]["weight"], 0.4)
 
-        str = "{}".format(graph)
+        str = f"{graph}"
         self.assertIsNotNone(str)
 
         self.assertRaises(TypeError, 6 in graph)

@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -221,14 +221,14 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
 
 
 class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
     def init_test_case(self):
         self.shape = [20, 50, 4, 5]
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
 
 
@@ -239,20 +239,20 @@ class TestInstanceNormOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.instance_norm, x1)
+            self.assertRaises(TypeError, paddle.static.nn.instance_norm, x1)
 
             # the input dtype of instance_norm must be float32 or float64
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.instance_norm, x2)
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
+            self.assertRaises(TypeError, paddle.static.nn.instance_norm, x2)
 
 
 class TestInstanceNormOpErrorCase1(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the first dimension of input for instance_norm must between [2d, 5d]
-            x = fluid.layers.data(
-                name='x', shape=[3], dtype="float32", append_batch_size=False
-            )
+            x = paddle.static.data(name='x', shape=[3], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
 
 
@@ -281,17 +281,13 @@ class TestElasticNormOp(unittest.TestCase):
 
         for place in self.places:
             with fluid.dygraph.guard(place):
-                instance_norm = fluid.dygraph.InstanceNorm(
-                    5, param_attr=False, bias_attr=False
+                instance_norm = paddle.nn.InstanceNorm2D(
+                    5, weight_attr=False, bias_attr=False
                 )
                 outputs = instance_norm(to_variable(inputs))
                 np.testing.assert_allclose(
                     outputs.numpy(), out_np, rtol=1e-05, atol=1e-06
                 )
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
 
 
 class TestElasticNormOpCase2(unittest.TestCase):
@@ -319,17 +315,13 @@ class TestElasticNormOpCase2(unittest.TestCase):
 
         for place in self.places:
             with fluid.dygraph.guard(place):
-                instance_norm = fluid.dygraph.InstanceNorm(
-                    3, param_attr=True, bias_attr=True
+                instance_norm = paddle.nn.InstanceNorm2D(
+                    3, weight_attr=True, bias_attr=True
                 )
                 outputs = instance_norm(to_variable(inputs))
                 np.testing.assert_allclose(
                     outputs.numpy(), out_np, rtol=1e-05, atol=1e-06
                 )
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
 
 
 if __name__ == '__main__':

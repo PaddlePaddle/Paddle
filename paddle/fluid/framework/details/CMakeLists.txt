@@ -92,8 +92,7 @@ if(WITH_GPU)
          memory
          dynload_cuda
          variable_visitor
-         place
-         device_memory_aligment)
+         place)
   nv_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -105,7 +104,6 @@ if(WITH_GPU)
          dynload_cuda
          variable_visitor
          place
-         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
 
@@ -170,8 +168,7 @@ elseif(WITH_ROCM)
          memory
          dynload_cuda
          variable_visitor
-         place
-         device_memory_aligment)
+         place)
   hip_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -183,7 +180,6 @@ elseif(WITH_ROCM)
          dynload_cuda
          variable_visitor
          place
-         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
 
@@ -233,8 +229,7 @@ else()
          ddim
          memory
          variable_visitor
-         place
-         device_memory_aligment)
+         place)
   cc_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -245,7 +240,6 @@ else()
          memory
          variable_visitor
          place
-         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
   if(WITH_DISTRIBUTE)
@@ -388,6 +382,9 @@ set(IR_PASS_DEPS
     graph_to_program_pass
     fix_op_run_order_pass
     fuse_gemm_epilogue_pass
+    fused_attention_pass
+    fuse_adamw_op_pass
+    fused_feedforward_pass
     delete_dropout_op_pass)
 
 if(WITH_CINN)

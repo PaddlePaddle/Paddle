@@ -26,6 +26,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["conv2d"]["ResidualData"] = ScaleAlgo::KL;
   rules_["conv2d"]["Output"] = ScaleAlgo::KL;
 
+  rules_["fused_conv2d"]["Input"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
+  rules_["fused_conv2d"]["Bias"] = ScaleAlgo::NONE;  // do not compute scale
+  rules_["fused_conv2d"]["ResidualData"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Output"] = ScaleAlgo::KL;
+
   rules_["pool2d"]["X"] = ScaleAlgo::KL;
   rules_["pool2d"]["Out"] = ScaleAlgo::KL;
 
@@ -41,6 +47,8 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   // input data and assign to Quantize and Dequantize scale.
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
+  rules_["fused_transpose"]["X"] = ScaleAlgo::KL;
+  rules_["fused_transpose"]["Out"] = ScaleAlgo::NONE;
 
   rules_["slice"]["Input"] = ScaleAlgo::KL;
   rules_["slice"]["Out"] = ScaleAlgo::NONE;

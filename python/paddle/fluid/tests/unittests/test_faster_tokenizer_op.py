@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import os
+import sys
+import tempfile
 import unittest
 
 import numpy as np
-import paddle
-import paddle.nn as nn
-from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
-from paddle.fluid.layer_helper import LayerHelper
-from paddle import _legacy_C_ops
 
-import sys
-import tempfile
+import paddle
+from paddle import _legacy_C_ops, nn
+from paddle.fluid.framework import _non_static_mode, core
+from paddle.fluid.layer_helper import LayerHelper
 
 sys.path.append("./tokenizer")
 from tokenizer.bert_tokenizer import BertTokenizer
@@ -132,9 +131,9 @@ class Predictor:
         model_file = os.path.join(model_dir, "inference.pdmodel")
         params_file = os.path.join(model_dir, "inference.pdiparams")
         if not os.path.exists(model_file):
-            raise ValueError("not find model file path {}".format(model_file))
+            raise ValueError(f"not find model file path {model_file}")
         if not os.path.exists(params_file):
-            raise ValueError("not find params file path {}".format(params_file))
+            raise ValueError(f"not find params file path {params_file}")
         config = paddle.inference.Config(model_file, params_file)
 
         # fast_tokenizer op only support cpu.
@@ -196,7 +195,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.texts_tensor = to_string_tensor(self.texts, "texts")
         self.text_pairs_tensor = to_string_tensor(self.text_pairs, "text_pairs")
 
-    def run_padding(self):
+    def test_padding(self):
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = True
@@ -310,12 +309,7 @@ class TestBertTokenizerOp(unittest.TestCase):
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
 
-    def test_padding(self):
-        with _test_eager_guard():
-            self.run_padding()
-        self.run_padding()
-
-    def run_no_padding(self):
+    def test_no_padding(self):
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = False
@@ -375,12 +369,7 @@ class TestBertTokenizerOp(unittest.TestCase):
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
 
-    def test_no_padding(self):
-        with _test_eager_guard():
-            self.run_no_padding()
-        self.run_no_padding()
-
-    def run_is_split_into_words(self):
+    def test_is_split_into_words(self):
         self.init_data()
         self.is_split_into_words = True
 
@@ -402,11 +391,6 @@ class TestBertTokenizerOp(unittest.TestCase):
         np.testing.assert_allclose(
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
-
-    def test_is_split_into_words(self):
-        with _test_eager_guard():
-            self.run_is_split_into_words()
-        self.run_is_split_into_words()
 
     def test_inference(self):
         self.init_data()

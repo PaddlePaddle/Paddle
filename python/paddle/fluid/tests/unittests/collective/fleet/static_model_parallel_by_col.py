@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
-import paddle.distributed.fleet as fleet
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -33,11 +33,9 @@ OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+        initializer=paddle.nn.initializer.Assign(weight)
     )
-    bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias)
-    )
+    bias_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(bias))
     return weight_attr, bias_attr
 
 
@@ -62,8 +60,8 @@ def create_model(data, rank):
         )
     else:
         weight_attr, bias_attr = get_param_attr(np_weight, np_bias)
-        result = fluid.layers.fc(
-            data, size=OUT_SIZE, param_attr=weight_attr, bias_attr=bias_attr
+        result = paddle.static.nn.fc(
+            data, size=OUT_SIZE, weight_attr=weight_attr, bias_attr=bias_attr
         )
 
     predict = paddle.sum(result)
@@ -73,7 +71,7 @@ def create_model(data, rank):
 class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(
+        data_in = paddle.static.data(
             name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
         )
 

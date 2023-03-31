@@ -14,17 +14,16 @@
 
 # from paddle.fluid.tests.unittests.test_layer_norm_op import *
 import unittest
+from functools import reduce
+from operator import mul
+
 import numpy as np
 
-from operator import mul
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle import enable_static
-from functools import reduce
-
-from paddle.fluid.tests.unittests.op_test import (
-    _set_use_system_allocator,
+from paddle import enable_static, fluid
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTestTool,
+    _set_use_system_allocator,
 )
 
 np.random.random(123)

@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 inline static void CheckArgument(const framework::ExecutionContext& ctx) {
@@ -136,7 +135,7 @@ class InterpolateNPUKernel : public framework::OpKernel<T> {
     CalcOutSize(ctx, h, w, &out_h, &out_w);
 
     // the 'input' tensor may has no set (or wrong set) of the layout
-    Tensor input_x(input->type());
+    phi::DenseTensor input_x(input->type());
     input_x.ShareDataWith(*input);
     input_x.set_layout(data_layout);
 
@@ -188,7 +187,7 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     // the 'output_grad' tensor may has no set (or wrong set) of the layout
     auto* output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    Tensor output_grad_tmp(output_grad->type());
+    phi::DenseTensor output_grad_tmp(output_grad->type());
     output_grad_tmp.ShareDataWith(*output_grad);
     output_grad_tmp.set_layout(data_layout);
 

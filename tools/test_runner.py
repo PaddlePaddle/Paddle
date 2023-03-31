@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import importlib
 import os
 import sys
-import paddle
-import paddle.fluid as fluid
-import importlib
-import paddle.fluid.core as core
+import unittest
 from io import StringIO
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list
@@ -62,7 +63,7 @@ def main():
             paddle.disable_static()
 
     if some_test_failed:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

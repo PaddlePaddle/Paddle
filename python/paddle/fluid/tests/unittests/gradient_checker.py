@@ -13,26 +13,19 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-import numpy as np
+from collections.abc import Sequence
 from itertools import product
+
+import numpy as np
+
 import paddle
-
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
-from paddle.fluid.framework import _test_eager_guard
-
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
 
 
 def _product(t):
-    if isinstance(t, int):
-        return t
-    else:
-        return np.product(t)
+    return int(np.product(t))
 
 
 def dtype_to_np_dtype(dtype):
@@ -772,10 +765,7 @@ def double_grad_check_for_dygraph(
     x_init = _as_list(x_init)
 
     paddle.disable_static()
-    with _test_eager_guard():
-        eager_double_grad = get_eager_double_grad(
-            func, x_init, y_grads_init, place
-        )
+    eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
     static_double_grad = get_static_double_grad(
@@ -938,10 +928,7 @@ def triple_grad_check_for_dygraph(
     x_init = _as_list(x_init)
 
     paddle.disable_static()
-    with _test_eager_guard():
-        eager_triple_grad = get_eager_triple_grad(
-            func, x_init, y_grads_init, place
-        )
+    eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
     static_triple_grad = get_static_triple_grad(

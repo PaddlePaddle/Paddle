@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, randomize_probability
+from eager_op_test import OpTest, randomize_probability
+
+import paddle
 
 
 class TestBprLossOp1(OpTest):
@@ -39,11 +42,16 @@ class TestBprLossOp1(OpTest):
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
-        self.check_output()
+        paddle.enable_static()
+        self.check_output(check_dygraph=False)
+        paddle.disable_static()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
+        self.check_grad(
+            ["X"], "Y", numeric_grad_delta=0.001, check_dygraph=False
+        )
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

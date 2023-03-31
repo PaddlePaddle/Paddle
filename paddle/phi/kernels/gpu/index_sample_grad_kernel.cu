@@ -75,9 +75,9 @@ void IndexSampleGradKernel(const Context& ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataType2String(index_type),
-                        phi::DataType2String(DataType::INT32),
-                        phi::DataType2String(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   auto input_num = x.numel();
@@ -130,6 +130,8 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexSampleGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

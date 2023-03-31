@@ -21,6 +21,7 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/generator.h"
 
 DECLARE_bool(cudnn_deterministic);
 
@@ -86,6 +87,12 @@ void SetCinnRuntimeFlags() {
   ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
 }
 
+template <>
+void SetCinnRandomSeed<phi::CPUContext>() {
+  auto seed = phi::DefaultCPUGenerator()->GetCurrentSeed();
+  ::cinn::runtime::RandomSeed::GetOrSet(seed);
+}
+
 }  // namespace details
 
 class CinnLaunchOp : public framework::OperatorWithKernel {
@@ -117,10 +124,9 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
    * Of course, the data type here is also not important.
    */
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -128,18 +134,18 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "which are the input of graph inside the CinnLaunchOp"
              "excluding kNoNeedBufferX.")
         .AsDuplicable();
     AddInput(kNoNeedBufferX,
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "which are the input of graph inside the CinnLaunchOp but"
              "their buffer are not needed.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput(kOutputs,
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddAttr<int64_t>(

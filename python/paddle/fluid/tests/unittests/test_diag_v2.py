@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDiagV2Op(OpTest):
@@ -40,11 +41,11 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
     def init_config(self):
         pass
@@ -279,8 +280,6 @@ class TestDiagV2API(unittest.TestCase):
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_imperative()
-        with _test_eager_guard():
-            self.run_imperative()
 
         paddle.enable_static()
 
@@ -293,8 +292,6 @@ class TestDiagV2API(unittest.TestCase):
 
         paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_imperative()
-        with _test_eager_guard():
-            self.run_imperative()
         paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):

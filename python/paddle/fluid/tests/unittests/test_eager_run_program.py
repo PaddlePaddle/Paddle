@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import unittest
+
 import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import (
-    _test_eager_guard,
-    Variable,
-    _in_legacy_dygraph,
-)
 from paddle.fluid import core
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
-    _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
+    _is_enable_standalone_executor,
 )
-
-import unittest
+from paddle.fluid.framework import Variable
 
 
 def _append_backward_desc(main_program, outs):
@@ -48,7 +44,7 @@ def _append_backward_desc(main_program, outs):
 # def _set_grad_type(params, train_program):
 #     # NOTE: if user set sparse gradient mode, the param's gradient
 #     # will be SelectedRows, not LoDTensor. But tracer will just
-#     # set param grad VarBase by forward VarBase(LoDTensor)
+#     # set param grad Tensor by forward Tensor(LoDTensor)
 #     # If we don't change grad_var type here, RunProgramOp need
 #     # transform SelectedRows to LoDTensor forcibly, it may not
 #     # be user wanted result.
@@ -66,22 +62,13 @@ def _create_out(var):
     assert isinstance(var, Variable)
     var_desc = var.desc
     varbase = None
-    if _in_legacy_dygraph():
-        var_base = core.VarBase(
-            var_desc.dtype(),
-            var_desc.shape(),
-            var_desc.name(),
-            var_desc.type(),
-            False,
-        )
-    else:
-        var_base = core.eager.Tensor(
-            var_desc.dtype(),
-            var_desc.shape(),
-            var_desc.name(),
-            var_desc.type(),
-            False,
-        )
+    var_base = core.eager.Tensor(
+        var_desc.dtype(),
+        var_desc.shape(),
+        var_desc.name(),
+        var_desc.type(),
+        False,
+    )
     return var_base
 
 
@@ -117,74 +104,67 @@ class TestRunProgram(unittest.TestCase):
         )
         backward_program = _add_build_strategy_for(
             program,
-            main_program.desc.block(0).op_size() + 2,
+            main_program.desc.block(0).op_size() + 1,
             program.desc.block(0).op_size(),
         )
 
         paddle.disable_static('cpu')
         # step 2: call run_program in eager mode
-        with _test_eager_guard():
-            x_t = paddle.ones([2, 4])
-            x_t.name = "x"
-            x_t.stop_gradient = False
-            y_t = paddle.ones([4, 2])
-            y_t.name = "y"
-            y_t.stop_gradient = False
+        x_t = paddle.ones([2, 4])
+        x_t.name = "x"
+        x_t.stop_gradient = False
+        y_t = paddle.ones([4, 2])
+        y_t.name = "y"
+        y_t.stop_gradient = False
 
-            fake_var = paddle.zeros([1])
-            fake_var.name = 'Fake_var'
+        fake_var = paddle.zeros([1])
+        fake_var.name = 'Fake_var'
 
-            out_t = _create_out(out)
+        out_t = _create_out(out)
 
-            scope = core.Scope()
-            attrs = [
-                'global_block',
-                program.desc.block(0),
-                'start_op_index',
-                0,
-                'end_op_index',
-                main_program.desc.block(0).op_size(),
-                'is_test',
-                False,
-                'program_id',
-                _hash_with_id(program),
-            ]
+        scope = core.Scope()
+        attrs = [
+            'global_block',
+            program.desc.block(0),
+            'start_op_index',
+            0,
+            'end_op_index',
+            main_program.desc.block(0).op_size(),
+            'is_test',
+            False,
+            'program_id',
+            paddle.utils._hash_with_id(program),
+            'param_grad_names',
+            ['Fake_var@GRAD'],
+            'out_grad_names',
+            [out.name + '@GRAD'],
+        ]
 
-            use_interpretorcore = (
-                _is_enable_standalone_executor()
-                and _is_dy2st_enable_standalone_executor()
-            )
-            attrs.extend(('use_interpretorcore', use_interpretorcore))
-            if use_interpretorcore:
-                attrs.extend(
-                    (
-                        'forward_global_block',
-                        forward_program.desc.block(0),
-                        'backward_global_block',
-                        backward_program.desc.block(0),
-                    )
+        use_interpretorcore = (
+            _is_enable_standalone_executor()
+            and _is_dy2st_enable_standalone_executor()
+        )
+        attrs.extend(('use_interpretorcore', use_interpretorcore))
+        if use_interpretorcore:
+            attrs.extend(
+                (
+                    'forward_global_block',
+                    forward_program.desc.block(0),
+                    'backward_global_block',
+                    backward_program.desc.block(0),
                 )
-
-            _legacy_C_ops.run_program(
-                [x_t, y_t],
-                [fake_var],
-                [out_t],
-                [scope],
-                [fake_var],
-                None,
-                *attrs
             )
 
-            loss = paddle.mean(out_t)
-            loss.backward()
+        _legacy_C_ops.run_program(
+            [x_t, y_t], [fake_var], [out_t], [scope], [fake_var], None, *attrs
+        )
 
-            np.testing.assert_array_equal(np.ones([2, 2]) * 4, out_t.numpy())
-            np.testing.assert_array_equal(
-                np.ones([2, 4]) * 0.5, x_t.grad.numpy()
-            )
-            np.testing.assert_array_equal(
-                np.ones([4, 2]) * 0.5, y_t.grad.numpy()
-            )
+        loss = paddle.mean(out_t)
+        loss.backward()
+
+        np.testing.assert_array_equal(np.ones([2, 2]) * 4, out_t.numpy())
+        np.testing.assert_array_equal(np.ones([2, 4]) * 0.5, x_t.grad.numpy())
+        np.testing.assert_array_equal(np.ones([4, 2]) * 0.5, y_t.grad.numpy())
 
 
 if __name__ == '__main__':

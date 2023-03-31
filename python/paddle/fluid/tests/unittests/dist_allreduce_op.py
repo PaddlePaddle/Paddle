@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 from functools import reduce
+
 from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -36,7 +39,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -47,7 +50,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -56,12 +59,12 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
     return predict
@@ -70,17 +73,21 @@ def cnn_model(data):
 class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, single_device=False):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
 
@@ -103,13 +110,11 @@ class TestDistMnist2x2(TestDistRunnerBase):
             opt.minimize(avg_cost)
         else:
             # multi device or distributed multi device
-            params_grads = opt.backward(avg_cost)
-            data_parallel_param_grads = []
-            for p, g in params_grads:
-                # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers.collective._allreduce(g)
-                data_parallel_param_grads.append([p, grad_reduce])
-            opt.apply_gradients(data_parallel_param_grads)
+            strategy = fleet.DistributedStrategy()
+            strategy.without_graph_optimization = True
+            fleet.init(strategy=strategy)
+            optimizer = fleet.distributed_optimizer(opt)
+            optimizer.minimize(avg_cost)
 
         return (
             inference_program,
@@ -122,4 +127,5 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+
     runtime_main(TestDistMnist2x2)

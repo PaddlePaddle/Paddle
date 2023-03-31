@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 def call_sfl_functional(
@@ -41,17 +42,17 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        logit = paddle.fluid.data(
+        logit = paddle.static.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         feed_dict = {"logit": logit_np, "label": label_np}
 
         normalizer = None
         if normalizer_np is not None:
-            normalizer = paddle.fluid.data(
+            normalizer = paddle.static.data(
                 name='normalizer', shape=normalizer_np.shape, dtype='float64'
             )
             feed_dict["normalizer"] = normalizer_np
@@ -159,16 +160,6 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                                 gamma,
                                 reduction,
                             )
-                            with _test_eager_guard():
-                                eager_result = test_dygraph(
-                                    place,
-                                    logit_np,
-                                    label_np,
-                                    normalizer_np,
-                                    alpha,
-                                    gamma,
-                                    reduction,
-                                )
                             expected = calc_sigmoid_focal_loss(
                                 logit_np,
                                 label_np,
@@ -185,9 +176,6 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                             )
                             np.testing.assert_allclose(
                                 dy_result, expected, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
-                                eager_result, expected, rtol=1e-05
                             )
 
     def test_SigmoidFocalLoss_error(self):

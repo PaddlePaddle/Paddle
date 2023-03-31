@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Pool2D, Linear
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
+from paddle.nn import Linear
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -56,13 +56,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=bias_attr,
         )
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -71,7 +68,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(paddle.nn.Layer):
     def __init__(self, dtype="float32"):
         super().__init__()
 
@@ -103,21 +100,20 @@ class MNIST(fluid.dygraph.Layer):
         self._linear = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
-            dtype=dtype,
         )
 
     def forward(self, inputs, label):
         x = paddle.nn.functional.relu(self._simple_img_conv_pool_1(inputs))
         x = paddle.nn.functional.relu(self._simple_img_conv_pool_2(x))
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
-        loss = fluid.layers.cross_entropy(cost, label)
+        cost = paddle.nn.functional.softmax(cost)
+        loss = paddle.nn.functional.cross_entropy(
+            cost, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return avg_loss
 
@@ -139,8 +135,6 @@ class TestMnist(unittest.TestCase):
             print(loss.numpy())
 
     def test_mnist_fp16(self):
-        with _test_eager_guard():
-            self.func_mnist_fp16()
         self.func_mnist_fp16()
 
 

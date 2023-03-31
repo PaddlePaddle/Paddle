@@ -14,15 +14,15 @@
 
 import os
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-
-from paddle.fluid.framework import program_guard, Program
-from test_attribute_var import UnittestBase
+from paddle import fluid
+from paddle.fluid import framework
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestEyeOp(OpTest):
@@ -42,7 +42,7 @@ class TestEyeOp(OpTest):
         self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestEyeOp1(OpTest):
@@ -58,7 +58,7 @@ class TestEyeOp1(OpTest):
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestEyeOp2(OpTest):
@@ -74,7 +74,7 @@ class TestEyeOp2(OpTest):
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class API_TestTensorEye(unittest.TestCase):
@@ -107,40 +107,6 @@ class API_TestTensorEye(unittest.TestCase):
         out = paddle.eye(10, dtype="int64")
         expected_result = np.eye(10, dtype="int64")
         paddle.enable_static()
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
-        paddle.disable_static()
-        batch_shape = [2]
-        out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
-        result = np.eye(10, dtype="int64")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
-        paddle.disable_static()
-        batch_shape = [3, 2]
-        out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
-        result = np.eye(10, dtype="int64")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
@@ -210,18 +176,6 @@ class TestEyeRowsCol(UnittestBase):
     def test_error(self):
         with self.assertRaises(TypeError):
             paddle.eye(-1)
-
-
-class TestEyeRowsCol2(TestEyeRowsCol):
-    def call_func(self, x):
-        rows = paddle.assign(3)
-        cols = paddle.assign(10)
-        out = paddle.fluid.layers.eye(rows, cols)
-        return out
-
-    def test_error(self):
-        with self.assertRaises(TypeError):
-            paddle.fluid.layers.eye(-1)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
@@ -26,7 +28,7 @@ class TestIdentityAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             id_layer = paddle.nn.Identity()
             out = id_layer(x)
             exe = paddle.static.Executor(self.place)

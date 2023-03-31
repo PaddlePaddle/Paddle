@@ -42,7 +42,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // kernel's device type is decided by input tensor place
     auto *in = ctx.InputVar("X");
@@ -59,14 +59,16 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
         in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
 
     // dtype is not important
-    return framework::OpKernelType(framework::proto::VarType::FP32, place);
+    return phi::KernelKey(framework::proto::VarType::FP32, place);
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -94,8 +96,9 @@ class TransferLayoutKernel {
 class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input Tensor");
-    AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    AddInput("X", "(phi::DenseTensor) The input Tensor");
+    AddOutput("Out",
+              "(phi::DenseTensor) The Output Tensor with desired layout");
     // NOTE(zhiqiu): in most case, the src_layout is not needed, the op can use
     // the layout
     // of input X. However, in some mkldnn kernel, the src layout computed by

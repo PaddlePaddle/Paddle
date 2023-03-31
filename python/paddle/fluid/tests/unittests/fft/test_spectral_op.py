@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-
 import re
 import sys
+
+import numpy as np
 from spectral_op_np import (
     fft_c2c,
-    fft_r2c,
-    fft_c2r,
     fft_c2c_backward,
-    fft_r2c_backward,
+    fft_c2r,
     fft_c2r_backward,
+    fft_r2c,
+    fft_r2c_backward,
 )
+
+import paddle
 from paddle import _C_ops
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 paddle.enable_static()
 
@@ -162,7 +163,7 @@ class TestFFTC2COp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -170,7 +171,6 @@ class TestFFTC2COp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -259,7 +259,7 @@ class TestFFTC2ROp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -267,7 +267,6 @@ class TestFFTC2ROp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -344,7 +343,7 @@ class TestFFTR2COp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -352,5 +351,4 @@ class TestFFTR2COp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )

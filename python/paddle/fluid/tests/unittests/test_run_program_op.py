@@ -14,19 +14,18 @@
 
 import contextlib
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
-import paddle.fluid as fluid
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
-from paddle.fluid.layers.utils import _hash_with_id
-from paddle.fluid.framework import _in_eager_mode_
-from paddle.fluid.executor import (
-    _is_enable_standalone_executor,
-    _is_dy2st_enable_standalone_executor,
-)
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.executor import (
+    _is_dy2st_enable_standalone_executor,
+    _is_enable_standalone_executor,
+)
+from paddle.fluid.framework import global_var
 
 paddle.enable_static()
 
@@ -85,7 +84,7 @@ class RunProgramOpTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_outs = self.run_static_model(place, is_test=True)
             self.check_output_with_place(place)
 
@@ -94,7 +93,7 @@ class RunProgramOpTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_grads = self.run_static_model(place, is_test=False)
             self.check_grad_with_place(place)
 
@@ -130,7 +129,7 @@ class RunProgramOpTest(unittest.TestCase):
         forward_program = _add_build_strategy_for(program, 0, forward_op_num)
         backward_program = _add_build_strategy_for(
             program,
-            forward_op_num + 2 * output_num,
+            forward_op_num + output_num,
             program.desc.block(0).op_size(),
         )
         return forward_program.desc, backward_program.desc
@@ -144,7 +143,7 @@ class RunProgramOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         ]
 
     def get_param_grad_names(self):
@@ -176,14 +175,9 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if _in_eager_mode_:
-                var = core.eager.Tensor(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
-            else:
-                var = core.VarBase(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
+            var = core.eager.Tensor(
+                value=np_value, name=name, place=place, zero_copy=True
+            )
             var.stop_gradient = stop_gradient
             return var
 
@@ -217,7 +211,7 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        if _in_eager_mode_:
+        if global_var._in_eager_mode_:
             outputs['OutScope'] = [core.Scope()]
         else:
             outputs['OutScope'] = framework._varbase_creator(
@@ -261,6 +255,15 @@ class RunProgramOpTest(unittest.TestCase):
                     )
                 )
 
+            self.attrs.extend(
+                (
+                    'param_grad_names',
+                    [p.name + '@GRAD' for p in inputs['Params']],
+                    'out_grad_names',
+                    [out.name + '@GRAD' for out in outputs['Out']],
+                )
+            )
+
             _legacy_C_ops.run_program(
                 inputs['X'],
                 inputs['Params'],
@@ -303,6 +306,15 @@ class RunProgramOpTest(unittest.TestCase):
                         backward_program_desc.block(0),
                     )
                 )
+
+            self.attrs.extend(
+                (
+                    'param_grad_names',
+                    [p.name + '@GRAD' for p in inputs['Params']],
+                    'out_grad_names',
+                    [out.name + '@GRAD' for out in outputs['Out']],
+                )
+            )
 
             _legacy_C_ops.run_program(
                 inputs['X'],
@@ -376,7 +388,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',
@@ -384,7 +396,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][0]]
             ),
             trainable=True,
@@ -392,17 +404,17 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][1]]
             ),
             trainable=True,
         )
-        pred = fluid.layers.fc(
-            input=img,
+        pred = paddle.static.nn.fc(
+            x=img,
             size=10,
-            param_attr=weight_attr,
+            weight_attr=weight_attr,
             bias_attr=bias_attr,
-            act='relu',
+            activation='relu',
         )
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
@@ -417,7 +429,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {'X': ['x'], 'Params': ['emb_weight']}
-        self.output_names = {'Out': ['reduce_sum_0.tmp_0']}
+        self.output_names = {'Out': ['sum_0.tmp_0']}
 
         self.inputs = {
             'X': {'x': np.array([[1, 3, 0, 4, 7]]).astype("int64")},
@@ -436,27 +448,27 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.calc_dygraph_grad(place)
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64'
+        x = paddle.static.data(
+            name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
-        emb = fluid.input.embedding(
+        emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     self.inputs['Params'][self.input_names['Params'][0]]
                 ),
             ),
             is_sparse=True,
         )
-        y = fluid.layers.reduce_sum(emb, dim=-1)
+        y = paddle.sum(emb, axis=-1)
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward

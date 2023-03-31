@@ -31,10 +31,10 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
@@ -53,6 +53,10 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
+
+// set CINN global random seed
+template <typename DeviceContext>
+void SetCinnRandomSeed();
 
 }  // namespace details
 
@@ -76,29 +80,30 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
-    std::map<std::string, const LoDTensor*> inputs_name2tensor;
+    std::map<std::string, const phi::DenseTensor*> inputs_name2tensor;
     std::vector<std::string> input_x_variable_names;
     std::vector<std::string> input_no_need_buffer_variable_names;
     auto add_name2tensor_fn =
-        [&inputs_name2tensor](const std::vector<std::string>& variable_names,
-                              const std::vector<const LoDTensor*>& tensors) {
+        [&inputs_name2tensor](
+            const std::vector<std::string>& variable_names,
+            const std::vector<const phi::DenseTensor*>& tensors) {
           std::transform(
               variable_names.begin(),
               variable_names.end(),
               tensors.begin(),
               std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
-              [](const std::string& name, const LoDTensor* tensor) {
+              [](const std::string& name, const phi::DenseTensor* tensor) {
                 return std::make_pair(name, tensor);
               });
         };
 
-    auto input_x_tensors = ctx.MultiInput<LoDTensor>(kX);
+    auto input_x_tensors = ctx.MultiInput<phi::DenseTensor>(kX);
     if (!input_x_tensors.empty()) {
       input_x_variable_names = std::move(ctx.InputNames(kX));
       add_name2tensor_fn(input_x_variable_names, input_x_tensors);
     }
     auto input_no_need_buffer_tensors =
-        ctx.MultiInput<LoDTensor>(kNoNeedBufferX);
+        ctx.MultiInput<phi::DenseTensor>(kNoNeedBufferX);
     if (!input_no_need_buffer_tensors.empty()) {
       input_no_need_buffer_variable_names =
           std::move(ctx.InputNames(kNoNeedBufferX));
@@ -132,15 +137,27 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
+    // set CINN global random seed
+    details::SetCinnRandomSeed<DeviceContext>();
+
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order
     if (FLAGS_enable_pe_launch_cinn) {
-      platform::RecordEvent record_event_4(
-          "Step 4. Execute the runtime graph by PE.");
-      VLOG(4) << "Execute the runtime graph by PE";
-      framework::Scope& exec_scope = scope.NewScope();
-      auto* pe = launch_context->InitializePE(place, &exec_scope);
-      pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+      if (FLAGS_enable_interpretercore_launch_cinn) {
+        platform::RecordEvent record_event_4(
+            "Step 4. Execute the runtime program by InterpreterCore.");
+        VLOG(4) << "Execute the runtime program by InterpreterCore";
+        auto* interpreter_core = launch_context->InitializeInterpreterCore(
+            place, const_cast<framework::Scope*>(&scope));
+        interpreter_core->Run({}, false);
+      } else {
+        platform::RecordEvent record_event_4(
+            "Step 4. Execute the runtime graph by PE.");
+        VLOG(4) << "Execute the runtime graph by PE";
+        framework::Scope& exec_scope = scope.NewScope();
+        auto* pe = launch_context->InitializePE(place, &exec_scope);
+        pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+      }
     } else {
       platform::RecordEvent record_event_4(
           "Step 4. Execute the compiled executable program.");

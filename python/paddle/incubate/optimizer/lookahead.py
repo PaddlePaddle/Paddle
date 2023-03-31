@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-from paddle.fluid import framework, layers, unique_name
+import paddle
+from paddle.fluid import framework, unique_name
+from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
-import paddle
-from paddle.fluid.dygraph import base as imperative_base
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -144,6 +144,10 @@ class LookAhead(Optimizer):
         self._global_step_var = None
         self._k_var = None
 
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self.inner_optimizer._set_auxiliary_var(key, val)
+
     @framework.dygraph_only
     @imperative_base.no_grad
     def step(self):
@@ -192,7 +196,7 @@ class LookAhead(Optimizer):
 
     def _increment_global_var(self):
         if self._global_step_var is None:
-            self._global_step_var = layers.create_global_var(
+            self._global_step_var = paddle.static.create_global_var(
                 name=unique_name.generate("lookahead_step"),
                 shape=[1],
                 value=0,
@@ -212,7 +216,7 @@ class LookAhead(Optimizer):
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros'
         )
-        k_var = layers.create_global_var(
+        k_var = paddle.static.create_global_var(
             name=unique_name.generate("lookahead_k"),
             shape=[1],
             value=self.k,

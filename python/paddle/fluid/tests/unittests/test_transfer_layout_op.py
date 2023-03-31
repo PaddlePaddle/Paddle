@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
-from op_test import OpTest
+
+
+def transpose_layout(x, src_layout, dst_layout):
+    return x.transpose([0, 2, 3, 1])
 
 
 # default kNCHW
@@ -30,6 +35,7 @@ class TestTransferLayoutOpkNCHWTokNHWC(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.transpose([0, 2, 3, 1])}
         self.attrs = {'src_layout': 0, 'dst_layout': 1}  # kNHWC
+        self.python_api = transpose_layout
         self.op_type = 'transfer_layout'
 
     def test_check_output(self):

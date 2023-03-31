@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn.functional as F
+
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -122,7 +123,9 @@ class TestPool1D_API(unittest.TestCase):
 
     def check_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float32"
+            )
             result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
@@ -137,6 +140,32 @@ class TestPool1D_API(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
+    def check_avg_static_results_fp16(self, place):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float16"
+            )
+            result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
+
+            input_np = np.random.random([2, 3, 32]).astype("float16")
+            result_np = avg_pool1D_forward_naive(
+                input_np,
+                ksize=[2],
+                strides=[2],
+                paddings=[0],
+                ceil_mode=False,
+            )
+
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
+                np.testing.assert_allclose(fetches[0], result_np, rtol=1e-03)
 
     def check_avg_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
@@ -179,7 +208,9 @@ class TestPool1D_API(unittest.TestCase):
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float32"
+            )
             result = F.max_pool1d(input, kernel_size=2, stride=2, padding=[0])
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
@@ -271,13 +302,10 @@ class TestPool1D_API(unittest.TestCase):
             self.check_max_dygraph_padding_same(place)
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool1d()
+            self.check_avg_static_results_fp16(place)
 
 
-class TestPool2DError_API(unittest.TestCase):
+class TestPool1DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():
@@ -420,9 +448,27 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_stride_out_of_range)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                out = F.max_pool1d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                out = F.max_pool1d(x, 1, stride=(0))
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
 
 
 if __name__ == '__main__':

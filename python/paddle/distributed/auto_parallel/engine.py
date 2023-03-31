@@ -12,49 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import copy
 import logging
-import random
 import numbers
-import numpy as np
+import os
+import random
 from collections import defaultdict
 
+import numpy as np
+
 import paddle
-import paddle.utils as utils
 import paddle.distributed.auto_parallel.utils as auto_utils
-
-from paddle import fluid, static
-from paddle.metric import Metric
-from paddle.static import InputSpec
-from paddle.fluid import core
-from paddle.fluid import Variable
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.executor import global_scope, _to_name_str
-from paddle.fluid.framework import Operator, _non_static_mode
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle import static, utils
 from paddle.distributed import fleet
-
-from .callbacks import config_callbacks
-from .converter import Converter
-from .helper import ProgramHelper
-from .cluster import Cluster, get_default_cluster
-from .planner_v2 import Planner
-from .parallelizer_v2 import Parallelizer
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .dist_loader import (
-    DistributedDataLoaderFromGenerator,
-    DistributedDataLoader,
-)
-from .strategy import Strategy
-from .process_group import new_process_group, get_all_process_groups
-from .dist_context import DistributedContext, get_default_distributed_context
-from .interface import CollectionNames, get_collection
-from .cost.estimate_cost import get_cost_from_engine
+from paddle.fluid.executor import _to_name_str
+from paddle.framework import IrGraph
+from paddle.framework import _current_expected_place as _get_device
+from paddle.framework import core, in_dygraph_mode
+from paddle.metric import Metric
+from paddle.static import InputSpec, Operator, Variable, global_scope
 
 from ..utils.log_utils import get_logger
+from .callbacks import config_callbacks
+from .cluster import Cluster, get_default_cluster
+from .converter import Converter
+from .cost.estimate_cost import get_cost_from_engine
+from .dist_context import DistributedContext, get_default_distributed_context
+from .dist_loader import (
+    DistributedDataLoader,
+    DistributedDataLoaderFromGenerator,
+)
+from .dist_op import DistributedOperator
+from .dist_saver import DistributedSaver
+from .helper import ProgramHelper
+from .interface import CollectionNames, get_collection
+from .parallelizer_v2 import Parallelizer
+from .planner_v2 import Planner
+from .process_group import get_all_process_groups, new_process_group
+from .strategy import Strategy
 
 
 class Engine:
@@ -152,11 +147,11 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.fluid.optimizer.Optimizer`."
+                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
         self._orig_optimizer = copy.deepcopy(self._optimizer)
@@ -229,6 +224,8 @@ class Engine:
 
         self.history = None
 
+        paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
@@ -248,7 +245,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDatset, but received {}.".format(
+                "Data should be a Dataset or IterableDataset, but received {}.".format(
                     type(data).__name__
                 )
             )
@@ -269,7 +266,7 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+            elif isinstance(item, (Variable, core.eager.Tensor)):
                 spec = InputSpec.from_tensor(item, name)
                 _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
@@ -301,7 +298,7 @@ class Engine:
         return inputs_spec, labels_spec
 
     def _prepare_data_tensor(self, inputs_spec, labels_spec, inputs, labels):
-        if _non_static_mode() or self._dygraph_mode:
+        if in_dygraph_mode() or self._dygraph_mode:
             raise ValueError("Only support static graph mode.")
 
         if inputs_spec:
@@ -312,7 +309,7 @@ class Engine:
             )
             assert isinstance(
                 inputs, list
-            ), "inputs should be list, but received {}".format(type(inputs))
+            ), f"inputs should be list, but received {type(inputs)}"
             assert len(inputs_spec) == len(
                 inputs
             ), "the number of `inputs_spec` should be equal to `inputs`'s."
@@ -327,7 +324,7 @@ class Engine:
             )
             assert isinstance(
                 labels, list
-            ), "labels should be list, but received {}".format(type(labels))
+            ), f"labels should be list, but received {type(labels)}"
             assert len(labels_spec) == len(
                 labels
             ), "the number of `labels_spec` should be equal to `labels`'s."
@@ -387,15 +384,15 @@ class Engine:
         if data is not None:
             if isinstance(data, (list, tuple)):
                 if len(data) == 1 and isinstance(data[0], dict):
-                    for name, data in data[0].items():
-                        feeds[name] = data
+                    for name, value in data[0].items():
+                        feeds[name] = value
                 else:
-                    raise ValueError("Unsupported data {}".format(data))
+                    raise ValueError(f"Unsupported data {data}")
             elif isinstance(data, dict):
-                for name, data in data.items():
-                    feeds[name] = data
+                for name, value in data.items():
+                    feeds[name] = value
             else:
-                raise ValueError("Unsupported data {}".format(data))
+                raise ValueError(f"Unsupported data {data}")
         if user_feeds is not None:
             assert isinstance(
                 user_feeds, dict
@@ -494,10 +491,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
@@ -513,7 +510,7 @@ class Engine:
         self._has_prepared[mode] = True
 
     def _build(self, mode):
-        if _non_static_mode() or self._dygraph_mode:
+        if in_dygraph_mode() or self._dygraph_mode:
             paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
@@ -526,7 +523,8 @@ class Engine:
                 self._labels_spec,
             )
             # build forward main program
-            self.program_helper.build_program(mode)
+            with utils.unique_name.guard():
+                self.program_helper.build_program(mode)
 
             self.concrete_program = self.program_helper.concrete_program
             serial_main_prog = self.program_helper.main_program
@@ -540,7 +538,7 @@ class Engine:
 
             paddle.enable_static()
         else:
-            # build program in static mode
+            # build program in static graph mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
             if serial_main_prog is not None:
                 return
@@ -602,7 +600,7 @@ class Engine:
         feed_vars = {"inputs": self._inputs, "labels": self._labels}
 
         fetch_vars = {
-            "outputs": flatten(outputs),
+            "outputs": paddle.utils.flatten(outputs),
             "loss": self._losses,
             "metrics": metrics,
         }
@@ -610,7 +608,9 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        self._set_recompute_ckpts()
+        auto_utils.set_recompute_segments(
+            self._model, self._losses, self._strategy, serial_main_prog
+        )
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -650,7 +650,6 @@ class Engine:
         from .tuner.optimization_tuner import OptimizationTuner
 
         self._optimization_tuner = OptimizationTuner(
-            self._tuning.to_dict(),
             self._dist_contexts[mode],
             dataset,
             self._inputs_spec,
@@ -698,9 +697,11 @@ class Engine:
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
-        # because we may use it to complete the annotation of the backwarkward and update.
+        # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
-            mode, self._planners[mode].completer, self._dist_contexts[mode]
+            mode,
+            self._planners[mode].completer,
+            self._dist_contexts[mode],
         )
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)
@@ -752,7 +753,9 @@ class Engine:
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
             cur_rank = self._cur_rank
-            # NOTE: After the implementation of the unified dynamic and static communication group initialization mode in the future, the initialization logic of full mode will be removed because port occupation error may occur.
+            # NOTE: After the implementation of the unified dynamic and static communication group
+            # initialization mode in the future, the initialization logic of full mode
+            # will be removed because port occupation error may occur.
             if self._strategy.auto_mode == "full":
                 auto_utils.initialize_pg_in_full_mode(
                     all_process_groups, cur_rank
@@ -763,9 +766,11 @@ class Engine:
                         continue
                     process_group.instantiate()
 
-        place = _get_device()
-        if isinstance(place, fluid.CUDAPlace):
-            place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        self._place = _get_device()
+        if isinstance(self._place, paddle.framework.CUDAPlace):
+            self._place = paddle.framework.CUDAPlace(
+                paddle.distributed.ParallelEnv().dev_id
+            )
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
@@ -775,10 +780,12 @@ class Engine:
         if self._dygraph_mode:
             dist_context = self._dist_contexts[mode]
             dist_main_program = self._dist_main_progs[mode][self._cur_rank]
-            self.program_helper.init(dist_main_program, place, dist_context)
+            self.program_helper.init(
+                dist_main_program, self._place, dist_context
+            )
 
         if self._executor is None:
-            self._executor = paddle.static.Executor(place)
+            self._executor = paddle.static.Executor(self._place)
             uninitialized = []
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             for var in dist_startup_prog.list_vars():
@@ -1518,35 +1525,6 @@ class Engine:
         var_name = _to_name_str(var)
         return var_name in self.main_program.global_block().vars
 
-    def _set_recompute_ckpts(self):
-        # NOTE hack to enable recompute in engine api for GPT-3
-        # TODO support more PaddleNLP/CV models here
-
-        recompute = self._strategy.recompute
-
-        # extract ckpts by specific model
-        if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                self._model, "gpt"
-            ) and self._model.__class__.__name__ in [
-                'GPTForPretraining',
-                'GPTForPretrainingAuto',
-            ]:
-                exact_ckpts = self._model.gpt.checkpoints
-            else:
-                exact_ckpts = recompute.checkpoints
-        else:
-            exact_ckpts = recompute.checkpoints
-
-        # modify strategy
-        if recompute.enable:
-            recompute.checkpoints = exact_ckpts[:]
-            logs = {
-                'Model Class': self._model.__class__.__name__,
-                'Applied Recompute ckpts': exact_ckpts,
-            }
-            self._logger.info(logs)
-
     def _reset_metrics(self):
         for metric in self._metrics:
             metric.reset()
@@ -1560,7 +1538,7 @@ class Engine:
     def _switch_mode(self, mode):
         assert (
             mode in self._dist_main_progs
-        ), "{} model is not ready, please call `prepare()` first.".format(mode)
+        ), f"{mode} model is not ready, please call `prepare()` first."
         self.to_mode(mode)
         self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
@@ -1569,7 +1547,7 @@ class Engine:
             "train",
             "eval",
             "predict",
-        ], "mode {} should be one of ['train', 'eval', 'predict']".format(mode)
+        ], f"mode {mode} should be one of ['train', 'eval', 'predict']"
         self._mode = mode
 
     def _set_state_dict(self, mode, strict, state_dict, dist_attr):
@@ -1578,6 +1556,19 @@ class Engine:
         cur_dist_attr = auto_utils.get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
+        for name, param in program.state_dict().items():
+            param_array = np.array(param)
+            if name not in state_dict:
+                continue
+            if param_array.dtype != state_dict[name].dtype:
+                self._logger.info(
+                    "cast {}'s dtype from '{}' to '{}'".format(
+                        name,
+                        str(state_dict[name].dtype),
+                        str(param_array.dtype),
+                    )
+                )
+                state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
 
     def save(self, path, training=True):
@@ -1641,6 +1632,20 @@ class Engine:
             feed_vars = self._feed_vars["predict"]['inputs']
             fetch_vars = self._fetch_vars["predict"]['outputs']
             dist_main_prog = self._dist_main_progs["predict"][self._cur_rank]
+            if self._strategy.qat.enable and self._strategy.qat.onnx_format:
+                from paddle.static.quantization import QuantWeightPass
+
+                self._logger.info("export quantized model.")
+                self._logger.info(
+                    f"convert config {self._strategy.qat.to_dict()}"
+                )
+                test_graph = IrGraph(
+                    core.Graph(dist_main_prog.desc), for_test=True
+                )
+                quant_weight_pass = QuantWeightPass(global_scope(), self._place)
+                for sub_graph in test_graph.all_sub_graphs():
+                    quant_weight_pass.apply(sub_graph)
+                dist_main_prog = test_graph.to_program()
             self._saver.save_inference_model(
                 path,
                 feed_vars,
@@ -1742,7 +1747,7 @@ class Engine:
             self._build(mode)
             self._plan(mode)
         else:
-            if _non_static_mode() or self._dygraph_mode:
+            if in_dygraph_mode() or self._dygraph_mode:
                 raise ValueError(
                     "Please call `prepare()` or `fit()` or  `evaluate()` or  `predict()` before calling `cost()`."
                 )

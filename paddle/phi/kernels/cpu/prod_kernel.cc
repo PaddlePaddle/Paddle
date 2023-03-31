@@ -22,12 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ProdRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out) {
+void ProdKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const IntArray& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::ProdFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
@@ -35,11 +36,5 @@ void ProdRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prod_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ProdRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    prod, CPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}

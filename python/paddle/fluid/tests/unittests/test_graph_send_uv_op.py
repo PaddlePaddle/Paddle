@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
-from op_test import OpTest
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 def compute_graph_send_uv(inputs, attributes):
@@ -63,10 +63,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out', check_eager=True)
+        self.check_grad(['x', 'y'], 'out')
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -262,10 +262,6 @@ class API_GeometricSendUVTest(unittest.TestCase):
                         np_res, paddle_res
                     ),
                 )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_compute_all_dygraph()
 
 
 if __name__ == "__main__":

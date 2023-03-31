@@ -14,10 +14,12 @@
 
 import time
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
+import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -33,19 +35,14 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.epoch_num = 1
         self.capacity = 5
 
-    def func_test_not_capacity(self):
+    def test_not_capacity(self):
         with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 ValueError, "Please give value to capacity."
             ):
                 fluid.io.DataLoader.from_generator()
 
-    def test_not_capacity(self):
-        with _test_eager_guard():
-            self.func_test_not_capacity()
-        self.func_test_not_capacity()
-
-    def func_test_single_process_with_thread_expection(self):
+    def test_single_process_with_thread_expection(self):
         def error_sample_genarator(batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -69,12 +66,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 exception = ex
             self.assertIsNotNone(exception)
 
-    def test_single_process_with_thread_expection(self):
-        with _test_eager_guard():
-            self.func_test_single_process_with_thread_expection()
-        self.func_test_single_process_with_thread_expection()
-
-    def func_test_multi_process_with_process_expection(self):
+    def test_multi_process_with_process_expection(self):
         def error_sample_genarator(batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -97,12 +89,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 exception = ex
             self.assertIsNotNone(exception)
 
-    def test_multi_process_with_process_expection(self):
-        with _test_eager_guard():
-            self.func_test_multi_process_with_process_expection()
-        self.func_test_multi_process_with_process_expection()
-
-    def func_test_multi_process_with_get_timeout(self):
+    def test_multi_process_with_get_timeout(self):
         def slow_batch_generator_creator(batch_size, batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -126,16 +113,11 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             try:
                 for _ in range(self.epoch_num):
                     for image, _ in loader():
-                        fluid.layers.relu(image)
+                        F.relu(image)
             except core.EnforceNotMet as ex:
                 self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
-
-    def test_multi_process_with_get_timeout(self):
-        with _test_eager_guard():
-            self.func_test_multi_process_with_get_timeout()
-        self.func_test_multi_process_with_get_timeout()
 
 
 if __name__ == '__main__':

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
 import paddle
-import paddle.static as static
-import paddle.nn as nn
+from paddle import nn, static
 
 paddle.enable_static()
 
@@ -145,8 +143,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def test_rnn_raw_optimizer(self):
-        import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
+        from paddle.distributed import fleet
+        from paddle.distributed.fleet.base import role_maker
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)

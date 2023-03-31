@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import paddle.fluid.core as core
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
+from paddle.fluid import core
 
 np.set_printoptions(threshold=np.inf)
 

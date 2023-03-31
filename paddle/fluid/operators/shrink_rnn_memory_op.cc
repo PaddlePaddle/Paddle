@@ -92,12 +92,13 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
+    AddInput("X", "(phi::DenseTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
-    AddInput("I",
-             "(LoDTensor) The step index. The RNN step memory 'X' will be "
-             "shrank to match the size of the input of the index'th step.");
-    AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
+    AddInput(
+        "I",
+        "(phi::DenseTensor) The step index. The RNN step memory 'X' will be "
+        "shrank to match the size of the input of the index'th step.");
+    AddOutput("Out", "(phi::DenseTensor) The shrank RNN step memory.");
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 

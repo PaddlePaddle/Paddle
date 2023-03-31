@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #include <sstream>
 
@@ -23,7 +23,8 @@ DECLARE_double(fraction_of_cpu_memory_to_use);
 
 TEST(CpuMemoryUsage, Print) {
   std::stringstream ss;
-  size_t memory_size = paddle::platform::CpuMaxAllocSize() / 1024 / 1024 / 1024;
+  size_t memory_size =
+      phi::backends::cpu::CpuMaxAllocSize() / 1024 / 1024 / 1024;
   float use_percent = FLAGS_fraction_of_cpu_memory_to_use * 100;
 
   std::cout << paddle::string::Sprintf("\n%.2f %% of CPU Memory Usage: %d GB\n",

@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -26,16 +28,16 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T, typename Context>
 void ConvTransposeRawGPUDNNKernel(const Context& ctx,
@@ -194,10 +196,10 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #endif
   // ------------------- cudnn conv algorithm ---------------------
   auto handle = ctx.cudnn_handle();
-  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
+  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
   bool deterministic = FLAGS_cudnn_deterministic;
 
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
                 &transformed_out,
@@ -216,7 +218,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  padding_common,
                  strides,
                  dilations_,
-                 paddle::platform::AllowTF32Cudnn(),
+                 phi::AllowTF32Cudnn(),
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP
@@ -366,6 +368,24 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    float,
                    float16) {}
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d_transpose,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv2dTransposeGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(conv3d_transpose,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3dTransposeGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+#else
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -380,4 +400,6 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    float,
                    double,
                    float16) {}
+#endif
+
 #endif

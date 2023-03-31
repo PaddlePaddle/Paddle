@@ -1,7 +1,7 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS enforce ddim var_type_traits)
+  DEPS framework_proto enforce ddim var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
@@ -29,7 +29,7 @@ cc_library(
 cc_library(
   cpu_utilization
   SRCS cpu_utilization.cc
-  DEPS cpu_info os_info enforce glog)
+  DEPS phi_backends phi_os_info enforce glog)
 cc_library(
   new_profiler
   SRCS profiler.cc

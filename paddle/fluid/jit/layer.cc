@@ -26,11 +26,14 @@
 namespace paddle {
 namespace jit {
 
-Layer::Layer(const VariableMap& params_map,
-             const VariableMap& attrs_map,
+Layer::Layer(const std::shared_ptr<VariableMap>& params_map,
+             const std::shared_ptr<VariableMap>& attrs_map,
              const FunctionInfoMap& info_map,
              const phi::Place& place)
-    : params_map_(params_map), attrs_map_(attrs_map), info_map_(info_map) {
+    : params_map_(params_map),
+      attrs_map_(attrs_map),
+      info_map_(info_map),
+      place_(place) {
   unit_.reset(new CompilationUnit());
 }
 
@@ -77,22 +80,29 @@ std::vector<std::string> Layer::FunctionNames() const {
 #define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
   template <>                                                         \
   T Layer::Attribute<T>(const std::string& name) const {              \
-    if (attrs_map_.find(name) == attrs_map_.end()) {                  \
+    if (attrs_map_->find(name) == attrs_map_->end()) {                \
       PADDLE_THROW(phi::errors::NotFound(                             \
           "Attribute can not found %s, please check if it exists.")); \
       return T();                                                     \
     }                                                                 \
-    auto var = attrs_map_.at(name);                                   \
+    auto var = attrs_map_->at(name);                                  \
     T ret = var->Get<T>();                                            \
     return ret;                                                       \
   }
 
 PD_SPECIALZE_ATTRIBUTE_TYPE(int)
 PD_SPECIALZE_ATTRIBUTE_TYPE(float)
-PD_SPECIALZE_ATTRIBUTE_TYPE(std::string)
+PD_SPECIALZE_ATTRIBUTE_TYPE(framework::String)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<int>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)
+
+std::shared_ptr<Layer> Layer::Clone(void* stream) {
+  std::shared_ptr<Layer> x =
+      std::make_shared<Layer>(params_map_, attrs_map_, info_map_, place_);
+  x->unit_ = unit_->Clone(stream);
+  return x;
+}
 
 }  // namespace jit
 }  // namespace paddle

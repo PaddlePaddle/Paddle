@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid import dygraph
 from paddle import static
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import dygraph
 
 paddle.enable_static()
 
@@ -46,7 +46,7 @@ class TestViewAsComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -54,7 +54,6 @@ class TestViewAsComplexOp(OpTest):
             'Out',
             user_defined_grads=[ref_view_as_real(self.out_grad)],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -71,7 +70,7 @@ class TestViewAsRealOp(OpTest):
         self.out_grad = np.ones([10, 10, 2], dtype="float64")
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -79,7 +78,6 @@ class TestViewAsRealOp(OpTest):
             'Out',
             user_defined_grads=[ref_view_as_complex(self.out_grad)],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -105,10 +103,6 @@ class TestViewAsComplexAPI(unittest.TestCase):
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-
 
 class TestViewAsRealAPI(unittest.TestCase):
     def setUp(self):
@@ -131,10 +125,6 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 if __name__ == "__main__":

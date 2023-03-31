@@ -19,7 +19,7 @@ __all__ = ["LazyGuard"]
 
 class LazyInitHelper:
     """
-    A Helper Context to trigger switching mode between dygraph and static mode,
+    A Helper Context to trigger switching mode between dygraph and static graph mode,
     and holds the startup program resource.
     """
 
@@ -54,13 +54,13 @@ class LazyInitHelper:
     def __enter__(self):
         """
         Switch into lazy mode and set _dygraph_tracer_ with None to convert
-        dygraph mode into static mode.
+        dygraph mode into static graph mode.
         """
         self.enable()
         if self._in_guard:
             return
-        self._tracer = framework._dygraph_tracer_
-        framework._dygraph_tracer_ = None
+        self._tracer = framework.global_var._dygraph_tracer_
+        framework.global_var._dygraph_tracer_ = None
         self._in_guard = True
 
     def __exit__(self, *args, **kwargs):
@@ -71,7 +71,7 @@ class LazyInitHelper:
         if not self._in_guard:
             return
         assert self._tracer is not None
-        framework._dygraph_tracer_ = self._tracer
+        framework.global_var._dygraph_tracer_ = self._tracer
         self._tracer = None
         self._in_guard = False
 

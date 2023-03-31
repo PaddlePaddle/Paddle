@@ -113,7 +113,6 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-using LoDTensor = phi::DenseTensor;
 template <typename T>
 class PullBoxSparseKernel : public framework::OpKernel<T> {
  public:

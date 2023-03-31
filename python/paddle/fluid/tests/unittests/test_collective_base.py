@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
-import time
 import os
-import sys
-import subprocess
 import pickle
+import socket
+import subprocess
+import sys
 import tempfile
+import time
+import unittest
 from contextlib import closing
-import paddle.fluid as fluid
+
+import numpy as np
+
 import paddle.fluid.unique_name as nameGen
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -138,15 +141,11 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import socket
-from contextlib import closing
-
-
 class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )

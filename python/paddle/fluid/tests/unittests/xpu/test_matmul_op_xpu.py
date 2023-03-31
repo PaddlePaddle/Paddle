@@ -16,17 +16,17 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -39,7 +39,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
@@ -48,7 +48,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif Y.ndim == 2:
             Y = Y.T
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -134,77 +134,19 @@ def generate_compatible_shapes_2(dim, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-def generate_negative_dims(in_shape):
-    from itertools import combinations
-
-    size = len(in_shape)
-    indexs = list()
-    shapes = list()
-    for i in range(size):
-        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
-    for idx in indexs:
-        shapes.append(
-            [in_shape[i] if i not in idx else -1 for i in range(size)]
-        )
-    return shapes
-
-
-def test_negative_dims_program(obj):
-    for shape_x in generate_negative_dims(obj.shape_X):
-        for shape_y in generate_negative_dims(obj.shape_Y):
-            X = np.random.random(obj.shape_X).astype(obj.in_type)
-            Y = np.random.random(obj.shape_Y).astype(obj.in_type)
-            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
-            with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=shape_x, dtype=obj.in_type_str)
-                y = fluid.data(name='y', shape=shape_y, dtype=obj.in_type_str)
-                output = fluid.layers.matmul(
-                    x, y, obj.transpose_X, obj.transpose_Y
-                )
-                obj.assertEqual(len(Ref.shape), len(output.shape))
-                for idx in range(len(Ref.shape)):
-                    if output.shape[idx] != -1:
-                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
-                exe = fluid.Executor(fluid.XPUPlace(0))
-                (res,) = exe.run(
-                    fluid.default_main_program(),
-                    feed={'x': X, 'y': Y},
-                    fetch_list=[output],
-                )
-                np.allclose(res, Ref, atol=1e-3)
-
-
 class XPUTestMatmulOpErr(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = "matmul"
         self.use_dynamic_create_class = False
 
-    class TestMatmulOpError(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                # The inputs type of matmul_op must be Variable.
-                input1 = 12
-                self.assertRaises(
-                    TypeError, fluid.layers.matmul, input1, input1
-                )
-                # The inputs dtype of matmul_op must be float32, float16
-                input2 = fluid.layers.data(
-                    name='input2', shape=[10, 10], dtype="int32"
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.matmul, input2, input2
-                )
-                input3 = fluid.layers.data(
-                    name='input3', shape=[2, 2], dtype="float16"
-                )
-                fluid.layers.matmul(input3, input3)
-
     class API_TestMm(unittest.TestCase):
         def test_out(self):
             with fluid.program_guard(fluid.Program()):
-                x = fluid.data(name="x", shape=[2], dtype=self.in_type)
-                y = fluid.data(name='y', shape=[2], dtype=self.in_type)
-                res = fluid.data(name="output", shape=[1], dtype=self.in_type)
+                x = paddle.static.data(name="x", shape=[2], dtype=self.in_type)
+                y = paddle.static.data(name='y', shape=[2], dtype=self.in_type)
+                res = paddle.static.data(
+                    name="output", shape=[1], dtype=self.in_type
+                )
                 result = paddle.mm(x, y)
                 exe = fluid.Executor(fluid.XPUPlace(0))
                 data1 = np.random.rand(2).astype(self.in_type)
@@ -253,10 +195,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
         def test_errors(self):
             def test_error1():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -265,10 +207,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
             def test_error2():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[-1, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -277,10 +219,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
             def test_error3():
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    data1 = fluid.data(
+                    data1 = paddle.static.data(
                         name="data1", shape=[10, 10, 2], dtype="float32"
                     )
-                    data2 = fluid.data(
+                    data2 = paddle.static.data(
                         name="data2", shape=[3, 2, 10], dtype="float32"
                     )
                     paddle.mm(data1, data2)
@@ -398,39 +340,6 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
         return base_class, classes
 
 
-class XPUTestMatmulOp2(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = "matmul"
-        self.use_dynamic_create_class = True
-
-    def dynamic_create_class(self):
-        base_class = unittest.TestCase
-        classes = []
-        xpu_support_dims_list = [[1, 1], [2, 2], [3, 3]]
-        batch_size = [2, 4, 5, 10, 50, 100, 300]
-        for dims in xpu_support_dims_list:
-            dim_X = dims[0]
-            dim_Y = dims[1]
-            for transose_x in [True, False]:
-                for transose_y in [True, False]:
-                    for batch in batch_size:
-                        class_name = 'TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
-                            dim_X, dim_Y, transose_x, transose_y, batch
-                        )
-                        shape_x, shape_y = generate_compatible_shapes(
-                            dim_X, dim_Y, transose_x, transose_y, batch
-                        )
-                        attr_dict = {
-                            'shape_X': shape_x,
-                            'shape_Y': shape_y,
-                            'transpose_X': transose_x,
-                            'transpose_Y': transose_y,
-                            'test_propram': test_negative_dims_program,
-                        }
-                        classes.append([class_name, attr_dict])
-        return base_class, classes
-
-
 class XPUTestMatmulOp3(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = "matmul"
@@ -463,7 +372,6 @@ support_types = get_xpu_op_support_types('matmul')
 for stype in support_types:
     create_test_class(globals(), XPUTestMatmulOpErr, stype)
     create_test_class(globals(), XPUTestMatmulOp1, stype)
-    create_test_class(globals(), XPUTestMatmulOp2, stype)
     create_test_class(globals(), XPUTestMatmulOp3, stype)
 
 if __name__ == "__main__":

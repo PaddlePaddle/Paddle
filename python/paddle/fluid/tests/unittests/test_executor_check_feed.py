@@ -15,17 +15,17 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestExecutor(unittest.TestCase):
     def net(self):
-        lr = fluid.data(name="lr", shape=[1], dtype='float32')
-        x = fluid.data(name="x", shape=[None, 1], dtype='float32')
-        y = fluid.data(name="y", shape=[None, 1], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        lr = paddle.static.data(name="lr", shape=[1], dtype='float32')
+        x = paddle.static.data(name="x", shape=[None, 1], dtype='float32')
+        y = paddle.static.data(name="y", shape=[None, 1], dtype='float32')
+        y_predict = paddle.static.nn.fc(x, size=1)
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)
@@ -64,9 +64,7 @@ class TestExecutor(unittest.TestCase):
                 exe = fluid.Executor(cpu)
                 lr, cost = self.net()
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    main_program
-                ).with_data_parallel(loss_name=cost.name)
+                compiled_prog = fluid.CompiledProgram(main_program)
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0

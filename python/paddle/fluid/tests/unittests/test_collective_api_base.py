@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
-import sys
-import subprocess
 import pickle
+import socket
+import subprocess
+import sys
 import tempfile
+import unittest
 from contextlib import closing
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
+
+import numpy as np
 from paddle_bfloat import bfloat16
+
+import paddle
+import paddle.distributed as dist
+from paddle import fluid
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
+from paddle.fluid import core
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -43,7 +48,7 @@ def create_float_test_data(shape=None, dtype=None, seed=None):
 def create_int_test_data(shape=None, dtype=None, seed=None):
     if seed:
         np.random.seed(seed)
-    data = np.random.randint(0, high=100, size=shape).astype(dtype)
+    data = np.random.randint(0, high=12, size=shape).astype(dtype)
     return data
 
 
@@ -55,22 +60,15 @@ def create_complex_test_data(shape=None, dtype=None, seed=None):
     return data
 
 
-def create_pylist_test_data(shape=None, seed=None):
+def create_pyobject_test_data(shape=None, seed=None):
     if seed:
         np.random.seed(seed)
-    # Generate random shape test case for xxx_object api
-    shape = np.random.randint(0, high=100, size=(2)).tolist()
-    data = np.random.random(shape).tolist()
-    return data
-
-
-def create_pydict_test_data(shape=None, seed=None):
-    if seed:
-        np.random.seed(seed)
-    key = [i for i in range(0, shape[0])]
-    value = np.random.random(shape).tolist()
-    data = dict(zip(key, value))
-    return data
+    list_shape = np.random.randint(0, high=100, size=(2)).tolist()
+    list_data = np.random.random(shape).tolist()
+    dict_key = list(range(0, shape[0]))
+    dict_val = np.random.random(shape).tolist()
+    dict_data = dict(zip(dict_key, dict_val))
+    return [list_data, dict_data]
 
 
 def create_test_data(shape=None, dtype=None, seed=None):
@@ -91,10 +89,8 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "complex64" or dtype == "complex128":
         return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
-    elif dtype == "pylist":
-        return create_pylist_test_data(shape=shape, seed=seed)
-    elif dtype == "pydict":
-        return create_pydict_test_data(shape=shape, seed=seed)
+    elif dtype == "pyobject":
+        return create_pyobject_test_data(shape=shape, seed=seed)
     else:
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
@@ -114,7 +110,10 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        paddle.distributed.init_parallel_env()
+        if args["use_comm_context"]:
+            paddle.distributed.collective._init_parallel_env(args["backend"])
+        else:
+            paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
@@ -129,7 +128,17 @@ class TestCollectiveAPIRunnerBase:
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
         if args['static_mode']:
-            result = self.get_model(train_prog, startup_prog, rank)
+            result = (
+                self.get_model_new(
+                    train_prog,
+                    startup_prog,
+                    rank,
+                    dtype=args['dtype'],
+                    reduce_type=args['reduce_type'],
+                )
+                if args["use_comm_context"]
+                else self.get_model(train_prog, startup_prog, rank)
+            )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
             fetch_list = []
@@ -156,32 +165,27 @@ def runtime_main(test_class, col_type):
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
+    args["reduce_type"] = os.getenv("REDUCE_TYPE")
+    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
-
-
-import socket
-from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )
         self._python_interp = sys.executable
+        self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
         # NOTE: this is a hack to get int format nccl version, like 2134
         # if current platform is not linux, version number will be 0
-        nccl_version_str = subprocess.check_output(
-            r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-            stderr=subprocess.DEVNULL,
-            shell=True,
-        ).decode('utf-8')
+        nccl_version_str = get_nccl_version_str()
         self._nccl_version = (
             int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
         )
@@ -214,6 +218,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
 
             env1 = {
@@ -222,6 +227,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
         elif core.is_compiled_with_xpu():
             env0 = {
@@ -300,6 +306,7 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         eager_mode=True,
         dtype=None,
+        reduce_type=None,
     ):
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
@@ -307,6 +314,7 @@ class TestDistBase(unittest.TestCase):
             with_gloo = '1'
         required_envs = os.environ.copy()
         dtype = "float32" if dtype is None else dtype
+        reduce_type = dist.ReduceOp.SUM if reduce_type is None else reduce_type
         additional_envs = {
             "NCCL_P2P_DISABLE": "1",
             "STATIC_MODE": static_mode,
@@ -315,6 +323,7 @@ class TestDistBase(unittest.TestCase):
             "BACKEND": backend,
             "PATH_ID": path_id,
             "DTYPE": dtype,
+            "REDUCE_TYPE": str(reduce_type),
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -327,11 +336,6 @@ class TestDistBase(unittest.TestCase):
             required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
                 'NVIDIA_TF32_OVERRIDE', ''
             )
-
-        if eager_mode:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
-        else:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
 
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
@@ -348,7 +352,7 @@ class TestDistBase(unittest.TestCase):
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
             np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
             np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
-        if col_type == "allgather_object":
+        elif col_type == "allgather_object":
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
@@ -356,8 +360,19 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
+        elif col_type == "broadcast_object_list":
+            need_result = [input2]
+            self.assertEqual(need_result, tr0_out)
+            self.assertEqual(need_result, tr1_out)
         elif col_type == "reduce":
-            need_result = input1 + input2
+            if reduce_type == dist.ReduceOp.SUM:
+                need_result = input1 + input2
+            elif reduce_type == dist.ReduceOp.MAX:
+                need_result = np.amax([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.MIN:
+                need_result = np.amin([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.PROD:
+                need_result = np.prod([input1, input2], 0)
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
             # which sums (\sum_{i=-23}^{-8}2^{i}) to about 0.0078
             if dtype == "bfloat16":
@@ -371,6 +386,12 @@ class TestDistBase(unittest.TestCase):
             need_result2 = need_result[need_result.shape[0] // 2 :]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "scatter_object_list":
+            need_result = input2
+            need_result1 = [need_result[0 : len(need_result) // 2]]
+            need_result2 = [need_result[len(need_result) // 2 :]]
+            self.assertEqual(need_result1, tr0_out)
+            self.assertEqual(need_result2, tr1_out)
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
@@ -382,7 +403,14 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=rtol)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=rtol)
         elif col_type == "allreduce":
-            need_result = input1 + input2
+            if reduce_type == dist.ReduceOp.SUM:
+                need_result = input1 + input2
+            elif reduce_type == dist.ReduceOp.MAX:
+                need_result = np.amax([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.MIN:
+                need_result = np.amin([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.PROD:
+                need_result = np.prod([input1, input2], 0)
             if dtype == "bfloat16":
                 rtol = 8e-03
                 atol = 8e-03
@@ -402,7 +430,7 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    assert np.allclose(
+                    np.testing.assert_allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
         elif col_type == "row_parallel_linear":

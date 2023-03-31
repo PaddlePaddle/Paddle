@@ -29,7 +29,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -107,6 +107,8 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+  ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
+  ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -328,7 +330,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
@@ -431,6 +433,8 @@ TEST(Predictor, Run) {
 
   auto predictor = CreatePredictor(config);
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+  ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
+  ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");

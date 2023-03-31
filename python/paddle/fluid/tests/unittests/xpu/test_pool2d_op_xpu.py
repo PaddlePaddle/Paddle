@@ -16,15 +16,16 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test_xpu import XPUOpTest
-from test_pool2d_op import adaptive_start_index, adaptive_end_index
+from test_pool2d_op import adaptive_end_index, adaptive_start_index
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
 import paddle
 
 paddle.enable_static()
@@ -345,7 +346,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, set(['X']), 'Out')
+            self.check_grad_with_place(self.place, {'X'}, 'Out')
 
         def init_data_format(self):
             self.data_format = "NCHW"

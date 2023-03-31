@@ -14,7 +14,7 @@
 """
 This module will download dataset from
 http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html
-and parse train/test set intopaddle reader creators.
+and parse train/test dataset into paddle reader creators.
 
 This set contains images of flowers belonging to 102 different categories.
 The images were acquired by searching the web and taking pictures. There are a
@@ -30,16 +30,14 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 """
 
 import functools
-from .common import download
 import tarfile
-
-from paddle.dataset.image import load_image_bytes
-from paddle.dataset.image import simple_transform
-
-from paddle.reader import map_readers, xmap_readers
-import paddle.utils.deprecated as deprecated
 from multiprocessing import cpu_count
-from paddle.utils import try_import
+
+from paddle.dataset.image import load_image_bytes, simple_transform
+from paddle.reader import map_readers, xmap_readers
+from paddle.utils import deprecated, try_import
+
+from .common import download
 
 __all__ = []
 

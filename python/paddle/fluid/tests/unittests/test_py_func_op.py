@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import paddle.fluid as fluid
-from paddle.fluid import compiler
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import compiler
 
 dev_cnt = 2
 if fluid.core.is_compiled_with_cuda():
@@ -73,26 +75,26 @@ def cross_entropy_grad(logits, labels, bwd_dout):
 def simple_fc_net(img, label, use_py_func_op):
     hidden = img
     for idx in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
         if not use_py_func_op:
-            hidden = fluid.layers.tanh(hidden)
+            hidden = paddle.tanh(hidden)
         else:
             new_hidden = (
                 fluid.default_main_program()
                 .current_block()
                 .create_var(
-                    name='hidden_{}'.format(idx),
+                    name=f'hidden_{idx}',
                     dtype='float32',
                     shape=hidden.shape,
                 )
             )
-            hidden = fluid.layers.py_func(
+            hidden = paddle.static.py_func(
                 func=tanh,
                 x=hidden,
                 out=new_hidden,
@@ -100,16 +102,18 @@ def simple_fc_net(img, label, use_py_func_op):
                 skip_vars_in_backward_input=hidden,
             )
 
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     if not use_py_func_op:
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
     else:
         loss = (
             fluid.default_main_program()
             .current_block()
             .create_var(name='loss', dtype='float32', shape=[-1, 1])
         )
-        loss = fluid.layers.py_func(
+        loss = paddle.static.py_func(
             func=cross_entropy,
             x=[prediction, label],
             out=loss,
@@ -122,11 +126,11 @@ def simple_fc_net(img, label, use_py_func_op):
             .current_block()
             .create_var(name='test_tmp_var', dtype='float32', shape=[1])
         )
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_no_input, x=None, out=dummy_var
         )
         loss += dummy_var
-        fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
+        paddle.static.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
         loss_out = (
             fluid.default_main_program()
@@ -138,7 +142,7 @@ def simple_fc_net(img, label, use_py_func_op):
             .current_block()
             .create_var(dtype='float32', shape=[1])
         )
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_multi_input_output,
             x=(loss, dummy_var),
             out=(loss_out, dummy_var_out),
@@ -147,7 +151,7 @@ def simple_fc_net(img, label, use_py_func_op):
             loss == loss_out and dummy_var == dummy_var_out
         ), "py_func failed with multi input and output"
 
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_multi_input_output,
             x=[loss, dummy_var],
             out=[loss_out, dummy_var_out],
@@ -175,8 +179,12 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
         with fluid.scope_guard(fluid.core.Scope()):
             gen = paddle.seed(1)
             np.random.seed(1)
-            img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             loss = simple_fc_net(img, label, use_py_func_op)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
@@ -194,7 +202,6 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
                 train_cp = compiler.CompiledProgram(
                     fluid.default_main_program()
                 )
-                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]

@@ -6,7 +6,7 @@ if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs10 "53 62 72")
-  set(paddle_known_gpu_archs11 "53 62 72")
+  set(paddle_known_gpu_archs11 "53 62 72 87")
 elseif(NEW_RELEASE_ALL)
   message("Using New Release Strategy - All Arches Packge")
   add_definitions(-DNEW_RELEASE_ALL)
@@ -18,7 +18,7 @@ elseif(NEW_RELEASE_PYPI)
   add_definitions(-DNEW_RELEASE_PYPI)
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80 86")
   set(paddle_known_gpu_archs10 "")
-  set(paddle_known_gpu_archs11 "60 61 70 75 80")
+  set(paddle_known_gpu_archs11 "61 70 75 80")
 elseif(NEW_RELEASE_JIT)
   message("Using New Release Strategy - JIT Packge")
   add_definitions(-DNEW_RELEASE_JIT)
@@ -27,7 +27,7 @@ elseif(NEW_RELEASE_JIT)
   set(paddle_known_gpu_archs11 "35 50 60 70 75 80")
 else()
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80")
-  set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs10 "50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
 
@@ -96,7 +96,7 @@ endfunction()
 # Function for selecting GPU arch flags for nvcc based on CUDA_ARCH_NAME
 # Usage:
 #   select_nvcc_arch_flags(out_variable)
-function(select_nvcc_arch_flags out_variable)
+function(select_nvcc_arch_flags out_variable out_arch_bin)
   # List of arch names
   set(archs_names
       "Kepler"
@@ -166,10 +166,14 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
-    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
-      set(cuda_arch_bin "80")
-    elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
-      set(cuda_arch_bin "80 86")
+    if(WITH_NV_JETSON)
+      set(cuda_arch_bin "87")
+    else()
+      if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
+        set(cuda_arch_bin "80")
+      else()
+        set(cuda_arch_bin "80 86")
+      endif()
     endif()
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
@@ -203,6 +207,7 @@ function(select_nvcc_arch_flags out_variable)
 
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
+  set(nvcc_archs_bin_list "")
 
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
@@ -211,10 +216,12 @@ function(select_nvcc_arch_flags out_variable)
       string(APPEND nvcc_flags
              " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+      string(APPEND nvcc_archs_bin_list " ${CMAKE_MATCH_1}")
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
       string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
       string(APPEND nvcc_archs_readable " sm_${arch}")
+      string(APPEND nvcc_archs_bin_list " ${arch}")
     endif()
   endforeach()
 
@@ -226,11 +233,19 @@ function(select_nvcc_arch_flags out_variable)
   endforeach()
 
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
+  string(REGEX MATCHALL "[0-9()]+" nvcc_archs_bin_list "${nvcc_archs_bin_list}")
+  string(JOIN "," nvcc_real_archs ${nvcc_archs_bin_list})
   set(${out_variable}
       ${nvcc_flags}
       PARENT_SCOPE)
   set(${out_variable}_readable
       ${nvcc_archs_readable}
+      PARENT_SCOPE)
+  set(${out_variable}_real_archs
+      ${nvcc_real_archs}
+      PARENT_SCOPE)
+  set(${out_arch_bin}
+      ${cuda_arch_bin}
       PARENT_SCOPE)
 endfunction()
 
@@ -261,7 +276,7 @@ add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
 add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
 
 # setting nvcc arch flags
-select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
+select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 

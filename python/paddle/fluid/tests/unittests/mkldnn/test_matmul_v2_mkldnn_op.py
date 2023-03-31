@@ -13,27 +13,28 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import (
+import paddle
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-import paddle.fluid.core as core
-import paddle
 from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
-    TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeBasicFloat,
+    TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeOtherDimFloat,
     TestReshapeTransposeMatMulOp,
-    TestReshapeTransposeMatMulOp4DXFloat,
-    TestReshapeTransposeMatMulOp4DYFloat,
-    TestReshapeTransposeMatMulOp4DXYFloat,
     TestReshapeTransposeMatMulOp2DXFloat,
     TestReshapeTransposeMatMulOp2DYFloat,
     TestReshapeTransposeMatMulOp3DXFloat,
     TestReshapeTransposeMatMulOp3DYFloat,
+    TestReshapeTransposeMatMulOp4DXFloat,
+    TestReshapeTransposeMatMulOp4DXYFloat,
+    TestReshapeTransposeMatMulOp4DYFloat,
 )
 
 
@@ -47,14 +48,14 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_y:
         if Y.ndim == 1:
             Y = Y.reshape((Y.size,))
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -445,7 +446,7 @@ def create_bf16_test_class(parent):
 
             self.dout = dout
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestMatMulV2Bf16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestMatMulV2Bf16OneDNNOp
 

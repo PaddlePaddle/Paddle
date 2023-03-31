@@ -15,11 +15,7 @@
 # Notice that the following codes are modified from KerasTuner to implement our own tuner.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
 
-from .tunable_variable import Boolean
-from .tunable_variable import Fixed
-from .tunable_variable import Choice
-from .tunable_variable import IntRange
-from .tunable_variable import FloatRange
+from .tunable_variable import Boolean, Choice, Fixed, FloatRange, IntRange
 
 
 class TunableSpace:
@@ -30,7 +26,7 @@ class TunableSpace:
     def __init__(self):
         # Tunable variables for this tunable variables
         self._variables = {}
-        # Specific values coresponding to each tunable variable
+        # Specific values corresponding to each tunable variable
         self._values = {}
 
     @property
@@ -53,13 +49,13 @@ class TunableSpace:
         if name in self.values:
             return self.values[name]
         else:
-            raise KeyError("{} does not exist.".format(name))
+            raise KeyError(f"{name} does not exist.")
 
     def set_value(self, name, value):
         if name in self.values:
             self.values[name] = value
         else:
-            raise KeyError("{} does not exist.".format(name))
+            raise KeyError(f"{name} does not exist.")
 
     def _exists(self, name):
         if name in self._variables:
@@ -121,7 +117,7 @@ class TunableSpace:
                 {"class_name": v.__class__.__name__, "state": v.get_state()}
                 for v in self._variables.values()
             ],
-            "values": dict((k, v) for (k, v) in self.values.items()),
+            "values": dict(self.values.items()),
         }
 
     @classmethod
@@ -130,7 +126,7 @@ class TunableSpace:
         for v in state["variables"]:
             v = _deserialize_tunable_variable(v)
             ts._variables[v.name] = v
-        ts._values = dict((k, v) for (k, v) in state["values"].items())
+        ts._values = dict(state["values"].items())
         return ts
 
 
@@ -155,7 +151,7 @@ def _deserialize_tunable_variable(state):
     cls_name = state["class_name"]
     cls = cls_name_to_cls[cls_name]
     if cls is None:
-        raise ValueError("Unknown class name {}".format(cls_name))
+        raise ValueError(f"Unknown class name {cls_name}")
 
     cls_state = state["state"]
     deserialized_object = cls.from_state(cls_state)

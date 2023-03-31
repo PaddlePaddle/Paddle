@@ -29,7 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
@@ -91,8 +90,7 @@ inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
 
 inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
 
-inline cnnlDataType_t ToCnnlDataType(
-    const paddle::experimental::DataType& dtype) {
+inline cnnlDataType_t ToCnnlDataType(const phi::DataType& dtype) {
   cnnlDataType_t type = CNNL_DTYPE_FLOAT;
   switch (dtype) {
     case DataType::FLOAT16:
@@ -139,8 +137,7 @@ inline cnnlDataType_t ToCnnlDataType() {
   return ToCnnlDataType(type);
 }
 
-inline mluOpDataType_t ToMluOpDataType(
-    const paddle::experimental::DataType& dtype) {
+inline mluOpDataType_t ToMluOpDataType(const phi::DataType& dtype) {
   mluOpDataType_t type = MLUOP_DTYPE_FLOAT;
   switch (dtype) {
     case DataType::FLOAT16:
@@ -377,18 +374,18 @@ class MLUOpTensorDesc {
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   const mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype);
 
-  explicit MLUOpTensorDesc(const Tensor& tensor);
+  explicit MLUOpTensorDesc(const phi::DenseTensor& tensor);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position,
@@ -458,11 +455,11 @@ class MLUCnnlRandomGeneratorDesc {
  public:
   MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
-  Tensor& get_state();
+  phi::DenseTensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
-  Tensor mlu_state;
+  phi::DenseTensor mlu_state;
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
 

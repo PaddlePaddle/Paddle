@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_squash_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -56,7 +56,6 @@ void SetOp(ProgramDesc* prog,
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
-    if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Output", {outputs[0]});
     const std::vector<int> strides({1, 1});
     const std::vector<int> paddings({1, 1});
@@ -702,7 +701,7 @@ ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_mkldnn,
   SetOp(&prog,
         "conv2d",
         "Conv2d",
-        {"b", "filter", "bias"},
+        {"b", "filter"},
         {"c"},
         use_mkldnn,
         {},
@@ -722,7 +721,7 @@ void InitTensorHolder(Scope* scope,
 }
 
 void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);

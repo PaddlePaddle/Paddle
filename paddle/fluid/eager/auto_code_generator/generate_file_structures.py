@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
+import sys
 
 
 def GenerateFileStructureForFinalDygraph(eager_dir):
@@ -143,8 +143,9 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         for i in range(split_count):
             f.write("nodes" + str(i + 1) + ".cc ")
         f.write("${fluid_manual_nodes} DEPS ${eager_deps} ${fluid_deps})\n")
-        f.write("add_dependencies(dygraph_node copy_dygraph_node)\n")
-        f.write("target_link_libraries(dygraph_node ${PYTHON_LIBRARIES})\n")
+        f.write(
+            "add_dependencies(dygraph_node copy_dygraph_node copy_dygraph_forward_functions)\n"
+        )
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write("add_custom_target(\n")
@@ -182,9 +183,8 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
             "${fluid_manual_functions} DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
         )
         f.write(
-            "add_dependencies(dygraph_function copy_dygraph_forward_functions)\n"
+            "add_dependencies(dygraph_function copy_dygraph_forward_functions copy_dygraph_node)\n"
         )
-        f.write("target_link_libraries(dygraph_function ${PYTHON_LIBRARIES})\n")
 
     with open(generated_level_cmakelist_path, "w") as f:
         f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")

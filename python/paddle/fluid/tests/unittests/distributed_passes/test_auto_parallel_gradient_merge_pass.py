@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import random
-import numpy as np
 import logging
+import random
+import unittest
+
+import numpy as np
+from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
-import paddle.nn as nn
-import paddle.utils as utils
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.fleet as fleet
+from paddle import nn, static, utils
+from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-
-from paddle.fluid.initializer import NumpyArrayInitializer
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 logging.getLogger().setLevel(logging.INFO)
 paddle.enable_static()
@@ -42,8 +39,12 @@ class MLPLayer(nn.Layer):
         np.random.seed(2021)
         arr0 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
         arr1 = np.random.normal(0, 0.02, size=(dim_feedforward, d_model))
-        weight_attr0 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr0))
-        weight_attr1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr1))
+        weight_attr0 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr0)
+        )
+        weight_attr1 = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr1)
+        )
         bias_attr = None
         self.linear0 = nn.Linear(
             d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr

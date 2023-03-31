@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 paddle.enable_static()
@@ -151,7 +153,7 @@ class TestOneHotOpApi(unittest.TestCase):
         self._run(depth)
 
     def test_api_with_depthTensor(self):
-        depth = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        depth = paddle.assign(np.array([10], dtype=np.int32))
         self._run(depth)
 
     def test_api_with_dygraph(self):
@@ -160,13 +162,13 @@ class TestOneHotOpApi(unittest.TestCase):
             [np.random.randint(0, depth - 1) for i in range(6)]
         ).reshape([6, 1])
         with fluid.dygraph.guard():
-            one_hot_label = fluid.one_hot(
-                input=fluid.dygraph.to_variable(label), depth=depth
+            one_hot_label = paddle.nn.functional.one_hot(
+                x=fluid.dygraph.to_variable(label), num_classes=depth
             )
 
     def _run(self, depth):
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-        one_hot_label = fluid.one_hot(input=label, depth=depth)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
         place = fluid.XPUPlace(0)
         label_data = np.array(
@@ -189,13 +191,14 @@ class BadInputTestOnehotV2(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
                     shape=[4],
-                    append_batch_size=False,
                     dtype="float32",
                 )
-                one_hot_label = fluid.one_hot(input=label, depth=4)
+                one_hot_label = paddle.nn.functional.one_hot(
+                    x=label, num_classes=4
+                )
 
             self.assertRaises(TypeError, test_bad_x)
 

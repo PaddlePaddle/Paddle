@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import numpy as np
-import paddle.nn as nn
-import paddle.static as static
-import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
 
+import numpy as np
+
+import paddle
+import paddle.nn.functional as F
+from paddle import nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 

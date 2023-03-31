@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import json
+import os
 import tempfile
+import unittest
+
+from test_cluster import cluster_json
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
-
-from paddle.distributed.auto_parallel.cost.base_cost import (
-    build_comp_desc_from_op,
-)
-from paddle.distributed.auto_parallel.cost.base_cost import (
-    build_comp_desc_str_for_predict,
-)
-from paddle.distributed.auto_parallel.cost.base_cost import (
-    calc_time_by_modeling,
-)
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CommContext
-from test_cluster import cluster_json
+from paddle.distributed.auto_parallel.cost.base_cost import (
+    build_comp_desc_from_op,
+    build_comp_desc_str_for_predict,
+    calc_time_by_modeling,
+)
 
 paddle.enable_static()
 

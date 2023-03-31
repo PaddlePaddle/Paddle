@@ -103,6 +103,11 @@ cc_test(
   SRCS api_tester.cc
   DEPS paddle_inference_api)
 
+cc_test(
+  inference_api_helper_test
+  SRCS helper_test.cc
+  DEPS paddle_inference_api)
+
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
@@ -111,17 +116,15 @@ endif()
 
 if(WITH_TESTING)
   if(NOT APPLE AND NOT WIN32)
-    if(WITH_GPU)
-      inference_base_test(
-        test_api_impl
-        SRCS
-        api_impl_tester.cc
-        DEPS
-        paddle_inference_shared
-        ARGS
-        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-    endif()
+    inference_base_test(
+      test_api_impl
+      SRCS
+      api_impl_tester.cc
+      DEPS
+      paddle_inference_shared
+      ARGS
+      --word2vec_dirname=${WORD2VEC_MODEL_DIR}
+      --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
   elseif(WIN32)
     inference_base_test(
       test_api_impl
@@ -133,7 +136,6 @@ if(WITH_TESTING)
       --word2vec_dirname=${WORD2VEC_MODEL_DIR}
       --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
   endif()
-
 endif()
 
 if(NOT APPLE AND NOT WIN32)

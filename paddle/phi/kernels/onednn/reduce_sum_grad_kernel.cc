@@ -25,6 +25,7 @@ void SumGradKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceGradKernel<T, Context>(dev_ctx,
                                x,
                                out_grad,

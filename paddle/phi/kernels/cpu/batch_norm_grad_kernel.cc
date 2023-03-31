@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
@@ -36,7 +35,6 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
-
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
@@ -164,7 +162,7 @@ void BatchNormGradRawKernel(const Context& ctx,
   }
 
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-    paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+    phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
     return;
   }
 
@@ -335,26 +333,27 @@ void BatchNormGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void BatchNormDoubleGradKernel(const Context& ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const paddle::optional<DenseTensor>& mean,
-                               const paddle::optional<DenseTensor>& variance,
-                               const DenseTensor& saved_mean,
-                               const DenseTensor& saved_variance,
-                               const DenseTensor& y_grad,
-                               const DenseTensor& x_grad_grad,
-                               const DenseTensor& scale_grad_grad,
-                               const DenseTensor& bias_grad_grad,
-                               float momentum,
-                               float epsilon,
-                               const std::string& data_layout_str,
-                               bool is_test,
-                               bool use_global_stats,
-                               bool trainable_statistics,
-                               DenseTensor* x_grad,
-                               DenseTensor* scale_grad,
-                               DenseTensor* y_grad_grad) {
+void BatchNormDoubleGradKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    const DenseTensor& scale,
+    const paddle::optional<DenseTensor>& mean,
+    const paddle::optional<DenseTensor>& variance,
+    const DenseTensor& saved_mean,
+    const DenseTensor& saved_variance,
+    const DenseTensor& y_grad,
+    const paddle::optional<DenseTensor>& x_grad_grad,
+    const paddle::optional<DenseTensor>& scale_grad_grad,
+    const paddle::optional<DenseTensor>& bias_grad_grad,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout_str,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    DenseTensor* x_grad,
+    DenseTensor* scale_grad,
+    DenseTensor* y_grad_grad) {
   const auto* X = &x;
   const auto* Scale = &scale;
   const auto* dY = &y_grad;
@@ -370,9 +369,9 @@ void BatchNormDoubleGradKernel(const Context& ctx,
 
   const auto data_layout = phi::StringToDataLayout(data_layout_str);
 
-  const auto* ddX = &x_grad_grad;
-  const auto* ddScale = &scale_grad_grad;
-  const auto* ddBias = &bias_grad_grad;
+  const auto* ddX = x_grad_grad.get_ptr();
+  const auto* ddScale = scale_grad_grad.get_ptr();
+  const auto* ddBias = bias_grad_grad.get_ptr();
 
   auto* dX = x_grad;
   auto* dScale = scale_grad;

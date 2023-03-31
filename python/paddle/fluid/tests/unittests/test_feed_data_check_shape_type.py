@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import multiprocessing
-import numpy as np
 import os
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.fluid.core as core
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)
@@ -27,8 +28,8 @@ np.random.seed(123)
 
 class TestFeedData(unittest.TestCase):
     '''
-    Test paddle.fluid.data feeds with different shape and types.
-    Note: paddle.fluid.data is not paddle.fluid.layers.data.
+    Test paddle.static.data feeds with different shape and types.
+    Note: paddle.static.data is not paddle.static.data.
     '''
 
     def setUp(self):
@@ -44,28 +45,35 @@ class TestFeedData(unittest.TestCase):
             else int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
         )
 
-    def _get_feed_batch_size(self, use_cuda, use_parallel_executor):
+    def _get_feed_batch_size(self, use_cuda):
         """
         Returns actual fed data size. We should multiple the number of
         devices when it is using ParallelExecutor
         """
-        return (
-            self.data_batch_size * self._get_device_count(use_cuda)
-            if use_parallel_executor
-            else self.data_batch_size
-        )
+        return self.data_batch_size
 
     def _simple_fc_net(self, in_size, label_size, class_num, hidden_sizes):
-        in_data = fluid.data(name="data", dtype='float32', shape=in_size)
-        label = fluid.data(name='label', dtype='int64', shape=label_size)
+        in_data = paddle.static.data(
+            name="data", dtype='float32', shape=in_size
+        )
+        label = paddle.static.data(
+            name='label', dtype='int64', shape=label_size
+        )
 
         hidden = in_data
         for hidden_size in hidden_sizes:
-            hidden = fluid.layers.fc(hidden, size=hidden_size)
+            hidden = paddle.static.nn.fc(hidden, size=hidden_size)
 
-        predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
+        predict_label = paddle.static.nn.fc(
+            hidden, size=class_num, activation='softmax'
+        )
         loss = paddle.mean(
-            fluid.layers.cross_entropy(input=predict_label, label=label)
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
         )
 
         optimizer = fluid.optimizer.Adam()
@@ -76,57 +84,45 @@ class TestFeedData(unittest.TestCase):
         for use_cuda in (
             [True, False] if core.is_compiled_with_cuda() else [False]
         ):
-            for use_parallel_executor in [False, True]:
-                print('Test Parameters:'),
-                print(
-                    {
-                        'use_cuda': use_cuda,
-                        'use_parallel_executor': use_parallel_executor,
-                    }
-                )
-                # Test feeding without error
-                self._test_feed_data_match_shape_type(
-                    use_cuda, use_parallel_executor
-                )
-                self._test_feed_data_contains_neg_one(
-                    use_cuda, use_parallel_executor
-                )
-                self._test_feed_lod_tensor(use_cuda, use_parallel_executor)
+            print('Test Parameters:'),
+            print(
+                {
+                    'use_cuda': use_cuda,
+                }
+            )
+            # Test feeding without error
+            self._test_feed_data_match_shape_type(use_cuda)
+            self._test_feed_data_contains_neg_one(use_cuda)
+            self._test_feed_lod_tensor(use_cuda)
 
-                # Test exception message when feeding with error
-                in_shape_tuple = (-1, 3, 4, 8)
-                error_shape_list = [self.data_batch_size, 3, 4, 5]
+            # Test exception message when feeding with error
+            in_shape_tuple = (-1, 3, 4, 8)
+            error_shape_list = [self.data_batch_size, 3, 4, 5]
 
-                with self.assertRaises(ValueError) as shape_mismatch_err:
-                    self._test_feed_data_shape_mismatch(
-                        use_cuda, use_parallel_executor
-                    )
-                self.assertEqual(
-                    str(shape_mismatch_err.exception),
-                    "The fed Variable %r should have dimensions = %r, "
-                    "shape = %r, but received fed shape %r on each device"
-                    % (
-                        'data',
-                        len(in_shape_tuple),
-                        in_shape_tuple,
-                        error_shape_list,
-                    ),
-                )
+            with self.assertRaises(ValueError) as shape_mismatch_err:
+                self._test_feed_data_shape_mismatch(use_cuda)
+            self.assertEqual(
+                str(shape_mismatch_err.exception),
+                "The fed Variable %r should have dimensions = %r, "
+                "shape = %r, but received fed shape %r on each device"
+                % (
+                    'data',
+                    len(in_shape_tuple),
+                    in_shape_tuple,
+                    error_shape_list,
+                ),
+            )
 
-                with self.assertRaises(ValueError) as dtype_mismatch_err:
-                    self._test_feed_data_dtype_mismatch(
-                        use_cuda, use_parallel_executor
-                    )
-                self.assertEqual(
-                    str(dtype_mismatch_err.exception),
-                    "The data type of fed Variable %r must be 'int64', but "
-                    "received 'float64'" % ('label'),
-                )
+            with self.assertRaises(ValueError) as dtype_mismatch_err:
+                self._test_feed_data_dtype_mismatch(use_cuda)
+            self.assertEqual(
+                str(dtype_mismatch_err.exception),
+                "The data type of fed Variable %r must be 'int64', but "
+                "received 'float64'" % ('label'),
+            )
 
-    def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
-        feed_batch_size = self._get_feed_batch_size(
-            use_cuda, use_parallel_executor
-        )
+    def _test_feed_data_dtype_mismatch(self, use_cuda):
+        feed_batch_size = self._get_feed_batch_size(use_cuda)
         in_size = [self.data_batch_size, 3, 4, 5]
         feed_in_data = np.random.uniform(
             size=[feed_batch_size, 3, 4, 5]
@@ -141,11 +137,10 @@ class TestFeedData(unittest.TestCase):
             feed_in_data,
             feed_label,
             use_cuda,
-            use_parallel_executor,
         )
 
-    def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
-        batch_size = self._get_feed_batch_size(use_cuda, use_parallel_executor)
+    def _test_feed_data_shape_mismatch(self, use_cuda):
+        batch_size = self._get_feed_batch_size(use_cuda)
         in_size = [None, 3, 4, 8]
         feed_in_data = np.random.uniform(size=[batch_size, 3, 4, 5]).astype(
             np.float32
@@ -160,11 +155,10 @@ class TestFeedData(unittest.TestCase):
             feed_in_data,
             feed_label,
             use_cuda,
-            use_parallel_executor,
         )
 
-    def _test_feed_data_contains_neg_one(self, use_cuda, use_parallel_executor):
-        batch_size = self._get_feed_batch_size(use_cuda, use_parallel_executor)
+    def _test_feed_data_contains_neg_one(self, use_cuda):
+        batch_size = self._get_feed_batch_size(use_cuda)
         in_size = [-1, 3, 4, 5]
         feed_in_data = np.random.uniform(size=[batch_size, 3, 4, 5]).astype(
             np.float32
@@ -179,13 +173,10 @@ class TestFeedData(unittest.TestCase):
             feed_in_data,
             feed_label,
             use_cuda,
-            use_parallel_executor,
         )
 
-    def _test_feed_data_match_shape_type(self, use_cuda, use_parallel_executor):
-        feed_batch_size = self._get_feed_batch_size(
-            use_cuda, use_parallel_executor
-        )
+    def _test_feed_data_match_shape_type(self, use_cuda):
+        feed_batch_size = self._get_feed_batch_size(use_cuda)
         in_size = [self.data_batch_size, 3, 4, 5]
         feed_in_data = np.random.uniform(
             size=[feed_batch_size, 3, 4, 5]
@@ -200,10 +191,9 @@ class TestFeedData(unittest.TestCase):
             feed_in_data,
             feed_label,
             use_cuda,
-            use_parallel_executor,
         )
 
-    def _test_feed_lod_tensor(self, use_cuda, use_parallel_executor):
+    def _test_feed_lod_tensor(self, use_cuda):
         device_count = self._get_device_count(use_cuda)
 
         in_size = [device_count, 3, 4, 5]
@@ -232,7 +222,6 @@ class TestFeedData(unittest.TestCase):
             feed_data_tensor,
             feed_label_tensor,
             use_cuda,
-            use_parallel_executor,
         )
 
     def _feed_data_in_executor(
@@ -242,7 +231,6 @@ class TestFeedData(unittest.TestCase):
         feed_in_data,
         feed_label,
         use_cuda,
-        use_parallel_executor,
     ):
 
         startup_program = fluid.Program()
@@ -259,10 +247,6 @@ class TestFeedData(unittest.TestCase):
         exe.run(startup_program)
 
         train_program = main_program
-        if use_parallel_executor:
-            train_program = compiler.CompiledProgram(
-                main_program
-            ).with_data_parallel(loss_name=loss.name)
 
         for i in range(self.iterations):
             fetches = exe.run(

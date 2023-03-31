@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 from scipy.special import erfinv
-from op_test import OpTest
+
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -42,7 +44,7 @@ class TestErfinv(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -75,7 +77,7 @@ class TestErfinvAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('x', [1, 5], dtype=self.dtype)
+                x = paddle.static.data('x', [1, 5], dtype=self.dtype)
                 out = paddle.erfinv(x)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'x': self.x.reshape([1, 5])})

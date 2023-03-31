@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class CumSumMLUKernel : public framework::OpKernel<T> {
  public:
@@ -34,7 +32,7 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
 
     phi::DenseTensor* input_ptr = const_cast<phi::DenseTensor*>(x);
-    Tensor flat_x(x->type());
+    phi::DenseTensor flat_x(x->type());
     if (flatten) {
       PADDLE_ENFORCE_EQ(
           axis,

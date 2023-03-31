@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from eager_op_test import OpTest
+
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -107,8 +108,7 @@ class TestBilinearInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "bilinear_interp"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # Skip check_dygraph while found them in Inputs.
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -138,10 +138,8 @@ class TestBilinearInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -155,12 +153,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -284,7 +280,6 @@ class TestBilinearInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        self.check_eager = True
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
@@ -308,7 +303,6 @@ class TestBilinearInterpOpUint8(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -322,7 +316,7 @@ class TestBilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_eager=self.check_eager
+            place=core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def init_test_case(self):
@@ -426,7 +420,6 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        self.check_eager = True
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
@@ -449,15 +442,13 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
-            self.check_eager = False
 
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
@@ -472,12 +463,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -525,57 +514,6 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
-
-
-class TestBilinearInterpOpAPI(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
-        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
-        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_bilinear(
-            x, out_shape=[4, 4], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
-
-        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-        dim_data = np.array([12]).astype("int32")
-        shape_data = np.array([12, 12]).astype("int32")
-        actual_size_data = np.array([12, 12]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = bilinear_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=True
-        )
-        for res in results:
-            np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 if __name__ == "__main__":

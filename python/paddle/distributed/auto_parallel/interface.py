@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from .process_mesh import ProcessMesh
-from .process_mesh import get_current_process_mesh
+
 from .dist_context import get_default_distributed_context
-from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh, get_current_process_mesh
 from .utils import (
-    verify_shard_spec,
-    convert_to_dims_mapping,
     __no_shape_var_type__,
+    convert_to_dims_mapping,
+    verify_shard_spec,
 )
 
 
@@ -78,7 +78,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         ), "Specify the process mesh argument or use ProcessMesh context manager first."
     assert isinstance(
         shard_spec, list
-    ), "Argument shard_spec {} is not an instance of list".format(shard_spec)
+    ), f"Argument shard_spec {shard_spec} is not an instance of list"
     dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
@@ -117,15 +117,15 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             will be used. And an error will be raised if the current process mesh cannot be found.
             Default: None.
         in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
-            and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
-            If it is None, all inputs are replicated accross all processes. Note that the lenght of the
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the corresponding input
+            and `process_mesh`. If one item is None, the corresponding input is replicated across all processes
+            If it is None, all inputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None.
         out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
-            and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
-            If it is None, all outputs are replicated accross all processes. Note that the lenght of the
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the corresponding output
+            and `process_mesh`. If one item is None, the corresponding output is replicated across all processes
+            If it is None, all outputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None. Default: None.
 
@@ -195,13 +195,19 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     return op
 
 
+_g_recompute_idx = -1
+
+
 def recompute(op):
+    global _g_recompute_idx
+    _g_recompute_idx += 1
+
     class RecomputeOperator:
         def __init__(self, op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.fluid.default_main_program()
+            default_prog = paddle.static.default_main_program()
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
             output = self._op(*args, **kwargs)
@@ -209,7 +215,9 @@ def recompute(op):
 
             for idx in range(op_size, new_op_size):
                 op = cur_block.ops[idx]
-                op._set_attr("is_recompute@auto_parallel", True)
+                op._set_attr(
+                    'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
+                )
 
             return output
 
@@ -248,6 +256,16 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
+    if isinstance(tensor, paddle.static.Variable):
+        tensor = tensor.name
+    elif isinstance(tensor, str):
+        tensor = tensor
+    else:
+        raise TypeError(
+            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
+                type(tensor)
+            )
+        )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)

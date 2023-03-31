@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.nn import BatchNorm
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -76,7 +75,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -108,7 +107,7 @@ class ConvBNLayer(fluid.Layer):
         return y
 
 
-class BottleneckBlock(fluid.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
     ):
@@ -158,13 +157,13 @@ class BottleneckBlock(fluid.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = paddle.add(x=short, y=conv2)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.Layer):
+class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102, use_cudnn=True):
         super().__init__()
 
@@ -193,8 +192,8 @@ class ResNet(fluid.Layer):
             act='relu',
             use_cudnn=use_cudnn,
         )
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -215,10 +214,7 @@ class ResNet(fluid.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
@@ -226,12 +222,11 @@ class ResNet(fluid.Layer):
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=fluid.param_attr.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -241,8 +236,9 @@ class ResNet(fluid.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
+        y = paddle.nn.functional.softmax(y)
         return y
 
 
@@ -256,7 +252,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_resnet_float32(self):
+    def test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -304,20 +300,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and _in_legacy_dygraph():
-                    out, traced_layer = TracedLayer.trace(resnet, img)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    traced_layer.save_inference_model(
-                        './infer_imperative_resnet'
-                    )
-
-                    program = traced_layer.program
-                else:
-                    out = resnet(img)
+                out = resnet(img)
 
                 if traced_layer is not None:
                     resnet.eval()
@@ -328,7 +311,9 @@ class TestDygraphResnet(unittest.TestCase):
                     helper.assertEachVar(out_dygraph, out_static)
                     resnet.train()
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -376,12 +361,16 @@ class TestDygraphResnet(unittest.TestCase):
                 batch_size=batch_size,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
@@ -473,11 +462,6 @@ class TestDygraphResnet(unittest.TestCase):
             np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-
-    def test_resnet_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_float32()
-        self.func_test_resnet_float32()
 
 
 if __name__ == '__main__':

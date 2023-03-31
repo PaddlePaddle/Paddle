@@ -13,17 +13,23 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
-from paddle.fluid.framework import _test_eager_guard
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
+
+
+def cast_wrapper(x, out_dtype=None):
+    return paddle.cast(x, paddle.dtype(out_dtype))
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -36,12 +42,15 @@ class TestCastOpFp32ToFp64(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP64),
         }
         self.op_type = 'cast'
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output()
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_prim=True)
 
 
 class TestCastOpFp16ToFp32(OpTest):
@@ -54,10 +63,15 @@ class TestCastOpFp16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.op_type = 'cast'
-        self.__class__.no_need_check_grad = True
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
+
+    def test_grad(self):
+        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
 class TestCastOpFp32ToFp16(OpTest):
@@ -70,10 +84,15 @@ class TestCastOpFp32ToFp16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.op_type = 'cast'
-        self.__class__.no_need_check_grad = True
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
+
+    def test_grad(self):
+        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
 class TestCastOpBf16ToFp32(OpTest):
@@ -86,10 +105,16 @@ class TestCastOpBf16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.op_type = 'cast'
-        self.__class__.no_need_check_grad = True
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
+
+    def test_grad(self):
+        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
 class TestCastOpFp32ToBf16(OpTest):
@@ -102,10 +127,16 @@ class TestCastOpFp32ToBf16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.BF16),
         }
         self.op_type = 'cast'
-        self.__class__.no_need_check_grad = True
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
+
+    def test_grad(self):
+        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
 class TestCastOpError(unittest.TestCase):
@@ -115,22 +146,21 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
+            self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
 class TestCastOpEager(unittest.TestCase):
     def test_eager(self):
         with paddle.fluid.dygraph.base.guard():
-            with _test_eager_guard():
-                x = paddle.ones([2, 2], dtype="float16")
-                x.stop_gradient = False
-                out = paddle.cast(x, "float32")
-                np.testing.assert_array_equal(
-                    out, np.ones([2, 2]).astype('float32')
-                )
-                out.backward()
-                np.testing.assert_array_equal(x.gradient(), x.numpy())
-                self.assertTrue(x.gradient().dtype == np.float16)
+            x = paddle.ones([2, 2], dtype="float16")
+            x.stop_gradient = False
+            out = paddle.cast(x, "float32")
+            np.testing.assert_array_equal(
+                out, np.ones([2, 2]).astype('float32')
+            )
+            out.backward()
+            np.testing.assert_array_equal(x.gradient(), x.numpy())
+            self.assertTrue(x.gradient().dtype == np.float16)
 
 
 class TestCastDoubleGradCheck(unittest.TestCase):
@@ -143,7 +173,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.cast(data, 'float64')
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -151,7 +181,6 @@ class TestCastDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.cast_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -175,7 +204,7 @@ class TestCastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.cast(data, 'float64')
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -183,7 +212,6 @@ class TestCastTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.cast_wrapper, [data], out, x_init=[data_arr], place=place
         )

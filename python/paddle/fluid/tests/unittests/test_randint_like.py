@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.static import program_guard, Program
+from paddle.static import Program, program_guard
 
 
 # Test python API
@@ -39,7 +41,7 @@ class TestRandintLikeAPI(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # results are from [-100, 100).
-            x_bool = paddle.fluid.data(
+            x_bool = paddle.static.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
             )
             exe = paddle.static.Executor(self.place)
@@ -53,7 +55,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
         with program_guard(Program(), Program()):
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
             )
             exe = paddle.static.Executor(self.place)
@@ -68,7 +70,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
 
         with program_guard(Program(), Program()):
-            x_int64 = paddle.fluid.data(
+            x_int64 = paddle.static.data(
                 name="x_int64", shape=[10, 12], dtype="int64"
             )
             exe = paddle.static.Executor(self.place)
@@ -83,7 +85,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
         if paddle.is_compiled_with_cuda():
             with program_guard(Program(), Program()):
-                x_float16 = paddle.fluid.data(
+                x_float16 = paddle.static.data(
                     name="x_float16", shape=[10, 12], dtype="float16"
                 )
                 exe = paddle.static.Executor(self.place)
@@ -100,7 +102,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                     self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
-            x_float32 = paddle.fluid.data(
+            x_float32 = paddle.static.data(
                 name="x_float32", shape=[10, 12], dtype="float32"
             )
             exe = paddle.static.Executor(self.place)
@@ -117,7 +119,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
-            x_float64 = paddle.fluid.data(
+            x_float64 = paddle.static.data(
                 name="x_float64", shape=[10, 12], dtype="float64"
             )
             exe = paddle.static.Executor(self.place)
@@ -170,22 +172,22 @@ class TestRandintLikeAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x_bool = paddle.fluid.data(
+            x_bool = paddle.static.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
             )
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
             )
-            x_int64 = paddle.fluid.data(
+            x_int64 = paddle.static.data(
                 name="x_int64", shape=[10, 12], dtype="int64"
             )
-            x_float16 = paddle.fluid.data(
+            x_float16 = paddle.static.data(
                 name="x_float16", shape=[10, 12], dtype="float16"
             )
-            x_float32 = paddle.fluid.data(
+            x_float32 = paddle.static.data(
                 name="x_float32", shape=[10, 12], dtype="float32"
             )
-            x_float64 = paddle.fluid.data(
+            x_float64 = paddle.static.data(
                 name="x_float64", shape=[10, 12], dtype="float64"
             )
 

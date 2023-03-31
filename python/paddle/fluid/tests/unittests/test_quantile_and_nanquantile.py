@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 API_list = [
@@ -207,17 +209,11 @@ class TestError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_axis_value_error_2)
 
-        # Test error with no valid axis
-        def test_axis_value_error_3():
-            paddle_res = paddle.quantile(self.x, q=0.4, axis=[])
-
-        self.assertRaises(ValueError, test_axis_value_error_3)
-
 
 class TestQuantileRuntime(unittest.TestCase):
     """
     This class is used to test the API could run correctly with
-    different devices, different data types, and dygraph/static mode.
+    different devices, different data types, and dygraph/static graph mode.
     """
 
     def setUp(self):

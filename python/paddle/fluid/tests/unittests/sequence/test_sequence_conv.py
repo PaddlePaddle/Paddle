@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import random
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def seqconv(
@@ -150,12 +153,16 @@ class TestSeqProject(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.padding_trainable:
             self.check_grad(
-                set(self.inputs_val), 'Out', max_relative_error=0.05
+                set(self.inputs_val),
+                'Out',
+                max_relative_error=0.05,
+                check_dygraph=False,
             )
 
     def test_check_grad_input(self):
@@ -164,12 +171,16 @@ class TestSeqProject(OpTest):
             'Out',
             max_relative_error=0.05,
             no_grad_set=set(self.inputs_val_no_x),
+            check_dygraph=False,
         )
 
     def test_check_grad_padding_data(self):
         if self.padding_trainable:
             self.check_grad(
-                ['PaddingData'], 'Out', no_grad_set=set(['X', 'Filter'])
+                ['PaddingData'],
+                'Out',
+                no_grad_set={'X', 'Filter'},
+                check_dygraph=False,
             )
 
     def test_check_grad_Filter(self):
@@ -178,6 +189,7 @@ class TestSeqProject(OpTest):
             'Out',
             max_relative_error=0.05,
             no_grad_set=set(self.inputs_val_no_f),
+            check_dygraph=False,
         )
 
     def test_check_grad_input_filter(self):
@@ -186,7 +198,8 @@ class TestSeqProject(OpTest):
                 ['X', 'Filter'],
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['PaddingData']),
+                no_grad_set={'PaddingData'},
+                check_dygraph=False,
             )
 
     def test_check_grad_padding_input(self):
@@ -195,7 +208,8 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_f,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
+                check_dygraph=False,
             )
 
     def test_check_grad_padding_filter(self):
@@ -204,7 +218,8 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_x,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
+                check_dygraph=False,
             )
 
     def init_test_case(self):
@@ -280,10 +295,10 @@ class TestSeqProjectCase3(TestSeqProject):
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
-        x = fluid.layers.data('x', shape=[32], lod_level=1)
-        y = fluid.layers.sequence_conv(
+        x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
+        y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
 

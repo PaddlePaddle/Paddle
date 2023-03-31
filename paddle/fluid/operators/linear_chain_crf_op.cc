@@ -23,23 +23,24 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
+             "(phi::DenseTensor<float>). When a phi::DenseTensor "
+             "input,A 2-D phi::DenseTensor"
              " with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. When a Tensor input,"
              "A Tensor with shape [N x S x D], where N is batch number,"
              "S is max length of sequences, D is the total tag number."
-             "A LoDTensor or Tensor with type float32, float64.");
+             "A phi::DenseTensor with type float32, float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
+             "(phi::DenseTensor<int64_t>), when a phi::DenseTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth."
-             "A  LoDTensor or Tensor with int64.");
+             "A  phi::DenseTensor with int64.");
     AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
@@ -51,8 +52,8 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The forward vectors for the entire batch. Denote it as $\alpha$. "
         "$\alpha$ is a memo table used to calculate the normalization "
         "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
-        "probabilites of all possible unfinished sequences of tags that end at "
-        "position $k$ with tag $v$. For each $k$, "
+        "probabilities of all possible unfinished sequences of tags that end "
+        "at position $k$ with tag $v$. For each $k$, "
         "$\alpha[k, v]$ is a vector of length $D$ with a component for "
         "each tag value $v$. This vector is called a forward vecotr and "
         "will also be used in backward computations.")
@@ -63,7 +64,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
         "backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A phi::DenseTensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
@@ -71,7 +72,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
         "will be reused in backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A phi::DenseTensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -297,9 +298,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of linear_chain_crf
   // is determined by its input "Emission".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }
@@ -342,12 +343,11 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of output of the linear_chain_crf_grad
   // operator is determined by its input: gradients of LogLikelihood.
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("LogLikelihood")),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("LogLikelihood")),
+                          platform::CPUPlace());
   }
 };
 

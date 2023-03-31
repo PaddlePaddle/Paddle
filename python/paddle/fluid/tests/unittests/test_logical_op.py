@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.static import Program, program_guard, Executor
 from paddle.framework import _non_static_mode
-from paddle.fluid.framework import _test_eager_guard
+from paddle.static import Executor, Program, program_guard
 
 SUPPORTED_DTYPES = [
     bool,
@@ -25,6 +26,7 @@ SUPPORTED_DTYPES = [
     np.int16,
     np.int32,
     np.int64,
+    np.float16,
     np.float32,
     np.float64,
 ]
@@ -104,15 +106,14 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
-    with _test_eager_guard():
-        op = getattr(paddle, op_str)
-        x = paddle.to_tensor(x_np, dtype=x_np.dtype)
-        if not binary_op:
-            dygraph_result = op(x)
-        else:
-            y = paddle.to_tensor(y_np, dtype=y_np.dtype)
-            dygraph_result = op(x, y)
-        return dygraph_result
+    op = getattr(paddle, op_str)
+    x = paddle.to_tensor(x_np, dtype=x_np.dtype)
+    if not binary_op:
+        dygraph_result = op(x)
+    else:
+        y = paddle.to_tensor(y_np, dtype=y_np.dtype)
+        dygraph_result = op(x, y)
+    return dygraph_result
 
 
 def np_data_generator(np_shape, dtype, *args, **kwargs):
@@ -132,6 +133,11 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
+                if (
+                    not (paddle.is_compiled_with_cuda() and use_gpu)
+                    and data_type == np.float16
+                ):
+                    continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
                 )
@@ -184,6 +190,16 @@ def test_type_error(unit_test, use_gpu, type_str_map):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
+        if (
+            paddle.is_compiled_with_cuda()
+            and use_gpu
+            and (
+                type_str_map['x'] == np.float16
+                or type_str_map['y'] == np.float16
+            )
+        ):
+            continue
+
         meta_data = dict(op_data)
         binary_op = meta_data['binary_op']
 

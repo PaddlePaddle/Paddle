@@ -255,6 +255,18 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void FlashAttnInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out,
+                        MetaTensor* softmax,
+                        MetaTensor* softmax_lse,
+                        MetaTensor* seed_offset) {
+  out->set_dims(q.dims());
+  out->set_dtype(q.dtype());
+  out->set_layout(q.layout());
+}
+
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,
@@ -489,8 +501,20 @@ void GroupNormInferMeta(const MetaTensor& x,
   y->set_dims(x_dim);
   y->set_dtype(x.dtype());
   y->share_lod(x);
-  mean->set_dims({batch_size, groups});
-  variance->set_dims({batch_size, groups});
+
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
+  if (mean) {
+    mean->set_dims({batch_size, groups});
+    mean->set_dtype(param_type);
+  }
+  if (variance) {
+    variance->set_dims({batch_size, groups});
+    variance->set_dtype(param_type);
+  }
 }
 
 void LayerNormInferMeta(const MetaTensor& x,
@@ -562,14 +586,23 @@ void LayerNormInferMeta(const MetaTensor& x,
             right));
   }
 
+  phi::DataType x_dtype = x.dtype();
   out->set_dims(x_dim);
+  out->set_dtype(x_dtype);
+  out->share_lod(x);
+
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (mean) {
     mean->set_dims({left});
+    mean->set_dtype(param_type);
   }
   if (variance) {
     variance->set_dims({left});
+    variance->set_dtype(param_type);
   }
-  out->share_lod(x);
 }
 
 void LayerNormGradInferMeta(const MetaTensor& x,
@@ -598,9 +631,7 @@ void LerpInferMeta(const MetaTensor& x,
   auto w_dims = weight.dims();
   DDim out_dims;
   out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  if (w_dims.size() > 1 || w_dims[0] != 1) {
-    out_dims = funcs::GetOutputDims(out_dims, w_dims);
-  }
+  out_dims = funcs::GetOutputDims(out_dims, w_dims);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);
@@ -995,31 +1026,34 @@ void ScatterInferMeta(const MetaTensor& x,
                           "index is a 2D tensor, but we get %d.",
                           index_dims[1]));
   } else {
-    PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
-        phi::errors::InvalidArgument("The index should be a 1D tensor when the "
-                                     "index is not a 2D tensor, but we get %d.",
-                                     index_dims.size()));
+    PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The index should be a 0D or 1D tensor when the "
+                          "index is not a 2D tensor, but we get %d.",
+                          index_dims.size()));
   }
-  PADDLE_ENFORCE_EQ(
-      ref_dims.size(),
-      updates_dims.size(),
-      phi::errors::InvalidArgument(
-          "Input(X) and Input(Updates) should have the same shape size, "
-          "but received the size of Input(x)'s shape is %d, the size of "
-          "Input(Updates)'s shape is %d.",
-          ref_dims.size(),
-          updates_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      updates_dims[0],
-      index_dims[0],
-      phi::errors::InvalidArgument(
-          "Input(Updates) and Input(Ids) should have same batch-size, but"
-          " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-          "batch-size is %d.",
-          updates_dims[0],
-          index_dims[0]));
+  if (index_dims.size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        (ref_dims.size() == updates_dims.size()),
+        true,
+        phi::errors::InvalidArgument(
+            "When the Input(Updates) is not a 0D tensor, the "
+            "Input(X) and Input(Updates) should have the same shape size, "
+            "but received the size of Input(x)'s shape is %d, the size of "
+            "Input(Updates)'s shape is %d.",
+            ref_dims.size(),
+            updates_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        updates_dims[0],
+        index_dims[0],
+        phi::errors::InvalidArgument(
+            "Input(Updates) and Input(Ids) should have same batch-size, but"
+            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
+            "batch-size is %d.",
+            updates_dims[0],
+            index_dims[0]));
+  }
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -1036,54 +1070,69 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   const auto& updates_dims = updates.dims();
   auto updates_dims_size = updates_dims.size();
 
-  PADDLE_ENFORCE_LE(
-      index_dims[index_dims_size - 1],
-      ref_dims_size,
-      phi::errors::InvalidArgument(
-          "The last dimension of Input(Index)'s shape should be no greater "
-          "than the rank of Input(X), but received the last dimension of "
-          "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
-          index_dims[index_dims_size - 1],
-          ref_dims_size));
-  PADDLE_ENFORCE_GE(index_dims_size,
-                    2UL,
-                    phi::errors::InvalidArgument(
-                        "The rank of Input(Index) should be greater than 1, "
-                        "but received the rank of Input(Index) is %d.",
-                        index_dims_size));
-
-  // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
-  std::vector<int64_t> r_updates_dims;
-  for (int64_t i = 0; i < index_dims_size - 1; ++i) {
-    r_updates_dims.emplace_back(index_dims[i]);
-  }
-  for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
-    r_updates_dims.emplace_back(ref_dims[i]);
-  }
-
-  PADDLE_ENFORCE_EQ(
-      r_updates_dims.size(),
-      updates_dims_size,
-      phi::errors::InvalidArgument(
-          "Updates has wrong shape. The shape of Updates and Input(Updates) "
-          "should be same, but received the shape of Updates is %d, "
-          "the shape of Input(Updates) is %d.",
-          r_updates_dims.size(),
-          updates_dims_size));
-
-  for (int64_t i = 0; i < updates_dims_size; ++i) {
+  if (updates_dims_size == 0) {
+    // check for 0d updates
     PADDLE_ENFORCE_EQ(
-        r_updates_dims[i],
-        updates_dims[i],
+        index_dims_size,
+        1,
+        phi::errors::InvalidArgument("When the updates is a 0d tensor, the "
+                                     "index should be a 1d tensor."));
+    PADDLE_ENFORCE_EQ(
+        index_dims[index_dims_size - 1],
+        ref_dims_size,
         phi::errors::InvalidArgument(
-            "Updates has wrong shape. The dimensions of Updates and "
-            "Input(Updates) should match, but received Updates's"
-            "%d-th dimension is %d, Input(Updates)'s %d-th "
-            "dimension is %d.",
-            i,
-            r_updates_dims[i],
-            i,
-            updates_dims[i]));
+            "When the update is a 0d tensor, The last dimension of "
+            "Input(Index)'s shape should be equal with the rank of Input(X)."));
+  } else {
+    PADDLE_ENFORCE_LE(
+        index_dims[index_dims_size - 1],
+        ref_dims_size,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(Index)'s shape should be no greater "
+            "than the rank of Input(X), but received the last dimension of "
+            "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
+            index_dims[index_dims_size - 1],
+            ref_dims_size));
+    PADDLE_ENFORCE_GE(index_dims_size,
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(Index) should be greater than 1, "
+                          "but received the rank of Input(Index) is %d.",
+                          index_dims_size));
+
+    // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
+    std::vector<int64_t> r_updates_dims;
+    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+      r_updates_dims.emplace_back(index_dims[i]);
+    }
+    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+      r_updates_dims.emplace_back(ref_dims[i]);
+    }
+    // check for non-0d updates
+    PADDLE_ENFORCE_EQ(
+        r_updates_dims.size(),
+        updates_dims_size,
+        phi::errors::InvalidArgument(
+            "Updates has wrong shape. The shape of Updates and Input(Updates) "
+            "should be same, but received the shape of Updates is %d, "
+            "the shape of Input(Updates) is %d.",
+            r_updates_dims.size(),
+            updates_dims_size));
+
+    for (int64_t i = 0; i < updates_dims_size; ++i) {
+      PADDLE_ENFORCE_EQ(
+          r_updates_dims[i],
+          updates_dims[i],
+          phi::errors::InvalidArgument(
+              "Updates has wrong shape. The dimensions of Updates and "
+              "Input(Updates) should match, but received Updates's"
+              "%d-th dimension is %d, Input(Updates)'s %d-th "
+              "dimension is %d.",
+              i,
+              r_updates_dims[i],
+              i,
+              updates_dims[i]));
+    }
   }
   out->set_dims(ref_dims);
   out->share_lod(x);

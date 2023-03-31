@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
-import paddle.distributed.fleet.meta_optimizers.sharding as sharding
+
+import paddle
+from paddle.distributed.fleet.meta_optimizers import sharding
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
@@ -41,17 +42,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -77,11 +76,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -122,20 +121,18 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                    "loss_scaling_0",
-                    "num_bad_steps_0",
-                    "num_good_steps_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+                "loss_scaling_0",
+                "num_bad_steps_0",
+                "num_good_steps_0",
+            },
         )
 
         self.assertEqual(
@@ -170,13 +167,13 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -231,17 +228,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -267,11 +262,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -321,20 +316,18 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                    "loss_scaling_0",
-                    "num_bad_steps_0",
-                    "num_good_steps_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+                "loss_scaling_0",
+                "num_bad_steps_0",
+                "num_good_steps_0",
+            },
         )
         self.assertEqual(
             ops,
@@ -376,13 +369,13 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -447,23 +440,21 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    'fc_2.b_0',
-                    'num_good_steps_0',
-                    'fc_2.w_0',
-                    'loss_scaling_0',
-                    'num_bad_steps_0',
-                    'fc_2.w_0_velocity_0',
-                    'fc_2.w_0.asp_mask',
-                    'learning_rate_0',
-                    'fc_1.b_0',
-                    'fc_1.w_0.asp_mask',
-                    'fc_0.w_0.asp_mask',
-                    'fc_1.b_0_velocity_0',
-                    'fc_2.b_0_velocity_0',
-                ]
-            ),
+            {
+                'fc_2.b_0',
+                'num_good_steps_0',
+                'fc_2.w_0',
+                'loss_scaling_0',
+                'num_bad_steps_0',
+                'fc_2.w_0_velocity_0',
+                'fc_2.w_0.asp_mask',
+                'learning_rate_0',
+                'fc_1.b_0',
+                'fc_1.w_0.asp_mask',
+                'fc_0.w_0.asp_mask',
+                'fc_1.b_0_velocity_0',
+                'fc_2.b_0_velocity_0',
+            },
         )
         self.assertEqual(
             ops,
@@ -497,13 +488,13 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -562,17 +553,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -598,11 +587,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -639,7 +628,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
@@ -649,17 +638,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -685,11 +672,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -762,7 +749,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
             ],
         )
@@ -924,11 +911,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -1033,11 +1020,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -1177,11 +1164,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -1308,7 +1295,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "micro_batch_size": 2,
             "accumulate_steps": 4,
         }
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
@@ -1398,13 +1385,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -1546,7 +1533,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "micro_batch_size": 2,
             "accumulate_steps": 4,
         }
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost,
             strategy,
@@ -1665,13 +1652,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -1896,13 +1883,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -2198,13 +2185,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -2413,13 +2400,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -2638,7 +2625,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -2648,7 +2635,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -2835,7 +2822,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -2845,7 +2832,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -3020,7 +3007,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -3030,7 +3017,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',
@@ -3159,13 +3146,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'coalesce_tensor',
                 'coalesce_tensor',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -3301,7 +3288,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -3311,7 +3298,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'cast',

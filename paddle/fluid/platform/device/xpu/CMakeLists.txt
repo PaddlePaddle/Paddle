@@ -24,10 +24,14 @@ cc_library(
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
-  DEPS gflags glog enforce xpulib device_context op_kernel_type)
+  DEPS gflags
+       glog
+       enforce
+       xpulib
+       device_context
+       op_kernel_type
+       phi_backends)
 cc_library(
   xpu_resource_pool
   SRCS xpu_resource_pool.cc
   DEPS xpu_info)
-
-add_subdirectory(tests)

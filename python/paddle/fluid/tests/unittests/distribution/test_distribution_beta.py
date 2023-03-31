@@ -15,11 +15,11 @@ import numbers
 import unittest
 
 import numpy as np
-import paddle
 import scipy.stats
-
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+
+import paddle
 
 np.random.seed(2022)
 
@@ -112,6 +112,12 @@ class TestBeta(unittest.TestCase):
                 self._paddle_beta.sample(case.get('input')).shape
                 == case.get('expect')
             )
+
+    def test_errors(self):
+        with self.assertRaises(ValueError):
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            paddle.distribution.Beta(alpha=x, beta=x)
 
 
 if __name__ == '__main__':

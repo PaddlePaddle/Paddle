@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
  public:

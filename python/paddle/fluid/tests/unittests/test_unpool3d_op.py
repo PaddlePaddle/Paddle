@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
@@ -141,10 +143,10 @@ class TestUnpool3DOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.unpool3d_forward_naive = unpool3dmax_forward_naive
@@ -193,6 +195,20 @@ class TestUnpool3DOpException(unittest.TestCase):
             ).astype("int32")
             F.max_unpool3d(data, indices, kernel_size=2, stride=2)
 
+        def x_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 27), shape=[1, 1, 3, 3, 3]
+            ).astype("int32")
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+
+        def indices_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 27), shape=[1, 3, 3, 3]
+            ).astype("int32")
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3, 3])
             indices = paddle.reshape(
@@ -235,6 +251,16 @@ class TestUnpool3DOpException(unittest.TestCase):
             ValueError,
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The x should have \[N, C, D, H, W\] format",
+            x_rank_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The indices should have \[N, C, D, H, W\] format",
+            indices_rank_error,
         )
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
@@ -377,7 +403,7 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                         ]
                     ]
                 ).astype("float32")
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name='x', shape=[1, 1, 2, 4, 4], dtype='float32'
                 )
                 output, indices = F.max_pool3d(

@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import warnings
 import logging
+import warnings
+
 import numpy as np
+
+import paddle
+
 from ..utils.log_utils import get_logger
 
 
@@ -147,8 +150,7 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
-                    "Fail to convert tensor '{}'. ".format(str(tensor_name))
-                    + str(err)
+                    f"Fail to convert tensor '{str(tensor_name)}'. " + str(err)
                 )
 
         for tensor_name in self._pre_strategy:
@@ -479,7 +481,7 @@ class Converter:
                 split_indices_list = partition_index
         split_indices_list = list(
             map(
-                lambda x, y: list(set(x) - set([y]) - set([0])),
+                lambda x, y: list(set(x) - {y} - {0}),
                 split_indices_list,
                 complete_shape,
             )

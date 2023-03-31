@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -29,18 +29,16 @@ namespace ir {
 
 class Graph;
 
-namespace {
-void LogEnabledOps(const int counter, const std::string& details) {
-  std::string msg_ss{"---    enabled FC MKL-DNN for "};
-  msg_ss += counter + " fc ops " + details;
-  string::PrettyLogDetail(msg_ss.c_str());
-}
-}  // namespace
+void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
+  Init("fc_mkldnn_pass", graph);
 
-void FCMKLDNNPass::ApplyPass(ir::Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern(with_residual);
+  // searching for fc+residual  doesn't make sense at this stage
+  fc_pattern(false /*with_residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -79,19 +77,12 @@ void FCMKLDNNPass::ApplyPass(ir::Graph* graph, bool with_residual) const {
 
   AddStatis(found_fc_count);
 
-  LogEnabledOps(found_fc_count,
-                (with_residual ? "with residual connection"
-                               : "without residual connection"));
-}
-
-void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
-                              "Pointer to graph argument should not be NULL."));
-  Init("fc_mkldnn_pass", graph);
-
-  ApplyPass(graph, true);
-  ApplyPass(graph, false);
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_fc_count > 0)) {
+    std::string msg_ss = "---    enabled FC MKL-DNN for " +
+                         std::to_string(found_fc_count) + " fc ops ";
+    string::PrettyLogDetail(msg_ss.c_str());
+  }
 }
 
 }  // namespace ir

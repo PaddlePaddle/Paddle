@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 def bow_net(
@@ -40,12 +42,18 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
-    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
-    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
-    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
+    bow_tanh = paddle.tanh(bow)
+    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    prediction = paddle.static.nn.fc(
+        x=[fc_2], size=class_dim, activation="softmax"
+    )
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -99,10 +107,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost = model(data, label, self.word_len)
 
@@ -123,19 +133,21 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost_l2 = model(data, label, self.word_len)
 
             param_list = fluid.default_main_program().block(0).all_parameters()
             para_sum = []
             for para in param_list:
-                para_mul = fluid.layers.square(x=para)
-                para_sum.append(fluid.layers.reduce_sum(input=para_mul))
-            avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
+                para_mul = paddle.square(x=para)
+                para_sum.append(paddle.sum(para_mul))
+            avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)
@@ -167,11 +179,13 @@ class TestRegularizer(unittest.TestCase):
         paddle.enable_static()
         l1 = paddle.regularizer.L1Decay(0.1)
         l2 = paddle.regularizer.L2Decay(0.01)
-        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        fc_param_attr = paddle.ParamAttr(
+            regularizer=paddle.regularizer.L1Decay()
+        )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.layers.uniform_random([2, 2, 3])
-            out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
-            loss = fluid.layers.reduce_sum(out)
+            x = paddle.uniform([2, 2, 3])
+            out = paddle.static.nn.fc(x, 5, weight_attr=fc_param_attr)
+            loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)
         with fluid.dygraph.guard():
@@ -181,11 +195,11 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
-            linear1 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear1 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
-            linear2 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear2 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
 
             loss1 = linear1(input)

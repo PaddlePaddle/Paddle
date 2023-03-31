@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import queue
 import copy
+import queue
 from enum import Enum
 
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.framework import core
 
 SUCC = 0  # successor
 PRED = 1  # predecessor
@@ -321,7 +321,7 @@ class CostModel:
                         graph[node_id][PRED].remove(pred_id)
 
                         write_op_cnt += 1
-                        new_var_id = node_id + '_write_{}'.format(write_op_cnt)
+                        new_var_id = node_id + f'_write_{write_op_cnt}'
                         new_var = TensorCostNode(
                             node.node,
                             CostNodeType.VARIABLE,
@@ -376,7 +376,7 @@ class CostModel:
                 succ_ops_id = succ_ops_id + self._find_succ_op(succ_id, sub_idx)
             else:
                 raise NotImplementedError(
-                    'This type of node not supported yet:{}'.format(succ.type)
+                    f'This type of node not supported yet:{succ.type}'
                 )
         return succ_ops_id
 

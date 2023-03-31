@@ -23,11 +23,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FlattenKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   int start_axis,
-                   int stop_axis,
-                   DenseTensor* out) {
+void FlattenInferKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        int start_axis,
+                        int stop_axis,
+                        DenseTensor* out) {
   dev_ctx.Alloc(out, x.dtype());
   auto out_dims = out->dims();
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -38,21 +38,21 @@ void FlattenKernel(const Context& dev_ctx,
 // Output Tensor，
 // is there a more flexible way to deal with this case?
 template <typename T, typename Context>
-void FlattenWithXShape(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       int start_axis,
-                       int stop_axis,
-                       DenseTensor* out,
-                       DenseTensor* xshape) {
-  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out,
+                   DenseTensor* xshape) {
+  FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(flatten,
+PD_REGISTER_KERNEL(flatten_infer,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FlattenKernel,
+                   phi::FlattenInferKernel,
                    float,
                    phi::dtype::bfloat16,
                    double,
@@ -62,10 +62,10 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(flatten_with_xshape,
+PD_REGISTER_KERNEL(flatten,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FlattenWithXShape,
+                   phi::FlattenKernel,
                    float,
                    phi::dtype::bfloat16,
                    double,
@@ -76,10 +76,10 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(flatten,
+PD_REGISTER_KERNEL(flatten_infer,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlattenKernel,
+                   phi::FlattenInferKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
@@ -90,10 +90,10 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(flatten_with_xshape,
+PD_REGISTER_KERNEL(flatten,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlattenWithXShape,
+                   phi::FlattenKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
@@ -106,6 +106,17 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
 #endif
 
 #ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(flatten_infer,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FlattenInferKernel,
+                   float,
+                   phi::dtype::float16,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_KERNEL(flatten,
                    XPU,
                    ALL_LAYOUT,
@@ -116,13 +127,30 @@ PD_REGISTER_KERNEL(flatten,
                    int16_t,
                    int,
                    int64_t) {}
+#endif
 
-PD_REGISTER_KERNEL(flatten_with_xshape,
-                   XPU,
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(flatten_infer,
+                   Custom,
                    ALL_LAYOUT,
-                   phi::FlattenWithXShape,
+                   phi::FlattenInferKernel,
                    float,
                    phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(flatten,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
                    int8_t,
                    int16_t,
                    int,

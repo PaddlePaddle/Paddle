@@ -77,10 +77,20 @@ class PreluOpGradFunctor {
     for (size_t i = 0; i < input_dims.size(); ++i) {
       numel *= input_dims[i];
     }
-    size_t plane_size = numel / input_dims[0] / input_dims[1];
-    size_t spatial_size = numel / input_dims[0];
-    size_t channel =
-        mode == ChannelLast ? input_dims[input_dims.size() - 1] : input_dims[1];
+
+    size_t plane_size;
+    size_t spatial_size;
+    size_t channel;
+    if (mode == PRELU_Scalar) {
+      plane_size = 1;
+      spatial_size = 1;
+      channel = 1;
+    } else {
+      plane_size = numel / input_dims[0] / input_dims[1];
+      spatial_size = numel / input_dims[0];
+      channel = mode == ChannelLast ? input_dims[input_dims.size() - 1]
+                                    : input_dims[1];
+    }
 
     PReluOpGradKernel<T>
         <<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
@@ -120,7 +130,6 @@ void PReluGradKernel(const Context& dev_ctx,
   int numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
-  std::vector<int> input_shape = phi::vectorize<int>(dim);
   auto stream = dev_ctx.stream();
 
   T* alpha_grad_tmp_ptr;

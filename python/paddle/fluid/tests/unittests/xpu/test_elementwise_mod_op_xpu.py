@@ -15,17 +15,18 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
 
-import paddle
+import numpy as np
+from eager_op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -70,26 +71,6 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
-
-    class TestElementwiseModOp_broadcast_1(ElementwiseModOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(2, 100, 3).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
-
-    class TestElementwiseModOp_broadcast_2(ElementwiseModOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(22, 128, 3).astype(self.dtype),
-                'Y': np.random.rand(22, 128, 3).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):

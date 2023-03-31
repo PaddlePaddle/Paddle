@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
+import os
+
+from seresnext_test_base import DeviceType
+from simple_nets import init_data
+
 import paddle
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
-from simple_nets import init_data
-from seresnext_test_base import DeviceType
-import os
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
@@ -48,25 +50,25 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
-    pool = fluid.layers.reduce_mean(input=reshape, dim=2)
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
+    pool = paddle.mean(x=reshape, axis=2)
 
-    squeeze = fluid.layers.fc(
-        input=pool, size=num_channels // reduction_ratio, act='relu'
+    squeeze = paddle.static.nn.fc(
+        x=pool, size=num_channels // reduction_ratio, activation='relu'
     )
-    excitation = fluid.layers.fc(
-        input=squeeze, size=num_channels, act='sigmoid'
+    excitation = paddle.static.nn.fc(
+        x=squeeze, size=num_channels, activation='sigmoid'
     )
-    scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
+    scale = paddle.tensor.math._multiply_with_axis(
+        x=input, y=excitation, axis=0
+    )
     return scale
 
 
 def conv_bn_layer(
     input, num_filters, filter_size, stride=1, groups=1, act=None
 ):
-    conv = fluid.layers.conv2d(
+    conv = paddle.static.nn.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -80,7 +82,7 @@ def conv_bn_layer(
     return (
         conv
         if remove_bn
-        else fluid.layers.batch_norm(input=conv, act=act, momentum=0.1)
+        else paddle.static.nn.batch_norm(input=conv, act=act, momentum=0.1)
     )
 
 
@@ -121,7 +123,7 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
 
     short = shortcut(input, num_filters * 2, stride)
 
-    return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+    return paddle.nn.functional.relu(paddle.add(x=short, y=scale))
 
 
 img_shape = [3, 224, 224]
@@ -129,8 +131,10 @@ img_shape = [3, 224, 224]
 
 def SE_ResNeXt50Small(use_feed):
 
-    img = fluid.layers.data(name='image', shape=img_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1] + img_shape, dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     conv = conv_bn_layer(
         input=img, num_filters=16, filter_size=3, stride=2, act='relu'
@@ -141,8 +145,8 @@ def SE_ResNeXt50Small(use_feed):
     conv = conv_bn_layer(
         input=conv, num_filters=16, filter_size=3, stride=1, act='relu'
     )
-    conv = fluid.layers.pool2d(
-        input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+    conv = paddle.nn.functional.max_pool2d(
+        x=conv, kernel_size=3, stride=2, padding=1
     )
 
     cardinality = 32
@@ -161,18 +165,16 @@ def SE_ResNeXt50Small(use_feed):
             )
 
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
-    pool = fluid.layers.reduce_mean(input=reshape, dim=2)
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
+    pool = paddle.mean(x=reshape, axis=2)
     dropout = (
-        pool
-        if remove_dropout
-        else fluid.layers.dropout(x=pool, dropout_prob=0.2, seed=1)
+        pool if remove_dropout else paddle.nn.functional.dropout(x=pool, p=0.2)
     )
     # Classifier layer:
-    prediction = fluid.layers.fc(input=dropout, size=1000, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    prediction = paddle.static.nn.fc(x=dropout, size=1000, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

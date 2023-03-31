@@ -28,10 +28,13 @@ void AllRawKernel(const Context& dev_ctx,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   phi::BoolReduceKernel<CPUContext, T, phi::funcs::AllFunctor>(
       dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(all_raw, CPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
+PD_REGISTER_KERNEL(all_raw, CPU, ALL_LAYOUT, phi::AllRawKernel, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}

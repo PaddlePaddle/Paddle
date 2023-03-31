@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
+
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 
 
 class TestDGCMomentumOp1(unittest.TestCase):

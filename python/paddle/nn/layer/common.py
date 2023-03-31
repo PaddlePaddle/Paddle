@@ -14,10 +14,10 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import Flatten  # noqa: F401
-from .. import functional as F
-from paddle.nn import Layer
 from paddle import in_dynamic_mode
+
+from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
@@ -96,9 +96,9 @@ class Linear(Layer):
         in_features (int): The number of input units.
         out_features (int): The number of output units.
         weight_attr (ParamAttr, optional): The attribute for the learnable
-            weight of this layer. The default value is None and the weight will be
-            initialized to zero. For detailed information, please refer to
-            paddle.ParamAttr.
+            weight of this layer. The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to paddle.ParamAttr.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
@@ -114,8 +114,8 @@ class Linear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
         .. code-block:: python
@@ -177,7 +177,7 @@ class Linear(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )
@@ -409,10 +409,10 @@ class Upsample(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
             main_str,
             self.mode,
@@ -499,10 +499,10 @@ class UpsamplingNearest2D(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, data_format={}{}'.format(
             main_str, self.data_format, name_str
         )
@@ -585,10 +585,10 @@ class UpsamplingBilinear2D(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, data_format={}{}'.format(
             main_str, self.data_format, name_str
         )
@@ -687,7 +687,7 @@ class Bilinear(Layer):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
             self._in1_features,
             self._in2_features,
@@ -698,32 +698,32 @@ class Bilinear(Layer):
 
 
 class Dropout(Layer):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training as described in the paper:
     `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_
     The dropout operator randomly sets the outputs of some units to zero, while upscale others
     according to the given dropout probability.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float|int): Probability of setting units to zero. Default: 0.5
-        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
-                               1. upscale_in_train(default), upscale the output at training time
+                               1. upscale_in_train (default), upscale the output at training time
 
-                                  - train: out = input * mask / ( 1.0 - p )
-                                  - inference: out = input
+                                  - train: :math:`out = input \times \frac{mask}{(1.0 - p)}`
+                                  - inference: :math:`out = input`
 
                                2. downscale_in_infer, downscale the output at inference
 
-                                  - train: out = input * mask
-                                  - inference: out = input * (1.0 - p)
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+                                  - train: :math:`out = input \times mask`
+                                  - inference: :math:`out = input \times (1.0 - p)`
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -772,7 +772,7 @@ class Dropout(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, axis={}, mode={}{}'.format(
             self.p, self.axis, self.mode, name_str
         )
@@ -786,14 +786,14 @@ class Dropout2D(Layer):
     Dropout2D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
-    See ``paddle.nn.functional.dropout2d`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout2d` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float, optional): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
@@ -853,7 +853,7 @@ class Dropout2D(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, data_format={}{}'.format(
             self.p, self.data_format, name_str
         )
@@ -867,14 +867,14 @@ class Dropout3D(Layer):
     Dropout3D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
-    See ``paddle.nn.functional.dropout3d`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout3d` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width]. Default: `NCDHW`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
@@ -946,7 +946,7 @@ class Dropout3D(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, data_format={}{}'.format(
             self.p, self.data_format, name_str
         )
@@ -1005,31 +1005,31 @@ class AlphaDropout(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}{}'.format(self.p, name_str)
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}{name_str}'
 
 
 class Pad1D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad1D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
+    Pad tensor according to ``pad``, ``mode`` and ``value``.
+    If mode is ``reflect``, pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCL", "NLC". Specify the data format of the input data.
-           Default is  "NCL"
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``. Specify the data format of the input data.
+           Default: ``'NCL'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1072,7 +1072,7 @@ class Pad1D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1081,25 +1081,25 @@ class Pad1D(Layer):
 class Pad2D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    Pad tensor according to ``pad``, ``mode`` and ``value``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"。
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCHW'``, ``'NHWC'``. Specify the data format of the input data.
+           Default: ``'NCHW'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1145,7 +1145,7 @@ class Pad2D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1178,11 +1178,10 @@ class ZeroPad2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            input_shape = (1, 1, 2, 3)
+            input_shape = paddle.to_tensor([1, 1, 2, 3])
             pad = [1, 0, 1, 2]
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(input_shape), dtype="float32").reshape(input_shape) + 1
 
             my_pad = nn.ZeroPad2D(padding=pad)
             result = my_pad(data)
@@ -1214,7 +1213,7 @@ class ZeroPad2D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, data_format={}{}'.format(
             self._pad, self._data_format, name_str
         )
@@ -1223,25 +1222,25 @@ class ZeroPad2D(Layer):
 class Pad3D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    Pad tensor according to ``'pad'``, ``'mode'`` and ``'value'``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
-           Default is  "NCDHW"。
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCDHW'``, ``'NDHWC'``. Specify the data format of the input data.
+           Default:  ``'NCDHW'``。
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1292,7 +1291,7 @@ class Pad3D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1533,7 +1532,7 @@ class Embedding(Layer):
 
 class Unfold(Layer):
     """
-    This op returns a col buffer of sliding local blocks of input x, also known
+    Returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
@@ -1599,7 +1598,7 @@ class Unfold(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
             self.kernel_sizes,
             self.dilations,
@@ -1696,7 +1695,7 @@ class Fold(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
             self.kernel_sizes,
             self.dilations,
@@ -1704,3 +1703,41 @@ class Fold(Layer):
             self.strides,
             name_str,
         )
+
+
+class Flatten(Layer):
+    """
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+
+          inp = paddle.ones([5, 2, 3, 4]).astype('float32')
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          y = flatten(inp)
+          # y.shape = [5, 6, 4]
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super().__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = paddle.flatten(
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis
+        )
+        return out

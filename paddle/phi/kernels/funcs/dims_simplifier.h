@@ -25,8 +25,8 @@ struct BroadcastDimsSimplifier {
   typedef void (*MergeFunctor)(
       bool &, std::vector<DimVector> &, DimVector &, int, int);
 
-  int64_t N;
-  int64_t rank;
+  int N;
+  int rank;
   DimVector out_dims;
   std::vector<DimVector> in_dims;
 
@@ -34,18 +34,6 @@ struct BroadcastDimsSimplifier {
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
                           const phi::DDim &dims,
                           int axis) {
-    if (!NeedBroadcast(ins, dims)) {
-      int64_t numel = phi::product(dims);
-      rank = 1;
-      N = ins.size();
-      out_dims = DimVector{numel};
-      in_dims.resize(N);
-      for (int64_t i = 0; i < N; ++i) {
-        in_dims[i] = DimVector{numel};
-      }
-      return;
-    }
-
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
     rank = dims.size();
@@ -112,56 +100,46 @@ struct BroadcastDimsSimplifier {
   }
 
  private:
-  bool NeedBroadcast(const std::vector<const DenseTensor *> &ins,
-                     const phi::DDim &dims) {
-    bool no_broadcast_flag = true;
-    for (auto *in : ins) {
-      no_broadcast_flag &= ins[0]->dims() == in->dims();
-    }
-    if (ins.size() > 0) {
-      no_broadcast_flag &= dims == ins[0]->dims();
-    }
-    return !no_broadcast_flag;
-  }
-
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
     for (auto &in_dim : in_dims) {
-      int64_t in_idx = 0;
       if (in_dim.size() < rank) {
-        DimVector tmp_dim(rank, 1);
-        for (; in_idx < in_dim.size();) {
-          if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
-            tmp_dim[axis] = in_dim[in_idx];
-            in_idx++;
-            axis++;
+        DimVector extended_in_dim(rank, 1);
+        int out_idx = axis;
+        for (int in_idx = 0; in_idx < in_dim.size(); in_idx++) {
+          if (in_dim[in_idx] == out_dims[out_idx] || in_dim[in_idx] == 1) {
+            extended_in_dim[out_idx] = in_dim[in_idx];
+            out_idx++;
           } else {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                axis + 1,
+                "received %d. The input's shape is {%s}, the output's shape is "
+                "{%s}.",
+                in_idx,
+                out_idx,
                 out_dims[axis],
-                in_dim[in_idx]));
+                in_dim[in_idx],
+                phi::make_ddim(in_dim),
+                phi::make_ddim(out_dims)));
           }
         }
         in_dim.resize(rank);
-        std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
+        std::copy(
+            extended_in_dim.begin(), extended_in_dim.end(), in_dim.begin());
       } else {
-        for (; in_idx < rank;) {
-          if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
-            in_idx++;
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "The %d-th dimension of input tensor is expected to be equal "
-                "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                in_idx + 1,
-                out_dims[in_idx],
-                in_dim[in_idx]));
-          }
+        for (int in_idx = 0; in_idx < rank; in_idx++) {
+          PADDLE_ENFORCE_EQ(
+              in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1,
+              true,
+              phi::errors::InvalidArgument(
+                  "The %d-th dimension of input tensor is expected to be equal "
+                  "with the %d-th dimension of output tensor %d or 1, but "
+                  "received %d.",
+                  in_idx,
+                  in_idx,
+                  out_dims[in_idx],
+                  in_dim[in_idx]));
         }
       }
       std::reverse(in_dim.begin(), in_dim.end());
@@ -240,6 +218,140 @@ struct BroadcastDimsSimplifier {
       *swap_index = index;
     }
     return has_seq_one;
+  }
+};
+
+// Simplify the input dims and permute dims if possible.
+struct PermuteDimsSimplifier {
+ public:
+  PermuteDimsSimplifier(const int rank,
+                        const int64_t numel,
+                        const std::vector<int32_t> &perm,
+                        const std::vector<int64_t> &dims)
+      : perm_(rank), src_dims_(rank), count_(numel) {
+    SimplifyPermAndDims(rank, dims, perm);
+    perm_.resize(rank_);
+    src_dims_.resize(rank_);
+    dst_dims_.resize(rank_);
+    if (!is_sequential_perm_) {
+      for (auto i = 0; i < rank_; ++i) {
+        dst_dims_[i] = src_dims_[perm_[i]];
+      }
+    } else {
+      dst_dims_[0] = numel;
+      src_dims_[0] = numel;
+    }
+  }
+
+  ~PermuteDimsSimplifier() = default;
+
+  const int &GetRank() const { return rank_; }
+  const int64_t &GetCount() const { return count_; }
+  const std::vector<int> &GetPerm() const { return perm_; }
+  const std::vector<int64_t> &GetSrcDims() const { return src_dims_; }
+  const std::vector<int64_t> &GetDstDims() const { return dst_dims_; }
+
+ private:
+  int rank_{1};
+  int64_t count_{0};
+  std::vector<int> perm_;
+  bool is_sequential_perm_{true};
+  std::vector<int64_t> src_dims_;
+  std::vector<int64_t> dst_dims_;
+
+  void SimplifyPermAndDims(const int rank,
+                           const std::vector<int64_t> &in_dims,
+                           const std::vector<int32_t> &perm) {
+    int start_perm_idx = 0;
+    int valid_dim_idx = 0;
+    int valid_map[phi::DDim::kMaxRank];
+    int64_t combined_dims[phi::DDim::kMaxRank];
+
+    // Merge consecutive dims to the fist one dim and
+    // leave original dim to be 1. Example below :
+    // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
+    // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
+    while (start_perm_idx < rank) {
+      const int start_dim_idx = perm[start_perm_idx];
+      combined_dims[start_dim_idx] = in_dims[start_dim_idx];
+      int end_perm_idx = start_perm_idx + 1;
+
+      while (end_perm_idx < rank &&
+             perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
+        const int end_dim_idx = perm[end_perm_idx];
+        combined_dims[start_dim_idx] *= in_dims[end_dim_idx];
+        combined_dims[end_dim_idx] = 1;
+        end_perm_idx += 1;
+      }
+      start_perm_idx = end_perm_idx;
+    }
+
+    // Reorder combined dims and marked useless dim as -1.
+    // for example, if combined dims is [32, 1, 10, 1],
+    // valid_map is [0, -1, 1, -1] and generate simplified
+    // dims as [32, 10]
+    for (auto i = 0; i < rank; ++i) {
+      const int dim_val = combined_dims[i];
+      if (dim_val == 1) {
+        valid_map[i] = -1;
+      } else {
+        valid_map[i] = valid_dim_idx;
+        src_dims_[valid_dim_idx] = dim_val;
+        valid_dim_idx += 1;
+      }
+    }
+
+    if (valid_dim_idx == 0) {
+      src_dims_[0] = 1;
+      perm_[0] = 0;
+      return;
+    }
+
+    // Acquire simplified perm with help of combined dims
+    // and original perm, finally simplified perm is [1, 0]
+    int perm_idx = 0;
+    for (auto i = 0; i < rank; ++i) {
+      const int mapped = valid_map[perm[i]];
+      if (mapped >= 0) {
+        perm_[perm_idx] = mapped;
+        is_sequential_perm_ &= (mapped == perm_idx);
+        perm_idx += 1;
+      }
+    }
+    rank_ = is_sequential_perm_ ? 1 : valid_dim_idx;
+  }
+};
+
+template <typename T>
+struct DimsSimplifiedLogger {
+ public:
+  static void Log(const std::vector<const DenseTensor *> &ins,
+                  std::vector<DenseTensor *> *outs,
+                  const BroadcastDimsSimplifier &dims_simplifier,
+                  const std::string &op_name) {
+    VLOG(6) << op_name << "`s dims after simplification is below :";
+    for (size_t i = 0; i < ins.size(); ++i) {
+      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+              << "}, simplied_dims={"
+              << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
+    }
+    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+            << "}, simplied_dims={"
+            << ReversedVectorToString(dims_simplifier.out_dims) << "}";
+  }
+
+  static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
+    std::stringstream ss;
+    bool is_last = true;
+    for (int i = reversed_v.size() - 1; i >= 0; --i) {
+      if (is_last) {
+        ss << reversed_v[i];
+        is_last = false;
+      } else {
+        ss << ", " << reversed_v[i];
+      }
+    }
+    return ss.str();
   }
 };
 

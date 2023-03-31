@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+from paddle.fluid import core
 from paddle.fluid.data_feeder import convert_dtype
-import paddle.fluid.core as core
-from paddle.static import program_guard, Program
+from paddle.static import Program, program_guard
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):
@@ -26,14 +28,14 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
         self.assertEqual(
             data_type,
             self.dst_dtype,
-            'dtype should be %s, but get %s' % (self.dst_dtype, data_type),
+            f'dtype should be {self.dst_dtype}, but get {data_type}',
         )
 
         shape = out.shape
         self.assertTupleEqual(
             shape,
             self.dst_shape,
-            'shape should be %s, but get %s' % (self.dst_shape, shape),
+            f'shape should be {self.dst_shape}, but get {shape}',
         )
 
         if data_type in ['float32', 'float64', 'int32', 'int64']:

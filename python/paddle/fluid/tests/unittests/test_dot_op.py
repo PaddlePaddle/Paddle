@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class DotOp(OpTest):
@@ -36,7 +37,7 @@ class DotOp(OpTest):
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():
@@ -44,10 +45,12 @@ class DotOp(OpTest):
                 ['X', 'Y'],
                 'Out',
                 user_defined_grads=[self.inputs['Y'], self.inputs['X']],
-                check_eager=True,
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+            )
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
@@ -56,11 +59,12 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set("X"),
                 user_defined_grads=[self.inputs['X']],
-                check_eager=True,
             )
         else:
             self.check_grad(
-                ['Y'], 'Out', no_grad_set=set("X"), check_eager=True
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
             )
 
     def test_check_grad_ingore_y(self):
@@ -70,11 +74,12 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set('Y'),
                 user_defined_grads=[self.inputs['Y']],
-                check_eager=True,
             )
         else:
             self.check_grad(
-                ['X'], 'Out', no_grad_set=set('Y'), check_eager=True
+                ['X'],
+                'Out',
+                no_grad_set=set('Y'),
             )
 
     def init_input_output(self):
@@ -84,6 +89,32 @@ class DotOp(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class DotOpEmptyInput(unittest.TestCase):
+    def test_1d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        np_out = np.dot(data, data)
+        pd_out = paddle.dot(x, y)
+
+        self.assertEqual(np_out, pd_out)
+
+    def test_2d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        pd_out = paddle.dot(x, y)
+
+        self.assertEqual(pd_out.shape, (0, 1))
+
+    def test_3d_input_error(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+
+        self.assertRaises(Exception, paddle.dot, x, y)
 
 
 class DotOpBatch(DotOp):
@@ -114,16 +145,22 @@ class TestDotOpError(unittest.TestCase):
 
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
-            x1 = fluid.layers.data(name='x1', shape=[120], dtype="uint8")
-            y1 = fluid.layers.data(name='y1', shape=[120], dtype="uint8")
+            x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
+            y1 = paddle.static.data(name='y1', shape=[-1, 120], dtype="uint8")
             self.assertRaises(Exception, paddle.dot, x1, y1)
 
-            x2 = fluid.layers.data(name='x2', shape=[2, 3], dtype="float32")
-            y2 = fluid.layers.data(name='y2', shape=[2, 3], dtype="float32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 2, 3], dtype="float32"
+            )
+            y2 = paddle.static.data(
+                name='y2', shape=[-1, 2, 3], dtype="float32"
+            )
             self.assertRaises(Exception, paddle.dot, x2, y2)
 
-            x3 = fluid.layers.data(name='x3', shape=[3], dtype="float32")
-            y3 = fluid.layers.data(name='y3', shape=[2, 3], dtype="float32")
+            x3 = paddle.static.data(name='x3', shape=[-1, 3], dtype="float32")
+            y3 = paddle.static.data(
+                name='y3', shape=[-1, 2, 3], dtype="float32"
+            )
             self.assertRaises(Exception, paddle.dot, x2, y3)
 
 
@@ -179,7 +216,7 @@ class TestComplexDotOp(OpTest):
         self.grad_y = self.grad_out * np.conj(self.x)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -187,7 +224,6 @@ class TestComplexDotOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -197,7 +233,6 @@ class TestComplexDotOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -207,13 +242,13 @@ class TestComplexDotOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
 class TestComplexDotOp2D(OpTest):
     def setUp(self):
         self.op_type = "dot"
+        self.python_api = paddle.dot
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()

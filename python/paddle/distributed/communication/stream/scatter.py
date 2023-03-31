@@ -13,51 +13,30 @@
 # limitations under the License.
 
 import warnings
+
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.framework as framework
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
-    _warn_cur_rank_not_in_group,
     _get_or_throw_group_rank,
+    _warn_cur_rank_not_in_group,
 )
-
-
-def _check_tensor_shape(tensor, shape, nranks=1):
-    expect_shape = list(shape)
-    expect_shape[0] //= nranks
-    if list(tensor.shape) != expect_shape:
-        raise RuntimeError("The in_tensor for scatter is not correctly-sized.")
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            "The tensor_list for scatter is not correctly-sized."
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                "The tensor_list for scatter is not correctly-sized."
-            )
+from paddle.fluid import data_feeder
 
 
 def _scatter_tensor_in_dygraph(
     out_tensor, in_tensor, src_rank_in_group, group, sync_op, use_calc_stream
 ):
     nranks = group.nranks
-    if group.rank == src_rank_in_group:
-        _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
 
     if use_calc_stream:
         return group.process_group.scatter_tensor_on_calc_stream(
-            in_tensor, out_tensor, src_rank_in_group
+            out_tensor, in_tensor, src_rank_in_group
         )
 
     task = group.process_group.scatter_tensor(
-        in_tensor, out_tensor, src_rank_in_group, sync_op
+        out_tensor, in_tensor, src_rank_in_group, sync_op
     )
     if sync_op:
         task.wait()
@@ -74,17 +53,16 @@ def _scatter_in_dygraph(
             raise RuntimeError(
                 "The tensor_list should not be empty on src rank."
             )
-        _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
     else:
         tensor_list = [tensor for _ in range(nranks)]
 
     if use_calc_stream:
         return group.process_group.scatter_on_calc_stream(
-            tensor_list, tensor, src_rank_in_group
+            tensor, tensor_list, src_rank_in_group
         )
 
     task = group.process_group.scatter(
-        tensor_list, tensor, src_rank_in_group, sync_op
+        tensor, tensor_list, src_rank_in_group, sync_op
     )
     if sync_op:
         task.wait()
@@ -134,7 +112,7 @@ def _scatter_in_static_mode(
     )
 
     op_type = 'c_scatter'
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [input_tensor]},
@@ -241,7 +219,9 @@ def scatter(
                 use_calc_stream,
             )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
 
         return _scatter_in_static_mode(
             tensor,

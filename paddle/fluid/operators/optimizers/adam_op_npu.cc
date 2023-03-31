@@ -22,9 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
@@ -33,32 +30,32 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
-    auto* param = ctx.Input<LoDTensor>("Param");
+    auto* param = ctx.Input<phi::DenseTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Grad(%s)'s type should be LoDTensor, "
+                          "The Grad(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(param_var->Type())));
-    auto* grad = ctx.Input<LoDTensor>("Grad");
-    auto* mom1 = ctx.Input<LoDTensor>("Moment1");
-    auto* mom2 = ctx.Input<LoDTensor>("Moment2");
-    auto* lr = ctx.Input<LoDTensor>("LearningRate");
+    auto* grad = ctx.Input<phi::DenseTensor>("Grad");
+    auto* mom1 = ctx.Input<phi::DenseTensor>("Moment1");
+    auto* mom2 = ctx.Input<phi::DenseTensor>("Moment2");
+    auto* lr = ctx.Input<phi::DenseTensor>("LearningRate");
 
     auto* beta1_pow = ctx.Input<phi::DenseTensor>("Beta1Pow");
     auto* beta2_pow = ctx.Input<phi::DenseTensor>("Beta2Pow");
 
-    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
-    auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
-    auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
-    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
-    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* mom1_out = ctx.Output<phi::DenseTensor>("Moment1Out");
+    auto* mom2_out = ctx.Output<phi::DenseTensor>("Moment2Out");
+    auto* beta1_pow_out = ctx.Output<phi::DenseTensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<phi::DenseTensor>("Beta2PowOut");
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
@@ -114,8 +111,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform
     // place.
-    LoDTensor beta1_pow_tmp;
-    LoDTensor beta2_pow_tmp;
+    phi::DenseTensor beta1_pow_tmp;
+    phi::DenseTensor beta2_pow_tmp;
     if (beta1_pow->place() == platform::CPUPlace()) {
       T beta1 = *beta1_pow->data<T>();
       beta1_pow_tmp.mutable_data<T>({1}, ctx.GetPlace());
@@ -133,9 +130,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    Tensor beta1_tmp(experimental::DataType::FLOAT32);
-    Tensor beta2_tmp(experimental::DataType::FLOAT32);
-    Tensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
@@ -279,7 +276,7 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
     bool with_decay = ctx.Attr<bool>("with_decay");
     if (!skip_update && with_decay) {
       float coeff = ctx.Attr<float>("coeff");
-      auto* lr = ctx.Input<LoDTensor>("LearningRate");
+      auto* lr = ctx.Input<phi::DenseTensor>("LearningRate");
 
       auto place = ctx.GetPlace();
 
@@ -287,9 +284,9 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
 
-      Tensor one(experimental::DataType::FLOAT32);
-      Tensor decay(experimental::DataType::FLOAT32);
-      Tensor tmp(experimental::DataType::FLOAT32);
+      phi::DenseTensor one(phi::DataType::FLOAT32);
+      phi::DenseTensor decay(phi::DataType::FLOAT32);
+      phi::DenseTensor tmp(phi::DataType::FLOAT32);
 
       tmp.mutable_data<float>({1}, place);
       one.mutable_data<float>({1}, place);
@@ -308,18 +305,18 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Master Parma is not supported on npu"));
       } else {
-        auto* param_out = ctx.Output<LoDTensor>("ParamOut");
+        auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
         param_out->mutable_data<T>(ctx.GetPlace());
 
         const auto* param_var = ctx.InputVar("Param");
         PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                           true,
                           platform::errors::InvalidArgument(
-                              "The Var(%s)'s type should be LoDTensor, "
+                              "The Var(%s)'s type should be phi::DenseTensor, "
                               "but the received is %s",
                               ctx.InputNames("Param").front(),
                               framework::ToTypeName(param_var->Type())));
-        auto* param = ctx.Input<LoDTensor>("Param");
+        auto* param = ctx.Input<phi::DenseTensor>("Param");
 
         const auto& runner =
             NpuOpRunner("Mul",

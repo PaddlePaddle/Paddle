@@ -14,10 +14,11 @@
 
 # TODO: define activation functions of neural network
 
-from ..initializer import Constant
 from paddle.framework import get_default_dtype
+
 from .. import functional as F
-from paddle.nn import Layer
+from ..initializer import Constant
+from .layers import Layer
 
 __all__ = []
 
@@ -60,8 +61,8 @@ class CELU(Layer):
         return F.celu(x, self._alpha, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'alpha={}{}'.format(self._alpha, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'alpha={self._alpha}{name_str}'
 
 
 class ELU(Layer):
@@ -108,8 +109,8 @@ class ELU(Layer):
         return F.elu(x, self._alpha, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'alpha={}{}'.format(self._alpha, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'alpha={self._alpha}{name_str}'
 
 
 class GELU(Layer):
@@ -160,8 +161,8 @@ class GELU(Layer):
         return F.gelu(x, self._approximate, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'approximate={}{}'.format(self._approximate, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'approximate={self._approximate}{name_str}'
 
 
 class Hardshrink(Layer):
@@ -208,8 +209,8 @@ class Hardshrink(Layer):
         return F.hardshrink(x, self._threshold, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'threshold={}{}'.format(self._threshold, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'threshold={self._threshold}{name_str}'
 
 
 class Hardswish(Layer):
@@ -258,7 +259,7 @@ class Hardswish(Layer):
         return F.hardswish(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -299,7 +300,7 @@ class Tanh(Layer):
         return F.tanh(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -349,17 +350,21 @@ class Hardtanh(Layer):
         return F.hardtanh(x, self._min, self._max, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'min={}, max={}{}'.format(self._min, self._max, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'min={self._min}, max={self._max}{name_str}'
 
 
 class PReLU(Layer):
     """
-    PReLU Activation.
+    PReLU Activation. The calculation formula is follows:
+
+    If approximate calculation is used:
 
     .. math::
 
         PReLU(x) = max(0, x) + weight * min(0, x)
+
+    x is input Tensor.
 
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
@@ -429,7 +434,7 @@ class PReLU(Layer):
         return F.prelu(x, self._weight, data_format=self._data_format)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
             self._num_parameters,
             self._data_format,
@@ -478,8 +483,8 @@ class RReLU(Layer):
     :math:`lower` and :math:`upper` are the bounds of uniform distribution.
 
     Parameters:
-        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
-        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
+        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -522,7 +527,7 @@ class RReLU(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'lower={}, upper={}, training={}, dtype={}{}'.format(
             self._lower, self._upper, self.training, self._dtype, name_str
         )
@@ -530,11 +535,13 @@ class RReLU(Layer):
 
 class ReLU(Layer):
     """
-    ReLU Activation.
+    ReLU Activation. The calculation formula is follows:
 
     .. math::
 
         ReLU(x) = max(x, 0)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -564,7 +571,7 @@ class ReLU(Layer):
         return F.relu(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -575,6 +582,8 @@ class ReLU6(Layer):
     .. math::
 
         ReLU6(x) = min(max(0,x), 6)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -604,7 +613,7 @@ class ReLU6(Layer):
         return F.relu6(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -623,8 +632,8 @@ class SELU(Layer):
             \right.
 
     Parameters:
-        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946.
+        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -659,7 +668,7 @@ class SELU(Layer):
         return F.selu(x, self._scale, self._alpha, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'scale={:.16f}, alpha={:.16f}{}'.format(
             self._scale, self._alpha, name_str
         )
@@ -710,8 +719,8 @@ class LeakyReLU(Layer):
         return F.leaky_relu(x, self._negative_slope, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'negative_slope={}{}'.format(self._negative_slope, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'negative_slope={self._negative_slope}{name_str}'
 
 
 class Sigmoid(Layer):
@@ -750,7 +759,7 @@ class Sigmoid(Layer):
         return F.sigmoid(x, self.name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self.name) if self.name else ''
+        name_str = f'name={self.name}' if self.name else ''
         return name_str
 
 
@@ -801,7 +810,7 @@ class Hardsigmoid(Layer):
         return F.hardsigmoid(x, name=self.name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self.name) if self.name else ''
+        name_str = f'name={self.name}' if self.name else ''
         return name_str
 
 
@@ -844,7 +853,7 @@ class Softplus(Layer):
         return F.softplus(x, self._beta, self._threshold, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'beta={}, threshold={}{}'.format(
             self._beta, self._threshold, name_str
         )
@@ -897,8 +906,8 @@ class Softshrink(Layer):
         return F.softshrink(x, self._threshold, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'threshold={}{}'.format(self._threshold, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'threshold={self._threshold}{name_str}'
 
 
 class Softsign(Layer):
@@ -938,7 +947,7 @@ class Softsign(Layer):
         return F.softsign(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -979,7 +988,7 @@ class Swish(Layer):
         return F.swish(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -1024,7 +1033,7 @@ class Mish(Layer):
         return F.mish(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -1065,7 +1074,7 @@ class Tanhshrink(Layer):
         return F.tanhshrink(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -1115,8 +1124,8 @@ class ThresholdedReLU(Layer):
         return F.thresholded_relu(x, self._threshold, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'threshold={}{}'.format(self._threshold, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'threshold={self._threshold}{name_str}'
 
 
 class Silu(Layer):
@@ -1154,7 +1163,7 @@ class Silu(Layer):
         return F.silu(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -1193,7 +1202,7 @@ class LogSigmoid(Layer):
         return F.log_sigmoid(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -1315,11 +1324,11 @@ class Softmax(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.softmax(x, self._axis, self._dtype, self._name)
+        return F.softmax(x, self._axis, name=self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'axis={}{}'.format(self._axis, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'axis={self._axis}{name_str}'
 
 
 class LogSoftmax(Layer):
@@ -1376,8 +1385,8 @@ class LogSoftmax(Layer):
         return F.log_softmax(x, self._axis)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'axis={}{}'.format(self._axis, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'axis={self._axis}{name_str}'
 
 
 class Maxout(Layer):
@@ -1400,7 +1409,7 @@ class Maxout(Layer):
         \end{array}
 
     Parameters:
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features. Default is 1.
         axis (int, optional): The axis along which to perform maxout calculations.
@@ -1443,21 +1452,22 @@ class Maxout(Layer):
         return F.maxout(x, self._groups, self._axis, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'groups={}, axis={}{}'.format(self._groups, self._axis, name_str)
+        name_str = f', name={self._name}' if self._name else ''
+        return f'groups={self._groups}, axis={self._axis}{name_str}'
 
 
 class Softmax2D(Layer):
     r"""
+
     Softmax2D Activation.
     Given a Tensor with shape (B, C, H, W) or (C, H, W), it will apply Softmax to each location (C, h_i, w_j).
     The sum of result in each location (C, H_i, W_j) will be one.
 
     Shape:
         - Input: :math:`(B, C, H, W)` or :math:`(C, H, W)`
-        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)`(same as input)
+        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)` (same as input)
 
-    Return:
+    Returns:
         A Tensor of the same shape and dtype as input with value in range [0, 1].
 
     Examples:
@@ -1482,6 +1492,7 @@ class Softmax2D(Layer):
             #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
             #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
             #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+
     """
 
     def __init__(self, name=None):
@@ -1498,5 +1509,5 @@ class Softmax2D(Layer):
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str

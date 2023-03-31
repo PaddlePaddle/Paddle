@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
 import paddle
+from paddle import fluid
+from paddle.fluid import framework
 
 paddle.enable_static()
 
@@ -54,7 +55,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
             self.outputs = {"Out": self.value}
 
         def init_data(self):
-            self.value = np.random.random(size=(2, 5)).astype(self.dtype)
+            self.value = np.random.random(size=(2, 5)).astype(np.float32)
             self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
         def test_forward(self):
@@ -73,7 +74,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
     class TestAssignValueOp4(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-                np.bool
+                np.bool_
             )
             self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
@@ -92,8 +93,8 @@ class TestAssignApi(unittest.TestCase):
     def test_assign(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x = layers.create_tensor(dtype=self.dtype)
-            layers.assign(input=self.value, output=x)
+            x = paddle.tensor.create_tensor(dtype=self.dtype)
+            paddle.assign(self.value, output=x)
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
@@ -115,7 +116,7 @@ class TestAssignApi4(TestAssignApi):
     def setUp(self):
         self.init_dtype()
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.place = fluid.XPUPlace(0)
 

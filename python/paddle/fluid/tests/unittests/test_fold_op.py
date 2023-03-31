@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
-from op_test import OpTest
+
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -122,10 +124,24 @@ class TestFoldOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y')
+
+
+class TestFoldshape(TestFoldOp):
+    def init_data(self):
+        self.batch_size = 8
+        self.input_channels = 3 * 3 * 3
+        self.length = 6
+        self.kernel_sizes = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0, 0, 0]
+        self.dilations = [1, 1]
+        self.output_sizes = [4, 5]
+        input_shape = [self.batch_size, self.input_channels, self.length]
+        self.x = np.random.rand(*input_shape).astype(np.float64)
 
 
 class TestFoldAPI(TestFoldOp):
@@ -157,13 +173,13 @@ class TestFoldAPI(TestFoldOp):
 
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
-        from paddle.nn.functional import fold
         from paddle.fluid.framework import Program, program_guard
+        from paddle.nn.functional import fold
 
         with program_guard(Program(), Program()):
 
             def test_input_shape():
-                # input_shpae must be 3-D
+                # input_shape must be 3-D
                 x = paddle.randn(shape=[2, 3, 6, 7], dtype="float32")
                 out = fold(x, output_sizes=[2, 3], kernel_sizes=[2, 2])
 

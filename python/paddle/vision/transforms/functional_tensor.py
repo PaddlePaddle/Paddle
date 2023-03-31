@@ -15,15 +15,19 @@
 import math
 import numbers
 
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
+
+from ...fluid.framework import Variable
 
 __all__ = []
 
 
 def _assert_image_tensor(img, data_format):
     if (
-        not isinstance(img, paddle.Tensor)
+        not isinstance(img, (paddle.Tensor, Variable))
         or img.ndim < 3
         or img.ndim > 4
         or not data_format.lower() in ('chw', 'hwc')
@@ -219,12 +223,23 @@ def _affine_grid(theta, w, h, ow, oh):
 
     x_grid = paddle.linspace(-ow * 0.5 + d, ow * 0.5 + d - 1, ow)
     base_grid[..., 0] = x_grid
-    y_grid = paddle.linspace(-oh * 0.5 + d, oh * 0.5 + d - 1, oh).unsqueeze_(-1)
-    base_grid[..., 1] = y_grid
 
-    scaled_theta = theta.transpose((0, 2, 1)) / paddle.to_tensor(
-        [0.5 * w, 0.5 * h]
-    )
+    if paddle.in_dynamic_mode():
+        y_grid = paddle.linspace(
+            -oh * 0.5 + d, oh * 0.5 + d - 1, oh
+        ).unsqueeze_(-1)
+        base_grid[..., 1] = y_grid
+        tmp = paddle.to_tensor([0.5 * w, 0.5 * h])
+    else:
+        # To eliminate the warning:
+        # In static mode, unsqueeze_() is the same as unsqueeze() and does not perform inplace operation.
+        y_grid = paddle.linspace(-oh * 0.5 + d, oh * 0.5 + d - 1, oh).unsqueeze(
+            -1
+        )
+        base_grid[..., 1] = y_grid
+        tmp = paddle.assign(np.array([0.5 * w, 0.5 * h], dtype="float32"))
+
+    scaled_theta = theta.transpose((0, 2, 1)) / tmp
     output_grid = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta)
 
     return output_grid.reshape((1, oh, ow, 2))
@@ -250,11 +265,21 @@ def _grid_transform(img, grid, mode, fill):
     if fill is not None:
         mask = img[:, -1:, :, :]  # n 1 h w
         img = img[:, :-1, :, :]  # n c h w
-        mask = mask.expand_as(img)
+        mask = mask.tile([1, img.shape[1], 1, 1])
         len_fill = len(fill) if isinstance(fill, (tuple, list)) else 1
-        fill_img = (
-            paddle.to_tensor(fill).reshape((1, len_fill, 1, 1)).expand_as(img)
-        )
+
+        if paddle.in_dynamic_mode():
+            fill_img = (
+                paddle.to_tensor(fill)
+                .reshape((1, len_fill, 1, 1))
+                .astype(img.dtype)
+                .expand_as(img)
+            )
+        else:
+            fill = np.array(fill).reshape(len_fill).astype("float32")
+            fill_img = paddle.ones_like(img) * paddle.assign(fill).reshape(
+                [1, len_fill, 1, 1]
+            )
 
         if mode == 'nearest':
             mask = paddle.cast(mask < 0.5, img.dtype)
@@ -361,15 +386,29 @@ def rotate(
     else:
         rotn_center = [(p - s * 0.5) for p, s in zip(center, [w, h])]
 
-    angle = math.radians(angle)
-    matrix = [
-        math.cos(angle),
-        math.sin(angle),
-        0.0,
-        -math.sin(angle),
-        math.cos(angle),
-        0.0,
-    ]
+    if paddle.in_dynamic_mode():
+        angle = math.radians(angle)
+        matrix = [
+            math.cos(angle),
+            math.sin(angle),
+            0.0,
+            -math.sin(angle),
+            math.cos(angle),
+            0.0,
+        ]
+        matrix = paddle.to_tensor(matrix, place=img.place)
+    else:
+        angle = angle / 180 * math.pi
+        matrix = paddle.concat(
+            [
+                paddle.cos(angle),
+                paddle.sin(angle),
+                paddle.zeros([1]),
+                -paddle.sin(angle),
+                paddle.cos(angle),
+                paddle.zeros([1]),
+            ]
+        )
 
     matrix[2] += matrix[0] * (-rotn_center[0] - post_trans[0]) + matrix[1] * (
         -rotn_center[1] - post_trans[1]
@@ -381,20 +420,29 @@ def rotate(
     matrix[2] += rotn_center[0]
     matrix[5] += rotn_center[1]
 
-    matrix = paddle.to_tensor(matrix, place=img.place)
     matrix = matrix.reshape((1, 2, 3))
 
     if expand:
         # calculate output size
-        corners = paddle.to_tensor(
-            [
-                [-0.5 * w, -0.5 * h, 1.0],
-                [-0.5 * w, 0.5 * h, 1.0],
-                [0.5 * w, 0.5 * h, 1.0],
-                [0.5 * w, -0.5 * h, 1.0],
-            ],
-            place=matrix.place,
-        ).astype(matrix.dtype)
+        if paddle.in_dynamic_mode():
+            corners = paddle.to_tensor(
+                [
+                    [-0.5 * w, -0.5 * h, 1.0],
+                    [-0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, -0.5 * h, 1.0],
+                ],
+                place=matrix.place,
+            ).astype(matrix.dtype)
+        else:
+            corners = paddle.assign(
+                [
+                    [-0.5 * w, -0.5 * h, 1.0],
+                    [-0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, -0.5 * h, 1.0],
+                ],
+            ).astype(matrix.dtype)
 
         _pos = (
             corners.reshape((1, -1, 3))
@@ -408,7 +456,10 @@ def rotate(
         nw = npos[0][0]
         nh = npos[0][1]
 
-        ow, oh = int(nw.numpy()[0]), int(nh.numpy()[0])
+        if paddle.in_dynamic_mode():
+            ow, oh = int(nw), int(nh)
+        else:
+            ow, oh = nw.astype("int32"), nh.astype("int32")
 
     else:
         ow, oh = w, h
@@ -652,7 +703,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
     if isinstance(padding, (list, tuple)) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a "
-            + "{} element tuple".format(len(padding))
+            + f"{len(padding)} element tuple"
         )
 
     assert padding_mode in [
@@ -721,10 +772,18 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         isinstance(size, int)
         or (isinstance(size, (tuple, list)) and len(size) == 2)
     ):
-        raise TypeError('Got inappropriate size arg: {}'.format(size))
+        raise TypeError(f'Got inappropriate size arg: {size}')
 
     if isinstance(size, int):
         w, h = _get_image_size(img, data_format)
+        # TODO(Aurelius84): In static graph mode, w and h will be -1 for dynamic shape.
+        # We should consider to support this case in future.
+        if w <= 0 or h <= 0:
+            raise NotImplementedError(
+                "Not support while w<=0 or h<=0, but received w={}, h={}".format(
+                    w, h
+                )
+            )
         if (w <= h and w == size) or (h <= w and h == size):
             return img
         if w < h:

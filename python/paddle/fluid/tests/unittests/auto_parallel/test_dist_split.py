@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.distributed.fleet import auto
 
@@ -34,8 +35,8 @@ def make_program_dp2():
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program = program_func()
 

@@ -14,13 +14,14 @@
 
 import json
 import multiprocessing
-
 from multiprocessing import Process
 
-from CspFileReader import FileReader
-from CspFileReader import getLogger
-from CspFileReader import PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYTRAINER
+from CspFileReader import (
+    FILEORGANIZEFORM_BYTRAINER,
+    PIPELINEINFO_TRACE_NUM,
+    FileReader,
+    getLogger,
+)
 
 
 class netFileReader(FileReader):

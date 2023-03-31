@@ -27,16 +27,18 @@ from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
+from .tensor import _npu_identity
 from .passes import fuse_resnet_unit_pass
 
 from . import autograd  # noqa: F401
 from . import autotune  # noqa: F401
 from . import nn  # noqa: F401
 from . import asp  # noqa: F401
+from . import multiprocessing  # noqa: F401
 
-from ..fluid.layers.loss import identity_loss
+from .nn.loss import identity_loss
 
-from ..fluid.incubate import fleet
+from ..distributed import fleet
 from . import xpu
 
 __all__ = [

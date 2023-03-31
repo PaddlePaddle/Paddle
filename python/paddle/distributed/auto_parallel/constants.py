@@ -54,7 +54,8 @@ set_field_default_config(BASE, "reinit", False)  # Only for debug
 #########################################
 RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
-set_field_default_config(RECOMPUTE, "checkpoints", None)
+set_field_default_config(RECOMPUTE, "checkpoints", [])
+set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
@@ -62,6 +63,8 @@ set_field_default_config(RECOMPUTE, "enable_tuning", False)
 #########################################
 AMP = "amp"
 set_field_default_config(AMP, "enable", False)
+set_field_default_config(AMP, "dtype", "float16")
+set_field_default_config(AMP, "level", "o1")
 set_field_default_config(AMP, "init_loss_scaling", 32768.0)
 set_field_default_config(AMP, "incr_every_n_steps", 1000)
 set_field_default_config(AMP, "decr_every_n_nan_or_inf", 2)
@@ -71,9 +74,8 @@ set_field_default_config(AMP, "use_dynamic_loss_scaling", True)
 set_field_default_config(AMP, "custom_white_list", [])
 set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
-set_field_default_config(AMP, "use_pure_fp16", False)
-set_field_default_config(AMP, "use_fp16_guard", True)
-set_field_default_config(AMP, "use_optimizer_fp16", False)
+set_field_default_config(AMP, "use_fp16_guard", False)
+set_field_default_config(AMP, "use_bf16_guard", False)
 
 #########################################
 # sharding configuration
@@ -82,8 +84,12 @@ SHARDING = "sharding"
 set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
 set_field_default_config(SHARDING, "degree", 8)
-set_field_default_config(SHARDING, "overlap_grad_comm", False)
-set_field_default_config(SHARDING, "bucket_size_numel", -1)
+set_field_default_config(SHARDING, "enable_overlap", False)
+set_field_default_config(SHARDING, "param_comm_stream_num", 1)
+set_field_default_config(SHARDING, "grad_comm_stream_num", 1)
+set_field_default_config(SHARDING, "param_bucket_size_numel", 1)
+set_field_default_config(SHARDING, "grad_bucket_size_numel", 1)
+set_field_default_config(SHARDING, "enable_hierarchical_comm", False)
 set_field_default_config(SHARDING, "partition_algor", "greedy_even")
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])
@@ -106,18 +112,17 @@ set_field_default_config(QAT, "weight_bits", 8)
 set_field_default_config(QAT, "activation_bits", 8)
 set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
+set_field_default_config(QAT, "onnx_format", True)
 
 # #########################################
 # auto tuning configuration
 # #########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
-set_field_default_config(TUNING, "batch_size", 1)
-set_field_default_config(TUNING, "dataset", None)
 set_field_default_config(TUNING, "profile_start_step", 1)
 set_field_default_config(TUNING, "profile_end_step", 1)
 set_field_default_config(TUNING, "run_after_tuning", True)
-set_field_default_config(TUNING, "verbose", True)
+set_field_default_config(TUNING, "debug", False)
 
 #########################################
 # dataset configuration
@@ -125,3 +130,10 @@ set_field_default_config(TUNING, "verbose", True)
 DATASET = "dataset"
 set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
+
+#########################################
+# fused passes configuration
+#########################################
+FUSED_PASSES = "fused_passes"
+set_field_default_config(FUSED_PASSES, "enable", False)
+set_field_default_config(FUSED_PASSES, "fused_passes_list", [])

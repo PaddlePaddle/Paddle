@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from simple_nets import simple_fc_net, fc_with_batchnorm, init_data, bow_net
-from fake_reader import fake_imdb_reader
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from functools import partial
-import paddle
-import unittest
 import os
+import unittest
+from functools import partial
+
+from fake_reader import fake_imdb_reader
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import bow_net, fc_with_batchnorm, init_data, simple_fc_net
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -77,9 +79,9 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
         )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
 
     def optimizer(self, learning_rate=1e-3):
         optimizer = fluid.optimizer.SGD(

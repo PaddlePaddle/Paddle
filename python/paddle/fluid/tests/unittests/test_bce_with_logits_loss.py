@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 def call_bce_layer(
@@ -51,10 +52,10 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        logit = paddle.fluid.data(
+        logit = paddle.static.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         feed_dict = {"logit": logit_np, "label": label_np}
@@ -62,12 +63,12 @@ def test_static(
         pos_weight = None
         weight = None
         if pos_weight_np is not None:
-            pos_weight = paddle.fluid.data(
+            pos_weight = paddle.static.data(
                 name='pos_weight', shape=pos_weight_np.shape, dtype='float64'
             )
             feed_dict["pos_weight"] = pos_weight_np
         if weight_np is not None:
-            weight = paddle.fluid.data(
+            weight = paddle.static.data(
                 name='weight', shape=weight_np.shape, dtype='float64'
             )
             feed_dict["weight"] = weight_np
@@ -170,15 +171,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     functional=True,
                 )
 
-                with _test_eager_guard():
-                    eager_functional = test_dygraph(
-                        place,
-                        logit_np,
-                        label_np,
-                        reduction=reduction,
-                        functional=True,
-                    )
-
                 np.testing.assert_allclose(
                     static_functional, expected, rtol=1e-05
                 )
@@ -186,9 +178,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     static_functional, dy_functional, rtol=1e-05
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
-                np.testing.assert_allclose(
-                    eager_functional, expected, rtol=1e-05
-                )
 
     def test_BCEWithLogitsLoss_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(

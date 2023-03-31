@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
@@ -42,10 +44,10 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
         for data_layout in ["NCHW", "NHWC"]:
             for scale_y in [2.0, 1.0]:
-                for scale_x in [2.0, 1.0]:
+                for scale_x in [2.0]:
                     scale = [scale_y, scale_x]
-                    for out_h in [32, 64, 128, 192]:
-                        for out_w in [32, 64]:
+                    for out_h in [32, 128]:
+                        for out_w in [64]:
                             dics = [
                                 {
                                     "data_layout": data_layout,

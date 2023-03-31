@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
-import numpy as np
 import unittest
+
+import eager_op_test
+import numpy as np
+
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import core
 
 
 def assign_pos(x, _cum_count):
@@ -71,7 +72,7 @@ def get_redefined_allclose(cum_count):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestAssignPosOpInt64(op_test.OpTest):
+class TestAssignPosOpInt64(eager_op_test.OpTest):
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -86,7 +87,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
         self.cum_count = cum_count
 
     def test_forward(self):
-        np.allclose = get_redefined_allclose(self.cum_count)
+        np.testing.assert_allclose = get_redefined_allclose(self.cum_count)
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
@@ -104,8 +105,8 @@ class TestAssignPosAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            cum_count = paddle.fluid.data(
+            x = paddle.static.data('x', self.x.shape, dtype="int64")
+            cum_count = paddle.static.data(
                 'cum_count', self.cum_count.shape, dtype="int64"
             )
             out = utils._assign_pos(x, cum_count)
@@ -116,18 +117,13 @@ class TestAssignPosAPI(unittest.TestCase):
             )
             assert_allclose(res[0], self.out, self.cum_count)
 
-    def func_api_dygraph(self):
+    def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
 
         out = utils._assign_pos(x, cum_count)
         assert_allclose(out.numpy(), self.out, self.cum_count)
-
-    def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
-        self.func_api_dygraph()
 
 
 if __name__ == '__main__':

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
-from op_test import OpTest
+
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
 
 
 def test_static_layer(
@@ -25,14 +27,14 @@ def test_static_layer(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=input_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         if weight_np is not None:
-            weight = paddle.fluid.data(
+            weight = paddle.static.data(
                 name='weight', shape=weight_np.shape, dtype='float64'
             )
             bce_loss = paddle.nn.loss.BCELoss(
@@ -58,14 +60,14 @@ def test_static_functional(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=input_np.shape, dtype='float64'
         )
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
         if weight_np is not None:
-            weight = paddle.fluid.data(
+            weight = paddle.static.data(
                 name='weight', shape=weight_np.shape, dtype='float64'
             )
             res = paddle.nn.functional.binary_cross_entropy(
@@ -241,10 +243,15 @@ def bce_loss(input, label):
     return -1 * (label * np.log(input) + (1.0 - label) * np.log(1.0 - input))
 
 
+def bce_wrapper(x, label):
+    return paddle._C_ops.bce_loss(x, label)
+
+
 class TestBceLossOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "bce_loss"
+        self.python_api = bce_wrapper
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
         label_np = np.random.randint(0, 2, self.shape).astype("float64")
         output_np = bce_loss(input_np, label_np)

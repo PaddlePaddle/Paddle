@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import yaml
 import logging
+
+import yaml
+
 from paddle.distributed.utils.log_utils import get_logger
 
 __all__ = []
@@ -34,10 +35,8 @@ def init_metric(
     bucket_size=1000000,
 ):
     yaml_fobj = open(metric_yaml_path)
-    if sys.version.startswith('2.7.13'):
-        content = yaml.load(yaml_fobj)
-    else:
-        content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+
+    content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
 
     print("yaml metric config: \n")
     print(content)

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
 class TensorToListTest(unittest.TestCase):
     def setUp(self):
         self.shape = [11, 25, 32, 43]
 
-    def func_tensor_tolist(self):
+    def test_tensor_tolist(self):
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -39,11 +40,6 @@ class TensorToListTest(unittest.TestCase):
             tensorlist = t.tolist()
 
             self.assertEqual(tensorlist, expectlist)
-
-    def test_tensor_tolist(self):
-        with _test_eager_guard():
-            self.func_tensor_tolist()
-        self.func_tensor_tolist()
 
 
 if __name__ == '__main__':

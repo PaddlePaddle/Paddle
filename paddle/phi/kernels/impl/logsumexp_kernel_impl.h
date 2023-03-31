@@ -51,7 +51,7 @@ struct LogsumexpFunctor {
 
     auto x_mt = (*x).template cast<MT>();
     auto y_dim = y->dimensions();
-    auto x_max = x_mt.maximum(dim);
+    auto x_max = x_mt.maximum(dim).eval();
     y->device(place) =
         (x_max +
          (x_mt - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
@@ -69,10 +69,15 @@ void LogsumexpKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  if (axis.size() == 0 || static_cast<int>(axis.size()) == x.dims().size()) {
-    reduce_all = true;
-  }
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
 
+  auto x_dim = x.dims();
+  for (int i = 0; i < x_dim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      x_dim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto input = phi::EigenVector<T>::Flatten(x);

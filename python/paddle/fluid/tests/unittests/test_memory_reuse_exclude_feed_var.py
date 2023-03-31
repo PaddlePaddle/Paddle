@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
@@ -23,11 +27,11 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         self.iteration = 10
 
     def main_impl(self, place):
-        image = fluid.layers.data(
-            name='image', shape=self.image_shape, dtype='float32'
+        image = paddle.static.data(
+            name='image', shape=[-1] + self.image_shape, dtype='float32'
         )
-        relu_image = fluid.layers.relu(image)
-        loss = fluid.layers.reduce_mean(relu_image)
+        relu_image = F.relu(image)
+        loss = paddle.mean(relu_image)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True
@@ -37,8 +41,8 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         compiled_prog = fluid.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            fluid.default_main_program(), build_strategy=build_strategy
+        )
 
         image_tensor = fluid.LoDTensor()
         np_image = np.random.uniform(

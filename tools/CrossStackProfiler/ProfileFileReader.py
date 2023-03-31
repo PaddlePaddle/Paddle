@@ -16,18 +16,17 @@ import json
 import multiprocessing
 from multiprocessing import Process
 
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
-
 from CspChromeTraceFormatter import ChromeTraceFormatter
-
-from CspFileReader import FileReader
-from CspFileReader import getLogger
 from CspFileReader import (
-    NETINFO_TRACE_NUM,
     DCGMINFO_TRACE_NUM,
+    FILEORGANIZEFORM_BYRANK,
+    NETINFO_TRACE_NUM,
     PIPELINEINFO_TRACE_NUM,
+    FileReader,
+    getLogger,
 )
-from CspFileReader import FILEORGANIZEFORM_BYRANK
+
+from paddle.fluid.proto.profiler import profiler_pb2
 
 
 class profileFileReader(FileReader):
@@ -205,8 +204,8 @@ class profileFileReader(FileReader):
 
     def _allocate_pids(self, profile_dict, gpuId, initPid):
         chrome_trace = ChromeTraceFormatter()
-        devices = dict()
-        mem_devices = dict()
+        devices = {}
+        mem_devices = {}
 
         initLineNum = initPid + 1
         lineDelta = len(profile_dict.keys())
@@ -384,7 +383,7 @@ class profileFileReader(FileReader):
             mem_list = []
             end_profiler = 0
             for mevent in profile_pb.mem_events:
-                crt_info = dict()
+                crt_info = {}
                 crt_info['time'] = mevent.start_ns
                 crt_info['size'] = mevent.bytes
                 if mevent.place in place_to_str:
@@ -404,7 +403,7 @@ class profileFileReader(FileReader):
                 crt_info['thread_id'] = mevent.thread_id
                 crt_info['device_id'] = mevent.device_id
                 mem_list.append(crt_info)
-                crt_info = dict()
+                crt_info = {}
                 crt_info['place'] = place
                 crt_info['pid'] = pid
                 crt_info['thread_id'] = mevent.thread_id

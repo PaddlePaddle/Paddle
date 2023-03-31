@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -29,10 +30,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_eager=True)
+        self.check_grad(['Input'], ['Out'])
 
     def init_data(self):
         np.random.seed(0)
@@ -68,7 +69,7 @@ class TestDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -85,10 +86,6 @@ class TestDeterminantAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
-
 
 class TestSlogDeterminantOp(OpTest):
     def setUp(self):
@@ -98,13 +95,11 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(
-            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
-        )
+        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
         np.random.seed(0)
@@ -131,7 +126,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.slogdet(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])

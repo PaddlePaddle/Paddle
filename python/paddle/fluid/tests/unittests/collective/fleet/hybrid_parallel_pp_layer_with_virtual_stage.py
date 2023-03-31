@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
+import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
-import paddle.nn as nn
-from paddle.fluid.dygraph.layers import Layer
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     PipelineLayer,
     PipelineParallelWithInterleave,
 )
-import paddle.nn.functional as F
+from paddle.nn import Layer
 
 
 class ReshapeHelp(Layer):

@@ -16,9 +16,9 @@
 """
 TestCases for check_pr_approval.py
 """
-import unittest
 import subprocess
 import sys
+import unittest
 
 
 class Test_check_approval(unittest.TestCase):

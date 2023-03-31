@@ -24,6 +24,7 @@ meta_optimizer_names = list(
 # should be removed
 meta_optimizer_names.remove("HybridParallelOptimizer")
 meta_optimizer_names.remove("HeterParallelOptimizer")
+meta_optimizer_names.remove("DGCMomentumOptimizer")
 
 
 class MetaOptimizerFactory:

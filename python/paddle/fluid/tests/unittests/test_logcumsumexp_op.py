@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-import unittest
 import itertools
+import unittest
+from typing import Optional
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
+from paddle import fluid
+from paddle.fluid import core
 
 
 def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
@@ -212,10 +214,17 @@ class TestLogcumsumexp(unittest.TestCase):
                 out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
 
 
+def logcumsumexp_wrapper(
+    x, axis=-1, flatten=False, exclusive=False, reverse=False
+):
+    return paddle._C_ops.logcumsumexp(x, axis, flatten, exclusive, reverse)
+
+
 class BaseTestCases:
     class BaseOpTest(OpTest):
         def setUp(self):
             self.op_type = "logcumsumexp"
+            self.python_api = logcumsumexp_wrapper
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs

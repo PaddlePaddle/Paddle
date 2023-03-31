@@ -14,15 +14,16 @@
 
 import contextlib
 from enum import Enum
-import numpy as np
 from types import MethodType
 
+import numpy as np
+
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import dygraph_only
 from paddle.fluid import core
-from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import dygraph_only
+from paddle.nn import clip
 
 
 class Taskflow:
@@ -53,8 +54,12 @@ class GroupShardedClipGrad:
 
     @paddle.autograd.no_grad()
     def _dygraph_clip(self, params_grads):
-        sum_square_fp32, sum_square_fp16 = [], []
-        unslice_params_fp32, unslice_params_fp16 = [], []
+        sum_square_fp32, sum_square_fp16, sum_square_bfp16 = [], [], []
+        unslice_params_fp32, unslice_params_fp16, unslice_params_bfp16 = (
+            [],
+            [],
+            [],
+        )
 
         for p, g in params_grads:
             p_slice = True  # using for slice parameter in sharding stage3
@@ -65,11 +70,11 @@ class GroupShardedClipGrad:
 
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.get_tensor_from_selected_rows(
-                    layers.merge_selected_rows(g)
+                merge_grad = clip.get_tensor_from_selected_rows(
+                    clip.merge_selected_rows(g)
                 )
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+            square = paddle.square(merge_grad)
+            sum_square = paddle.sum(square)
 
             if p.dtype == paddle.float16:
                 if p_slice:
@@ -81,48 +86,73 @@ class GroupShardedClipGrad:
                     sum_square_fp32.append(sum_square)
                 else:
                     unslice_params_fp32.append(sum_square)
+            elif p.dtype == paddle.bfloat16:
+                if p_slice:
+                    sum_square_bfp16.append(sum_square)
+                else:
+                    unslice_params_bfp16.append(sum_square)
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_fp16) == 0:
             global_norm_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
-            global_norm_fp16 = layers.concat(sum_square_fp16)
-            global_norm_fp16 = layers.reduce_sum(global_norm_fp16)
+            global_norm_fp16 = paddle.concat(sum_square_fp16)
+            global_norm_fp16 = paddle.sum(global_norm_fp16)
             global_norm_fp16 = paddle.cast(
                 global_norm_fp16, dtype=paddle.float32
+            )
+
+        # global norm of non-distributed BFP16 params_and_grads
+        if len(sum_square_bfp16) == 0:
+            global_norm_bfp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
+        else:
+            global_norm_bfp16 = paddle.concat(sum_square_bfp16)
+            global_norm_bfp16 = paddle.sum(global_norm_bfp16)
+            global_norm_bfp16 = paddle.cast(
+                global_norm_bfp16, dtype=paddle.float32
             )
 
         # global norm of non-distributed FP16 params_and_grads for unslice parameters
         if len(unslice_params_fp16) == 0:
             global_unslice_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
-            global_unslice_fp16 = layers.concat(unslice_params_fp16)
-            global_unslice_fp16 = layers.reduce_sum(global_unslice_fp16)
+            global_unslice_fp16 = paddle.concat(unslice_params_fp16)
+            global_unslice_fp16 = paddle.sum(global_unslice_fp16)
             global_unslice_fp16 = paddle.cast(
                 global_unslice_fp16, dtype=paddle.float32
             )
 
+        # global norm of non-distributed BFP16 params_and_grads for unslice parameters
+        if len(unslice_params_bfp16) == 0:
+            global_unslice_bfp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
+        else:
+            global_unslice_bfp16 = paddle.concat(unslice_params_bfp16)
+            global_unslice_bfp16 = paddle.sum(global_unslice_bfp16)
+            global_unslice_bfp16 = paddle.cast(
+                global_unslice_bfp16, dtype=paddle.float32
+            )
+
         # global norm of non-distributed FP32 params_and_grads
         global_norm_fp32 = (
-            layers.concat(sum_square_fp32)
+            paddle.concat(sum_square_fp32)
             if len(sum_square_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_fp32 = layers.reduce_sum(global_norm_fp32)
+        global_norm_fp32 = paddle.sum(global_norm_fp32)
 
         # global norm of non-distributed FP32 params_and_grads for unslice parameters
         global_unslice_fp32 = (
-            layers.concat(unslice_params_fp32)
+            paddle.concat(unslice_params_fp32)
             if len(unslice_params_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_unslice_fp32 = layers.reduce_sum(global_unslice_fp32)
-        global_unslice_var = global_unslice_fp16 + global_unslice_fp32
+        global_unslice_fp32 = paddle.sum(global_unslice_fp32)
+        global_unslice_var = (
+            global_unslice_fp16 + global_unslice_fp32 + global_unslice_bfp16
+        )
 
         global_norm_var = (
-            global_norm_fp16
-            + global_norm_fp32
-            + 1.0 / self._group.nranks * global_unslice_var
+            global_norm_fp16 + global_norm_fp32 + global_norm_bfp16
         )
 
         # add all reduce to get global norm of distributed params_and_grads
@@ -130,15 +160,15 @@ class GroupShardedClipGrad:
         if paddle.device.get_device() == "cpu":
             global_norm_var = global_norm_var.cuda(dev_id)
 
-        with device_guard(dev_id, "gpu"):
+        with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
-        global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
+        global_norm_var = paddle.sqrt(global_norm_var + global_unslice_var)
+        max_global_norm = paddle.full(
+            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
@@ -150,9 +180,9 @@ class GroupShardedClipGrad:
             origin_state = g.stop_gradient
             g.stop_gradient = True
             if p.dtype == paddle.float16:
-                g.scale_(clip_var_fp16.item())
+                g.scale_(clip_var_fp16)
             else:
-                g.scale_(clip_var.item())
+                g.scale_(clip_var)
             g.stop_gradient = origin_state
             # p._reset_grad_inplace_version(True)
 
@@ -170,8 +200,8 @@ def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
-    elif device == "gpu":
-        paddle.set_device("gpu:{}".format(dev_id))
+    elif device in ["gpu", "xpu", "npu"]:
+        paddle.set_device(f"{device}:{dev_id}")
     try:
         yield
     finally:
@@ -184,6 +214,7 @@ def GroupShardedScaler(scaler):
         if not self._enable:
             return
         param_grads = []
+        param_grads_bfp16 = []
         param_grads_fp16 = []
         param_grads_fp32 = []
         if hasattr(optimizer, "update_slice"):
@@ -203,6 +234,8 @@ def GroupShardedScaler(scaler):
                             paddle.float16,
                         ]:
                             param_grads_fp16.append(param.grad)
+                        elif param.grad.dtype in [paddle.bfloat16]:
+                            param_grads_bfp16.append(param.grad)
                         else:
                             param_grads_fp32.append(param.grad)
         else:
@@ -214,24 +247,42 @@ def GroupShardedScaler(scaler):
                         paddle.float16,
                     ]:
                         param_grads_fp16.append(param.grad)
+                    elif param.grad.dtype in [paddle.bfloat16]:
+                        param_grads_bfp16.append(param.grad)
                     else:
                         param_grads_fp32.append(param.grad)
 
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_bfp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
-        device = "cpu" if optimizer.offload else "gpu"
+        device = paddle.get_device().split(":")[0]
+        device = "cpu" if optimizer.offload else device
         dev_id = (
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
 
+        self._found_inf = self._temp_found_inf_value_false
         with device_guard(dev_id, device):
+            if len(param_grads_bfp16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bfp16,
+                    self._scale,
+                    param_grads_bfp16,
+                    temp_found_inf_bfp16,
+                )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_bfp16
+                )
             if len(param_grads_fp16):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16,
                     self._scale,
                     param_grads_fp16,
                     temp_found_inf_fp16,
+                )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_fp16
                 )
             if len(param_grads_fp32):
                 _legacy_C_ops.check_finite_and_unscale(
@@ -240,14 +291,34 @@ def GroupShardedScaler(scaler):
                     param_grads_fp32,
                     temp_found_inf_fp32,
                 )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_fp32
+                )
 
-        self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
-        is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
+        self._found_inf = self._found_inf.cast("int32")
 
         paddle.distributed.all_reduce(
-            is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
+            self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
-        self._found_inf = is_found_inf.numpy()[0]
+
+        self._found_inf = self._found_inf.cast("bool")
 
     scaler._unscale = MethodType(unscale_method, scaler)
     return scaler
+
+
+def cvt_to_device(x, dev_id, blocking=True):
+    """
+    Copy data in x from cpu memory to supported device
+    """
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(dev_id)
+    elif paddle.is_compiled_with_npu():
+        place = paddle.NPUPlace(dev_id)
+    elif paddle.is_compiled_with_xpu():
+        place = paddle.XPUPlace(dev_id)
+    else:
+        raise OSError(
+            "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
+        )
+    return x._copy_to(place, blocking)

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.static as static
-from paddle.distributed import fleet
 import sys
 
 import numpy as np
 
+import paddle
+from paddle import static
+from paddle.distributed import fleet
+
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 
@@ -150,7 +151,7 @@ def train():
                 },
                 fetch_list=[loss],
             )
-            print("step: %s, loss: %f" % (step, loss_print[0]))
+            print(f"step: {step}, loss: {loss_print[0]:f}")
         else:
             exe.run(
                 distributed_main_program,
@@ -162,7 +163,7 @@ def train():
                     "loss_mask": loss_mask,
                 },
             )
-            print("step: %s, loss: %s" % (step, "None"))
+            print("step: {}, loss: {}".format(step, "None"))
 
 
 if __name__ == "__main__":

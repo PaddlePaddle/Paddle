@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.proto.framework_pb2 as framework_pb2
 import unittest
+
+from paddle.fluid.proto import framework_pb2
 
 
 class TestFrameworkProto(unittest.TestCase):

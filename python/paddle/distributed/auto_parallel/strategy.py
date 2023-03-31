@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+
 from . import constants
 
 
@@ -34,7 +35,7 @@ class BaseConfig:
         for field, default_value in config.items():
             setattr(self, field, default_value)
 
-        # Overide attributes by the config_dict
+        # Override attributes by the config_dict
         if self._config_dict:
             self.from_dict(self._config_dict)
 
@@ -61,7 +62,7 @@ class BaseConfig:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
-            string += "\"%s\":\"%s\"," % (k, v)
+            string += f"\"{k}\":\"{v}\","
         return string + "}"
 
     def __deepcopy__(self, memo):
@@ -71,6 +72,10 @@ class BaseConfig:
         for k, v in self.__dict__.items():
             setattr(result, k, copy.deepcopy(v, memo))
         return result
+
+    def get(self, k, d=None):
+        result_dict = self.to_dict()
+        return result_dict.get(k, d)
 
 
 class RecomputeConfig(BaseConfig):
@@ -115,9 +120,15 @@ class DatasetConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class FusedPassesConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSED_PASSES
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors.
+    The `Strategy` object is used to configure the parallelization and optimization behaviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -155,7 +166,7 @@ class Strategy(BaseConfig):
             #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(config)
+                    f"Expected a dictionary. But received: {config}"
                 )
         else:
             self._config_dict = {}
@@ -183,3 +194,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.DATASET, None)
         self.dataset = DatasetConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
+        self.fused_passes = FusedPassesConfig(config_dict)

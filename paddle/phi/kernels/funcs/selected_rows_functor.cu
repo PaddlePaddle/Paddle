@@ -40,7 +40,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
                                      input2.height()));
     output->set_height(in1_height);
 
-    paddle::framework::Vector<int64_t> in1_rows(input1.rows());
+    phi::Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = input2.rows();
     std::vector<int64_t> out_rows;
     out_rows.reserve(in1_rows.size() + in2_rows.size());
@@ -76,35 +76,35 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     auto* in1_data = in1_value.data<T>();
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T),
+                       context.stream());
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T),
+                       context.stream());
   }
 };
 
@@ -189,7 +189,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
-    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
+    phi::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddTensorKernel<T, block_size>
         <<<grid, threads, 0, context.stream()>>>(
             in1_data,
@@ -231,30 +231,30 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
+    phi::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     if (in1_rows.size()) {
       mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
     }
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T),
+                       context.stream());
   }
 };
 
@@ -318,7 +318,7 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
-    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
+    phi::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddToTensorKernel<T, block_size>
         <<<grid, threads, 0, context.stream()>>>(
             in1_data,
@@ -378,7 +378,7 @@ struct MergeAddImpl {
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    paddle::framework::Vector<int64_t> input_rows(input.rows());
+    phi::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
@@ -386,15 +386,16 @@ struct MergeAddImpl {
     phi::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
-    paddle::framework::Vector<int64_t> merge_rows(merge_rows_cpu);
+    phi::Vector<int64_t> merge_rows(merge_rows_cpu);
 
     auto input_width = input.value().dims()[1];
 
     out.set_rows(merge_rows);
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
@@ -406,8 +407,8 @@ struct MergeAddImpl {
     dim3 threads(block_size, 1);
     dim3 grid1(input_rows.size(), 1);
 
-    paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
-    paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
+    phi::MixVector<int64_t> mix_vector_input(&input_rows);
+    phi::MixVector<int64_t> mix_vector_out(out.mutable_rows());
     MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
         input_data,
         mix_vector_input.CUDAData(context.GetPlace()),
@@ -458,13 +459,15 @@ struct MergeAddImpl {
     }
     std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
                                         merged_row_set.end());
-    paddle::framework::Vector<int64_t> merge_rows(merge_rows_cpu);
+    phi::Vector<int64_t> merge_rows(merge_rows_cpu);
 
     out.set_rows(merge_rows);
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
@@ -482,8 +485,8 @@ struct MergeAddImpl {
       auto& input_rows = input->rows();
       dim3 grid1(input_rows.size(), 1);
 
-      paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
-      paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
+      phi::MixVector<int64_t> mix_vector_input(&input_rows);
+      phi::MixVector<int64_t> mix_vector_out(out.mutable_rows());
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
           input_data,
           mix_vector_input.CUDAData(context.GetPlace()),

@@ -14,12 +14,12 @@
 
 import unittest
 
+import config
 import numpy as np
-import paddle
+import parameterize
 import scipy.stats
 
-import config
-import parameterize
+import paddle
 
 paddle.enable_static()
 

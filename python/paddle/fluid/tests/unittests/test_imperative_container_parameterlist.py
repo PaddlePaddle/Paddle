@@ -13,32 +13,22 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
+
 import paddle
-from paddle import _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
+from paddle import _legacy_C_ops, fluid
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, num_stacked_param, use_fluid_api):
         super().__init__()
         # create ParameterList with iterable Parameters
-        self.params = (
-            self.fluid_dygraph_ParameterList(num_stacked_param)
-            if use_fluid_api
-            else self.paddle_imperative_ParameterList(num_stacked_param)
-        )
-
-    def fluid_dygraph_ParameterList(self, num_stacked_param):
-        return fluid.dygraph.ParameterList(
-            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')]
-            * num_stacked_param
-        )
+        self.params = self.paddle_imperative_ParameterList(num_stacked_param)
 
     def paddle_imperative_ParameterList(self, num_stacked_param):
         return paddle.nn.ParameterList(
-            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')]
+            [paddle.create_parameter(shape=[2, 2], dtype='float32')]
             * num_stacked_param
         )
 
@@ -58,27 +48,24 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
-            model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
+            model.params[num_stacked_param - 1] = paddle.create_parameter(
                 shape=[2, 3], dtype='float32'
             )
             res = model(x)
             self.assertListEqual(res.shape, [5, 3])
             model.params.append(
-                fluid.layers.create_parameter(shape=[3, 4], dtype='float32')
+                paddle.create_parameter(shape=[3, 4], dtype='float32')
             )
             self.assertEqual(len(model.params), num_stacked_param + 1)
             res = model(x)
             self.assertListEqual(res.shape, [5, 4])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
     def test_paramter_list(self):
-        with _test_eager_guard():
-            self.paramter_list(False)
-            self.paramter_list(True)
         self.paramter_list(False)
         self.paramter_list(True)
 

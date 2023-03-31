@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.passes import new_pass, PassManager
 import unittest
+
 from dist_pass_test_base import DistPassTestBase
 from model_zoo import resnet_model
+
+from paddle.distributed.passes import PassManager, new_pass
 
 
 class TestFuseAllReducePass(DistPassTestBase):

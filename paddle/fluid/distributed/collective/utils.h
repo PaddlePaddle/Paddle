@@ -19,7 +19,7 @@
 namespace paddle {
 namespace distributed {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor &tensor,
+inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
                                          int64_t offset,
                                          int64_t numel) {
   phi::DenseTensor tensor_flattened;

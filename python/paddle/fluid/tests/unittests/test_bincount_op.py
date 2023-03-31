@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.inference as paddle_infer
+from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode
 
 paddle.enable_static()
@@ -32,8 +34,10 @@ class TestBincountOpAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            inputs = fluid.data(name='input', dtype='int64', shape=[7])
-            weights = fluid.data(name='weights', dtype='int64', shape=[7])
+            inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
+            weights = paddle.static.data(
+                name='weights', dtype='int64', shape=[7]
+            )
             output = paddle.bincount(inputs, weights=weights)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -148,7 +152,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
 
 class TestCase1(TestBincountOp):

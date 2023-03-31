@@ -54,7 +54,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
-    Tensor tmp_output_grad(output_grad->dtype());
+    phi::DenseTensor tmp_output_grad(output_grad->dtype());
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;

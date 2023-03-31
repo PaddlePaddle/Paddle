@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numbers
 import math
+import numbers
+
 import numpy as np
 
+import paddle
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 
 
 class Gumbel(TransformedDistribution):
@@ -60,7 +61,7 @@ class Gumbel(TransformedDistribution):
           dist.cdf(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.54523915])
           dist.entropy()
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
+          # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
           dist.rsample([2])
           # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [[0.80463481], [0.91893655]])
 

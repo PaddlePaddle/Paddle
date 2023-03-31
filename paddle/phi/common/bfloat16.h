@@ -145,7 +145,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
   }
 
   // Conversion opertors
-  HOSTDEVICE inline explicit operator float() const {
+  HOSTDEVICE inline operator float() const {
 #ifdef PADDLE_WITH_HIP
     uint32_t res = 0;
     // We should be using memcpy in order to respect the strict aliasing rule
@@ -168,7 +168,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
   }
 
 #ifdef PADDLE_CUDA_BF16
-  HOSTDEVICE inline explicit operator __nv_bfloat16() const {
+  HOSTDEVICE inline __nv_bfloat16 to_nv_bfloat16() const {
     return *reinterpret_cast<const __nv_bfloat16*>(&x);
   }
 #endif
@@ -207,7 +207,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
-  HOSTDEVICE inline explicit operator double() const {
+  HOSTDEVICE inline operator double() const {
     return static_cast<double>(static_cast<float>(*this));
   }
 };
@@ -373,7 +373,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
   static const bool tinyness_before = false;
 
   HOSTDEVICE static phi::dtype::bfloat16(min)() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x007f);
+    return phi::dtype::raw_uint16_to_bfloat16(0x0080);
   }
   HOSTDEVICE static phi::dtype::bfloat16 lowest() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
@@ -382,7 +382,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
   HOSTDEVICE static phi::dtype::bfloat16 epsilon() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x3400);
+    return phi::dtype::raw_uint16_to_bfloat16(0x3C00);
   }
   HOSTDEVICE static phi::dtype::bfloat16 round_error() {
     return phi::dtype::bfloat16(0.5);

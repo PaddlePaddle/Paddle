@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle import _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _legacy_C_ops
-from paddle import in_dynamic_mode
 
 
 def sparse_attention(

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from paddle.fluid.tests.unittests.test_lstm_op import lstm, ACTIVATION
+from eager_op_test import OpTest
+
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION, lstm
 
 
 def fc(x, w, b):

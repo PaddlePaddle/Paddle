@@ -12,22 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 import numpy as np
-import os
-import contextlib
+
+import paddle
+from paddle import fluid
+from paddle.fluid import framework
 
 
 class TestPrune(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-        y = fluid.layers.fc(input=[x], size=2, act="softmax")
-        loss = fluid.layers.cross_entropy(input=y, label=label)
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
+        y = paddle.static.nn.fc(x=[x], size=2, activation="softmax")
+        loss = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(x=loss)
         return x, y, label, loss
 
@@ -44,7 +48,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -54,7 +58,7 @@ class TestPrune(unittest.TestCase):
         self.assertEqual(len(pruned_program.global_block().ops), 2)
         self.assertEqual(
             [op.type for op in pruned_program.global_block().ops],
-            ["cross_entropy2", "reduce_mean"],
+            ["softmax_with_cross_entropy", "reduce_mean"],
         )
 
     def test_prune(self):
@@ -70,7 +74,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -82,7 +86,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -100,7 +104,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -112,7 +116,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -130,7 +134,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -158,50 +162,63 @@ def _mock_guard(mock):
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
     def net1(self):
-        x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w_param_attrs = fluid.ParamAttr(
             name="fc_weight",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
-        y = fluid.layers.fc(
-            input=[x], size=2, act="softmax", param_attr=w_param_attrs
+        y = paddle.static.nn.fc(
+            x=[x], size=2, activation="softmax", weight_attr=w_param_attrs
         )
-        loss1 = fluid.layers.cross_entropy(input=y, label=label)
+        loss1 = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss1 = paddle.mean(x=loss1)
-        loss2 = fluid.layers.cross_entropy(input=y, label=label)
+        loss2 = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss2 = paddle.mean(x=loss2)
         loss1.persistable = True
         loss2.persistable = True
         return x, y, label, loss1, loss2, w_param_attrs
 
     def net2(self):
-        x1 = fluid.layers.data(name='x1', shape=[2], dtype='float32')
-        x2 = fluid.layers.data(name='x2', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
+        x1.desc.set_need_check_feed(False)
+        x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
+        x2.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w1_param_attrs = fluid.ParamAttr(
             name="fc_weight1",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
         w2_param_attrs = fluid.ParamAttr(
             name="fc_weight2",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
-        y1 = fluid.layers.fc(
-            input=[x1], size=2, act="softmax", param_attr=w1_param_attrs
+        y1 = paddle.static.nn.fc(
+            x=[x1], size=2, activation="softmax", weight_attr=w1_param_attrs
         )
-        y2 = fluid.layers.fc(
-            input=[x2], size=2, act="softmax", param_attr=w2_param_attrs
+        y2 = paddle.static.nn.fc(
+            x=[x2], size=2, activation="softmax", weight_attr=w2_param_attrs
         )
-        loss1 = fluid.layers.cross_entropy(input=y1, label=label)
+        loss1 = paddle.nn.functional.cross_entropy(
+            input=y1, label=label, reduction='none', use_softmax=False
+        )
         loss1 = paddle.mean(x=loss1)
-        loss2 = fluid.layers.cross_entropy(input=y2, label=label)
+        loss2 = paddle.nn.functional.cross_entropy(
+            input=y2, label=label, reduction='none', use_softmax=False
+        )
         loss2 = paddle.mean(x=loss2)
         return (
             x1,
@@ -316,11 +333,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss1.name, places=fluid.CPUPlace()
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
@@ -525,11 +538,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
-                    compiled_prog = fluid.CompiledProgram(
-                        program
-                    ).with_data_parallel(
-                        loss_name=loss1.name, places=fluid.CPUPlace()
-                    )
+                    compiled_prog = fluid.CompiledProgram(program)
                     for i in range(10):
                         res = exe.run(
                             compiled_prog,
@@ -602,88 +611,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
-
-    def test_prune_with_multi_devices(self):
-        '''
-        When training model with multi_devices, the pruned CompiledProgram should share same local scopes.
-        This test the correctness.
-        '''
-        exe = fluid.Executor(fluid.CPUPlace())
-        program = framework.Program()
-        startup_program = framework.Program()
-        scope = fluid.Scope()
-        os.environ['CPU_NUM'] = str(2)
-        # do not use_prune
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
-                (
-                    x1,
-                    x2,
-                    y1,
-                    y2,
-                    label,
-                    loss1,
-                    loss2,
-                    w1_param_attrs,
-                    w2_param_attrs,
-                ) = self.net2()
-                adam_optimizer1 = fluid.optimizer.AdamOptimizer(
-                    learning_rate=0.5
-                )
-                train1 = adam_optimizer1.minimize(loss1)
-                cloned_program = program.clone()
-                adam_optimizer2 = fluid.optimizer.AdamOptimizer(
-                    learning_rate=0.5
-                )
-                train2 = adam_optimizer2.minimize(loss2)
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                compiled_prog1 = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss1.name, places=[fluid.CPUPlace()] * 2
-                )
-                compiled_prog2 = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss2.name, places=[fluid.CPUPlace()] * 2
-                )
-                for i in range(10):
-                    if i % 2 == 1:
-                        res = exe.run(
-                            compiled_prog1,
-                            feed=[
-                                {'x1': x_np[0:5, :], 'label': label_np[0:5, :]},
-                                {'x1': x_np[5:, :], 'label': label_np[5:, :]},
-                            ],
-                            fetch_list=[loss1.name, train1],
-                            use_prune=True,
-                        )
-                    else:
-                        res = exe.run(
-                            compiled_prog2,
-                            feed={'x2': x_np, 'label': label_np},
-                            fetch_list=[loss2.name, train2],
-                            use_prune=True,
-                        )
-                weight1 = np.array(
-                    scope.find_var(w1_param_attrs.name).get_tensor()
-                )
-        # expected
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            exe.run(startup_program)
-            for i in range(10):
-                if i % 2 == 1:
-                    exe.run(
-                        cloned_program,
-                        feed={'x1': x_np, 'x2': x_np, 'label': label_np},
-                        fetch_list=[loss1.name],
-                        use_prune=False,
-                    )
-            weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
-        np.testing.assert_allclose(weight1, weight2, rtol=1e-05)
 
     def test_prune_program_with_tupe_in_fetch_list(self):
         '''

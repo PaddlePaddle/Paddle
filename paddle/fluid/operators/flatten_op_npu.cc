@@ -55,8 +55,6 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
  public:

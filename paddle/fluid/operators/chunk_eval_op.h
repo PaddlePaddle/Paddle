@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ChunkEvalKernel : public framework::OpKernel<T> {
  public:
@@ -187,9 +185,9 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int>>("excluded_chunk_types").begin(),
         context.Attr<std::vector<int>>("excluded_chunk_types").end());
 
-    auto* inference = context.Input<LoDTensor>("Inference");
+    auto* inference = context.Input<phi::DenseTensor>("Inference");
     auto place = inference->place();
-    auto* label = context.Input<LoDTensor>("Label");
+    auto* label = context.Input<phi::DenseTensor>("Label");
     auto* precision = context.Output<phi::DenseTensor>("Precision");
     auto* recall = context.Output<phi::DenseTensor>("Recall");
     auto* f1 = context.Output<phi::DenseTensor>("F1-Score");

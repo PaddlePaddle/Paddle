@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid, nn
 
 
 class Conv1DTestCase(unittest.TestCase):
@@ -91,11 +93,13 @@ class Conv1DTestCase(unittest.TestCase):
                     if not self.channel_last
                     else (-1, -1, self.num_channels)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
                 y_var = F.conv1d(

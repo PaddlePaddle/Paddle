@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
-import paddle.fluid as fluid
+import unittest
+
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 sys.path.append("..")
 
 import numpy as np
-
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -93,7 +94,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype('float32')
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
@@ -101,10 +102,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False
-            )
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index, axis=1)
             exe = fluid.Executor(fluid.XPUPlace(0))
             (res,) = exe.run(
@@ -119,10 +118,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False
-            )
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index)
             exe = fluid.Executor(fluid.XPUPlace(0))
             (res,) = exe.run(

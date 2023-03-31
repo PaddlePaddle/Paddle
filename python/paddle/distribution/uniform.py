@@ -13,21 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+
+import paddle
+from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import (
-    _non_static_mode,
-    in_dygraph_mode,
-    _in_legacy_dygraph,
-)
-from paddle.fluid.layers import (
-    elementwise_add,
-    elementwise_div,
-    elementwise_sub,
-    nn,
-    tensor,
-)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import tensor
+from paddle.tensor import random
 
 
 class Uniform(distribution.Distribution):
@@ -52,7 +45,12 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    :ref:`user_guide_broadcasting` (e.g., `high - low` is a valid operation).
+    `Boardcasting` (e.g., `high - low` is a valid operation).
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of
@@ -86,7 +84,7 @@ class Uniform(distribution.Distribution):
             sample = uniform.sample([2])
             # a random tensor created by uniform distribution with shape: [2, 1]
             entropy = uniform.entropy()
-            # [0.6931472] with shape: [1]
+            # [0.6931472] with shape: []
             lp = uniform.log_prob(value_tensor)
             # [-0.6931472] with shape: [1]
             p = uniform.probs(value_tensor)
@@ -119,7 +117,6 @@ class Uniform(distribution.Distribution):
             high = float(high)
 
         if self._validate_args(low, high):
-            self.batch_size_unknown = True
             self.low = low
             self.high = high
             self.dtype = convert_dtype(low.dtype)
@@ -139,8 +136,8 @@ class Uniform(distribution.Distribution):
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
-                self.low = tensor.cast(self.low, dtype=self.dtype)
-                self.high = tensor.cast(self.high, dtype=self.dtype)
+                self.low = paddle.cast(self.low, dtype=self.dtype)
+                self.high = paddle.cast(self.high, dtype=self.dtype)
 
         super().__init__(self.low.shape)
 
@@ -161,12 +158,12 @@ class Uniform(distribution.Distribution):
 
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
             )
-            uniform_random_tmp = nn.uniform_random_batch_size_like(
+            uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
                 dtype=self.dtype,
@@ -174,26 +171,26 @@ class Uniform(distribution.Distribution):
                 max=1.0,
                 seed=seed,
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
-            uniform_random_tmp_reshape = nn.reshape(
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
+            uniform_random_tmp_reshape = paddle.reshape(
                 uniform_random_tmp, output_shape
             )
             output = uniform_random_tmp_reshape * (
                 zero_tmp_reshape + self.high - self.low
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.uniform_random(
+            output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
                 tensor.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -208,33 +205,23 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if _non_static_mode():
+        if in_dygraph_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            if in_dygraph_mode():
-                lb = _C_ops.cast(lb_bool, value.dtype)
-                ub = _C_ops.cast(ub_bool, value.dtype)
-                return nn.log(lb * ub) - nn.log(self.high - self.low)
-
-            if _in_legacy_dygraph():
-                lb = _legacy_C_ops.cast(
-                    lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype', value.dtype
-                )
-                ub = _legacy_C_ops.cast(
-                    ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
-                )
-                return nn.log(lb * ub) - nn.log(self.high - self.low)
-
-        name = self.name + '_log_prob'
-        lb_bool = self.low < value
-        ub_bool = value < self.high
-        lb = tensor.cast(lb_bool, dtype=value.dtype)
-        ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name
-        )
+            lb = _C_ops.cast(lb_bool, value.dtype)
+            ub = _C_ops.cast(ub_bool, value.dtype)
+            return paddle.log(lb * ub) - paddle.log(self.high - self.low)
+        else:
+            name = self.name + '_log_prob'
+            lb_bool = self.low < value
+            ub_bool = value < self.high
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
+            return paddle.subtract(
+                paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
+            )
 
     def probs(self, value):
         """Probability density/mass function.
@@ -247,30 +234,19 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if _non_static_mode():
+        if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
-
-            if in_dygraph_mode():
-                lb = _C_ops.cast(lb_bool, value.dtype)
-                ub = _C_ops.cast(ub_bool, value.dtype)
-                return (lb * ub) / (self.high - self.low)
-
-            if _in_legacy_dygraph():
-                lb = _legacy_C_ops.cast(
-                    lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype', value.dtype
-                )
-                ub = _legacy_C_ops.cast(
-                    ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
-                )
-                return (lb * ub) / (self.high - self.low)
-
-        name = self.name + '_probs'
-        lb_bool = self.low < value
-        ub_bool = value < self.high
-        lb = tensor.cast(lb_bool, dtype=value.dtype)
-        ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
+            lb = _C_ops.cast(lb_bool, value.dtype)
+            ub = _C_ops.cast(ub_bool, value.dtype)
+            return (lb * ub) / (self.high - self.low)
+        else:
+            name = self.name + '_probs'
+            lb_bool = self.low < value
+            ub_bool = value < self.high
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
+            return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -286,4 +262,4 @@ class Uniform(distribution.Distribution):
 
         """
         name = self.name + '_entropy'
-        return nn.log(self.high - self.low, name=name)
+        return paddle.log(self.high - self.low, name=name)

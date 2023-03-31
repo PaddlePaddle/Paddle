@@ -22,9 +22,7 @@ import inspect
 import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -36,16 +34,11 @@ from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layers import slice, reshape
+import paddle
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'fused_elemwise_activation',
-    'sequence_topk_avg_pooling',
-    'var_conv_2d',
-    'match_matrix_tensor',
-    'tree_conv',
     'fused_embedding_seq_pool',
     'multiclass_nms2',
     'search_pyramid_hash',
@@ -63,416 +56,6 @@ __all__ = [
     'fused_bn_add_act',
     'fused_seqpool_cvm',
 ]
-
-
-def fused_elemwise_activation(
-    x, y, functor_list, axis=-1, scale=0.0, save_intermediate_out=True
-):
-    """
-    **Fused elementwise_add/mul and activation layers**
-
-    This function computes an elementwise_add/mul cooperated with an activation.
-
-    .. math::
-
-        out = Unary(Binary(x, y))
-
-    or
-
-    .. math::
-
-        out = Binary(x, Unary(y))
-
-    Unary operators can be: `scale`, `relu`, `tanh`. Binary operators can be:
-    `elementwise_add`, `elementwise_mul`.
-
-    Args:
-        x (Variable): left operation of the binary operator.
-        y (Variable): right operator of the binary operator.
-        functor_list (list of str): types of operator which will be executed
-            by this layer. For example, ['elementwise_add', 'relu']
-            (out = elementwise_add(x, relu(y))),
-            or ['relu', 'elemmentwise_add'] (out = relu(elementwise_add(x, y))).
-        axis (int32, default -1): axis of elementwise op.
-        scale (float32, default 0): parameter of scale op.
-        save_intermediate_out (bool, default True): whether to save the
-            intermediate result, Unary(y) or Binary(x, y).
-
-    Returns:
-        Variable: The computation result.
-    """
-    if isinstance(functor_list, str):
-        functor_list = functor_list.split(',')
-
-    if not isinstance(functor_list, list) or len(functor_list) != 2:
-        raise ValueError(
-            'functor_list should be a list of str, and the length should be 2.'
-        )
-
-    helper = LayerHelper('fused_elemwise_activation', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    intermediate_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='fused_elemwise_activation',
-        inputs={'X': x, 'Y': y},
-        outputs={'Out': out, 'IntermediateOut': intermediate_out},
-        attrs={
-            'axis': axis,
-            'scale': scale,
-            'save_intermediate_out': save_intermediate_out,
-            'functor_list': functor_list,
-        },
-    )
-    return out
-
-
-def var_conv_2d(
-    input,
-    row,
-    col,
-    input_channel,
-    output_channel,
-    filter_size,
-    stride=1,
-    param_attr=None,
-    act=None,
-    dtype='float32',
-    name=None,
-):
-    r"""
-      The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
-      row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-      and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
-      padding. Besides, input.dims[1] should be 1.
-
-      .. code-block:: text
-
-              If input_channel is 2 and given row lodTensor and col lodTensor as follows:
-                  row.lod = [[5, 4]]
-                  col.lod = [[6, 7]]
-              input is a lodTensor:
-                  input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
-                  input.dims = [116, 1]	# where 116 = 60 + 56
-
-              If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
-                  # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
-                  output.lod = [[90, 84]]
-                  output.dims = [174, 1]  # where 174 = 90 + 84
-
-      Args:
-          input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
-          row (Variable): The row should be 1-level LodTensor to provide height information.
-          col (Variable): The col should be 1-level LodTensor to provide width information.
-          input_channel (int): The number of input channel.
-          output_channel (int): The number of output channel.
-          filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-              it must contain two integers, (filter_size_H, filter_size_W).
-              Otherwise, the filter will be a square.
-          stride (int|tuple): The stride size. If stride is a tuple, it must
-              contain two integers, (stride_H, stride_W). Otherwise, the
-              stride_H = stride_W = stride. Default: stride = 1.
-          param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-              of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
-              will create ParamAttr as param_attr. If the Initializer of the param_attr
-              is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-              and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{
-    0.5}`. Default: None.
-          act (str): Activation type, if it is set to None, activation is not appended.
-              Default: None
-          dtype ('float32'): The data type of parameter and output.
-          name (str|None): A name for this layer(optional). If set None, the layer
-              will be named automatically. Default: None
-
-      Returns:
-          Variable: Output variable with LoD specified by this layer.
-
-      Examples:
-          .. code-block:: python
-
-              import numpy as np
-              from paddle.fluid import layers
-              from paddle.fluid import contrib
-
-              x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-              row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-              col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-              out = contrib.var_conv_2d(input=x_lod_tensor,
-                                       row=row_lod_tensor,
-                                       col=col_lod_tensor,
-                                       input_channel=3,
-                                       output_channel=5,
-                                       filter_size=[3, 3],
-                                       stride=1)
-    """
-    helper = LayerHelper('var_conv_2d', **locals())
-    x_shape = list(input.shape)
-    assert len(x_shape) == 2
-
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-
-    filter_shape = [
-        int(output_channel),
-        int(input_channel) * filter_size[0] * filter_size[1],
-    ]
-    filter_param = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype,
-    )
-
-    conv_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True
-    )
-
-    helper.append_op(
-        type='var_conv_2d',
-        inputs={
-            'X': input,
-            'ROW': row,
-            'COLUMN': col,
-            'W': filter_param,
-        },
-        outputs={"Out": conv_res, "Col": tmp_res},
-        attrs={
-            'InputChannel': input_channel,
-            'OutputChannel': output_channel,
-            'StrideH': stride[0],
-            'StrideW': stride[1],
-            'KernelH': filter_size[0],
-            'KernelW': filter_size[1],
-        },
-    )
-
-    return helper.append_activation(conv_res)
-
-
-def match_matrix_tensor(
-    x, y, channel_num, act=None, param_attr=None, dtype='float32', name=None
-):
-    """
-    Calculate the semantic matching matrix of two word sequences with variable length.
-    Given a query A of length `n` and a title B of length `m`, the input shape are respectively
-    [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
-    it will generate a learnable parameter matrix W with shape [h, 3, h].
-    Then the semantic matching matrix of query A and title B is calculated by
-    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W`
-    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided,
-    the corresponding activation function will be applied to output matrix.
-    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
-
-    .. code-block:: text
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [
-                    [2,                     3,                               ]]
-                x.data = [[0.3, 0.1], [0.2, 0.3], [
-                    0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
-                x.dims = [5, 2]
-            y is a Tensor:
-                y.lod =  [[3,                                 1,       ]]
-                y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
-                y.dims = [4, 2]
-            set channel_num 2, then we get a 1-level LoDTensor:
-                # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
-                out.lod =  [[12, 6]]
-                out.dims = [18, 1]     # where 18 = 12 + 6
-
-    Args:
-        x (Variable): Input variable x which should be 1-level LodTensor.
-        y (Variable): Input variable y which should be 1-level LodTensor.
-        channel_num (int): The channel number of learnable parameter W.
-        act (str, default None): Activation to be applied to the output of this layer.
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
-            parameters/weights of this layer.
-        dtype ('float32'): The data type of w data.
-        name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
-
-    Returns:
-        Variable: output with LoD specified by this layer.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.fluid import layers
-            from paddle.fluid import contrib
-
-            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
-            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
-            out, out_tmp = contrib.match_matrix_tensor(
-                x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
-    """
-    helper = LayerHelper('match_matrix_tensor', **locals())
-
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    assert (
-        len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[-1]
-    )
-
-    weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False
-    )
-    mm_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True
-    )
-    helper.append_op(
-        type='match_matrix_tensor',
-        inputs={
-            'X': x,
-            'Y': y,
-            'W': w,
-        },
-        outputs={"Out": mm_res, "Tmp": tmp_res},
-        attrs={'dim_t': channel_num},
-    )
-
-    return helper.append_activation(mm_res), tmp_res
-
-
-def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
-    """
-    The :attr:`topks` is a list with incremental values in this function. For each topk,
-    it will average the topk features as an output feature for each channel of every
-    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height
-    and width information for :attr:`input` tensor. If feature size of input sequence is less
-    than topk, it will padding 0 at the back.
-
-    .. code-block:: text
-
-            If channel_num is 2 and given row LoDTensor and col LoDTensor as follows:
-                row.lod = [[5, 4]]
-                col.lod = [[6, 7]]
-
-            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i]
-                input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
-                input.dims = [116, 1]   # where 116 = 60 + 56
-
-            If topks is [1, 3, 5], then we get a 1-level LoDTensor:
-                out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
-                out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
-
-    Args:
-        input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row should be 1-level LodTensor to provide the height information
-                        of the input tensor data.
-        col (Variable): The col should be 1-level LodTensor to provide the width information
-                        of the input tensor data.
-        topks (list): A list of incremental value to average the topk feature.
-        channel_num (int): The number of input channel.
-
-    Returns:
-        Variable: output LodTensor specified by this layer.
-
-    Examples:
-
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.fluid import layers
-            from paddle.fluid import contrib
-
-            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = contrib.sequence_topk_avg_pooling(input=x_lod_tensor,
-                                                   row=row_lod_tensor,
-                                                   col=col_lod_tensor,
-                                                   topks=[1, 3, 5],
-                                                   channel_num=5)
-    """
-    helper = LayerHelper('sequence_topk_avg_pooling', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    pos = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype(), stop_gradient=True
-    )
-    helper.append_op(
-        type='sequence_topk_avg_pooling',
-        inputs={'X': input, 'ROW': row, 'COLUMN': col},
-        outputs={'Out': out, 'pos': pos},
-        attrs={'topks': topks, 'channel_num': channel_num},
-    )
-
-    return out
-
-
-def tree_conv(
-    nodes_vector,
-    edge_set,
-    output_size,
-    num_filters=1,
-    max_depth=2,
-    act='tanh',
-    param_attr=None,
-    bias_attr=None,
-    name=None,
-):
-    """
-        ${comment}
-    Args : nodes_vector(${nodes_vector_type}) : $ { nodes_vector_comment }
-    edge_set(${edge_set_type}) : $ { edge_set_comment }
-            output_size(int): output feature width
-            num_filters(int): number of filters, Default 1
-            max_depth(int): max depth of filters, Default 2
-            act(str): activation function, Default tanh
-            param_attr(ParamAttr): the parameter attribute for the filters, Default None
-            bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
-            name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
-
-        Returns:
-            out(${out_type}): ${
-              out_comment
-            }
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-
-              # 10 for max_node_size of dataset, 5 for vector width
-              nodes_vector = fluid.layers.data(
-                  name='vectors', shape=[10, 5], dtype='float32')
-              # 10 for max_node_size of dataset, 2 for every edge has two nodes
-              # edges must be directional
-              edge_set = fluid.layers.data(name='edge_set', shape=[
-                                           10, 2], dtype='float32')
-              # the shape of output will be [10, 6, 1],
-              # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
-              out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-    #After reshape, output tensor could be nodes_vector for next tree convolution
-              out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
-              out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-    #also output tensor could be pooling(the pooling in paper called global pooling)
-              pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
-    """
-    check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
-    check_type(edge_set, 'edge_set', (Variable), 'tree_conv')
-
-    helper = LayerHelper("tree_conv", **locals())
-    dtype = helper.input_dtype('nodes_vector')
-    feature_size = nodes_vector.shape[2]
-    W_shape = [feature_size, 3, output_size, num_filters]
-    W = helper.create_parameter(
-        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False
-    )
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='tree_conv',
-        inputs={'NodesVector': nodes_vector, 'EdgeSet': edge_set, 'Filter': W},
-        outputs={
-            'Out': out,
-        },
-        attrs={'max_depth': max_depth},
-    )
-    if helper.bias_attr:
-        pre_activation = helper.append_bias_op(out)
-    else:
-        pre_activation = out
-    return helper.append_activation(pre_activation)
 
 
 def fused_embedding_seq_pool(
@@ -513,10 +96,12 @@ def fused_embedding_seq_pool(
         .. code-block:: python
             import numpy as np
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             dict_size = 20
-            data_t = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,
@@ -720,11 +305,13 @@ def multiclass_nms2(
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            import paddle
+            paddle.enable_static()
+            boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+            out, index = fluid.contrib.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -916,7 +503,9 @@ def shuffle_batch(x, seed=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[-1, 4])
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name="x", shape=[-1, 4])
             out = fluid.contrib.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
@@ -978,8 +567,9 @@ def partial_concat(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
-            x = fluid.data(name="x", shape=[None,3], dtype="float32")
-            y = fluid.data(name="y", shape=[None,3], dtype="float32")
+            import paddle
+            x = paddle.randn(name="x", shape=[1,3], dtype="float32")
+            y = paddle.randn(name="y", shape=[1,3], dtype="float32")
             concat = fluid.contrib.layers.partial_concat(
                 [x, y], start_index=0, length=2)
     """
@@ -1040,9 +630,12 @@ def partial_sum(input, start_index=0, length=-1):
         import paddle.fluid.layers as layers
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[None, 3], dtype="float32")
-        y = fluid.data(name="y", shape=[None, 3], dtype="float32")
-        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        import paddle
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+        y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
+        sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
@@ -1202,6 +795,9 @@ def sparse_embedding(
         'paddle.static.nn.sparse_embedding',
     )
 
+    if input.size == 0:
+        raise ValueError("input size should not be 0")
+
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
@@ -1302,9 +898,11 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        paddle.enable_static()
+        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                      [0,1,0,3,4],[0,1,0,5,6],
                      [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
@@ -1314,7 +912,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
-                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                    initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1331,7 +929,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
         dtype=dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
     tree_info.stop_gradient = True
 
@@ -1409,9 +1007,11 @@ def tdm_sampler(
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        paddle.enable_static()
+        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
@@ -1428,10 +1028,10 @@ def tdm_sampler(
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     layer_array)),
             output_positive=True,
             output_list=True,
@@ -1495,7 +1095,7 @@ def tdm_sampler(
         attr=tree_travel_attr,
         shape=travel_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     layer_shape = [node_nums, 1]
@@ -1503,7 +1103,7 @@ def tdm_sampler(
         attr=tree_layer_attr,
         shape=layer_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1539,27 +1139,27 @@ def tdm_sampler(
 
         for layer_sample_num in neg_samples_num_list:
             end_offset = start_offset + layer_sample_num + positive_flag
-            layer_samples = slice(
+            layer_samples = paddle.slice(
                 out, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_labels = slice(
+            layer_labels = paddle.slice(
                 labels, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_mask = slice(
+            layer_mask = paddle.slice(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset]
             )
 
-            layer_samples = reshape(
+            layer_samples = paddle.reshape(
                 layer_samples, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_samples.stop_gradient = True
 
-            layer_labels = reshape(
+            layer_labels = paddle.reshape(
                 layer_labels, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_labels.stop_gradient = True
 
-            layer_mask = reshape(
+            layer_mask = paddle.reshape(
                 layer_mask, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_mask.stop_gradient = True
@@ -1601,18 +1201,17 @@ def rank_attention(
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
-           import numpy as np
+           import paddle
+           paddle.enable_static()
 
-           input = fluid.data(name="input", shape=[None, 2], dtype="float32")
-           rank_offset = fluid.data(name="rank_offset", shape=[None, 7], dtype="int32")
+           input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
+           rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
                                                      rank_param_attr=
-                                                       fluid.ParamAttr(learning_rate=1.0,
-                                                                     name="ubm_rank_param.w_0",
-                                                                     initializer=
-                                                                     fluid.initializer.Xavier(uniform=False)),
+                                                     paddle.ParamAttr(learning_rate=1.0,
+                                                                     name="ubm_rank_param.w_0"),
                                                       max_rank=3,
                                                       max_size=0)
     """
@@ -1663,22 +1262,21 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
+           import paddle
 
-           input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+           paddle.enable_static()
+
+           input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
-                                                               name="w_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
+                                               paddle.ParamAttr(learning_rate=1.0,
+                                                               name="w_0"),
                                                bias_size=[16, 10],
                                                bias_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
-                                                               name="b_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
-                                                   act="relu")
+                                               paddle.ParamAttr(learning_rate=1.0,
+                                                               name="b_0"),
+                                               act="relu")
     """
 
     helper = LayerHelper("batch_fc", **locals())
@@ -1728,7 +1326,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
@@ -1784,10 +1382,12 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
-            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
-            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
-            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+            x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
+            guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
+            grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
 
             # without offset
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)
@@ -1853,15 +1453,14 @@ def correlation(
         .. code-block:: python
 
             import paddle.fluid as fluid
-
-            x1 = fluid.layers.data(name='x1',
-                               shape=x_shape,
-                               dtype=x_type,
-                               append_batch_size=False)
-            x2 = fluid.layers.data(name='x2',
-                                shape=x_shape,
-                                dtype=x_type,
-                                append_batch_size=False)
+            import paddle
+            paddle.enable_static()
+            x1 = paddle.static.data(name='x1',
+                               shape=[2,3,4,5],
+                               dtype="float32")
+            x2 = paddle.static.data(name='x2',
+                                shape=[2,3,4,5],
+                                dtype="float32")
 
 
             out = fluid.contrib.correlation(
@@ -1963,13 +1562,16 @@ def fused_bn_add_act(
     Examples:
             .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
+            # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
-                    x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-                    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-                    conv1_1 = fluid.layers.conv2d(
+                    x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+                    conv1_1 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
                         num_filters=32,
@@ -1978,7 +1580,7 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    conv1_2 = fluid.layers.conv2d(
+                    conv1_2 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
                         num_filters=32,
@@ -1987,16 +1589,19 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    bn = fluid.layers.batch_norm(
+                    bn = paddle.static.nn.batch_norm(
                         input=conv1_1,
                         act=None,
                         data_layout='NHWC')
                     fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
-                    prediction = fluid.layers.fc(input=fused_bn_add_act, size=10, act='softmax')
-                    loss = fluid.layers.cross_entropy(input=prediction, label=y)
-                    loss = fluid.layers.mean(loss)
+                    prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=y,
+                        reduction='none', use_softmax=False
+                    )
+                    loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
-                    sgd = fluid.contrib.mixed_precision.decorate(
+                    sgd = paddle.static.amp.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
                     sgd.minimize(loss)
 
@@ -2041,7 +1646,7 @@ def fused_bn_add_act(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=bn_param_dtype,
-        default_initializer=Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr,
@@ -2051,7 +1656,9 @@ def fused_bn_add_act(
     )
     mean = helper.create_parameter(
         attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False
+            name=moving_mean_name,
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         ),
         shape=param_shape,
         dtype=bn_param_dtype,
@@ -2060,7 +1667,7 @@ def fused_bn_add_act(
     variance = helper.create_parameter(
         attr=ParamAttr(
             name=moving_variance_name,
-            initializer=Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
         ),
         shape=param_shape,
@@ -2124,13 +1731,16 @@ def pow2_decay_with_linear_warmup(
     helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
     helper.set_variable_initializer(
-        lr, Constant(value=float(base_lr) / warmup_steps)
+        lr,
+        paddle.nn.initializer.Constant(value=float(base_lr) / warmup_steps),
     )
 
     step = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1]
     )
-    helper.set_variable_initializer(step, Constant(value=0))
+    helper.set_variable_initializer(
+        step, paddle.nn.initializer.Constant(value=0)
+    )
     assert (
         warmup_steps <= total_steps
     ), "warmup_steps cannot be larger than total_steps"

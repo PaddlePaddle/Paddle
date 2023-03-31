@@ -23,7 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T>
 class TopkXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -79,11 +78,11 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     // cast to int64 as final result
-    r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
-                                       (const int32_t*)indices_int_data,
-                                       indices_data,
-                                       indices->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
+                                    (const int32_t*)indices_int_data,
+                                    indices_data,
+                                    indices->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   }
 };
 

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from threading import Thread
+import itertools
+import logging
 import multiprocessing
+import random
 import sys
 import warnings
-import logging
-
-from queue import Queue
 from itertools import zip_longest
-
-import itertools
-import random
+from queue import Queue
+from threading import Thread
 
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
@@ -78,8 +76,7 @@ def cache(reader):
     all_data = tuple(reader())
 
     def __impl__():
-        for item in all_data:
-            yield item
+        yield from all_data
 
     return __impl__
 
@@ -120,8 +117,7 @@ def map_readers(func, *readers):
         rs = []
         for r in readers:
             rs.append(r())
-        for e in map(func, *rs):
-            yield e
+        yield from map(func, *rs)
 
     return reader
 
@@ -230,8 +226,7 @@ def chain(*readers):
         for r in readers:
             rs.append(r())
 
-        for e in itertools.chain(*rs):
-            yield e
+        yield from itertools.chain(*rs)
 
     return reader
 
@@ -529,7 +524,7 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     Example:
 
     .. code-block:: python
-
+        import paddle
         import paddle.fluid as fluid
         from paddle.fluid.io import multiprocess_reader
         import numpy as np
@@ -558,7 +553,7 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 place = fluid.CPUPlace()
                 # the 1st 2 is batch size
-                image = fluid.data(name='image', dtype='int64', shape=[2, 1, 2])
+                image = paddle.static.data(name='image', dtype='int64', shape=[2, 1, 2])
                 fluid.layers.Print(image)
                 # print detailed tensor info of image variable
 

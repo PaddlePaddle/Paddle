@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 from paddle.fluid.reader import keep_data_loader_order
 
 keep_data_loader_order(False)
@@ -46,13 +49,15 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         self.visited = set()
 
     def build_network(self, places):
-        input_data = fluid.data(shape=self.shape, dtype='float32', name="input")
+        input_data = paddle.static.data(
+            shape=self.shape, dtype='float32', name="input"
+        )
         loader = fluid.io.DataLoader.from_generator(
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
 
-        fc = fluid.layers.fc(input_data, size=10)
-        loss = fluid.layers.reduce_mean(fc)
+        fc = paddle.static.nn.fc(input_data, size=10)
+        loss = paddle.mean(fc)
 
         loader.set_batch_generator(
             create_reader(self.shape, self.batch_num),
@@ -98,23 +103,19 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 start_val += 1
 
     def get_places(self):
-        place_list = [fluid.cpu_places(1), fluid.cpu_places(4)]
+        place_list = [fluid.cpu_places(1)]
         if fluid.is_compiled_with_cuda():
             if os.name == "nt":
                 place_list.extend([fluid.cuda_places(0)])
             else:
-                place_list.extend(
-                    [fluid.cuda_places(0), fluid.cuda_places([0, 1])]
-                )
+                place_list.extend([fluid.cuda_places(0)])
         return place_list
 
     def test_main(self):
         for p in self.get_places():
-            use_compiled_program_list = [True] if len(p) > 1 else [False, True]
-            for use_compiled_program in use_compiled_program_list:
-                self.run_main_with_place(p, use_compiled_program)
+            self.run_main_with_place(p)
 
-    def run_main_with_place(self, places, use_compiled_program=True):
+    def run_main_with_place(self, places):
         with fluid.scope_guard(fluid.Scope()):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 input_data, loss, loader = self.build_network(places)
@@ -124,14 +125,9 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 exe.run(fluid.default_startup_program())
 
                 dev_cnt = len(places)
-                if dev_cnt > 1:
-                    self.assertTrue(use_compiled_program)
+                self.assertTrue(dev_cnt == 1)
 
                 main_program = fluid.default_main_program()
-                if use_compiled_program:
-                    main_program = fluid.CompiledProgram(
-                        main_program
-                    ).with_data_parallel(loss_name=loss.name, places=places)
 
                 max_batch_num = min(
                     self.break_num, int(self.batch_num / dev_cnt)

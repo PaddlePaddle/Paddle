@@ -20,13 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using phi::backends::gpu::GpuLaunchConfig;
 
 template <typename T>
 class AttnMatmulINT8 {
@@ -36,6 +37,9 @@ class AttnMatmulINT8 {
       : dev_ctx_(dev_ctx), m_(m), n_(n), k_(k), compute_bias_(compute_bias) {
     auto helper = std::make_shared<CublasLtHelper>(m, k, n);
     helpers_.emplace_back(helper);
+    gpu_config_ = std::make_unique<GpuLaunchConfig>(
+        phi::backends::gpu::GetGpuLaunchConfig1D(
+            dev_ctx, m * n, DequantKernelVecSize));
   }
   ~AttnMatmulINT8() {}
 
@@ -50,7 +54,6 @@ class AttnMatmulINT8 {
                       phi::DenseTensor* bias_out,
                       const float quant_in_scale,
                       const phi::DenseTensor* dequant_out_scale,
-                      const int quant_out_scale_offset,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
@@ -74,9 +77,9 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
-                                  dequant_out_scale->data<float>(),
-                                  quant_out_scale_offset);
+                                  dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -87,7 +90,7 @@ class AttnMatmulINT8 {
       PADDLE_ENFORCE_EQ(cudaGetLastError(),
                         cudaSuccess,
                         platform::errors::Fatal(
-                            "cuda error occured after computing bias. "
+                            "cuda error occurred after computing bias. "
                             "But it does not mean this error is caused by "
                             "bias computing"));
     }
@@ -99,11 +102,13 @@ class AttnMatmulINT8 {
                                 phi::DenseTensor* input,
                                 const phi::DenseTensor* bias,
                                 phi::DenseTensor* output,
-                                phi::DenseTensor* bias_out) {
+                                phi::DenseTensor* bias_out,
+                                void* workspace = nullptr) {
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
-                      dev_ctx_.stream());
+                      dev_ctx_.stream(),
+                      workspace);
   }
 
   // This function is used to execute GEMM, with input and output's types are
@@ -115,8 +120,7 @@ class AttnMatmulINT8 {
                              phi::DenseTensor* output,
                              phi::DenseTensor* output_tmp,
                              phi::DenseTensor* bias_out,
-                             const phi::DenseTensor* dequant_out_scale,
-                             const int quant_out_scale_offset) {
+                             const phi::DenseTensor* dequant_out_scale) {
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
@@ -127,9 +131,9 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
-                                  dequant_out_scale->data<float>(),
-                                  quant_out_scale_offset);
+                                  dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -140,7 +144,7 @@ class AttnMatmulINT8 {
       PADDLE_ENFORCE_EQ(cudaGetLastError(),
                         cudaSuccess,
                         platform::errors::Fatal(
-                            "cuda error occured after computing bias. "
+                            "cuda error occurred after computing bias. "
                             "But it does not mean this error is caused by "
                             "bias computing"));
     }
@@ -183,6 +187,7 @@ class AttnMatmulINT8 {
 
   int compute_bias_;
   std::vector<std::shared_ptr<CublasLtHelper>> helpers_;
+  std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 
 }  // namespace operators

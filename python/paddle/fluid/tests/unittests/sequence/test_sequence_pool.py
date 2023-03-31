@@ -12,13 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("../")
-from op_test import OpTest, skip_check_grad_ci
-from test_reorder_lod_tensor import convert_to_offset
+from eager_op_test import OpTest, skip_check_grad_ci
+
+paddle.enable_static()
+
+
+def convert_to_offset(lod):
+    offset = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset[i].append(offset[i][-1] + seq_len)
+    return offset
 
 
 def compute_seqpool_sum(x, offset, out, pad_value=0.0):

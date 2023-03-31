@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from paddle.fluid import core
 import sys
+import unittest
+
+import numpy as np
+
+from paddle.fluid import core
 
 sys.path.append("..")
 
 alignment = 256
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -90,10 +93,10 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
                 out[0:length] = input[1].flatten()
                 inputs.append(out)
 
-            coalesce_tensor_var = np.concatenate([input for input in inputs])
+            coalesce_tensor_var = np.concatenate(list(inputs))
             if set_constant:
                 coalesce_tensor_var = (
-                    np.ones((len(coalesce_tensor_var))) * constant
+                    np.ones(len(coalesce_tensor_var)) * constant
                 )
                 outputs = [
                     (

@@ -17,16 +17,6 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -38,7 +28,7 @@ void ConvertConv2d(TensorRTEngine* engine,
                    RegistFunc fadd_layer,
                    SetDilationFunc fset_dilation,
                    const std::string& name) {
-  VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
+  VLOG(3) << "convert a " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
 
@@ -142,7 +132,8 @@ void ConvertConv2d(TensorRTEngine* engine,
       layer,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
-  layer->setStride(nv_strides);
+  layer->setStrideNd(nv_strides);
+
   layer->setPrePadding(nv_pre_paddings);
   if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
@@ -189,7 +180,7 @@ class Conv2dOpConverter : public OpConverter {
             TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
           auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                             Convolution,
+                                             ConvolutionNd,
                                              *inputs,
                                              n_output,
                                              ksize,

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import numpy as np
+
 # TODO: define framework api
 from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.framework import _dygraph_tracer
-import numpy as np
-from contextlib import contextmanager
 
 __all__ = []
 
@@ -27,7 +27,7 @@ def set_default_dtype(d):
 
     Args:
         d(string|np.dtype): the dtype to make the default. It only
-                            supports float16, float32 and float64.
+                            supports float16, bfloat16, float32 and float64.
 
     Returns:
         None.
@@ -50,14 +50,14 @@ def set_default_dtype(d):
             )
     else:
         # This branch is for np.dtype and str
-        if d in ['float16', 'float32', 'float64']:
+        if d in ['float16', 'float32', 'float64', 'bfloat16']:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need
             # to convert it to str here.
             d = str(d)
         else:
             raise TypeError(
-                "set_default_dtype only supports [float16, float32, float64] "
+                "set_default_dtype only supports [float16, float32, float64, bfloat16] "
                 ", but received %s" % str(d)
             )
 
@@ -80,62 +80,3 @@ def get_default_dtype():
             paddle.get_default_dtype()
     """
     return LayerHelperBase.get_default_dtype()
-
-
-@contextmanager
-def set_grad_enabled(mode):
-    """
-    Create a context which enables or disables dygraph gradient calculation.
-
-    Args:
-        mode(bool): whether to enable (`True`), or disable (`False`) grad.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.ones([3, 2])
-            x.stop_gradient = False
-            with paddle.set_grad_enabled(False):
-                y = x * 2
-                with paddle.set_grad_enabled(True):
-                    z = x * 2
-            print(y.stop_gradient)   # True
-            print(z.stop_gradient)   # False
-    """
-
-    tracer = _dygraph_tracer()
-    if tracer:
-        prev_mode = tracer._has_grad
-        tracer._has_grad = mode
-        try:
-            yield
-        finally:
-            tracer._has_grad = prev_mode
-    else:
-        yield
-
-
-def is_grad_enabled():
-    """
-    Returns whether current dygraph gradient calculation mode is enabled.
-
-    Returns:
-        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            # Dygraph gradient calculation mode is enabled by default.
-            paddle.is_grad_enabled() # True
-
-            with paddle.set_grad_enabled(False):
-                paddle.is_grad_enabled() # False
-
-            paddle.enable_static()
-            paddle.is_grad_enabled() # False
-    """
-    tracer = _dygraph_tracer()
-    return tracer._has_grad if tracer else False

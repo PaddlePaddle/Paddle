@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from functools import partial
+
 import hypothesis.strategies as st
 import numpy as np
-import unittest
 from auto_scan_test import PassAutoScanTest
-from functools import partial
-from program_config import TensorConfig, ProgramConfig, OpConfig
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
@@ -32,6 +33,7 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                     'swish',
                     'mish',
                     'sqrt',
+                    'hard_sigmoid',
                     'hard_swish',
                     'abs',
                     'relu6',
@@ -114,13 +116,13 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ['softplus'], (1e-5, 1e-5)
+        yield config, ['fused_softplus'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False,
             max_examples=40,
-            passes=['softplus_activation_mkldnn_fuse_pass'],
+            passes=['softplus_activation_onednn_fuse_pass'],
         )
 
 

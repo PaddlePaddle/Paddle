@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_profiler import TestProfiler
 import os
+import unittest
+
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.test_profiler import TestProfiler
 
 # NCCL 2.7 decides to use shared memory while NCCL 2.6 didn't, hence causing the error.
 # include/shm.h:28 NCCL WARN Call to posix_fallocate failed: No space left on device

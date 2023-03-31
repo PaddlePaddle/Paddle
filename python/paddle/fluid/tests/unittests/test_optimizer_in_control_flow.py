@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.optimizer as optimizer
+from paddle import fluid
+from paddle.fluid import core, optimizer
 from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.core as core
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
@@ -45,28 +43,28 @@ def static(
     with program_guard(main_program, startup_program):
 
         def double_fc_net(image):
-            hidden = layers.fc(
+            hidden = paddle.static.nn.fc(
                 image,
                 size=FC_SIZE,
-                act='relu',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.99)
+                activation='relu',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.99)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.5)
+                    initializer=paddle.nn.initializer.Constant(value=0.5)
                 ),
                 name="hidden",
             )
 
-            prediction = layers.fc(
+            prediction = paddle.static.nn.fc(
                 hidden,
                 size=CLASS_NUM,
-                act='softmax',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.2)
+                activation='softmax',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.2)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.8)
+                    initializer=paddle.nn.initializer.Constant(value=0.8)
                 ),
                 name="prediction",
             )
@@ -74,44 +72,51 @@ def static(
 
         def fn_1(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.cross_entropy(input=pred, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
             opt.minimize(avg_loss)
             return avg_loss
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.softmax_with_cross_entropy(
+                loss = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=pred, label=label
                 )
                 avg_loss = paddle.mean(loss, name='mean_softmax_loss')
             opt.minimize(avg_loss)
             return avg_loss
 
-        image = fluid.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
-        label = fluid.data('label', [BATCH_SIZE, 1], 'int64')
+        image = paddle.static.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
+        label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
-        id = fluid.data('id', [1], 'int32')
-        two = layers.fill_constant([1], 'int32', 2)
-        mod_two = layers.elementwise_mod(id, two) == 0
+        id = paddle.static.data('id', [1], 'int32')
+        two = paddle.tensor.fill_constant([1], 'int32', 2)
+        mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, None, prediction, label))],
                 lambda: fn_2(sgd, None, prediction, label),
             )
         else:
-            loss_1 = layers.cross_entropy(input=prediction, label=label)
+            loss_1 = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss_1 = paddle.mean(loss_1)
-            loss_2 = layers.softmax_with_cross_entropy(
+            loss_2 = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=prediction, label=label
             )
             avg_loss_2 = paddle.mean(loss_2)
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, avg_loss_1))],
                 lambda: fn_2(sgd, avg_loss_2),
             )
@@ -134,37 +139,37 @@ def static(
     return out_hidden, out_pred, loss
 
 
-class DygraphLayer(fluid.dygraph.Layer):
+class DygraphLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fc_1 = fluid.dygraph.nn.Linear(
+        self.fc_1 = paddle.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
+            ),
+        )
+        self.act_1 = paddle.nn.ReLU()
+        self.fc_2 = paddle.nn.Linear(
+            FC_SIZE,
+            CLASS_NUM,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=1.2)
+            ),
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.8)
             ),
         )
 
-        self.fc_2 = fluid.dygraph.nn.Linear(
-            FC_SIZE,
-            CLASS_NUM,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.2)
-            ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.8)
-            ),
-        )
+        self.act_2 = paddle.nn.Softmax()
 
     def forward(self, inputs):
         hidden = self.fc_1(inputs)
         prediction = self.fc_2(hidden)
-        return hidden, prediction
+        return self.act_1(hidden), self.act_2(prediction)
 
 
 def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
@@ -187,12 +192,14 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
             hidden, prediction = dy_layer(var_input)
 
             if epoch % 2 == 0:
-                cross_entropy_loss = layers.cross_entropy(prediction, var_label)
+                cross_entropy_loss = paddle.nn.functional.cross_entropy(
+                    prediction, var_label, reduction='none', use_softmax=False
+                )
                 loss = paddle.mean(cross_entropy_loss)
                 loss.backward()
                 adam.minimize(loss)
             else:
-                softmax_loss = layers.softmax_with_cross_entropy(
+                softmax_loss = paddle.nn.functional.softmax_with_cross_entropy(
                     prediction, var_label
                 )
                 loss = paddle.mean(softmax_loss)
@@ -239,68 +246,6 @@ class TestMultiTask(unittest.TestCase):
             np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
             np.testing.assert_allclose(pre_1, pre_2, rtol=1e-05)
             np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
-
-
-class TestMultiOptimizersMultiCardsError(unittest.TestCase):
-    def test_error(self):
-        startup_program = Program()
-        main_program = Program()
-        use_cuda = core.is_compiled_with_cuda()
-        with program_guard(main_program, startup_program):
-
-            def fn_1(opt, avg_loss):
-                opt.minimize(avg_loss)
-
-            def fn_2(opt, avg_loss):
-                opt.minimize(avg_loss)
-
-            x = fluid.layers.data("X", [10], 'float32')
-            hidden = layers.fc(x, 5)
-            avg_loss = paddle.mean(hidden)
-
-            adam = optimizer.Adam(learning_rate=LR)
-            sgd = optimizer.SGD(learning_rate=LR)
-
-            cond = layers.fill_constant([1], 'bool', True)
-
-            layers.case(
-                [(cond, lambda: fn_1(adam, avg_loss))],
-                lambda: fn_2(sgd, avg_loss),
-            )
-
-        cpu_place = fluid.CPUPlace()
-        cuda_place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-
-        for place in [cpu_place, cuda_place]:
-
-            exe = fluid.Executor(place)
-            exe.run(startup_program)
-
-            np.random.seed(SEED)
-
-            # NOTE(liym27):
-            # This test needs to run in multi cards to test NotImplementedError.
-            # Here, move this test from RUN_TYPE=DIST in tests/unittests/CMakeList.txt,
-            # to use multi cards ** only on CPU ** not GPU to reduce CI time.
-            os.environ['CPU_NUM'] = str(2)
-
-            pe_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=avg_loss.name,
-            )
-            num_devices = pe_exe.device_count
-
-            def not_implemented_error():
-                pe_exe.run(
-                    feed={
-                        'X': np.random.random(size=[64, 10]).astype('float32'),
-                    },
-                    fetch_list=[avg_loss.name],
-                )
-
-            if num_devices > 1:
-                self.assertRaises(NotImplementedError, not_implemented_error)
 
 
 if __name__ == '__main__':

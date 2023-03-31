@@ -41,15 +41,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/graph_khop_sampler_imp.h"
 #include "paddle/fluid/operators/graph_khop_sampler_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 constexpr int WARP_SIZE = 32;
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 struct MaxFunctor {
@@ -134,8 +132,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
         const int num = curand(&rng) % (idx + 1);
 #endif
         if (num < k) {
-          paddle::platform::CudaAtomicMax(output_idxs + out_row_start + num,
-                                          idx);
+          phi::CudaAtomicMax(output_idxs + out_row_start + num, idx);
         }
       }
 #ifdef PADDLE_WITH_CUDA
@@ -425,6 +422,31 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     auto* vertices = ctx.Input<phi::DenseTensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
+
+    auto row_dims = src->dims();
+    auto row_dims_lens = row_dims.size();
+    auto col_dims = dst_count->dims();
+    auto col_dims_lens = col_dims.size();
+    auto x_dims = vertices->dims();
+    auto x_dims_lens = x_dims.size();
+    for (int i = 0; i < row_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(
+          row_dims[i],
+          0,
+          phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+    }
+    for (int i = 0; i < col_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(col_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Col_Ptr(X) should not be 0."));
+    }
+    for (int i = 0; i < x_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(x_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Input_Node(X) should not be 0."));
+    }
 
     const T* src_data = src->data<T>();
     const T* dst_count_data = dst_count->data<T>();

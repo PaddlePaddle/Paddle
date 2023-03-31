@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import paddle
-from .base.topology import ParallelMode
-from .meta_parallel import TensorParallel
-from .meta_parallel import (
-    PipelineParallel,
-    ShardingParallel,
-    PipelineParallelWithInterleave,
-    PipelineLayer,
-)
-from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
+
+from .base.topology import ParallelMode
+from .meta_parallel import (
+    PipelineLayer,
+    PipelineParallel,
+    PipelineParallelWithInterleave,
+    ShardingParallel,
+    TensorParallel,
+)
 
 _grad_scalar = None
 

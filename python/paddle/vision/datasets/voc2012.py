@@ -14,12 +14,13 @@
 
 import io
 import tarfile
+
 import numpy as np
 from PIL import Image
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -114,7 +115,7 @@ class VOC2012(Dataset):
             'train',
             'valid',
             'test',
-        ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'valid' or 'test', but got {mode}"
 
         if backend is None:
             backend = paddle.vision.get_image_backend()

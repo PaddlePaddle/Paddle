@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import unittest
 import sys
+import unittest
 import warnings
-import paddle.utils.deprecated as deprecated
+
+import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
+from paddle.utils import deprecated
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
@@ -63,52 +63,9 @@ def get_warning_index(api):
 class TestDeprecatedDocorator(unittest.TestCase):
     """
     tests for paddle's Deprecated Docorator.
-    test_fluid_data: test for old fluid.data API.
-    test_fluid_elementwise_mul: test for old fluid.layers.elementwise_xxx APIs.
     test_new_multiply: test for new api, which should not insert warning information.
     test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
-
-    def test_fluid_data(self):
-        """
-        test old fluid elementwise_mul api, it should fire Warinng function,
-        which insert the Warinng info on top of API's doc string.
-        """
-        paddle.enable_static()
-        # Initialization
-        x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(fluid.data)
-        paddle.disable_static()
-
-        # testting
-        self.assertGreater(expected, captured)
-
-    def test_fluid_elementwise_mul(self):
-        """
-        test old fluid elementwise_mul api, it should trigger Warinng function,
-        which insert the Warinng info on top of API's doc string.
-        """
-
-        # Initialization
-        a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        x = paddle.to_tensor(a)
-        y = paddle.to_tensor(b)
-        res = fluid.layers.elementwise_mul(x, y)
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(fluid.layers.elementwise_mul)
-
-        # testting
-        self.assertGreater(expected, captured)
 
     def test_new_multiply(self):
         """
@@ -146,7 +103,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         expected = LOWEST_WARNING_POSTION
 
         # captured
-        captured = get_warning_index(fluid.layers.elementwise_mul)
+        captured = get_warning_index(paddle.multiply)
 
         # testting
         self.assertGreater(expected, captured)

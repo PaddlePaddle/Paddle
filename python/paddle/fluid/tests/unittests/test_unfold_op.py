@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
-from op_test import OpTest
+
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -121,6 +123,7 @@ class TestUnfoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.python_api = paddle.nn.functional.unfold
         self.set_data()
 
     def test_check_output(self):
@@ -137,6 +140,7 @@ class TestUnfoldAPI(TestUnfoldOp):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.python_api = paddle.nn.functional.unfold
         self.set_data()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

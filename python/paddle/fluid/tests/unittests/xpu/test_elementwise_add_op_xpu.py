@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import sys
 
+import numpy as np
+
 sys.path.append("..")
-import paddle
-from op_test import OpTest, skip_check_grad_ci
-from op_test_xpu import XPUOpTest
 import unittest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+
+from eager_op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -260,37 +262,11 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
         def init_axis(self):
             self.axis = 2
 
-    class TestElementwiseAddOpError(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                # the input of elementwise_add must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
-                )
-                y1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.elementwise_add, x1, y1
-                )
-
-                # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
-                # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="uint8"
-                )
-                y2 = fluid.layers.data(
-                    name='y2', shape=[3, 4, 5, 6], dtype="uint8"
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.elementwise_add, x2, y2
-                )
-
     class TestAddOp(unittest.TestCase):
         def test_name(self):
             with fluid.program_guard(fluid.Program()):
-                x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-                y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
                 y_1 = paddle.add(x, y, name='add_res')
                 self.assertEqual(('add_res' in y_1.name), True)
@@ -304,8 +280,8 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                         "y": np.array([1, 5, 2]).astype('float32'),
                     }
 
-                x = fluid.data(name="x", shape=[3], dtype='float32')
-                y = fluid.data(name="y", shape=[3], dtype='float32')
+                x = paddle.static.data(name="x", shape=[3], dtype='float32')
+                y = paddle.static.data(name="y", shape=[3], dtype='float32')
                 z = paddle.add(x, y)
 
                 place = fluid.XPUPlace(0)

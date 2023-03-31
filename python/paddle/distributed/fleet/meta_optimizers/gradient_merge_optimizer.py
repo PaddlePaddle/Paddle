@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
+
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
@@ -26,7 +27,6 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
-            "GraphExecutionOptimizer",
             "RecomputeOptimizer",
         ]
         self.meta_optimizers_black_list = []

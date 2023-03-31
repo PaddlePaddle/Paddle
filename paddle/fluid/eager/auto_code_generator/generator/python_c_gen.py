@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import GetForwardFunctionName, IsVectorTensorType
-from codegen_utils import GetInplacedFunctionName
+import os
+
+from codegen_utils import (
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetForwardFunctionName,
+    GetInplacedFunctionName,
+    IsVectorTensorType,
+)
 
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set([])
+skipped_forward_api_names = set()
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -47,13 +52,15 @@ atype_to_parsing_function = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
-    "paddle::experimental::DataType": "CastPyArg2DataType",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
-        assert False, f"Unable to find {atype} in atype_to_parsing_function."
+        raise AssertionError(
+            f"Unable to find {atype} in atype_to_parsing_function."
+        )
 
     return atype_to_parsing_function[atype]
 
@@ -85,6 +92,8 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try {{
     VLOG(6) << "Running Eager Final State API: {}";
+
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed
@@ -128,6 +137,15 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+#endif
+    }}
+    if (paddle::platform::is_xpu_place(place)) {{
+#if defined(PADDLE_WITH_XPU)
+      phi::backends::xpu::SetXPUDeviceId(place.device);
+      VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }}
 """

@@ -16,15 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,12 +27,13 @@ class StackOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid stack op to tensorrt stack layer";
+    VLOG(4) << "convert stack op to tensorrt stack layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto input = op_desc.Input("X");
     int input_num = input.size();
     std::vector<nvinfer1::ITensor*> inputs;
+    auto output_name = op_desc.Output("Y").front();
 
     for (int i = 0; i < input_num; ++i) {
       inputs.push_back(engine_->GetITensor(input[i]));
@@ -76,13 +68,15 @@ class StackOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
       reshape_layer->setInput(1, *after_shape_tensor);
       inputs[i] = reshape_layer->getOutput(0);
+      reshape_layer->setName(("stack: reshape: (Output( " + std::to_string(i) +
+                              " )" + output_name + ")")
+                                 .c_str());
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
-    auto output_name = op_desc.Output("Y").front();
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };

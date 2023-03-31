@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import os
-import paddle
-from ..ps.utils.public import *  # noqa: F403
-from paddle.framework import core
-from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+
 from _collections import defaultdict
-from paddle.fluid.framework import Program, Parameter
+
+import paddle
+from paddle.distributed.passes.pass_base import PassBase, register_pass
+from paddle.fluid import framework
+from paddle.framework import core
+from paddle.static import Parameter, Program
+
+from ..ps.utils.public import *  # noqa: F403
 
 
 @register_pass("append_send_ops_pass")
@@ -275,7 +277,7 @@ class DistributedOpsPass(PassBase):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -332,11 +334,11 @@ class DistributedOpsPass(PassBase):
                     assert global_block.desc.op(i) == global_block.ops[i].desc
 
         if attrs['use_ps_gpu']:
-            gpups_inputs_idxs = list()
-            gpups_outputs_idxs = list()
-            gpups_inputs = list()
-            gpups_outputs = list()
-            gpups_w_size = list()
+            gpups_inputs_idxs = []
+            gpups_outputs_idxs = []
+            gpups_inputs = []
+            gpups_outputs = []
+            gpups_w_size = []
             gpups_min_distributed_idx = len(_program.global_block().ops) + 1
 
         for param, ops in pull_sparse_ops.items():
@@ -461,7 +463,7 @@ class DistributedOpsPass(PassBase):
                     "is_sparse": True,
                 },
             )
-            PSGPU = paddle.fluid.core.PSGPU()
+            PSGPU = core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
             except (ValueError):
@@ -610,7 +612,7 @@ class DeleteOptimizesPass(PassBase):
             main_program, remote_optimize_ops, local_optimize_ops
         )
 
-        if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
+        if hasattr(attrs['origin_main_program'], 'lr_scheduler'):
             self._add_lr_var(main_program, attrs)
 
 
@@ -754,7 +756,7 @@ class PsGpuPass(PassBase):
                 )
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
-                new_op = paddle.fluid.framework.Operator(
+                new_op = paddle.static.Operator(
                     program.global_block(), new_op_desc
                 )
                 program.global_block().ops.insert(insert_index + 1, new_op)
@@ -840,6 +842,8 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        from ..transpiler.collective import SingleProcessMultiThread
+
         attrs = pass_ctx._attrs
         t = SingleProcessMultiThread()
         env = get_dist_env()
@@ -1049,7 +1053,7 @@ class SplitHeterWorkerOpsPass(PassBase):
         block_vars_detail = find_block_joints(
             program, program_block_ops, heter_ops
         )
-        heter_program = framework.Program()
+        heter_program = paddle.framework.Program()
         self._create_heter_program(
             program,
             attrs,
@@ -1366,7 +1370,7 @@ class SplitFlOpsPass(PassBase):
         return party_program_map
 
     def _insert_partA_communicate_op(self, block, idx):
-        comm_info = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        comm_info = f"forward_joint_{1}_{2}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1391,7 +1395,7 @@ class SplitFlOpsPass(PassBase):
         return
 
     def _insert_partB_communicate_op(self, block, idx):
-        comm_info = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        comm_info = f"backward_joint_{2}_{1}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1519,7 +1523,7 @@ class SplitFlOpsPass(PassBase):
             bp_op_list + push_sparse_op_list, self.partA_program, 1
         )
         # 2.1. insert partA recv op
-        block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        block_input_flag = f"backward_joint_{2}_{1}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
@@ -1580,7 +1584,7 @@ class SplitFlOpsPass(PassBase):
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
 
         # 3. insert partB recv op
-        block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        block_input_flag = f"forward_joint_{1}_{2}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
@@ -1625,13 +1629,13 @@ class SplitFlOpsPass(PassBase):
         debug_program(_main_file, prog_b)
 
         if not self.is_part_b:
-            self.partA_program = framework.Program()
+            self.partA_program = paddle.framework.Program()
             self._get_partA_program(prog_a.global_block())
             pass_ctx._attrs['part_a_main_program'] = self.partA_program
             self._clear_op_device_flag(self.partA_program)
             check_program(self.partA_program)
         else:
-            self.partB_program = framework.Program()
+            self.partB_program = paddle.framework.Program()
             self._get_partB_program(prog_b.global_block())
             pass_ctx._attrs['part_b_main_program'] = self.partB_program
             self._clear_op_device_flag(self.partB_program)

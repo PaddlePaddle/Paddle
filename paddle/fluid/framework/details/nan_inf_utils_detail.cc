@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -24,9 +25,28 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
+DECLARE_int32(check_nan_inf_level);
+
 namespace paddle {
 namespace framework {
 namespace details {
+struct DebugTools {
+  DebugTools() {}
+  std::string path = "";
+};
+static DebugTools debug_nan_inf;
+
+void SetNanInfDebugPath(const std::string& nan_inf_path) {
+  debug_nan_inf.path = nan_inf_path;
+  VLOG(4) << "Set the log's path of debug tools : " << nan_inf_path;
+}
+
+std::string GetNanPath() {
+  if (debug_nan_inf.path.empty()) {
+    return "";
+  }
+  return debug_nan_inf.path + "/";
+}
 
 static std::once_flag white_list_init_flag;
 
@@ -90,7 +110,7 @@ static void InitWhiteListFormEnv() {
   const char* op_role_skip = std::getenv("PADDLE_INF_NAN_SKIP_ROLE");
   const char* op_var_skip = std::getenv("PADDLE_INF_NAN_SKIP_VAR");
 
-  if (op_type_skip != NULL) {
+  if (op_type_skip) {
     std::stringstream ss(op_type_skip);
     std::string op_type;
     while (std::getline(ss, op_type, ',')) {
@@ -98,7 +118,7 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_role_skip != NULL) {
+  if (op_role_skip) {
     std::stringstream ss(op_role_skip);
     std::string op_role;
     while (std::getline(ss, op_role, ',')) {
@@ -113,7 +133,7 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_var_skip != NULL) {
+  if (op_var_skip) {
     std::stringstream ss(op_var_skip);
     std::string op_var;
     while (std::getline(ss, op_var, ',')) {
@@ -131,190 +151,6 @@ static void InitWhiteListFormEnv() {
   }
 }
 
-template <typename T>
-static void PrintNanInf(const T* value,
-                        const size_t numel,
-                        int print_num,
-                        const std::string& op_type,
-                        const std::string& var_name,
-                        bool abort = true) {
-  T min_value = std::numeric_limits<T>::max();
-  T max_value = std::numeric_limits<T>::min();
-  size_t nan_count, inf_count, num_count;
-  nan_count = inf_count = num_count = 0;
-
-  // CPU print num value
-  for (size_t i = 0; i < numel; ++i) {
-    size_t count = 0;
-    if (std::isnan(value[i])) {
-      count = nan_count++;
-    } else if (std::isinf(value[i])) {
-      count = inf_count++;
-    } else {
-      count = num_count++;
-      min_value = std::min(min_value, value[i]);
-      max_value = std::max(max_value, value[i]);
-    }
-
-    if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%zu index:%zu value:%f\n",
-             numel,
-             i,
-             static_cast<float>(value[i]));
-    }
-  }
-  printf(
-      "In cpu, there has %zu,%zu,%zu nan,inf,num. "
-      "And in num, min_value is %f, max_value is %f\n",
-      nan_count,
-      inf_count,
-      num_count,
-      static_cast<double>(min_value),
-      static_cast<double>(max_value));
-  if (abort) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
-        var_name,
-        op_type));
-  }
-}
-
-// openmp 4.0, reduction with fp16
-#if defined _OPENMP && _OPENMP >= 201307
-// more detail see: 180 page of
-// https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
-#pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
-#pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
-                              omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex < \
-                                  float > : omp_out += omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex < \
-                                  double > : omp_out += omp_in)
-
-#endif
-
-template <typename T>
-static void CheckNanInf(const T* value,
-                        const size_t numel,
-                        int print_num,
-                        const std::string& op_type,
-                        const std::string& var_name) {
-  T sum = static_cast<T>(0.0);
-#if defined _OPENMP && _OPENMP >= 201307
-#pragma omp parallel for simd reduction(+ : sum)
-#elif defined _OPENMP
-#pragma omp parallel for reduction(+ : sum)
-#endif
-  for (size_t i = 0; i < numel; ++i) {
-    sum += (value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-#if defined _OPENMP && _OPENMP >= 201307
-// openmp4.0 not need to specialization fp16
-#elif defined _OPENMP
-template <>
-void CheckNanInf<paddle::platform::float16>(
-    const paddle::platform::float16* value,
-    const size_t numel,
-    int print_num,
-    const std::string& op_type,
-    const std::string& var_name) {
-  float sum = 0.0f;
-#pragma omp parallel for reduction(+ : sum)
-  for (size_t i = 0; i < numel; ++i) {
-    sum += static_cast<float>(value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::bfloat16>(
-    const paddle::platform::bfloat16* value,
-    const size_t numel,
-    int print_num,
-    const std::string& op_type,
-    const std::string& var_name) {
-  float sum = 0.0f;
-#pragma omp parallel for reduction(+ : sum)
-  for (size_t i = 0; i < numel; ++i) {
-    sum += static_cast<float>(value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::complex<float>>(
-    const paddle::platform::complex<float>* value,
-    const size_t numel,
-    int print_num,
-    const std::string& op_type,
-    const std::string& var_name) {
-  float real_sum = 0.0f;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  float imag_sum = 0.0f;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
-        var_name,
-        op_type));
-  }
-}
-
-template <>
-    void CheckNanInf < paddle::platform::complex < double >>>
-    (const paddle::platform::complex<double>* value,
-     const size_t numel,
-     int print_num,
-     const std::string& op_type,
-     const std::string& var_name) {
-  double real_sum = 0.0;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  double imag_sum = 0.0;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
-        var_name,
-        op_type));
-  }
-}
-
-#endif
-
 template <>
 template <typename T>
 void TensorCheckerVisitor<phi::CPUContext>::apply(
@@ -323,10 +159,9 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
-  // use env strategy control in future, -1=print_all.
-  int print_num = 3;
-  CheckNanInf(
-      tensor_.data<T>(), tensor_.numel(), print_num, op_type_, var_name_);
+  std::string cpu_hint_str =
+      GetCpuHintString<T>(op_type, var_name, tensor.place());
+  CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
 }
 
 template <>
@@ -371,8 +206,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile with "
-        "GPU.",
+        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
+        "with GPU.",
         var_name));
 #endif
     return;
@@ -406,8 +241,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
             var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile with "
-        "XPU.",
+        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
+        "with XPU.",
         var_name));
 #endif
     return;
@@ -440,8 +275,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
             var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use npu place. PaddlePaddle must compile with "
-        "NPU.",
+        "phi::DenseTensor[%s] use npu place. PaddlePaddle must compile "
+        "with NPU.",
         var_name));
 #endif
     return;

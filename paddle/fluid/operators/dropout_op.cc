@@ -17,6 +17,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
@@ -27,24 +29,26 @@ class DropoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Seed") {
       VLOG(10) << "var_name:" << var_name
                << " does not need to transform in dropout op";
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -133,11 +137,11 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -153,6 +157,26 @@ class DropoutGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Mask", this->Output("Mask"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
+  }
+};
+
+class DropoutCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    auto mask = this->GetSingleForwardOutput("Mask");
+    auto out_grad = this->GetSingleOutputGrad("Out");
+    auto x_grad = this->GetSingleInputGrad("X");
+    auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto x_grad_name = this->GetOutputName(x_grad);
+    auto p = this->Attr<float>("dropout_prob");
+    auto is_test = this->Attr<bool>("is_test");
+    auto mode = this->Attr<std::string>("dropout_implementation");
+    prim::dropout_grad<prim::DescTensor>(
+        mask, out_grad, p, is_test, mode, x_grad_p);
+    VLOG(3) << "Runing dropout_grad composite func";
+    this->RecoverOutputName(x_grad, x_grad_name);
   }
 };
 
@@ -193,6 +217,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(dropout,
 REGISTER_OPERATOR(dropout,
                   ops::DropoutOp,
                   ops::DropoutOpMaker,
+                  ops::DropoutCompositeGradOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);

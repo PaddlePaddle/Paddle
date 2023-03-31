@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.utils import unique_name
-from paddle.framework import ParamAttr
-from paddle.nn.initializer import Constant
-from paddle.nn import Layer
-from paddle.autograd import PyLayer
 import math
+
+import paddle
+from paddle.autograd import PyLayer
+from paddle.framework import ParamAttr
+from paddle.nn import Layer
+from paddle.nn.initializer import Constant
+from paddle.utils import unique_name
 
 
 def round(x):
@@ -171,9 +172,7 @@ class FakeQuantActLSQPlus(Layer):
             self.Qn = -(2 ** (self.bits - 1))
             self.Qp = 2 ** (self.bits - 1) - 1
 
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
 
         s_attr = ParamAttr(
@@ -183,9 +182,7 @@ class FakeQuantActLSQPlus(Layer):
         self.s.stop_gradient = False
 
         if not self.symmetric:
-            beta_prefix = (
-                "{}.beta".format(name) if name else 'quant_dequant.beta'
-            )
+            beta_prefix = f"{name}.beta" if name else 'quant_dequant.beta'
             self._beta_name = unique_name.generate(beta_prefix)
 
             beta_attr = ParamAttr(
@@ -291,9 +288,7 @@ class FakeQuantWeightLSQPlus(Layer):
             self.Qp = 2 ** (self.bits - 1) - 1
 
         self.init_state = 0
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         s_attr = ParamAttr(
             name=self._scale_name, initializer=Constant(1.0), trainable=True

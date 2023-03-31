@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def conv_shift_forward(x, y):

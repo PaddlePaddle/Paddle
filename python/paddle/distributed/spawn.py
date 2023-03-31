@@ -18,27 +18,28 @@ import signal
 import sys
 import warnings
 
-from paddle.distributed.utils.launch_utils import (
-    _print_arguments,
-    _prepare_trainer_env,
-    get_host_name_ip,
-)
+from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
-    get_cluster_and_pod,
     _get_trainers_num,
+    get_cluster_and_pod,
 )
-from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
+from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.launch_utils import (
     DeviceMode,
-    check_backend,
     block_windows_and_macos,
+    check_backend,
 )
-from paddle.device import get_device
+from paddle.distributed.utils.launch_utils import (
+    _prepare_trainer_env,
+    _print_arguments,
+    get_host_name_ip,
+)
 
 # deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.framework import set_flags
+from paddle.framework import set_flags
 
 __all__ = []
 
@@ -66,16 +67,6 @@ class ParallelEnvArgs:
         # And if it's not set, this module will use all the gpu cards
         # for training.
         self.selected_devices = None
-
-
-def _py_supported_check():
-    if not sys.version_info >= (3, 4):
-        raise RuntimeError(
-            "Use `paddle.distributed.spawn` to start parallel training "
-            "requires python version greater than 3.4, if your python "
-            "is lower than this version, please use "
-            "`paddle.distributed.launch` instead."
-        )
 
 
 def _options_valid_check(options):
@@ -340,7 +331,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     # get cluster and pod config
     if options['backend'] == 'gloo':
-        devices_per_proc = [x for x in range(0, nprocs)]
+        devices_per_proc = list(range(0, nprocs))
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )
@@ -414,7 +405,6 @@ def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
 
 class MultiprocessContext:
     def __init__(self, processes, error_queues, return_queues):
-        _py_supported_check()
         self.error_queues = error_queues
         # NOTE(chenweihang): The `spawn` method is mainly used
         # to wrap the outermost execution function of the program for
@@ -531,7 +521,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -598,13 +588,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             if __name__ == '__main__':
                 dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
-    # NOTE(chenweihang): [ why only supports python3.4+ ? ]
-    # Python supported setting the child process startup method
-    # since 3.4. The previous version can only use the default startup
-    # method, while the default startup method of Unix is fork, which
-    # cannot support CUDA runtime multi-process
-    _py_supported_check()
-
     # Give an error hint when the users enter a configuration option
     # that does not exist
     _options_valid_check(options)

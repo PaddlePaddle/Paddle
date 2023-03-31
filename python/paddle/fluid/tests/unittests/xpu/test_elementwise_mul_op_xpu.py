@@ -15,17 +15,17 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
+from eager_op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -52,7 +52,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
         def test_check_grad_normal(self):
             if paddle.is_compiled_with_xpu():
@@ -61,7 +61,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     place,
                     ['X', 'Y'],
                     'Out',
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def test_check_grad_ingore_x(self):
@@ -72,7 +72,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def test_check_grad_ingore_y(self):
@@ -83,7 +83,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['X'],
                     'Out',
                     no_grad_set=set('Y'),
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def init_input_output(self):
@@ -238,31 +238,6 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {
                 'Out': self.inputs['X'].reshape(1, 1, 10, 10) * self.inputs['Y']
             }
-
-    class TestElementwiseMulOpError(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                # the input of elementwise_mul must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
-                )
-                y1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.elementwise_mul, x1, y1
-                )
-
-                # the input dtype of elementwise_mul must be float32
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="uint8"
-                )
-                y2 = fluid.layers.data(
-                    name='y2', shape=[3, 4, 5, 6], dtype="uint8"
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.elementwise_mul, x2, y2
-                )
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')

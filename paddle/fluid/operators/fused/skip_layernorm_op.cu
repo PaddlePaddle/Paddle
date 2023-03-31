@@ -29,7 +29,6 @@ template <typename DeviceContext, typename T>
 class SkipLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = phi::DenseTensor;
     auto *X = context.Input<phi::DenseTensor>("X");
     auto *Y = context.Input<phi::DenseTensor>("Y");
     auto *scale = context.Input<phi::DenseTensor>("Scale");

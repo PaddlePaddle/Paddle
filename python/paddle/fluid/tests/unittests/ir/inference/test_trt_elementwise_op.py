@@ -15,25 +15,28 @@
 import os
 import shutil
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 1], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 1]).astype("float32"),
@@ -47,7 +50,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -64,21 +67,21 @@ class TensorRTSubgraphPassElementwiseBroadcastTest1(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_sub(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.subtract(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest2(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.multiply(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest3(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.divide(x=data1, y=data2)
 
 
 if __name__ == "__main__":

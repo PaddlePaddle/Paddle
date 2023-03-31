@@ -20,10 +20,12 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import math
+
 import paddle
 import paddle.nn.functional as F
-from .naive_gate import NaiveGate
+
 from ..utils import limit_by_capacity
+from .naive_gate import NaiveGate
 
 
 class GShardGate(NaiveGate):

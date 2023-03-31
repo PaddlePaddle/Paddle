@@ -15,6 +15,10 @@
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
@@ -30,7 +34,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-static bool PyCheckTensor(PyObject* obj);
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {

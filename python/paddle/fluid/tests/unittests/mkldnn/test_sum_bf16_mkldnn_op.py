@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
-from paddle import enable_static
+
 import numpy as np
+
+from paddle import enable_static
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
 @unittest.skipIf(

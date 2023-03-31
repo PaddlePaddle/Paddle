@@ -149,11 +149,11 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=literal-suffix
+      -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
@@ -196,7 +196,8 @@ if(NOT WIN32)
   if(NOT WITH_NV_JETSON
      AND NOT WITH_ARM
      AND NOT WITH_SW
-     AND NOT WITH_MIPS)
+     AND NOT WITH_MIPS
+     AND NOT WITH_LOONGARCH)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
   endif()
 endif()
@@ -220,7 +221,8 @@ if(APPLE)
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
-      -Werror=pragma-pack)
+      -Werror=pragma-pack
+      -Werror=c++17-extensions)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

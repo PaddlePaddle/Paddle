@@ -45,13 +45,15 @@ class DGCOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 
     return framework::OperatorWithKernel::GetKernelTypeForVar(

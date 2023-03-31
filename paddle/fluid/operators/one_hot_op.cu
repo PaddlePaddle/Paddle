@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/operators/one_hot_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,
@@ -60,13 +60,12 @@ struct OneHotOpCUDAFunctor {
   }
 };
 
-using LoDTensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     int depth = -1;
     if (context.HasInput("depth_tensor")) {

@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import os
+import unittest
 
 if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
-from paddle.distributed.fleet import auto
+from paddle import nn, static, utils
+from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed import fleet
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None

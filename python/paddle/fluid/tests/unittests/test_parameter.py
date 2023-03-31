@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
-import paddle
-from paddle.fluid.dygraph import guard
-from paddle.fluid.framework import (
-    default_main_program,
-    Variable,
-    _test_eager_guard,
-    ParamBase,
-)
-import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-import paddle.fluid.io as io
-from paddle.fluid.initializer import ConstantInitializer
+import unittest
+
 import numpy as np
+
+import paddle
+from paddle.fluid import core
+from paddle.fluid.dygraph import guard
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Variable, default_main_program
 
 paddle.enable_static()
 main_program = default_main_program()
@@ -41,7 +36,7 @@ class ParameterChecks(unittest.TestCase):
             name='fc.w',
             shape=shape,
             dtype='float32',
-            initializer=ConstantInitializer(val),
+            initializer=paddle.nn.initializer.Constant(val),
         )
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
@@ -51,13 +46,11 @@ class ParameterChecks(unittest.TestCase):
         exe = Executor(paddle.CPUPlace())
         p = exe.run(main_program, fetch_list=[param])[0]
         np.testing.assert_array_equal(p, np.ones(shape) * val)
-        p = io.get_parameter_value_by_name('fc.w', exe, main_program)
-        np.testing.assert_array_equal(p, np.ones(shape) * val)
 
         zero_dim_param = b.create_parameter(name='x', shape=[], dtype='float32')
         self.assertEqual(zero_dim_param.shape, ())
 
-    def func_parambase(self):
+    def test_parambase(self):
         with guard():
             linear = paddle.nn.Linear(10, 10)
             param = linear.weight
@@ -80,14 +73,6 @@ class ParameterChecks(unittest.TestCase):
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
 
-            zero_dim_param = ParamBase(shape=[], dtype='float32')
-            self.assertEqual(zero_dim_param.shape, [])
-
-    def test_parambase(self):
-        with _test_eager_guard():
-            self.func_parambase()
-        self.func_parambase()
-
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
@@ -107,7 +92,7 @@ class ParameterChecks(unittest.TestCase):
                 name='test', shape=[-1], dtype='float32', initializer=None
             )
 
-    def func_parambase_to_vector(self):
+    def test_parambase_to_vector(self):
         with guard():
             initializer = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(3.0)
@@ -132,11 +117,6 @@ class ParameterChecks(unittest.TestCase):
             )
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
-
-    def test_parambase_to_vector(self):
-        with _test_eager_guard():
-            self.func_parambase_to_vector()
-        self.func_parambase_to_vector()
 
 
 if __name__ == '__main__':

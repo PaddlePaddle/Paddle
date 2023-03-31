@@ -17,11 +17,11 @@ import paddle
 paddle.framework.set_default_dtype("float64")
 paddle.enable_static()
 
-import numpy as np
 import unittest
 
+import numpy as np
 from convert import convert_params_for_cell_static
-from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
+from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
@@ -73,12 +73,12 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.static.data(
                     "init_h",
                     [-1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -105,7 +105,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),
@@ -176,12 +176,12 @@ class TestGRUCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.static.data(
                     "init_h",
                     [-1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -208,7 +208,7 @@ class TestGRUCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),
@@ -280,17 +280,17 @@ class TestLSTMCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.static.data(
                     "init_h",
                     [-1, 32],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_c = paddle.fluid.data(
+                init_c = paddle.static.data(
                     "init_c",
                     [-1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -318,7 +318,7 @@ class TestLSTMCell(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.static.data(
                     "input",
                     [-1, 16],
                     dtype=paddle.framework.get_default_dtype(),

@@ -13,35 +13,16 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
-from paddle.distributed import collective
-
-
-def _check_tensor_shape(tensor, shape, nranks=1):
-    expect_shape = list(shape)
-    expect_shape[0] *= nranks
-    if list(tensor.shape) != expect_shape:
-        raise RuntimeError("The tensor for all_gather is not correctly-sized.")
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            "The tensor_list for all_gather is not correctly-sized."
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                "The tensor_list for all_gather is not correctly-sized."
-            )
+import paddle.distributed as dist
+from paddle import framework
+from paddle.distributed.communication.group import _get_global_group
+from paddle.fluid import data_feeder
 
 
 def _all_gather_into_tensor_in_dygraph(
     out_tensor, in_tensor, group, sync_op, use_calc_stream
 ):
-    group = collective._get_default_group() if group is None else group
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
+    group = _get_global_group() if group is None else group
 
     if use_calc_stream:
         return group.process_group.all_gather_into_tensor_on_calc_stream(
@@ -61,12 +42,10 @@ def _all_gather_into_tensor_in_dygraph(
 def _all_gather_in_dygraph(
     tensor_list, tensor, group, sync_op, use_calc_stream
 ):
-    group = collective._get_default_group() if group is None else group
+    group = _get_global_group() if group is None else group
 
     if len(tensor_list) == 0:
         tensor_list += [paddle.empty_like(tensor) for _ in range(group.nranks)]
-    else:
-        _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.all_gather_on_calc_stream(
@@ -78,6 +57,58 @@ def _all_gather_in_dygraph(
         task.wait()
 
     return task
+
+
+def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
+    op_type = 'c_allgather'
+    helper = framework.LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    for elem in tensor_list:
+        data_feeder.check_variable_and_dtype(
+            elem,
+            'tensor_list',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'int8',
+                'uint8',
+            ],
+            'all_gather',
+        )
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'int8',
+            'uint8',
+        ],
+        'all_gather',
+    )
+
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [out]},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': sync_op,
+            'nranks': nranks,
+        },
+    )
+    tensor_list.clear()
+    tensor_list.extend(paddle.split(out, nranks, 0))
 
 
 def all_gather(
@@ -145,7 +176,15 @@ def all_gather(
             return _all_gather_in_dygraph(
                 tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream
             )
-
-    raise RuntimeError(
-        "paddle.distributed.stream.all_gather is only supported in dygraph mode now."
-    )
+    else:
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
+        if paddle.is_tensor(tensor_or_tensor_list):
+            raise RuntimeError(
+                "Only support passing a tensor list to `all_gather` in static graph mode now."
+            )
+        else:
+            return _all_gather_in_static_mode(
+                tensor_or_tensor_list, tensor, group, sync_op
+            )

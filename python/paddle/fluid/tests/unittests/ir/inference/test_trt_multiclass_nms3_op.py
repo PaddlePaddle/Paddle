@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import itertools
+import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.static import nn
 
 
 def multiclass_nms(
@@ -145,7 +148,7 @@ def multiclass_nms(
             'normalized',
             normalized,
         )
-        output, index, nms_rois_num = core.ops.multiclass_nms3(
+        output, index, nms_rois_num = core.eager.ops.legacy.multiclass_nms3(
             bboxes, scores, rois_num, *attrs
         )
         if not return_index:
@@ -215,10 +218,10 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            boxes = fluid.data(
+            boxes = paddle.static.data(
                 name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32'
             )
-            scores = fluid.data(
+            scores = paddle.static.data(
                 name='scores',
                 shape=[-1, self.num_classes, self.num_boxes],
                 dtype='float32',
@@ -235,12 +238,12 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 nms_eta=self.nms_eta,
             )
             mutliclass_nms_out = multiclass_nms_out + 1.0
-            multiclass_nms_out = fluid.layers.reshape(
+            multiclass_nms_out = paddle.reshape(
                 multiclass_nms_out,
                 [self.bs, 1, self.keep_top_k, 6],
                 name='reshape',
             )
-            out = fluid.layers.batch_norm(multiclass_nms_out, is_test=True)
+            out = nn.batch_norm(multiclass_nms_out, is_test=True)
 
         boxes_data = (
             np.arange(self.num_boxes * 4)

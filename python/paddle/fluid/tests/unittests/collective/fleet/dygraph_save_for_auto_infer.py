@@ -12,39 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import shutil
-import numpy as np
-import tempfile
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Embedding
-from paddle.distributed import fleet
-from paddle.distributed.fleet.layers.mpu.mp_layers import (
-    RowParallelLinear,
-    ColumnParallelLinear,
-    VocabParallelEmbedding,
-)
-
-from paddle.distributed.auto_parallel import engine
-
-from paddle.distributed.sharding.group_sharded import group_sharded_parallel
-from paddle.distributed.fleet.meta_parallel.parallel_layers.pp_layers import (
-    PipelineLayer,
-    LayerDesc,
-)
-
-import sys
-import subprocess
 import argparse
 import copy
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import numpy as np
+
+import paddle
 from paddle import distributed as dist
-
+from paddle.distributed import fleet
+from paddle.distributed.auto_parallel import engine
+from paddle.distributed.fleet.layers.mpu.mp_layers import (
+    ColumnParallelLinear,
+    RowParallelLinear,
+    VocabParallelEmbedding,
+)
+from paddle.distributed.fleet.meta_parallel.parallel_layers.pp_layers import (
+    LayerDesc,
+    PipelineLayer,
+)
+from paddle.distributed.sharding.group_sharded import group_sharded_parallel
 from paddle.distributed.utils.log_utils import get_logger
-
 from paddle.fluid.dataloader.dataset import IterableDataset
-
 from paddle.incubate.distributed.utils.io import save_for_auto_inference
+from paddle.nn import Linear
 
 logger = get_logger("INFO", __file__)
 
@@ -80,9 +75,9 @@ class MLP_pipe(PipelineLayer):
                 gather_output=True,
                 has_bias=True,
             ),
-            LayerDesc(Linear, input_dim=linear_size, output_dim=10),
+            LayerDesc(Linear, in_features=linear_size, out_features=10),
         ]
-        super(MLP_pipe, self).__init__(
+        super().__init__(
             desc,
             num_stages=2,
             loss_fn=paddle.nn.CrossEntropyLoss(),
@@ -90,7 +85,7 @@ class MLP_pipe(PipelineLayer):
         )
 
 
-class MLP_Hybrid(fluid.Layer):
+class MLP_Hybrid(paddle.nn.Layer):
     def __init__(
         self,
         embedding_size=1000,
@@ -98,7 +93,7 @@ class MLP_Hybrid(fluid.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(MLP_Hybrid, self).__init__()
+        super().__init__()
         self.embedding = VocabParallelEmbedding(embedding_size, linear_size)
         self._linear1 = RowParallelLinear(
             linear_size, linear_size, has_bias=True, input_is_parallel=True
@@ -125,7 +120,7 @@ class MLP_Hybrid(fluid.Layer):
         return y
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(
         self,
         embedding_size=1000,
@@ -133,8 +128,8 @@ class MLP(fluid.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(MLP, self).__init__()
-        self.embedding = Embedding((embedding_size, linear_size))
+        super().__init__()
+        self.embedding = paddle.nn.Embedding(embedding_size, linear_size)
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
         self._linear3 = Linear(linear_size, 10)
@@ -258,7 +253,7 @@ def train_mlp_static(args, model, loss, opt_state=None, save_model=False):
     model.fit(dataset, epochs=1)
     model.save(os.path.join(args.output_dir, "static_save"))
     paddle.device.cuda.synchronize()
-    print("=============== predict in static mode =================")
+    print("=============== predict in static graph mode =================")
     out = model.predict(dataset, verbose=1000)
 
     if save_model:

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 
 namespace paddle {
 namespace framework {
@@ -28,16 +29,21 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       std::unordered_set<std::string>({"concat",
                                        "conv2d",
                                        "depthwise_conv2d",
+                                       "fused_conv2d",
+                                       "fused_conv3d",
+                                       "fused_matmul",
                                        "elementwise_add",
                                        "elementwise_mul",
                                        "elementwise_sub",
                                        "fc",
                                        "matmul",
+                                       "matmul_v2",
                                        "nearest_interp",
                                        "nearest_interp_v2",
                                        "pool2d",
                                        "prior_box",
                                        "reshape2",
+                                       "fused_transpose",
                                        "transpose2",
                                        "fusion_gru",
                                        "fusion_lstm",
@@ -71,7 +77,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
-
     if (std::find(excluded_ids_list.begin(),
                   excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
@@ -82,6 +87,12 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    // Remove this condition when all fused_elementwise ops are merged
+    if (!(op->Op()->Type() == "elementwise_add" ||
+          op->Op()->Type() == "elementwise_sub" ||
+          op->Op()->Type() == "elementwise_mul")) {
+      ConvertToFusedOp(op->Op());
+    }
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

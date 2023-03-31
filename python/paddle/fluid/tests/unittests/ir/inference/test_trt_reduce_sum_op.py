@@ -13,24 +13,25 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TRTReduceSumTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
-            reduce_sum = fluid.layers.reduce_sum(
-                data, dim=[2, -1], keep_dim=True
-            )
-            out = fluid.layers.batch_norm(reduce_sum, is_test=True)
+            reduce_sum = paddle.sum(data, axis=[2, -1], keepdim=True)
+            out = nn.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 10, 192]).astype("float32"),
@@ -59,11 +60,11 @@ class TRTReduceSumTest(InferencePassTest):
 class TRTReduceSumAllTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
-            reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_sum, is_test=True)
+            reduce_sum = paddle.sum(data, keepdim=True)
+            out = nn.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 10, 192]).astype("float32"),

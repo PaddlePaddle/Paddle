@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.nn.functional as F
-
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.nn.functional as F
 
 paddle.enable_static()
 np.random.seed(10)
@@ -82,10 +83,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.python_out_sig = ["Out"]
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_eager=True)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
         def initTestCase(self):
             self.x_shape = (6, 4, 4, 4)

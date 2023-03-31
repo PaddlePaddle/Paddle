@@ -51,7 +51,7 @@ from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import (
     monkey_patch_reader_methods,
     _copy_reader_var_,
-    double_buffer,
+    __create_unshared_decorated_reader__,
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -64,7 +64,6 @@ import os
 import multiprocessing
 import signal
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
@@ -656,17 +655,17 @@ class DataLoader:
 
         Args:
             feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
-                The Tensors should be created by :code:`fluid.data()`.
+                The Tensors should be created by :code:`paddle.static.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader
                 is fast.
-            use_double_buffer (bool): whether to use double_buffer_reader.
+            use_double_buffer (bool, optional): whether to use double_buffer_reader.
                 If use_double_buffer=True, the DataLoader would prefetch next
                 batch data asynchronously, so it would speed up data feeding
                 and occupies a little more CPU or GPU memory, i.e., the memory
                 of one batch input data.
-            iterable (bool): whether the created DataLoader is iterable.
-            return_list (bool): whether the return value on each device is
+            iterable (bool, optional): whether the created DataLoader is iterable.
+            return_list (bool, optional): whether the return value on each device is
                 presented as a list. It is only valid when iterable=True.
                 If return_list=False, the return value on each device would
                 be a dict of str -> LoDTensor, where the key of the dict is
@@ -674,14 +673,14 @@ class DataLoader:
                 return value on each device would be a list(LoDTensor). It is
                 recommended to use return_list=False in static graph mode and
                 use return_list=True in dygraph mode.
-            use_multiprocess (bool): whether to use multi-process to speed up
-                the data loading process in dygraph. Note: this parameter only
-                can be used in the dygraph mode. In the static graph mode,
+            use_multiprocess (bool, optional): whether to use multi-process to
+                speed up the data loading process in dygraph. Note: this parameter
+                only can be used in the dygraph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
-            drop_last (bool): whether to drop the last batches whose number is
-                less than the CPU core/GPU card number. The default value is
-                True. In training phase, users should not set drop_last=False,
+            drop_last (bool, optional): whether to drop the last batches whose
+                number is less than the CPU core/GPU card number. The default
+                value is True. In training phase, users should not set drop_last=False,
                 because all CPU cores/GPU cards must read data from DataLoader.
                 In inference phase, users can set drop_last=False, so that the
                 last batches whose number is less than the CPU core/GPU card
@@ -799,21 +798,13 @@ class DataLoader:
                 # Define network
                 loss = simple_net(image, label)
 
-                # Set data source of DataLoader
-                #
-                # If DataLoader is iterable, places must be given and the number of places must be the same with device number.
-                #  - If you are using GPU, call `paddle.static.cuda_places()` to get all GPU places.
-                #  - If you are using CPU, call `paddle.static.cpu_places()` to get all CPU places.
-                #
-                # If DataLoader is not iterable, places can be None.
                 places = static.cuda_places() if USE_GPU else static.cpu_places()
                 set_data_source(loader, places)
 
                 exe = static.Executor(places[0])
                 exe.run(static.default_startup_program())
 
-                prog = static.CompiledProgram(static.default_main_program()).with_data_parallel(loss_name=loss.name)
-
+                prog = static.CompiledProgram(static.default_main_program())
                 if loader.iterable:
                     train_iterable(exe, prog, loss, loader)
                 else:
@@ -891,54 +882,6 @@ class DataLoader:
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-        Examples 3:
-
-            .. code-block:: python
-
-                '''
-                Example of `drop_last` using in static graph multi-cards mode
-                '''
-                import paddle
-                import paddle.static as static
-                import numpy as np
-                import os
-
-                # We use 2 CPU cores to run inference network
-                os.environ['CPU_NUM'] = '2'
-
-                paddle.enable_static()
-
-                # The data source has only 3 batches, which can not be
-                # divided evenly to each CPU core
-                def batch_generator():
-                    for i in range(3):
-                        yield np.array([i+1]).astype('float32'),
-
-                x = static.data(name='x', shape=[None], dtype='float32')
-                y = x * x
-
-                def run_inference(drop_last):
-                    loader = paddle.io.DataLoader.from_generator(feed_list=[x],
-                            capacity=8, drop_last=drop_last)
-                    loader.set_batch_generator(batch_generator, static.cpu_places())
-
-                    exe = static.Executor(paddle.CPUPlace())
-                    prog = static.CompiledProgram(static.default_main_program())
-                    prog = prog.with_data_parallel()
-
-                    result = []
-                    for data in loader():
-                        each_ret, = exe.run(prog, feed=data, fetch_list=[y])
-                        result.extend(each_ret)
-                    return result
-
-                # Set drop_last to True, so that the last batch whose
-                # number is less than CPU core number would be discarded.
-                print(run_inference(drop_last=True)) # [1.0, 4.0]
-
-                # Set drop_last to False, so that the last batch whose
-                # number is less than CPU core number can be tested.
-                print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
         if _non_static_mode():
             return DygraphGeneratorLoader(
@@ -974,9 +917,9 @@ class DataLoader:
             places (list(CUDAPlace)|list(CPUPlace)|list(str)): places where the result
                 data should be converted. If places is list of string, the string in the list
                 can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where x is the index of the GPUs.
-            drop_last (bool): whether to drop the last batch whose sample
-                number is less than batch size. If drop_last = True, they
-                would be dropped. If drop_last = False, they would be kept.
+            drop_last (bool, optional): whether to drop the last batch whose
+                sample number is less than batch size. If drop_last = True,
+                they would be dropped. If drop_last = False, they would be kept.
 
         Returns:
             loader (DataLoader): the created DataLoader object, which can be
@@ -1348,7 +1291,7 @@ class GeneratorLoader(DataLoaderBase):
         self._iterable = iterable
         self._return_list = return_list
         if not self._feed_list:
-            raise Exception("Feed list must be given under static mode.")
+            raise Exception("Feed list must be given under static graph mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
@@ -1453,8 +1396,11 @@ class GeneratorLoader(DataLoaderBase):
             reader = monkey_patch_reader_methods(main_prog_var)
 
         if self._use_double_buffer:
-            double_buffer_reader = double_buffer(
-                reader, name=double_buffer_name
+            double_buffer_reader = __create_unshared_decorated_reader__(
+                'create_double_buffer_reader',
+                reader,
+                {},
+                name=double_buffer_name,
             )
             # we return a double buffer reader. However, the reset method comes from
             # py_reader.
@@ -1604,7 +1550,12 @@ class GeneratorLoader(DataLoaderBase):
             feeder = DataFeeder(
                 feed_list=self._feed_list, place=core.CPUPlace()
             )
-            paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
+
+            def decorate_reader():
+                for item in reader():
+                    yield feeder.feed(item)
+
+            paddle_reader = decorate_reader
 
         def __tensor_reader_impl__():
             for slots in paddle_reader():
@@ -1641,7 +1592,7 @@ class PyReader(DataLoaderBase):
 
     Args:
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
-            The variables should be created by :code:`fluid.layers.data()`.
+            The variables should be created by :code:`paddle.static.data()`.
         capacity (int): capacity of the queue maintained in PyReader.
             The unit is batch number. Set larger capacity if your reader
             is fast.
@@ -1681,14 +1632,19 @@ class PyReader(DataLoaderBase):
            import paddle.fluid as fluid
            import numpy as np
 
+           paddle.enable_static()
+
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 3
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')
-               return fluid.layers.cross_entropy(input=predict, label=label)
+               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+               return paddle.nn.functional.cross_entropy(
+                    input=predict, label=label,
+                    reduction='none', use_softmax=False
+               )
 
            def reader_creator_random_image_and_label(height, width):
                def reader():
@@ -1700,8 +1656,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
            reader = fluid.io.PyReader(feed_list=[image, label],
                                       capacity=4,
@@ -1735,14 +1691,19 @@ class PyReader(DataLoaderBase):
            import paddle.fluid as fluid
            import numpy as np
 
+           paddle.enable_static()
+
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 10
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')
-               return fluid.layers.cross_entropy(input=predict, label=label)
+               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+               return paddle.nn.functional.cross_entropy(
+                   input=predict, label=label,
+                   reduction='none', use_softmax=False
+               )
 
            def reader_creator_random_image(height, width):
                def reader():
@@ -1752,8 +1713,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
            reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
 
            user_defined_reader = reader_creator_random_image(784, 784)
@@ -1797,7 +1758,7 @@ class PyReader(DataLoaderBase):
                    paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
                    place)
                for image, label in py_reader():
-                   relu = fluid.layers.relu(image)
+                   relu = paddle.nn.functional.relu(image)
     """
 
     def __init__(
@@ -1844,7 +1805,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1881,7 +1842,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1926,6 +1887,7 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1935,8 +1897,11 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
-                    return fluid.layers.cross_entropy(input=predict, label=label)
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    return paddle.nn.functional.cross_entropy(
+                        input=predict, label=label,
+                        reduction='none', use_softmax=False
+                    )
 
                 def random_image_and_label_generator(height, width):
                     def generator():
@@ -1948,8 +1913,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -1991,14 +1956,19 @@ class PyReader(DataLoaderBase):
                 import paddle.fluid as fluid
                 import numpy as np
 
+                paddle.enable_static()
+
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
-                    return fluid.layers.cross_entropy(input=predict, label=label)
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    return paddle.nn.functional.cross_entropy(
+                        input=predict, label=label,
+                        reduction='none', use_softmax=False
+                    )
 
                 def random_image_and_label_generator(height, width):
                     def generator():
@@ -2010,8 +1980,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -2048,8 +2018,11 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
+
+                paddle.enable_static()
 
                 EPOCH_NUM = 3
                 ITER_NUM = 15
@@ -2057,8 +2030,11 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
-                    return fluid.layers.cross_entropy(input=predict, label=label)
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    return paddle.nn.functional.cross_entropy(
+                        input=predict, label=label,
+                        reduction='none', use_softmax=False
+                    )
 
                 def random_image_and_label_generator(height, width):
                     def generator():
@@ -2072,8 +2048,8 @@ class PyReader(DataLoaderBase):
                             yield batch_image, batch_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)

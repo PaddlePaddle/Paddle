@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+
 import paddle
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -76,7 +78,7 @@ class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
         self.shape_tensor_list = []
         for index, elem in enumerate(shape):
             self.shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * elem)
+                ("x" + str(index), np.ones(1).astype('int32') * elem)
             )
 
         self.inputs = {'ShapeTensorList': self.shape_tensor_list}

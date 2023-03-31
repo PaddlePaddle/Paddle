@@ -20,10 +20,11 @@ dataset. And a pre-trained word vector model based on Wikipedia corpus is used
 to initialize SRL model.
 """
 
-import tarfile
 import gzip
+import tarfile
+
 import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -42,7 +43,7 @@ UNK_IDX = 0
 
 
 def load_label_dict(filename):
-    d = dict()
+    d = {}
     tag_dict = set()
     with open(filename, 'r') as f:
         for i, line in enumerate(f):
@@ -62,7 +63,7 @@ def load_label_dict(filename):
 
 
 def load_dict(filename):
-    d = dict()
+    d = {}
     with open(filename, 'r') as f:
         for i, line in enumerate(f):
             d[line.strip()] = i
@@ -94,8 +95,8 @@ def corpus_reader(data_path, words_name, props_name):
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
-                        a_kind_lable = [x[i] for x in one_seg]
-                        labels.append(a_kind_lable)
+                        a_kind_label = [x[i] for x in one_seg]
+                        labels.append(a_kind_label)
 
                     if len(labels) >= 1:
                         verb_list = []

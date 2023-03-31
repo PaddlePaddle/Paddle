@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid import dygraph
 from paddle import static
+from paddle.fluid import dygraph
 
 paddle.enable_static()
 
@@ -48,7 +49,7 @@ class TestAngleOpFloat(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -57,7 +58,6 @@ class TestAngleOpFloat(OpTest):
             user_defined_grads=[
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
-            check_eager=True,
         )
 
 
@@ -74,7 +74,7 @@ class TestAngleOpComplex(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -83,7 +83,6 @@ class TestAngleOpComplex(OpTest):
             user_defined_grads=[
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
-            check_eager=True,
         )
 
 

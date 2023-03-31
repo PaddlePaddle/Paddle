@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
-from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_no_sync import TestNoSync
-from parallel_dygraph_no_sync_unused_params import TestNoSyncUnusedParam
 from parallel_dygraph_no_sync_control_flow import TestNoSyncControlFlow
+from parallel_dygraph_no_sync_unused_params import TestNoSyncUnusedParam
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
+
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -79,7 +79,7 @@ class TestParallelDygraphNoSyncControlFlow(TestDistBase):
 
 class TestParallelDygraphNoSyncSpawn(TestDistSpawnRunner):
     def test_no_sync_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(test_class=TestNoSync, delta=1e-5)
 
 
@@ -88,7 +88,7 @@ class TestParallelDygraphNoSyncUnusedParamSpawn(TestDistSpawnRunner):
         args.find_unused_parameters = True
 
     def test_no_sync_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestNoSyncUnusedParam, delta=1e-5
             )
@@ -99,7 +99,7 @@ class TestParallelDygraphNoSyncControlFlowSpawn(TestDistSpawnRunner):
         args.find_unused_parameters = True
 
     def test_no_sync_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestNoSyncControlFlow, delta=1e-5
             )

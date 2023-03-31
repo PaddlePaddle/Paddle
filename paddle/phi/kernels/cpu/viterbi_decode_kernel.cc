@@ -110,7 +110,7 @@ struct Gather {
 
 template <typename Context,
           template <typename InT, typename OutT>
-          typename CompareFunctor,
+          class CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const Context& dev_ctx,
@@ -124,7 +124,7 @@ struct GetMask {
 
 template <typename Context,
           template <typename T>
-          typename BinaryFunctor,
+          class BinaryFunctor,
           typename T>
 struct BinaryOperation {
   void operator()(const Context& dev_ctx,
@@ -318,4 +318,6 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}
+    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

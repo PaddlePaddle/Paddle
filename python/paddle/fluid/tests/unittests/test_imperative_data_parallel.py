@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.nn import Linear
-import paddle.fluid.core as core
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn import Linear
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 
@@ -38,9 +38,9 @@ class MLP(fluid.Layer):
 class TestDataParallelStateDict(unittest.TestCase):
     def test_data_parallel_state_dict(self):
         with fluid.dygraph.guard():
-            strategy = dygraph.parallel.prepare_context()
+            paddle.distributed.init_parallel_env()
             mlp = MLP()
-            parallel_mlp = dygraph.parallel.DataParallel(mlp, strategy)
+            parallel_mlp = paddle.DataParallel(mlp)
 
             single_state = mlp.state_dict()
             parallel_state = parallel_mlp.state_dict()

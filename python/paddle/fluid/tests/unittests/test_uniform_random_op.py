@@ -14,24 +14,26 @@
 
 import os
 import unittest
-import numpy as np
-from op_test import OpTest
-import paddle
-import paddle.fluid.core as core
-import paddle
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
+import numpy as np
+from eager_op_test import OpTest, convert_uint16_to_float
 from test_attribute_var import UnittestBase
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.op import Operator
+from paddle.tensor import random
 
 
 def output_hist(out):
+    if out.dtype == np.uint16:
+        out = convert_uint16_to_float(out)
     hist, _ = np.histogram(out, range=(-5, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -44,7 +46,7 @@ def output_hist_diag(out):
     hist, _ = np.histogram(out, range=(-5, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -56,7 +58,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -88,7 +90,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int32") * ele)
+                ("x" + str(index), np.ones(1).astype("int32") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -151,15 +153,19 @@ class TestUniformRandomOp(OpTest):
         self.op_type = "uniform_random"
         self.python_api = paddle.uniform
         self.inputs = {}
+        self.init_dtype()
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def init_attrs(self):
         self.attrs = {
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "seed": 10,
+            "dtype": convert_np_dtype_to_dtype_(self.dtype),
         }
         self.output_hist = output_hist
 
@@ -170,22 +176,29 @@ class TestUniformRandomOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def func_test_check_api(self):
+    def test_check_api(self):
         places = self._get_places()
         for place in places:
             with fluid.dygraph.base.guard(place=place):
                 out = self.python_api(
                     self.attrs['shape'],
-                    'float32',
+                    self.dtype,
                     self.attrs['min'],
                     self.attrs['max'],
-                    self.attrs['seed'],
                 )
 
-    def test_check_api_eager(self):
-        with _test_eager_guard():
-            self.func_test_check_api()
-        self.func_test_check_api()
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestUniformRandomFP16Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestUniformRandomBF16Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.uint16
 
 
 class TestUniformRandomOpError(unittest.TestCase):
@@ -198,26 +211,18 @@ class TestUniformRandomOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.uniform_random(x1)
+                paddle.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_Variable2():
                 x1 = np.zeros((4, 784))
-                fluid.layers.uniform_random(x1)
+                paddle.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable2)
 
-            def test_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32'
-                )
-                fluid.layers.uniform_random(x2, 'int32')
-
-            self.assertRaises(TypeError, test_dtype)
-
             def test_out_dtype():
-                out = fluid.layers.uniform_random(shape=[3, 4], dtype='float64')
+                out = paddle.uniform(shape=[3, 4], dtype='float64')
                 self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
@@ -293,11 +298,13 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 class TestUniformRandomOpApi(unittest.TestCase):
     def test_api(self):
         paddle.seed(10)
-        x = fluid.layers.data('x', shape=[16], dtype='float32', lod_level=1)
-        y = fluid.layers.fc(
+        x = paddle.static.data(
+            'x', shape=[-1, 16], dtype='float32', lod_level=1
+        )
+        y = paddle.static.nn.fc(
             x,
             size=16,
-            param_attr=fluid.initializer.Uniform(
+            weight_attr=paddle.nn.initializer.UniformInitializer(
                 low=-0.5,
                 high=0.5,
                 seed=10,
@@ -321,8 +328,8 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
-            ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2])
+            dim_tensor = paddle.tensor.fill_constant([1], "int64", 3)
+            ret = paddle.uniform([1, dim_tensor, 2])
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -336,9 +343,9 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 2)
-            ret = fluid.layers.nn.uniform_random([1, dim_1, dim_2])
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 2)
+            ret = paddle.uniform([1, dim_1, dim_2])
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -352,8 +359,10 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            shape = fluid.data(name='shape_tensor', shape=[2], dtype="int32")
-            ret = fluid.layers.nn.uniform_random(shape)
+            shape = paddle.static.data(
+                name='shape_tensor', shape=[2], dtype="int32"
+            )
+            ret = paddle.uniform(shape)
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -376,13 +385,9 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
             _min = 5
             _max = 10
 
-            ret = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            ret_2 = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            res = fluid.layers.equal(ret, ret_2)
+            ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -463,12 +468,10 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
 class TestUniformRandomDygraphMode(unittest.TestCase):
     def test_check_output(self):
         with fluid.dygraph.guard():
-            x = fluid.layers.uniform_random(
-                [10], dtype="float32", min=0.0, max=1.0
-            )
+            x = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
             x_np = x.numpy()
             for i in range(10):
-                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+                self.assertTrue(x_np[i] > 0 and x_np[i] < 1.0)
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
@@ -481,23 +484,23 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
                 )
-                fluid.layers.uniform_random_batch_size_like(x1)
+                random.uniform_random_batch_size_like(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_shape():
-                x1 = fluid.layers.data(
-                    name='x2', shape=[100, 784], dtype='float32'
+                x1 = paddle.static.data(
+                    name='x2', shape=[-1, 100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
+                random.uniform_random_batch_size_like(x1, shape="shape")
 
             self.assertRaises(TypeError, test_shape)
 
             def test_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[100, 784], dtype='float32'
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x2, 'int32')
+                random.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -535,8 +538,8 @@ class TestUniformOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable2)
 
             def test_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[100, 784], dtype='float32'
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 100, 784], dtype='float32'
                 )
                 paddle.tensor.random.uniform(x2, 'int32')
 
@@ -559,7 +562,7 @@ class TestUniformDygraphMode(unittest.TestCase):
             )
             x_np = x.numpy()
             for i in range(10):
-                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+                self.assertTrue(x_np[i] > 0 and x_np[i] < 1.0)
 
 
 class TestUniformDtype(unittest.TestCase):
@@ -568,9 +571,8 @@ class TestUniformDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.uniform([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -590,6 +592,9 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.uniform([2, 3], dtype=paddle.float16)
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
         test_dygraph_fp16()
@@ -697,9 +702,7 @@ class TestUniformMinMaxTensor(UnittestBase):
             min_v = paddle.to_tensor([0.1])
             max_v = paddle.to_tensor([0.9])
             y = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
-            z = paddle.fluid.layers.uniform_random(
-                [2, 3, 10], min=min_v, max=max_v
-            )
+            z = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
 
             out = feat + y + z
 

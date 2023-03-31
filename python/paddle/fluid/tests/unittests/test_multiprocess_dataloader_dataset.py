@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.io import (
+    ChainDataset,
+    ComposeDataset,
+    DataLoader,
     Dataset,
     IterableDataset,
     TensorDataset,
-    ComposeDataset,
-    ChainDataset,
-    DataLoader,
 )
-from paddle.fluid.framework import _test_eager_guard
 
 IMAGE_SIZE = 32
 
@@ -82,30 +82,21 @@ class TestTensorDataset(unittest.TestCase):
                 assert len(label) == 1
                 assert input.shape == [1, 3, 4]
                 assert label.shape == [1, 1]
-                assert isinstance(
-                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
-                assert isinstance(
-                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(input, fluid.core.eager.Tensor)
+                assert isinstance(label, fluid.core.eager.Tensor)
                 assert np.allclose(input.numpy(), input_np[i])
                 assert np.allclose(label.numpy(), label_np[i])
 
-    def func_test_main(self):
+    def test_main(self):
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestComposeDataset(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -123,14 +114,9 @@ class TestComposeDataset(unittest.TestCase):
             assert np.allclose(input2, input2_t)
             assert np.allclose(label2, label2_t)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestRandomSplitApi(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -149,25 +135,15 @@ class TestRandomSplitApi(unittest.TestCase):
 
         self.assertTrue(len(elements_list) == 0)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestRandomSplitError(unittest.TestCase):
-    def func_test_errors(self):
+    def test_errors(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
-
-    def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
-        self.func_test_errors()
 
 
 class TestSubsetDataset(unittest.TestCase):
@@ -204,14 +180,10 @@ class TestSubsetDataset(unittest.TestCase):
             assert len(label) == 1
             assert input.shape == [1, 3, 4]
             assert label.shape == [1, 1]
-            assert isinstance(
-                input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-            )
-            assert isinstance(
-                label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-            )
+            assert isinstance(input, fluid.core.eager.Tensor)
+            assert isinstance(label, fluid.core.eager.Tensor)
 
-        elements_list = list()
+        elements_list = []
         for _, (input, label) in enumerate(dataloader()):
             assert_basic(input, label)
             elements_list.append(label)
@@ -220,14 +192,14 @@ class TestSubsetDataset(unittest.TestCase):
             assert_basic(input, label)
             elements_list.remove(label)
 
-        odd_list = list()
+        odd_list = []
         for _, (input, label) in enumerate(dataloader_odd()):
             assert_basic(input, label)
             odd_list.append(label)
 
         self.assertEqual(odd_list, elements_list)
 
-    def func_test_main(self):
+    def test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -236,11 +208,6 @@ class TestSubsetDataset(unittest.TestCase):
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 class TestChainDataset(unittest.TestCase):
@@ -267,17 +234,12 @@ class TestChainDataset(unittest.TestCase):
             assert np.allclose(label, samples[idx][1])
             idx += 1
 
-    def func_test_main(self):
+    def test_main(self):
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 class NumpyMixTensorDataset(Dataset):
@@ -315,12 +277,8 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert len(label) == 1
                 assert input.shape == [1, IMAGE_SIZE]
                 assert label.shape == [1, 1]
-                assert isinstance(
-                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
-                assert isinstance(
-                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(input, fluid.core.eager.Tensor)
+                assert isinstance(label, fluid.core.eager.Tensor)
 
 
 class ComplextDataset(Dataset):
@@ -379,14 +337,9 @@ class TestComplextDataset(unittest.TestCase):
                 assert data[4]['a'].shape == [2]
                 assert data[4]['b'].shape == [2, 2]
 
-    def func_test_main(self):
+    def test_main(self):
         for num_workers in [0, 2]:
             self.run_main(num_workers)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 class SingleFieldDataset(Dataset):
@@ -420,19 +373,12 @@ class TestSingleFieldDataset(unittest.TestCase):
             )
 
             for i, data in enumerate(dataloader()):
-                assert isinstance(
-                    data, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(data, fluid.core.eager.Tensor)
                 assert data.shape == [2, 2, 3]
 
-    def func_test_main(self):
+    def test_main(self):
         for num_workers in [0, 2]:
             self.run_main(num_workers)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 class SingleFieldIterableDataset(IterableDataset):
@@ -459,17 +405,12 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
             [457190280, 2660306227, 859341110, 354512857],
         ]
 
-    def func_test_main(self):
+    def test_main(self):
         from paddle.fluid.dataloader.worker import _generate_states
 
         for inp, outp in zip(self.inputs, self.outputs):
             out = _generate_states(*inp)
             assert out == outp
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 class TestDatasetWithDropLast(unittest.TestCase):
@@ -490,23 +431,13 @@ class TestDatasetWithDropLast(unittest.TestCase):
                     datas.append(data)
                 assert len(datas) == steps
 
-    def func_test_map_dataset(self):
+    def test_map_dataset(self):
         dataset = RandomDataset(10)
         self.run_main(dataset, 10, 3)
 
-    def test_map_dataset(self):
-        with _test_eager_guard():
-            self.func_test_map_dataset()
-        self.func_test_map_dataset()
-
-    def func_test_iterable_dataset(self):
+    def test_iterable_dataset(self):
         dataset = RandomIterableDataset(10)
         self.run_main(dataset, 10, 3)
-
-    def test_iterable_dataset(self):
-        with _test_eager_guard():
-            self.func_test_iterable_dataset()
-        self.func_test_iterable_dataset()
 
 
 if __name__ == '__main__':

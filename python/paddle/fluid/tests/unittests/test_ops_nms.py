@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import paddle
-from test_nms_op import nms
 import tempfile
+import unittest
+
+import numpy as np
+from test_nms_op import nms
+
+import paddle
 
 
 def _find(condition):
@@ -108,7 +110,7 @@ class TestOpsNMS(unittest.TestCase):
                 np.testing.assert_array_equal(
                     out.numpy(),
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                    err_msg=f'paddle out: {out}\n py out: {out_py}\n',
                 )
 
     def test_multiclass_nms_dynamic(self):
@@ -133,7 +135,7 @@ class TestOpsNMS(unittest.TestCase):
                 np.testing.assert_array_equal(
                     out.numpy(),
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                    err_msg=f'paddle out: {out}\n py out: {out_py}\n',
                 )
 
     def test_multiclass_nms_static(self):
@@ -184,7 +186,7 @@ class TestOpsNMS(unittest.TestCase):
                 np.testing.assert_array_equal(
                     out,
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                    err_msg=f'paddle out: {out}\n py out: {out_py}\n',
                 )
 
     def test_multiclass_nms_dynamic_to_static(self):

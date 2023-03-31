@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 

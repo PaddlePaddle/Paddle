@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 import unittest
 
 
@@ -29,10 +29,10 @@ class TestDirectory(unittest.TestCase):
     def get_import_command(self, module):
         paths = module.split('.')
         if len(paths) == 1:
-            return 'import {}'.format(module)
+            return f'import {module}'
         package = '.'.join(paths[:-1])
         func = paths[-1]
-        cmd = 'from {} import {}'.format(package, func)
+        cmd = f'from {package} import {func}'
         return cmd
 
     def test_new_directory(self):
@@ -48,9 +48,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.distributed.ParallelEnv',
             'paddle.DataParallel',
             'paddle.jit',
-            'paddle.jit.TracedLayer',
             'paddle.jit.to_static',
-            'paddle.jit.ProgramTranslator',
             'paddle.jit.TranslatedLayer',
             'paddle.jit.save',
             'paddle.jit.load',
@@ -82,7 +80,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.program_guard',
             'paddle.static.Print',
             'paddle.static.py_func',
-            'paddle.static.ParallelExecutor',
             'paddle.static.WeightNormParamAttr',
             'paddle.static.nn.fc',
             'paddle.static.nn.batch_norm',
@@ -92,13 +89,11 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.conv3d',
             'paddle.static.nn.conv3d_transpose',
             'paddle.static.nn.create_parameter',
-            'paddle.static.nn.crf_decoding',
             'paddle.static.nn.data_norm',
             'paddle.static.nn.deform_conv2d',
             'paddle.static.nn.group_norm',
             'paddle.static.nn.instance_norm',
             'paddle.static.nn.layer_norm',
-            'paddle.static.nn.multi_box_head',
             'paddle.static.nn.nce',
             'paddle.static.nn.prelu',
             'paddle.static.nn.row_conv',
@@ -111,11 +106,11 @@ class TestDirectory(unittest.TestCase):
         with open(import_file, "w") as wb:
             for module in new_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write("{}\n".format(run_cmd))
+                wb.write(f"{run_cmd}\n")
 
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, import_file)
+        ps_cmd = f"{_python} {import_file}"
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -125,7 +120,7 @@ class TestDirectory(unittest.TestCase):
 
         self.assertFalse(
             "Error" in str(stderr),
-            "ErrorMessage:\n{}".format(bytes.decode(stderr)),
+            f"ErrorMessage:\n{bytes.decode(stderr)}",
         )
 
     def test_old_directory(self):
@@ -146,7 +141,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.imperative.jit',
             'paddle.imperative.TracedLayer',
             'paddle.imperative.declarative',
-            'paddle.imperative.ProgramTranslator',
             'paddle.imperative.TranslatedLayer',
             'paddle.imperative.jit.save',
             'paddle.imperative.jit.load',
@@ -168,7 +162,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.program_guard',
             'paddle.Print',
             'paddle.py_func',
-            'paddle.ParallelExecutor',
             'paddle.default_main_program',
             'paddle.default_startup_program',
             'paddle.Program',
@@ -231,7 +224,7 @@ if count != {len_old_directory}:
 
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, import_file)
+        ps_cmd = f"{_python} {import_file}"
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,

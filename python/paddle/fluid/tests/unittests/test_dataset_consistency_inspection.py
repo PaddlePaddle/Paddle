@@ -15,13 +15,14 @@
 TestCases for Dataset consistency insepection of use_var_list and data_generator.
 """
 
-import paddle
-import paddle.fluid as fluid
 import math
 import os
 import tempfile
 import unittest
-import paddle.fluid.incubate.data_generator as dg
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
 
 # paddle.enable_static()
 # fluid.disable_dygraph()
@@ -50,7 +51,7 @@ query_schema = [
 ]
 
 
-class CTRDataset(dg.MultiSlotDataGenerator):
+class CTRDataset(fleet.MultiSlotDataGenerator):
     def __init__(self, mode):
         self.test = mode
 
@@ -393,12 +394,11 @@ class TestDataset(unittest.TestCase):
             f.write(data)
 
         slot_data = []
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
-            append_batch_size=False,
         )
         slot_data.append(label)
 
@@ -406,56 +406,65 @@ class TestDataset(unittest.TestCase):
         len_sparse_query = 19
         for feat_name in range(1, len_sparse_query + 1):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1
+                paddle.static.data(
+                    name=str(feat_name),
+                    shape=[-1, 1],
+                    dtype='int64',
+                    lod_level=1,
                 )
             )
 
         # sparse_url_feat_names
         for feat_name in range(len_sparse_query + 1, len_sparse_query + 5):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1
+                paddle.static.data(
+                    name=str(feat_name),
+                    shape=[-1, 1],
+                    dtype='int64',
+                    lod_level=1,
                 )
             )
 
         # dense_feat_names
         for feat_name in range(len_sparse_query + 5, len_sparse_query + 16):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'
+                paddle.static.data(
+                    name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
 
         # context_feat_namess
         for feat_name in range(len_sparse_query + 16, len_sparse_query + 18):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'
+                paddle.static.data(
+                    name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
 
         # neg sparse_url_feat_names
         for feat_name in range(len_sparse_query + 18, len_sparse_query + 22):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1
+                paddle.static.data(
+                    name=str(feat_name),
+                    shape=[-1, 1],
+                    dtype='int64',
+                    lod_level=1,
                 )
             )
 
         # neg dense_feat_names
         for feat_name in range(len_sparse_query + 22, len_sparse_query + 33):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'
+                paddle.static.data(
+                    name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
 
         # neg context_feat_namess
         for feat_name in range(len_sparse_query + 33, len_sparse_query + 35):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'
+                paddle.static.data(
+                    name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
 

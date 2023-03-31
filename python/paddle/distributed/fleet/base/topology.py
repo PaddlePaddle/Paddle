@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import collections
-from itertools import product
 from functools import reduce
+from itertools import product
+
+import paddle
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
+
 from ..utils.log_util import logger
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
@@ -25,12 +28,13 @@ _HYBRID_PARALLEL_GROUP = None
 
 class ParallelMode:
     """
+
     There are all the parallel modes currently supported:
-    - DATA_PARALLEL: Distribute input data to different devices.
-    - TENSOR_PARALLEL: Shards tensors in the network to different devices.
-    - PIPELINE_PARALLEL: Place different layers of the network on different devices.
-    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states
-                         corresponding to the parameters to each device.
+
+        - DATA_PARALLEL: Distribute input data to different devices.
+        - TENSOR_PARALLEL: Shards tensors in the network to different devices.
+        - PIPELINE_PARALLEL: Place different layers of the network on different devices.
+        - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states corresponding to the parameters to each device.
 
     Examples:
         .. code-block:: python
@@ -185,6 +189,7 @@ class HybridCommunicateGroup:
 
         # create p2p_groups
         if self._pp_degree > 1:
+            check_nccl_version_for_p2p()
             self._set_p2p_group()
 
         debug_str = (
@@ -416,7 +421,7 @@ class _CommunicateGroup:
     def __init__(self):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
-        self.groups = dict()
+        self.groups = {}
 
     def set_comm_group(
         self, group_name, group_rank, group_size, ring_id, group_ranks

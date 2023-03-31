@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .public import *  # noqa: F403
+import paddle
+from paddle import fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.passes import new_pass
+
+from .public import *  # noqa: F403
 
 
 class PsProgramBuilder:
@@ -77,8 +80,8 @@ class PsProgramBuilder:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
             print(
-                "fluid.default_startup_program: {}".format(
-                    fluid.default_startup_program
+                "paddle.static.default_startup_program: {}".format(
+                    paddle.static.default_startup_program
                 )
             )
             # print("ps_program_build before =", id(self.loss.block.program))
@@ -469,10 +472,10 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         if not self.is_server:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
-            fluid.framework.switch_main_program(self.cloned_main)
+            paddle.framework.switch_main_program(self.cloned_main)
             print(
-                "fluid.default_startup_program: {}".format(
-                    fluid.default_startup_program()._heter_pipeline_opt
+                "paddle.static.default_startup_program: {}".format(
+                    paddle.static.default_startup_program()._heter_pipeline_opt
                 )
             )
         else:
@@ -480,4 +483,4 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             fluid.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
-            fluid.framework.switch_main_program(self.attrs['_main_server'])
+            paddle.framework.switch_main_program(self.attrs['_main_server'])

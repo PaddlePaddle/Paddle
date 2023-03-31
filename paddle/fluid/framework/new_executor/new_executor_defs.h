@@ -32,126 +32,17 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
+using SchedulingPriority = int64_t;
+
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
-constexpr const char* kCustomStream = "CustromStream";
+constexpr const char* kCustomStream = "CustomStream";
 constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
 
 constexpr int kEmptyVarIndex = 0;
-
-enum class Priority { kLowest, kNormal };
-
-class InterpretercoreInferShapeContext : public InferShapeContext {
- public:
-  InterpretercoreInferShapeContext(const OperatorBase& op,
-                                   const RuntimeContext& ctx);
-
-  bool HasInput(const std::string& name) const override;
-
-  bool HasOutput(const std::string& name) const override;
-
-  bool HasAttr(const std::string& name) const override;
-
-  bool HasInputs(const std::string& name) const override;
-
-  bool HasOutputs(const std::string& name,
-                  bool allow_null = false) const override;
-
-  AttrReader Attrs() const override;
-
-  std::vector<std::string> Inputs(const std::string& name) const override;
-
-  std::vector<std::string> Outputs(const std::string& name) const override;
-
-  std::string GetInputNameByIdx(size_t idx) const override;
-
-  std::string GetOutputNameByIdx(size_t idx) const override;
-
-  void ShareDim(const std::string& in,
-                const std::string& out,
-                size_t i = 0,
-                size_t j = 0) override;
-
-  void ShareAllLoD(const std::string& in,
-                   const std::string& out) const override;
-
-  void ShareLoD(const std::string& in,
-                const std::string& out,
-                size_t i = 0,
-                size_t j = 0) const override;
-
-  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
-
-  void SetLoDLevel(const std::string& out,
-                   int32_t lod_level,
-                   size_t j = 0) const override;
-
-  bool IsRuntime() const override;
-
-  bool IsRunMKLDNNKernel() const override;
-
-  // TODO(paddle-dev): Can this be template?
-  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
-  GetInputVarPtrs(const std::string& name) const override;
-
-  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
-  GetOutputVarPtrs(const std::string& name) const override;
-
-  DDim GetInputDim(const std::string& name) const override;
-
-  std::vector<DDim> GetInputsDim(const std::string& name) const override;
-
-  proto::VarType::Type GetInputVarType(const std::string& name) const override;
-
-  std::vector<proto::VarType::Type> GetInputsVarType(
-      const std::string& name) const override;
-
-  std::vector<proto::VarType::Type> GetOutputsVarType(
-      const std::string& name) const override;
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override;
-
-  void SetOutputsDim(const std::string& name,
-                     const std::vector<DDim>& dims) override;
-
-  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
-
-  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
-
-  void SetSkipLoD(bool skip);
-
- protected:
-  DDim GetDim(Variable* var) const;
-
-  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const;
-
-  std::vector<DDim> GetRepeatedDims(const std::string& name) const override;
-
-  void SetDim(Variable* var, const DDim& dim);
-
-  void SetDims(const std::vector<Variable*>& vars,
-               const std::vector<DDim>& dims);
-
-  void SetRepeatedDims(const std::string& name,
-                       const std::vector<DDim>& dims) override;
-
-  std::vector<proto::VarType::Type> GetVarTypes(
-      const std::vector<Variable*>& vars) const;
-
-  proto::VarType::Type GetVarType(Variable* var) const;
-
- private:
-  const std::vector<Variable*>& InputVars(const std::string& name) const;
-
-  const std::vector<Variable*>& OutputVars(const std::string& name) const;
-
-  const OperatorBase& op_;
-  const RuntimeContext& ctx_;
-  bool can_skip_lod_;
-};
 
 struct OpKernelFunc {
   OpKernelComputeFunc compute_func_;
@@ -245,71 +136,87 @@ class VariableScope {
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-class NextInstructionList {
- public:
-  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
-
-  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
-
-  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
-
-  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
-
-  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
-
-  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
-
- private:
-  std::vector<size_t> direct_run_;
-  std::vector<size_t> event_wait_run_;
-  std::vector<size_t> synchronize_run_;
-};
-
 struct EventInter {
-  explicit EventInter(size_t var_id,
+  explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type)
-      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
-  size_t var_id_;
+      : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
+  size_t instr_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
   platform::DeviceType waiter_type_;
 };
 
 enum class OpFuncType {
-  kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+  kCpuSync,  // CPU kernel, block host
+  kGpuSync,  // GPU or other device kernel without asynchronous operation
+  kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
-class RuntimeInferShapeContext;
 
 struct OpFuncNode {
-  // TODO(zhiqiu): Better make it unique_ptr
-  std::shared_ptr<OperatorBase> operator_base_;
-  std::string execution_stream_{kDefaultStream};
-  std::map<std::string, std::vector<int>> input_index;
-  std::map<std::string, std::vector<int>> output_index;
-  std::unordered_set<int> no_data_transform_index;
+  int stream_priority_{0};  // lower value, higher priority
+  // fit for phi kernel
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
+  platform::DeviceContext* dev_ctx_;  // not owned
 
   std::map<int, int> inplace_back_map;
 
-  OpKernelComputeFunc kernel_func_;
-  platform::DeviceContext* dev_ctx_;  // not owned
+  std::map<std::string, std::vector<int>> input_index;
+  std::map<std::string, std::vector<int>> output_index;
 
-  // fit for phi kernel
-  phi::Kernel* phi_kernel_{nullptr};  // not owned
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
+  std::string execution_stream_{kDefaultStream};
 
   OpFuncType type_;
+  OpKernelComputeFunc kernel_func_;
+
+  SchedulingPriority scheduling_priority_{0};  // lower value, higher priority
 };
 
 class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx,
-              const Priority priority);
+              const platform::DeviceContext& dev_ctx);
 
   bool IsArtificial() const { return is_artificial_; }
 
-  size_t Id() const;
+  const std::vector<size_t>& NextInstrsInDifferenceThread() const {
+    return next_instrs_in_different_thread;
+  }
+
+  const std::vector<size_t>& NextInstrsInSameThread() const {
+    return next_instrs_in_same_thread;
+  }
+
+  size_t Id() const { return id_; }
+
+  void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
+                        platform::DeviceType waiter_type) {
+    event_to_record_ = std::make_shared<EventInter>(id_, event, waiter_type);
+  }
+
+  void AddEventToWait(size_t instr_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type) {
+    events_to_wait_.emplace_back(instr_id, event, waiter_type);
+  }
+
+  const std::vector<EventInter>& EventsToWait() const {
+    return events_to_wait_;
+  }
+
+  void AddNextInstrInDifferentThread(size_t id) {
+    next_instrs_in_different_thread.push_back(id);
+  }
+
+  void AddNextInstrInSameThread(size_t id) {
+    next_instrs_in_same_thread.push_back(id);
+  }
+
+  void RecordEvent(const Place& place) const;
+
+  void WaitEvent(const Place& place) const;
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
 
@@ -327,10 +234,6 @@ class Instruction {
 
   OperatorBase* OpBase() const;
 
-  NextInstructionList& NextInstructions();
-
-  const NextInstructionList& NextInstructions() const;
-
   void AddGCCheckVar(size_t id);
 
   const std::vector<size_t>& GCCheckVars() const;
@@ -344,8 +247,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
-  std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
-      const;
+  std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -357,39 +259,30 @@ class Instruction {
 
   void ClearInplace();
 
-  const std::vector<EventInter>& InputEvents() const;
-
-  const std::vector<EventInter>& OutputEvents() const;
-
-  void AddInputEvent(size_t var_id,
-                     std::shared_ptr<platform::DeviceEvent> event,
-                     platform::DeviceType waiter_type);
-
-  void AddOutputEvent(size_t var_id,
-                      std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type);
-
-  Priority GetPriority() const { return priority_; }
+  SchedulingPriority GetSchedulingPriority() const {
+    return op_func_node_.scheduling_priority_;
+  }
 
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
 
   size_t id_;
+
+  std::vector<size_t> next_instrs_in_different_thread;
+  std::vector<size_t> next_instrs_in_same_thread;
+
+  std::shared_ptr<EventInter> event_to_record_;
+  std::vector<EventInter> events_to_wait_;
+
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
-  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
-  std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
+  std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
-
-  NextInstructionList next_instruction_;
-
-  std::vector<EventInter> intput_events_;
-  std::vector<EventInter> output_events_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };

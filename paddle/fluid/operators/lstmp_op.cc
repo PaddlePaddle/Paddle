@@ -143,22 +143,22 @@ class LSTMPOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
 class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input",
-             "(LoDTensor) the input for sequence data, which supports "
-             "variable-time length input sequence. The underlying tensor in "
-             "this LoDTensor is a matrix with shape (T X 4D), where T is the "
-             "total time steps in this mini-batch, D is the hidden size.");
+    AddInput(
+        "Input",
+        "(phi::DenseTensor) the input for sequence data, which supports "
+        "variable-time length input sequence. The underlying tensor in "
+        "this phi::DenseTensor is a matrix with shape (T X 4D), where T is the "
+        "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
@@ -190,29 +190,34 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
              " - The shape is (1 x 7D). "
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Projection",
-              "(LoDTensor) the projection of the hidden state of LSTMP "
+              "(phi::DenseTensor) the projection of the hidden state of LSTMP "
               "operator. The shape is (T x P), and LoD is the same with the "
               "`Input`.");
     AddOutput("Cell",
-              "(LoDTensor) the cell state of LSTMP operator. "
+              "(phi::DenseTensor) the cell state of LSTMP operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
-    AddOutput("BatchGate",
-              "(LoDTensor) This LoDTensor contains input gate, forget gate "
-              "and output gate after the activations. This LoDTensor has the "
-              "same shape as the reorganized input, which is also be called "
-              "batch input. The LoD size is 2. The first-level LoD is the "
-              "batch offsets and the second contains the indices, which "
-              "denotes the position of reorganized sequence in the raw input.")
+    AddOutput(
+        "BatchGate",
+        "(phi::DenseTensor) This phi::DenseTensor contains input gate, forget "
+        "gate "
+        "and output gate after the activations. This phi::DenseTensor has the "
+        "same shape as the reorganized input, which is also be called "
+        "batch input. The LoD size is 2. The first-level LoD is the "
+        "batch offsets and the second contains the indices, which "
+        "denotes the position of reorganized sequence in the raw input.")
         .AsIntermediate();
-    AddOutput("BatchCellPreAct",
-              "(LoDTensor) the pre-activation cell state reorganized in batch. "
-              "This LoDTensor is obtained in the forward and used in the "
-              "backward.")
+    AddOutput(
+        "BatchCellPreAct",
+        "(phi::DenseTensor) the pre-activation cell state reorganized in "
+        "batch. "
+        "This phi::DenseTensor is obtained in the forward and used in the "
+        "backward.")
         .AsIntermediate();
-    AddOutput("BatchHidden",
-              "(LoDTensor) the hidden state reorganized in batch. "
-              "This LoDTensor is obtained in the forward and used in the "
-              "backward.")
+    AddOutput(
+        "BatchHidden",
+        "(phi::DenseTensor) the hidden state reorganized in batch. "
+        "This phi::DenseTensor is obtained in the forward and used in the "
+        "backward.")
         .AsIntermediate();
     AddAttr<bool>("use_peepholes",
                   "(bool, default: True) "
@@ -382,11 +387,11 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "BatchGate"),
-        ctx.device_context());
+        ctx.device_context().GetPlace());
   }
 };
 

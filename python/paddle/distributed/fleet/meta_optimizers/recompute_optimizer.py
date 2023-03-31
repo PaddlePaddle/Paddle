@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
+
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
@@ -26,7 +27,6 @@ class RecomputeOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = [
             "LarsOptimizer",
             "LambOptimizer",
-            "GraphExecutionOptimizer",
             "DGCOptimizer",
         ]
         self.meta_optimizers_black_list = []

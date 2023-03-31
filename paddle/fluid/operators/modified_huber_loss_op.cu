@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 struct ModifiedHuberLossBackward {
   template <typename Tuple>
   HOSTDEVICE void operator()(Tuple t) const {

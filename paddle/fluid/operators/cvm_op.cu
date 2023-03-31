@@ -16,14 +16,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/cvm_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void CvmComputeKernel(const bool use_cvm,
@@ -87,7 +85,7 @@ template <typename T>
 class CVMCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<LoDTensor>("X");
+    const auto* x = context.Input<phi::DenseTensor>("X");
     const T* x_data = x->data<T>();
 
     auto batch_size = x->dims()[0];
@@ -95,7 +93,7 @@ class CVMCUDAKernel : public framework::OpKernel<T> {
     auto item_size = numel / batch_size;
     auto use_cvm = context.Attr<bool>("use_cvm");
 
-    auto* y = context.Output<LoDTensor>("Y");
+    auto* y = context.Output<phi::DenseTensor>("Y");
     T* y_data = y->mutable_data<T>(context.GetPlace());
 
     // for Input X do not have Lod Information.
@@ -128,7 +126,7 @@ template <typename T>
 class CVMGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
     const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");
@@ -168,7 +166,7 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
           lod[lod.size() - 1],
           platform::errors::PreconditionNotMet(
               "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
-      paddle::framework::MixVector<size_t> mixv_lod(&lod);
+      phi::MixVector<size_t> mixv_lod(&lod);
       CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                  PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS,

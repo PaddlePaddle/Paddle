@@ -23,8 +23,8 @@ We retain the following license from the original files:
 
 #include "paddle/fluid/operators/assign_pos_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 DECLARE_bool(avoid_op_randomness);
 
@@ -47,25 +47,26 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AssignPosCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
     // counter orderingly.
-    auto cum_count = context.Input<LoDTensor>(
+    auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
-    auto numbers =
-        context.Input<LoDTensor>("X");  // (batch_size * seq_len, topk) int32
+    auto numbers = context.Input<phi::DenseTensor>(
+        "X");  // (batch_size * seq_len, topk) int32
     auto eff_num_len =
-        context.Input<LoDTensor>("eff_num_len");  // (sum(cum_count))
-    auto out = context.Output<LoDTensor>("Out");  // (cum_count) value ranges
+        context.Input<phi::DenseTensor>("eff_num_len");  // (sum(cum_count))
+    auto out =
+        context.Output<phi::DenseTensor>("Out");  // (cum_count) value ranges
                                                   // from 0 to batch_size *
                                                   // seq_len * topk
     auto place = context.GetPlace();
@@ -101,4 +102,6 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(assign_pos, ops::AssignPosCUDAKernel<int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    assign_pos, GPU, ALL_LAYOUT, ops::AssignPosCUDAKernel, int64_t) {}

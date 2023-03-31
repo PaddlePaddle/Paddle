@@ -20,13 +20,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -81,13 +80,13 @@ class CenterLossKernel : public framework::OpKernel<T> {
 
     auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
 
-    Tensor centers_diffacc;  // used to accumulate all diff
+    phi::DenseTensor centers_diffacc;  // used to accumulate all diff
     auto centers_diffacc_data =
         centers_diffacc.mutable_data<T>(centers_dim, ctx.GetPlace());
     int numel = centers_diffacc.numel();
     std::memset(centers_diffacc_data, 0, sizeof(T) * numel);
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     int tLabel;
 
     const T *x_index;
@@ -95,7 +94,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     T *center_out_index;
     T *center_loss_diff_index;
     T *acc_index;
-    platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
 
     for (int i = 0; i < batch_size; ++i) {
       tLabel = label_data[i];

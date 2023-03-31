@@ -13,19 +13,18 @@
 # limitations under the License.
 
 import copy
-import time
 import logging
+import time
 
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import unique_name
-from paddle.distributed.passes import new_pass
+from paddle.distributed.passes import PassManager, new_pass
+from paddle.static import append_backward, program_guard
+from paddle.utils import unique_name
 
-from .reshard import Resharder
-from .partitioner import Partitioner
-from .utils import set_grad_var_shape
-from .process_group import get_world_process_group
 from ..utils.log_utils import get_logger
+from .partitioner import Partitioner
+from .process_group import get_world_process_group
+from .reshard import Resharder
+from .utils import set_grad_var_shape
 
 
 class Parallelizer:
@@ -131,8 +130,12 @@ class Parallelizer:
         else:
             # Apply pre optimization passes
             time0 = time.time()
-            self._apply_pre_optimization(
-                serial_main_program, serial_startup_program, None, None, None
+            (
+                serial_main_program,
+                serial_startup_program,
+                params_grads,
+            ) = self._apply_pre_optimization(
+                serial_main_program, serial_startup_program, None, None, []
             )
             self._logger.debug(
                 "within parallel apply_pre_optimization time: {}, mode {}".format(
@@ -207,22 +210,6 @@ class Parallelizer:
         if self._strategy is None:
             return
 
-        # apply quantization pass
-        # The pass can be applied when mode must be 'train'
-        if self._mode == 'train' and self._strategy.qat.enable:
-            config = copy.deepcopy(self._strategy.qat.to_dict())
-            config["dist_context"] = self._dist_context
-            config["params_grads"] = params_grads
-            auto_parallel_quantization_pass = new_pass(
-                "auto_parallel_quantization", config
-            )
-            auto_parallel_quantization_pass.apply(
-                [main_program], [startup_program], self._pass_context
-            )
-            main_program = self._pass_context.get_attr("main_program")
-            startup_program = self._pass_context.get_attr("startup_program")
-            params_grads = self._pass_context.get_attr("params_grads")
-
         # apply amp pass on train/eval/predict
         if self._strategy.amp.enable:
             config = copy.deepcopy(self._strategy.amp.to_dict())
@@ -233,7 +220,18 @@ class Parallelizer:
                 self._dist_context.serial_feed_vars["inputs"]
                 + self._dist_context.serial_feed_vars["labels"]
             )
-            if config["use_pure_fp16"]:
+            self._logger.info(
+                "Applying AMP-{}-{} ...".format(
+                    config["dtype"], config['level']
+                ),
+            )
+            if config['level'] == "o1":
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+                loss = auto_parallel_amp_pass.get_loss()
+            elif config['level'] in ['o2', 'o3']:
                 config["base_opt"] = optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
@@ -241,11 +239,26 @@ class Parallelizer:
                 )
                 loss = auto_parallel_fp16_pass.get_loss()
             else:
-                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-                auto_parallel_amp_pass.apply(
-                    [main_program], [startup_program], self._pass_context
-                )
-                loss = auto_parallel_amp_pass.get_loss()
+                raise ValueError("AMP level should be one of o1, o2, o3")
+
+        # apply quantization pass
+        # The pass can be applied when mode must be 'train'
+        if self._strategy.qat.enable:
+            config = copy.deepcopy(self._strategy.qat.to_dict())
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["mode"] = self._mode
+            config["loss"] = loss
+            auto_parallel_quantization_pass = new_pass(
+                "auto_parallel_quantization", config
+            )
+            auto_parallel_quantization_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+            main_program = self._pass_context.get_attr("main_program")
+            startup_program = self._pass_context.get_attr("startup_program")
+            params_grads = self._pass_context.get_attr("params_grads")
+            loss = self._pass_context.get_attr("loss")
 
         # apply recompute pass
         # recompute is then train-only optimization
@@ -303,6 +316,16 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+            # deps for newexe
+            config = {}
+            config["dist_context"] = self._dist_context
+            APSED_pass = new_pass(
+                "auto_parallel_supplement_explicit_dependencies", config
+            )
+            APSED_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
@@ -314,3 +337,11 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
+
+        if self._mode == "train" and self._strategy.fused_passes.enable:
+            if len(self._strategy.fused_passes.fused_passes_list) > 0:
+                new_pass_list = []
+                for op in self._strategy.fused_passes.fused_passes_list:
+                    new_pass_list.append(new_pass(op))
+                pass_manager = PassManager(new_pass_list)
+                pass_manager.apply([main_program], [startup_program])

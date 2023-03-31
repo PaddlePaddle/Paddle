@@ -16,17 +16,20 @@
 """basic collective operations in python"""
 """remote file system"""
 
-from ..utils.fs import FS
-from paddle.fluid.proto import framework_pb2
-from paddle.fluid.framework import Program
-from paddle.fluid import debugger
-from google.protobuf import text_format
-import paddle.fluid as fluid
-from collections import OrderedDict
-from paddle.fluid import core
-import subprocess
 import os
+import subprocess
+from collections import OrderedDict
+
 import numpy as np
+from google.protobuf import text_format
+
+import paddle
+from paddle import framework
+from paddle.fluid import core, debugger
+from paddle.fluid.proto import framework_pb2
+from paddle.static import Program
+
+from ..utils.fs import FS
 
 __all__ = []
 
@@ -376,11 +379,11 @@ class UtilBase:
         pruned_vars = [
             (v.name, v)
             for v in pruned_prog.list_vars()
-            if fluid.io.is_persistable(v)
+            if paddle.static.io.is_persistable(v)
         ]
         pruned_vars = OrderedDict(pruned_vars)
-        pruned_vars_name = [name for name in pruned_vars]
-        print("persistable vars in pruned program: {}".format(pruned_vars_name))
+        pruned_vars_name = list(pruned_vars)
+        print(f"persistable vars in pruned program: {pruned_vars_name}")
 
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         feed_fetch_type_list = [
@@ -422,7 +425,7 @@ class UtilBase:
         def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
             def reader(batch_size, fn, dim):
                 data = []
-                if isinstance(dim, list) or isinstance(dim, tuple):
+                if isinstance(dim, (list, tuple)):
                     shape = list(dim)
                     _temp = 1
                     for x in dim:
@@ -460,7 +463,7 @@ class UtilBase:
             )
 
         saved_params = [
-            v for v in prog.list_vars() if fluid.io.is_persistable(v)
+            v for v in prog.list_vars() if paddle.static.io.is_persistable(v)
         ]
         print(
             "persistable vars in dump program: {}".format(
@@ -487,15 +490,15 @@ class UtilBase:
             )
             return False
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
+        place = framework.CPUPlace()
+        exe = paddle.static.Executor(place)
+        scope = paddle.static.Scope()
+        with paddle.static.scope_guard(scope):
             (
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ) = fluid.io.load_inference_model(
+            ) = paddle.distributed.io.load_inference_model_distributed(
                 config.dump_model_dir,
                 exe,
                 model_filename=model_filename,
@@ -508,7 +511,7 @@ class UtilBase:
                 for each_var in saved_params
             }
             for each_var in saved_params:
-                var_temp = fluid.global_scope().find_var(each_var.name)
+                var_temp = paddle.static.global_scope().find_var(each_var.name)
                 assert var_temp is not None, (
                     "can't not find var: " + each_var.name
                 )
@@ -639,7 +642,7 @@ class UtilBase:
                             dtype=feed_config.feeded_vars_types[i],
                         )
                         feed_tensors.append(
-                            fluid.create_lod_tensor(
+                            paddle.fluid.create_lod_tensor(
                                 t, [[1] * config.batch_size], place
                             )
                         )
@@ -668,7 +671,9 @@ class UtilBase:
                     )
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
-                feeder = fluid.DataFeeder(feed_list=feed_vars, place=place)
+                feeder = paddle.fluid.DataFeeder(
+                    feed_list=feed_vars, place=place
+                )
                 batch_feed = feed_gen(
                     config.batch_size,
                     feed_config.feeded_vars_dims,
@@ -683,5 +688,5 @@ class UtilBase:
                 )
             for i, v in enumerate(fetch_list):
                 print("fetch_targets name: %s" % v.name)
-                print("fetch_targets: {}".format(results[i]))
+                print(f"fetch_targets: {results[i]}")
             return results

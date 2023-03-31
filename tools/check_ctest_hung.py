@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import re
+import sys
 
 
 def escape(input):
@@ -31,7 +31,7 @@ Diff:  set(['test_parallel_executor_crf'])
     """
     if len(sys.argv) < 2:
         print(usage)
-        exit(0)
+        sys.exit(0)
 
     logfile = sys.argv[1]
     started = set()

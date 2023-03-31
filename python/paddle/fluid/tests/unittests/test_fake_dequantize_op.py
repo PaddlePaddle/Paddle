@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
-from op_test import OpTest
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 def quantize_max_abs(x, max_range):
@@ -25,7 +26,7 @@ def quantize_max_abs(x, max_range):
 
 
 def dequantize_max_abs(x, scale, max_range):
-    y = (scale / max_range) * x
+    y = x * scale / max_range
     return y
 
 
@@ -289,6 +290,45 @@ class TestDequantizeOpDouble(TestDequantizeOp):
         self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float64"
         self.quant_axis = -1
+
+
+class TestDequantizeOpHalf(TestDequantizeOp):
+    def set_args(self):
+        self.bit_length = 8
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float16"
+        self.quant_axis = -1
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "dequantize_linear"
+        x = np.random.randn(31, 65).astype(np.float16)
+        yq, scale = quantize_max_abs(x, self.max_range)
+        scale = np.array(scale).astype('float16')
+        yq = np.array(yq).astype('int8')
+        ydq = dequantize_max_abs(yq, scale, self.max_range)
+        ydq = ydq.astype('float16')
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': yq, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis,
+        }
+        self.outputs = {'Y': ydq}
+
+    def _get_places(self):
+        import paddle
+        from paddle.fluid import core
+
+        if core.is_compiled_with_cuda():
+            place = paddle.fluid.core.CUDAPlace(0)
+            if paddle.fluid.core.is_float16_supported(place):
+                return [place]
+            else:
+                return []
+        else:
+            return []
 
 
 class TestDequantizeOp5Bits(TestDequantizeOp):

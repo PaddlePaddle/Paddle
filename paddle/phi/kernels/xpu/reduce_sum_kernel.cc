@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
@@ -29,16 +28,21 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
-  int r = XPUReduce<Context, T>(dev_ctx,
-                                x,
-                                dims.GetData(),
-                                keep_dim,
-                                reduce_all,
-                                out,
-                                xpu::reduce_sum<T>);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
+  XPUReduce<Context, T, phi::SumFunctor>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out_dtype, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float) {}
+PD_REGISTER_KERNEL(sum_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   float,
+                   phi::dtype::float16,
+                   int8_t,
+                   int,
+                   int64_t) {}

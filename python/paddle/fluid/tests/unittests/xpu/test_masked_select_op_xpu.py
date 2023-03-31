@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -58,6 +60,9 @@ class XPUTestMaskedSelectOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Y')
+
         def init(self):
             self.shape = (50, 3)
 
@@ -90,8 +95,8 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
     def test_static_mode(self):
         shape = [8, 9, 6]
-        x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-        mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+        x = paddle.static.data(shape=shape, dtype='float32', name='x')
+        mask = paddle.static.data(shape=shape, dtype='bool', name='mask')
         np_x = np.random.random(shape).astype('float32')
         np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 
@@ -115,9 +120,9 @@ class TestMaskedSelectError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-            mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
-            mask_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            mask = paddle.static.data(shape=shape, dtype='bool', name='mask')
+            mask_float = paddle.static.data(
                 shape=shape, dtype='float32', name='mask_float'
             )
             np_x = np.random.random(shape).astype('float32')

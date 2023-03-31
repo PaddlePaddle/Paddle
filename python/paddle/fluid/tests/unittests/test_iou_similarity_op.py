@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
-import numpy.random as random
-from op_test import OpTest
+
+from eager_op_test import OpTest
+from numpy import random
 
 
 class TestIOUSimilarityOp(OpTest):

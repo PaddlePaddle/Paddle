@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestGraphKhopSampler(unittest.TestCase):
@@ -47,7 +49,7 @@ class TestGraphKhopSampler(unittest.TestCase):
         self.sample_sizes = [5, 5]
         self.dst_src_dict = dst_src_dict
 
-    def func_sample_result(self):
+    def test_sample_result(self):
         paddle.disable_static()
         row = paddle.to_tensor(self.row)
         colptr = paddle.to_tensor(self.colptr)
@@ -87,12 +89,7 @@ class TestGraphKhopSampler(unittest.TestCase):
             # Ensure the correct sample neighbors.
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    def test_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_sample_result()
-        self.func_sample_result()
-
-    def func_uva_sample_result(self):
+    def test_uva_sample_result(self):
         paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             row = None
@@ -148,11 +145,6 @@ class TestGraphKhopSampler(unittest.TestCase):
                 )
                 in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
-
-    def test_uva_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_uva_sample_result()
-        self.func_uva_sample_result()
 
     def test_sample_result_static_with_eids(self):
         paddle.enable_static()
@@ -266,6 +258,36 @@ class TestGraphKhopSampler(unittest.TestCase):
                 )
                 in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
+
+    def test_for_null_pointer_error(self):
+        def test_in_row():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            y = paddle.to_tensor([10], dtype='int32')
+            layer = paddle.incubate.graph_khop_sampler(
+                row=x, colptr=x, input_nodes=y, sample_sizes=[0]
+            )
+
+        def test_in_col():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor([10], dtype='int32')
+            col = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            y = paddle.to_tensor([10], dtype='int32')
+            layer = paddle.incubate.graph_khop_sampler(
+                row=x, colptr=col, input_nodes=y, sample_sizes=[0]
+            )
+
+        def test_in_input_nodes():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            y = paddle.to_tensor([10], dtype='int32')
+            layer = paddle.incubate.graph_khop_sampler(
+                row=y, colptr=y, input_nodes=x, sample_sizes=[0]
+            )
+
+        self.assertRaises(ValueError, test_in_row)
+        self.assertRaises(ValueError, test_in_col)
+        self.assertRaises(ValueError, test_in_input_nodes)
 
 
 if __name__ == "__main__":

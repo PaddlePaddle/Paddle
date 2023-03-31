@@ -82,8 +82,15 @@ function(kernel_declare TARGET_LIST)
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
+      # some gpu kernel can run on cuda, but not support jetson, so we add this branch
+      if(WITH_NV_JETSON)
+        string(FIND "${first_registry}" "decode_jpeg" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM OR WITH_NV_JETSON)
+      if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()
@@ -112,18 +119,30 @@ endfunction()
 
 function(append_op_util_declare TARGET)
   file(READ ${TARGET} target_content)
+  string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+               util_registrar "${target_content}")
+  if(NOT ${util_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                   util_declare "${util_registrar}")
+    string(APPEND util_declare ");\n")
+    file(APPEND ${op_utils_header} "${util_declare}")
+  endif()
+endfunction()
+
+function(append_op_kernel_map_declare TARGET)
+  file(READ ${TARGET} target_content)
   string(
     REGEX
       MATCH
-      "(PD_REGISTER_BASE_KERNEL_NAME|PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
-      util_registrar
+      "(PD_REGISTER_BASE_KERNEL_NAME)\\([ \t\r\n]*[a-z0-9_]*,[ \\\t\r\n]*[a-z0-9_]*"
+      kernel_mapping_registrar
       "${target_content}")
-  string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
-                 util_declare "${util_registrar}")
-  string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
-                 util_declare "${util_declare}")
-  string(APPEND util_declare ");\n")
-  file(APPEND ${op_utils_header} "${util_declare}")
+  if(NOT ${kernel_mapping_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                   kernel_mapping_declare "${kernel_mapping_registrar}")
+    string(APPEND kernel_mapping_declare ");\n")
+    file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
+  endif()
 endfunction()
 
 function(register_op_utils TARGET_NAME)
@@ -137,6 +156,7 @@ function(register_op_utils TARGET_NAME)
   file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
+    append_op_kernel_map_declare(${target})
     list(APPEND utils_srcs ${target})
   endforeach()
 

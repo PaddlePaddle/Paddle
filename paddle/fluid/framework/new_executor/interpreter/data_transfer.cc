@@ -15,11 +15,13 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
@@ -27,13 +29,15 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
-                              const OpKernelType& expected_kernel_key,
+bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
+                              const phi::KernelKey& expected_kernel_key,
+                              const phi::DenseTensor* tensor,
                               const std::string& var_name,
                               std::string* new_var_name,
                               std::vector<OpFuncNode>* op_func_nodes,
                               bool use_local_scope,
-                              bool is_fetch_v2) {
+                              bool is_fetch_v2,
+                              bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -41,45 +45,49 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferLayout(*src_var_name,
                              new_var_name,
-                             kernel_type_for_var.data_layout_,
-                             expected_kernel_key.data_layout_,
+                             kernel_type_for_var.layout(),
+                             expected_kernel_key.layout(),
                              var_scope_,
                              scope_,
                              is_fetch_v2);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
   }
+
   // 2. dype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferDtype(*src_var_name,
-                            new_var_name,
-                            kernel_type_for_var.data_type_,
-                            expected_kernel_key.data_type_,
-                            var_scope_,
-                            scope_);
+    auto op = TransferDtype(
+        *src_var_name,
+        new_var_name,
+        framework::TransToProtoVarType(kernel_type_for_var.dtype()),
+        framework::TransToProtoVarType(expected_kernel_key.dtype()),
+        var_scope_,
+        scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
   }
+
   // 3. device transform
-  if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto src_place = kernel_type_for_var.place_;
-    auto dst_place = expected_kernel_key.place_;
+  phi::Backend expected_backend = expected_kernel_key.backend();
+  if (need_device_transform(kernel_type_for_var, tensor, expected_backend)) {
+    auto src_place = tensor->place();
+    auto dst_place = phi::TransToPhiPlace(expected_backend);
 
     auto op = TransferDevice(
         *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     is_transferred = true;
   }
@@ -89,7 +97,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
 void DataTranferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
-    std::vector<OpFuncNode>* op_func_nodes) {
+    std::vector<OpFuncNode>* op_func_nodes,
+    bool skip_run) {
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
   AttributeMap attr_map;
@@ -102,21 +111,23 @@ void DataTranferHelper::RunAndConstructShareNode(
   VLOG(3) << string::Sprintf(
       "Insert %s with %s -> %s.", op_type, src_var_name, dst_var_name);
 
-  RunAndConstructOpFuncNode(op, src_var_name, dst_var_name, op_func_nodes);
+  RunAndConstructOpFuncNode(
+      op, src_var_name, dst_var_name, op_func_nodes, skip_run);
 }
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
-    std::vector<OpFuncNode>* new_op_func_nodes) {
+    std::vector<OpFuncNode>* new_op_func_nodes,
+    bool skip_run) {
   auto& op_type = op->Type();
 
   // 1. Construct RuntimeContext
   RuntimeContext runtime_context({}, {});
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
-  InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+  RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
   op.get()->Info().infer_shape_(&infer_shape_ctx);
 
   // 2. choose kernel
@@ -132,15 +143,6 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
-  auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
-                                     expected_kernel_key.data_type_)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-
-  VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
 
   bool run_phi_kernel = false;
@@ -172,35 +174,56 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
 
+  new_op_func_node.dev_ctx_ = dev_ctx;
+  new_op_func_node.operator_base_ = op;
+
+  const phi::Place& place = dev_ctx->GetPlace();
+  if (platform::is_cpu_place(place)) {
+    new_op_func_node.type_ = OpFuncType::kCpuSync;
+  } else if (platform::is_gpu_place(place)) {
+    // MemcpyD2H in gpu is synchronous, see
+    // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
+    // for more detial.
+    new_op_func_node.type_ =
+        (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
+  } else if (platform::is_xpu_place(place)) {
+    // Memcpy in xpu is synchronous
+    new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
+                                 ? OpFuncType::kGpuSync
+                                 : OpFuncType::kGpuAsync;
+  } else {
+    // Memcpy in npu and custom devices is asynchronous
+    new_op_func_node.type_ = OpFuncType::kGpuAsync;
+  }
+
   if (!run_phi_kernel) {
     op_with_kernel->ChooseKernel(exec_ctx);
     new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
     new_op_func_node.kernel_func_(exec_ctx);
   } else {
     new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
-    phi::KernelContext phi_kernel_context;
-    op_with_kernel->BuildPhiKernelContext(
-        runtime_context, dev_ctx, &phi_kernel_context);
-    (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+
+    if (skip_run) {
+      FakeInitializeOutputsForFunctionKernel(
+          *(new_op_func_node.phi_kernel_),
+          *(op_with_kernel->PhiKernelSignature()),
+          runtime_context,
+          *dev_ctx);
+    } else {
+      phi::KernelContext phi_kernel_context;
+      op_with_kernel->BuildPhiKernelContext(
+          runtime_context, dev_ctx, &phi_kernel_context);
+      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    }
   }
 
-  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
-  // explicit synchronization.
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (op_type == kMemcpyD2H && platform::is_npu_place(dev_ctx->GetPlace())) {
+  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
+  // need to explicit synchronization.
+  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
+      op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (op_type == kMemcpyD2H && platform::is_custom_place(dev_ctx->GetPlace())) {
-    dev_ctx->Wait();
-  }
-#endif
-  // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
-  // as kQueueSync and execute them in thread pool.
-  new_op_func_node.type_ = OpFuncType::kQueueSync;
-  new_op_func_node.dev_ctx_ = dev_ctx;
-  new_op_func_node.operator_base_ = op;
+
   VLOG(3) << "Run " << op_type << " done.";
 
   new_op_func_nodes->emplace_back(std::move(new_op_func_node));
@@ -425,7 +448,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         VariableScope* var_scope,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
-                        bool use_local_scope) {
+                        bool use_local_scope,
+                        bool skip_run) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
@@ -437,8 +461,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
-  // record the no need transform variable index.
-  std::unordered_set<int> no_data_transform_index;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   auto& no_buffer_inferer = op_base->Info().NoNeedBufferVarsInferer();
@@ -452,121 +474,255 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
-  for (auto& var_name_item : *ins_map_temp) {
-    bool should_skip_input =
-        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
+  phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
+  auto has_infer_varkernel_fn =
+      (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
+  phi::AttributeMap infer_attrs{};
+  auto fluid_attrs =
+      static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
+  auto phi_kernelkey =
+      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(
+          phi_kernelkey, fluid_attrs, &infer_attrs, has_infer_varkernel_fn);
+  auto apply_data_transform_for_one_parameter =
+      [&](const std::string& parameter_name,
+          const std::vector<std::string>& argument_names,
+          const phi::TensorArgDef* argument_def,
+          bool should_skip_input,
+          std::vector<Variable*>* arguments) {
+        PADDLE_ENFORCE_EQ(argument_names.size(),
+                          arguments->size(),
+                          phi::errors::InvalidArgument(
+                              "The size of argument_names (%d) should equal to "
+                              "the size of arguments (%d).",
+                              argument_names.size(),
+                              arguments->size()));
+        for (size_t i = 0; i < arguments->size(); ++i) {
+          const std::string var_name = argument_names[i];
+          Variable* var = arguments->at(i);
 
-    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
-      auto var = var_name_item.second[i];
-      auto var_name = new_ins[var_name_item.first].at(i);
-      const phi::DenseTensor* tensor_in;
-      std::string new_var_name;
-      bool is_transferred = false;
+          const phi::DenseTensor* tensor_in;
+          if (var->IsType<phi::DenseTensor>() ||
+              var->IsType<phi::SelectedRows>()) {
+            tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+          } else if (var->IsType<LoDTensorArray>()) {
+            if (var->Get<LoDTensorArray>().size() == 0) {
+              continue;
+            }
+            tensor_in = static_cast<const phi::DenseTensor*>(
+                &(var->Get<LoDTensorArray>()[0]));
+          } else {
+            continue;
+          }
 
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
-        tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-      } else if (var->IsType<LoDTensorArray>()) {
-        if (var->Get<LoDTensorArray>().size() == 0) {
-          continue;
+          bool is_transferred = false;
+          std::string new_var_name;
+          // special case
+          if (!tensor_in->IsInitialized()) {
+            if (should_skip_input) {
+#ifdef PADDLE_WITH_MKLDNN
+              // Var without buffer may be needed
+              // for some situation like InferShape().
+              // In this situation We cannot skip Var analysis, as
+              // MKL-DNN shape of Var may differ from kNHWC Var
+              // In such situation corressponding resized Var
+              // has to be created and registered
+              if ((tensor_in->layout() == DataLayout::ONEDNN) &&
+                  (var->IsType<phi::DenseTensor>() == true) &&
+                  (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
+                  (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+                   DataLayout::kNHWC)) {
+                VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
+                           "phi::DenseTensor , "
+                           "but kNHWC layout"
+                        << parameter_name << " in Operator " << op_base->Type();
+                auto op = TransferLayout(var_name,
+                                         &new_var_name,
+                                         tensor_in->layout(),
+                                         DataLayout::kNHWC,
+                                         var_scope,
+                                         local_scope,
+                                         op_base->Type() == "fetch_v2");
+                if (op) {
+                  data_transfer_helper.RunAndConstructOpFuncNode(
+                      op, var_name, new_var_name, new_op_func_nodes, skip_run);
+                }
+                is_transferred = true;
+              } else {
+                VLOG(7) << "Skip scanning input " << parameter_name
+                        << " in Operator " << op_base->Type();
+              }
+#endif
+            } else {
+              continue;
+            }
+          } else {
+            auto kernel_key_for_var =
+                static_cast<const framework::OperatorWithKernel*>(op_base)
+                    ->GetKernelTypeForVar(
+                        parameter_name, *tensor_in, phi_kernelkey);
+            if (has_infer_varkernel_fn) {
+              infer_varkernel_context.SetVarName(
+                  const_cast<std::string*>(&parameter_name));
+              infer_varkernel_context.SetDenseTensor(
+                  const_cast<phi::DenseTensor*>(tensor_in));
+              kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
+                  &infer_varkernel_context);
+            }
+            std::unique_ptr<phi::KernelKey>
+                expected_kernel_key_for_argument_def = nullptr;
+            if (argument_def) {
+              const phi::Backend& tensor_backend =
+                  phi::TransToPhiBackend(tensor_in->place());
+              const phi::Backend& def_backend = argument_def->backend;
+              if ((def_backend != tensor_backend &&
+                   !(def_backend == phi::Backend::GPUDNN &&
+                     tensor_backend == phi::Backend::GPU) &&
+                   !(def_backend == phi::Backend::KPS &&
+                     tensor_backend == phi::Backend::XPU) &&
+                   !(def_backend == phi::Backend::ONEDNN &&
+                     tensor_backend == phi::Backend::CPU)) ||
+                  tensor_in->place().GetType() == AllocationType::GPUPINNED ||
+                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                   def_backend == tensor_backend)) {
+                expected_kernel_key_for_argument_def =
+                    std::make_unique<phi::KernelKey>(
+                        def_backend,
+                        expected_kernel_key.data_layout_,
+                        framework::TransToPhiDataType(
+                            expected_kernel_key.data_type_));
+
+                VLOG(6) << "argument " << var_name
+                        << " use new expected kernel key : "
+                        << *expected_kernel_key_for_argument_def;
+              }
+            }
+
+            // apply data transform
+            is_transferred = data_transfer_helper.apply(
+                kernel_key_for_var,
+                (expected_kernel_key_for_argument_def
+                     ? *expected_kernel_key_for_argument_def.get()
+                     : TransOpKernelTypeToPhiKernelKey(expected_kernel_key)),
+                tensor_in,
+                var_name,
+                &new_var_name,
+                new_op_func_nodes,
+                use_local_scope,
+                op_base->Type() == "fetch_v2",
+                skip_run);
+          }
+
+          if (is_transferred) {
+            transfered = true;
+            // update RuntimeContext.inputs and original op_func_node inputs
+            op_func_node->input_index[parameter_name][i] =
+                var_scope->VarId(new_var_name);
+            arguments->at(i) = local_scope->FindVar(new_var_name);
+            new_ins[parameter_name][i] = new_var_name;
+            for (auto& pair : new_outs) {
+              for (size_t j = 0; j < pair.second.size(); ++j) {
+                VLOG(4) << pair.second[j] << " " << var_name;
+                if (pair.second[j] == var_name) {
+                  VLOG(4) << "Found inplace between input(" << parameter_name
+                          << ") and output(" << pair.first
+                          << "), the variable name is " << var_name;
+                  (*outs_map_temp)[pair.first][j] =
+                      local_scope->FindVar(new_var_name);
+                  new_outs[pair.first][j] = new_var_name;
+                  op_func_node
+                      ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
+                      var_scope->GetIdByName(var_name);
+                  op_func_node->output_index[pair.first][j] =
+                      var_scope->VarId(new_var_name);
+                }
+              }
+            }
+            // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
+            // transfer op.
+            if (op_base->Type() == "fetch_v2") {
+              op_base->SetAttr("deepcopy", false);
+            }
+          }
         }
-        tensor_in = static_cast<const phi::DenseTensor*>(
-            &(var->Get<LoDTensorArray>()[0]));
-      } else {
+      };
+
+  if (phi_kernel && phi_kernel->IsValid() &&
+      phi_kernel->GetKernelRegisteredType() ==
+          phi::KernelRegisteredType::FUNCTION) {
+    framework::OperatorWithKernel* op_with_kernel =
+        dynamic_cast<framework::OperatorWithKernel*>(op_base);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_with_kernel,
+        phi::errors::Unavailable("Failed to cast op_base (%p) from Operator* "
+                                 "to OperatorWithKernel*.",
+                                 op_base));
+    const auto& input_names = op_with_kernel->PhiKernelSignature()->input_names;
+    const auto& input_defs = phi_kernel->args_def().input_defs();
+    PADDLE_ENFORCE_EQ(input_names.size(),
+                      input_defs.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of inputs_args names (%d) must be equal to "
+                          "the size of kernel input_defs (%d).",
+                          input_names.size(),
+                          input_defs.size()));
+
+    for (size_t i = 0; i < input_defs.size(); ++i) {
+      const std::string& parameter_name = input_names[i];
+      auto iter = ins_map_temp->find(parameter_name);
+      if (iter == ins_map_temp->end()) {
         continue;
       }
-      // special case
-      if (!tensor_in->IsInitialized()) {
-        if (should_skip_input == true) {
-#ifdef PADDLE_WITH_MKLDNN
-          // Var without buffer may be needed
-          // for some situation like InferShape().
-          // In this situation We cannot skip Var analysis, as
-          // MKL-DNN shape of Var may differ from kNHWC Var
-          // In such situation corressponding resized Var
-          // has to be created and registered
-          if ((tensor_in->layout() == DataLayout::ONEDNN) &&
-              (var->IsType<phi::DenseTensor>() == true) &&
-              (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
-              (paddle::platform::MKLDNNDeviceContext::tls()
-                   .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
-            VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
-                       "phi::DenseTensor , "
-                       "but kNHWC layout"
-                    << var_name_item.first << " in Operator "
-                    << op_base->Type();
-            auto op = TransferLayout(var_name,
-                                     &new_var_name,
-                                     tensor_in->layout(),
-                                     DataLayout::kNHWC,
-                                     var_scope,
-                                     local_scope,
-                                     op_base->Type() == "fetch_v2");
-            if (op) {
-              data_transfer_helper.RunAndConstructOpFuncNode(
-                  op, var_name, new_var_name, new_op_func_nodes);
-            }
-            is_transferred = true;
-          } else {
-            VLOG(7) << "Skip scanning input " << var_name_item.first
-                    << " in Operator " << op_base->Type();
-          }
-#endif
-        } else {
-          continue;
-        }
-      } else {
-        auto kernel_type_for_var =
-            static_cast<const framework::OperatorWithKernel*>(op_base)
-                ->GetKernelTypeForVar(
-                    var_name_item.first, *tensor_in, expected_kernel_key);
-        // apply data transform
-        is_transferred =
-            data_transfer_helper.apply(kernel_type_for_var,
-                                       expected_kernel_key,
-                                       var_name,
-                                       &new_var_name,
-                                       new_op_func_nodes,
-                                       use_local_scope,
-                                       op_base->Type() == "fetch_v2");
-      }
+      std::vector<Variable*>& arguments = iter->second;
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(parameter_name) > 0;
 
-      if (is_transferred) {
-        transfered = true;
-        // update RuntimeContext.inputs and original op_func_node inputs
-        op_func_node->input_index[var_name_item.first][i] =
-            var_scope->VarId(new_var_name);
-        var_name_item.second[i] = local_scope->FindVar(new_var_name);
-        new_ins[var_name_item.first][i] = new_var_name;
-        for (auto& pair : new_outs) {
-          for (size_t j = 0; j < pair.second.size(); ++j) {
-            VLOG(4) << pair.second[j] << " " << var_name;
-            if (pair.second[j] == var_name) {
-              VLOG(4) << "Found inplace between input(" << var_name_item.first
-                      << ") and output(" << pair.first
-                      << "), the variable name is " << var_name;
-              (*outs_map_temp)[pair.first][j] =
-                  local_scope->FindVar(new_var_name);
-              new_outs[pair.first][j] = new_var_name;
-              op_func_node
-                  ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
-                  var_scope->GetIdByName(var_name);
-              op_func_node->output_index[pair.first][j] =
-                  var_scope->VarId(new_var_name);
-            }
-          }
-        }
-        // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
-        // transfer op.
-        if (op_base->Type() == "fetch_v2") {
-          op_base->SetAttr("deepcopy", false);
-        }
-      } else {
-        // record no need data transformer input var_id
-        VLOG(3) << op_base->Type()
-                << " found no data_transform var: " << var_name
-                << " with id: " << var_scope->VarId(var_name);
-        no_data_transform_index.emplace(var_scope->VarId(var_name));
+      phi::TensorArgDef in_def = input_defs.at(i);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      // When the backend of input tensor arg_def is CUSTOM, we need to set it
+      // to the actual backend by expected_kernel_key.
+      if (in_def.backend == phi::Backend::CUSTOM) {
+        in_def.SetBackend(phi::TransToPhiBackend(expected_kernel_key.place_));
       }
+#endif
+      apply_data_transform_for_one_parameter(parameter_name,
+                                             new_ins[parameter_name],
+                                             &in_def,
+                                             should_skip_input,
+                                             &arguments);
+    }
+#ifdef PADDLE_WITH_MKLDNN
+    // For input that is Extra, only MKLDNN will use Extra Inputs
+    auto& extra_input_names =
+        paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
+            op_with_kernel->Type());
+    for (const auto& parameter_name : extra_input_names) {
+      auto iter = ins_map_temp->find(parameter_name);
+      if (iter == ins_map_temp->end()) {
+        continue;
+      }
+      std::vector<Variable*>& arguments = iter->second;
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(parameter_name) > 0;
+      apply_data_transform_for_one_parameter(parameter_name,
+                                             new_ins[parameter_name],
+                                             /*argument_def=*/nullptr,
+                                             should_skip_input,
+                                             &arguments);
+    }
+#endif
+  } else {
+    for (auto& var_name_item : *ins_map_temp) {
+      const std::string& parameter_name = var_name_item.first;
+      std::vector<Variable*>& arguments = var_name_item.second;
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(parameter_name) > 0;
+      apply_data_transform_for_one_parameter(parameter_name,
+                                             new_ins[parameter_name],
+                                             /*argument_def=*/nullptr,
+                                             should_skip_input,
+                                             &arguments);
     }
   }
 
@@ -576,7 +732,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     op_base->Inputs() = new_ins;
     op_base->Outputs() = new_outs;
   }
-  op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
@@ -585,7 +740,8 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
-                                 framework::Scope* local_scope) {
+                                 framework::Scope* local_scope,
+                                 bool skip_run) {
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
@@ -661,9 +817,9 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto op = TransferDtype(
           var_name, &new_var_name, src_type, dst_type, var_scope, local_scope);
       data_transfer_helper.RunAndConstructOpFuncNode(
-          op, var_name, new_var_name, op_func_nodes);
+          op, var_name, new_var_name, op_func_nodes, skip_run);
       data_transfer_helper.RunAndConstructShareNode(
-          new_var_name, var_name, op_func_nodes);
+          new_var_name, var_name, op_func_nodes, skip_run);
     }
   }
 }

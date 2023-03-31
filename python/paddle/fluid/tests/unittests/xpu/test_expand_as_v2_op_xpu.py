@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -132,14 +134,11 @@ class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
-        )
+        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        y = fluid.layers.data(
+        y = paddle.static.data(
             name='target_tensor',
             shape=[2, 12, 14],
-            append_batch_size=False,
             dtype="float32",
         )
 

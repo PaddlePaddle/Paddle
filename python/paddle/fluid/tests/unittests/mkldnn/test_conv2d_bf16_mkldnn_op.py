@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
-    convert_float_to_uint16,
     OpTestTool,
+    convert_float_to_uint16,
 )
 from paddle.fluid.tests.unittests.test_conv2d_op import (
-    conv2d_forward_naive,
     TestConv2DOp,
+    conv2d_forward_naive,
 )
 
 
@@ -103,6 +104,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         }
 
         if self.fuse_residual:
+            self.op_type = "fused_conv2d"
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 convert_float_to_uint16(self.input_residual)
             )
@@ -204,7 +206,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             core.CPUPlace(),
             ["Input"],
             "Output",
-            set(['Filter']),
+            {'Filter'},
             user_defined_grads=[dx],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
         )
@@ -220,7 +222,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             core.CPUPlace(),
             ["Filter"],
             "Output",
-            set(['Input']),
+            {'Input'},
             user_defined_grads=[dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
         )

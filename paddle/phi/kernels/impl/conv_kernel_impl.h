@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/conv_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
@@ -133,10 +133,8 @@ void ConvKernelImpl(const Context& dev_ctx,
   int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
   int out_step = static_cast<int>(transformed_output.dims()[1]) / groups;
 
-  paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
-  paddle::operators::math::
-      Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          im2col;
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+  phi::funcs::Vol2ColFunctor<Context, T> vol2col;
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   for (int i = 0; i < batch_size; i++) {

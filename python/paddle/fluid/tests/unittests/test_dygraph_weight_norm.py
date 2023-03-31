@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import collections
+import unittest
 from functools import reduce
+
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-from paddle.nn.utils import weight_norm, remove_weight_norm
+from paddle import fluid
+from paddle.nn.utils import remove_weight_norm, weight_norm
 
 
 class TestDygraphWeightNorm(unittest.TestCase):

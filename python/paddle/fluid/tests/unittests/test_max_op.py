@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import check_out_dtype
-import paddle
-from paddle.fluid.framework import _test_eager_guard
-import paddle.fluid.core as core
+from eager_op_test import check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
+
+import paddle
+from paddle.fluid import core
 
 
 class ApiMaxTest(unittest.TestCase):
@@ -80,10 +81,6 @@ class ApiMaxTest(unittest.TestCase):
         np_z = z.numpy()
         z_expected = np.array(np.max(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_imperative_api()
 
     def test_big_dimension(self):
         paddle.disable_static()

@@ -14,6 +14,7 @@
 
 import copy
 import numpy as np
+import paddle
 
 from .framework import (
     Variable,
@@ -87,25 +88,15 @@ class LayerHelperBase:
 
         """
         if isinstance(value, np.ndarray):
-            if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(
-                    value,
-                    _current_expected_place(),
-                    False,
-                    False,
-                    name if name else None,
-                    True,
-                )
-            else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False,
-                )
-                return py_var
-        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
+            return core.eager.Tensor(
+                value,
+                _current_expected_place(),
+                False,
+                False,
+                name if name else None,
+                True,
+            )
+        elif isinstance(value, (Variable, core.eager.Tensor)):
             return value
         else:
             raise TypeError(
@@ -114,8 +105,6 @@ class LayerHelperBase:
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
-        from .layers import elementwise_mul, elementwise_div, reshape
-
         # Remove these ops when LayerHelper and layers support indicating
         # program and block.
         def __norm_op(
@@ -265,17 +254,17 @@ class LayerHelperBase:
             norm = __norm_except_dim(
                 v, dim=dim, block=self.main_program.current_block()
             )
-            scale = elementwise_div(
+            scale = paddle.divide(
                 x=g, y=norm
             )  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape
             # of y is a subset of the shape of x. Thus, we reshape y to squeeze
             # to achieve the subset.
-            w = elementwise_mul(
+            w = paddle.tensor.math._multiply_with_axis(
                 x=v,
                 y=scale
                 if dim is None
-                else reshape(x=scale, shape=[v.shape[dim]]),
+                else paddle.reshape(x=scale, shape=[v.shape[dim]]),
                 axis=-1 if dim is None else dim,
             )
             # To serialize the original parameter for inference, maybe a
@@ -395,14 +384,18 @@ class LayerHelperBase:
                     and dtype != core.VarDesc.VarType.BF16
                 ):
                     raise TypeError(
-                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
-                if not (
-                    dtype.startswith("float") or dtype in ["double", "uint16"]
-                ):
+                if dtype not in [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'bfloat16',
+                    'float',
+                ]:
                     raise TypeError(
-                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
                     )
             if is_bias:
                 attr._set_default_bias_initializer()

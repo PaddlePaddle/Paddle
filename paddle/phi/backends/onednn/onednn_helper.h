@@ -36,7 +36,9 @@ void* to_void_cast(const Type* t) {
 
 inline OneDNNMemoryFormat OneDNNFormatForSize(size_t dims_size,
                                               OneDNNMemoryFormat data_format) {
-  if (dims_size == 1) {
+  if (dims_size == 0) {
+    return OneDNNMemoryFormat::x;
+  } else if (dims_size == 1) {
     return OneDNNMemoryFormat::x;
   } else if (dims_size == 2) {
     return OneDNNMemoryFormat::nc;
@@ -69,6 +71,9 @@ inline OneDNNMemoryFormat OneDNNFormatForSize(size_t dims_size,
 
 inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
+    case 0:
+      // use 1D to represent 0D
+      return dnnl::memory::format_tag::a;
     case 1:
       return dnnl::memory::format_tag::a;
     case 2:
@@ -283,6 +288,8 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
              ? key + "-t:" + ThreadIDasStr()
              : key;
 }
+
+enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace funcs
 }  // namespace phi

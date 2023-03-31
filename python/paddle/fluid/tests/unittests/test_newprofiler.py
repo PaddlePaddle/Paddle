@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tempfile
 import os
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.profiler as profiler
-import paddle.profiler.utils as utils
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.io import Dataset, DataLoader
+from paddle import nn, profiler
+from paddle.io import DataLoader, Dataset
+from paddle.profiler import utils
 
 
 class TestProfiler(unittest.TestCase):
@@ -85,12 +86,13 @@ class TestProfiler(unittest.TestCase):
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
             on_trace_ready=my_trace_back,
+            with_flops=True,
         ) as prof:
             for i in range(2):
                 y = x / 2.0
                 prof.step()
 
-        def my_sheduler(num_step):
+        def my_scheduler(num_step):
             if num_step % 5 < 2:
                 return profiler.ProfilerState.RECORD_AND_RETURN
             elif num_step % 5 < 3:
@@ -100,7 +102,7 @@ class TestProfiler(unittest.TestCase):
             else:
                 return profiler.ProfilerState.CLOSED
 
-        def my_sheduler1(num_step):
+        def my_scheduler1(num_step):
             if num_step % 5 < 2:
                 return profiler.ProfilerState.RECORD
             elif num_step % 5 < 3:
@@ -122,7 +124,7 @@ class TestProfiler(unittest.TestCase):
         prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
-            scheduler=my_sheduler,
+            scheduler=my_scheduler,
             on_trace_ready=my_trace_back,
         ) as prof:
             for i in range(5):
@@ -130,7 +132,7 @@ class TestProfiler(unittest.TestCase):
                 prof.step()
         prof = None
         with profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=my_sheduler1
+            targets=[profiler.ProfilerTarget.CPU], scheduler=my_scheduler1
         ) as prof:
             for i in range(5):
                 y = x / 2.0
@@ -228,7 +230,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
         x_value = np.random.randn(2, 3, 3)
@@ -269,7 +271,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         try:
             profiler = profiler.get_profiler(filehandle.name)
@@ -307,7 +309,7 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
 
@@ -343,11 +345,11 @@ class TestGetProfiler(unittest.TestCase):
         filehandle = tempfile.NamedTemporaryFile(mode='w')
         filehandle.write(config_content)
         filehandle.flush()
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler(filehandle.name)
         # test path error
-        import paddle.profiler.profiler as profiler
+        from paddle.profiler import profiler
 
         profiler = profiler.get_profiler('nopath.json')
 
@@ -402,7 +404,7 @@ class TestTimerOnly(unittest.TestCase):
                 p.step(num_samples=step_num_samples)
                 if i % 10 == 0:
                     step_info = p.step_info()
-                    print("Iter {}: {}".format(i, step_info))
+                    print(f"Iter {i}: {step_info}")
             p.stop()
             return step_info
 

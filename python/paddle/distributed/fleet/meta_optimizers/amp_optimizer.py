@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid.contrib.mixed_precision as mixed_precision
+import paddle.static.amp as mixed_precision
+
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
@@ -27,7 +28,6 @@ class AMPOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
             "RecomputeOptimizer",
-            "GraphExecutionOptimizer",
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 

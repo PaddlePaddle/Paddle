@@ -15,13 +15,11 @@
 import unittest
 
 import numpy as np
+from test_distribution import DistributionNumpy
+
 import paddle
 from paddle import fluid
 from paddle.distribution import Uniform
-from paddle.fluid import layers
-from paddle.fluid.framework import _test_eager_guard
-
-from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
 
@@ -89,8 +87,8 @@ class UniformTest(unittest.TestCase):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1], dtype='float32'
             )
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
@@ -146,9 +144,6 @@ class UniformTest(unittest.TestCase):
         self.compare_with_numpy(fetch_list)
 
     def test_uniform_distribution_dygraph(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.func_uniform_distribution_dygraph()
         self.setUp()
         self.func_uniform_distribution_dygraph()
 
@@ -174,8 +169,8 @@ class UniformTest3(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -192,8 +187,8 @@ class UniformTest4(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -215,8 +210,8 @@ class UniformTest5(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float64'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float64'
             )
 
 
@@ -236,14 +231,14 @@ class UniformTest6(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_low = layers.data(
-                name='low', shape=[dims], dtype='float32'
+            self.static_low = paddle.static.data(
+                name='low', shape=[-1, dims], dtype='float32'
             )
-            self.static_high = layers.data(
-                name='high', shape=[dims], dtype='float32'
+            self.static_high = paddle.static.data(
+                name='high', shape=[-1, dims], dtype='float32'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -263,14 +258,14 @@ class UniformTest7(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_low = layers.data(
-                name='low', shape=[dims], dtype='float64'
+            self.static_low = paddle.static.data(
+                name='low', shape=[-1, dims], dtype='float64'
             )
-            self.static_high = layers.data(
-                name='high', shape=[dims], dtype='float64'
+            self.static_high = paddle.static.data(
+                name='high', shape=[-1, dims], dtype='float64'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float64'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float64'
             )
 
 
@@ -290,14 +285,14 @@ class UniformTest8(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_low = layers.data(
-                name='low', shape=[dims], dtype='float64'
+            self.static_low = paddle.static.data(
+                name='low', shape=[-1, dims], dtype='float64'
             )
-            self.static_high = layers.data(
-                name='high', shape=[dims], dtype='float64'
+            self.static_high = paddle.static.data(
+                name='high', shape=[-1, dims], dtype='float64'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -315,8 +310,8 @@ class UniformTest9(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -337,8 +332,8 @@ class UniformTest10(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -359,8 +354,8 @@ class UniformTest11(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 

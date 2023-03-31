@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import compute_compatible_and_update_dim_mapping, is_dim_shard
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 from .dist_default import DistributedDefaultImpl0
 
 
@@ -94,7 +95,12 @@ class DistributedSplitImpl(DistributedOperatorImpl):
                 )
                 if dim_changed:
                     changed = True
+                    op_dist_attr.set_output_dims_mapping(
+                        out_name, out_dims_mapping
+                    )
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
         return changed
 
     def is_auto_compatible(self, dist_op):

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -186,14 +188,13 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['Input', 'Offset', 'Filter'],
             'Output',
             max_relative_error=0.05,
-            check_eager=True,
         )
 
     def test_check_grad_no_filter(self):
@@ -201,8 +202,7 @@ class TestModulatedDeformableConvOp(OpTest):
             ['Input', 'Offset'],
             'Output',
             max_relative_error=0.1,
-            no_grad_set=set(['Filter']),
-            check_eager=True,
+            no_grad_set={'Filter'},
         )
 
     def init_test_case(self):

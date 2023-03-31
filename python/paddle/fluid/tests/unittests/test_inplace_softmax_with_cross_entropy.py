@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestSoftmaxWithXe(unittest.TestCase):
@@ -34,19 +37,19 @@ class TestSoftmaxWithXe(unittest.TestCase):
         m, n = x.shape
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(fluid.Scope()):
-                x_d = fluid.layers.data(
+                x_d = paddle.static.data(
                     name='x',
                     shape=[m, n],
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
-                y_d = fluid.layers.data(
+                x_d.desc.set_need_check_feed(False)
+                y_d = paddle.static.data(
                     name='y',
                     shape=[m, 1] if not self.soft_label else [m, n],
                     dtype='int64' if not self.soft_label else self.dtype,
-                    append_batch_size=False,
                 )
-                z_d, s_d = fluid.layers.softmax_with_cross_entropy(
+                y_d.desc.set_need_check_feed(False)
+                z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
                     x_d,
                     y_d,
                     soft_label=self.soft_label,
@@ -61,9 +64,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = inplace
                 prog = fluid.CompiledProgram(
-                    fluid.default_main_program()
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    fluid.default_main_program(), build_strategy=build_strategy
                 )
 
                 fetch_list = [z_d.name, s_d.name]

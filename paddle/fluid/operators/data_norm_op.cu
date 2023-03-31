@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -26,10 +26,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -116,6 +114,16 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
+
+    PADDLE_ENFORCE_LT(0,
+                      N,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+    PADDLE_ENFORCE_LT(0,
+                      C,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+
     const T *batch_size_in =
         ctx.Input<phi::DenseTensor>("BatchSize")->data<T>();
     const T *batch_sum_in = ctx.Input<phi::DenseTensor>("BatchSum")->data<T>();
@@ -167,7 +175,7 @@ class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     const int C = x_dims[1];
 
     // init output
-    Tensor *d_x = nullptr;
+    phi::DenseTensor *d_x = nullptr;
     if (ctx.HasOutput(framework::GradVarName("X"))) {
       d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     }

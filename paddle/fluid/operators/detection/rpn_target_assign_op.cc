@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -96,27 +94,30 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };
 
 template <typename T>
-void AppendRpns(LoDTensor* out, int64_t offset, phi::DenseTensor* to_add) {
+void AppendRpns(phi::DenseTensor* out,
+                int64_t offset,
+                phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
 template <typename T>
-std::vector<Tensor> FilterStraddleAnchor(const phi::CPUContext& context,
-                                         const phi::DenseTensor* anchor,
-                                         const float rpn_straddle_thresh,
-                                         T im_height,
-                                         T im_width) {
+std::vector<phi::DenseTensor> FilterStraddleAnchor(
+    const phi::CPUContext& context,
+    const phi::DenseTensor* anchor,
+    const float rpn_straddle_thresh,
+    T im_height,
+    T im_width) {
   std::vector<int> inds_inside;
   int anchor_num = anchor->dims()[0];
   auto* anchor_data = anchor->data<T>();
@@ -137,25 +138,25 @@ std::vector<Tensor> FilterStraddleAnchor(const phi::CPUContext& context,
     }
   }
   int inside_num = inds_inside.size();
-  Tensor inds_inside_t;
+  phi::DenseTensor inds_inside_t;
   int* inds_inside_data =
       inds_inside_t.mutable_data<int>({inside_num}, context.GetPlace());
   std::copy(inds_inside.begin(), inds_inside.end(), inds_inside_data);
-  Tensor inside_anchor_t;
+  phi::DenseTensor inside_anchor_t;
   T* inside_anchor_data =
       inside_anchor_t.mutable_data<T>({inside_num, 4}, context.GetPlace());
   Gather<T>(
       anchor->data<T>(), 4, inds_inside_data, inside_num, inside_anchor_data);
-  std::vector<Tensor> res;
+  std::vector<phi::DenseTensor> res;
   res.emplace_back(inds_inside_t);
   res.emplace_back(inside_anchor_t);
   return res;
 }
 
 template <typename T>
-Tensor FilterCrowdGt(const phi::CPUContext& context,
-                     phi::DenseTensor* gt_boxes,
-                     phi::DenseTensor* is_crowd) {
+phi::DenseTensor FilterCrowdGt(const phi::CPUContext& context,
+                               phi::DenseTensor* gt_boxes,
+                               phi::DenseTensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
   std::vector<int> not_crowd_inds;
   auto* is_crowd_data = is_crowd->data<int>();
@@ -165,7 +166,7 @@ Tensor FilterCrowdGt(const phi::CPUContext& context,
     }
   }
   int ncrowd_num = not_crowd_inds.size();
-  Tensor ncrowd_gt_boxes;
+  phi::DenseTensor ncrowd_gt_boxes;
   T* ncrowd_gt_boxes_data =
       ncrowd_gt_boxes.mutable_data<T>({ncrowd_num, 4}, context.GetPlace());
   Gather<T>(gt_boxes->data<T>(),
@@ -299,7 +300,7 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
 }
 
 template <typename T>
-std::vector<Tensor> SampleRpnFgBgGt(
+std::vector<phi::DenseTensor> SampleRpnFgBgGt(
     const phi::CPUContext& ctx,
     const phi::DenseTensor& anchor_by_gt_overlap,
     const int rpn_batch_size_per_im,
@@ -321,7 +322,7 @@ std::vector<Tensor> SampleRpnFgBgGt(
   // Calculate the max IoU between anchors and gt boxes
   // Map from anchor to gt box that has highest overlap
   auto place = ctx.GetPlace();
-  Tensor anchor_to_gt_max, anchor_to_gt_argmax, gt_to_anchor_max;
+  phi::DenseTensor anchor_to_gt_max, anchor_to_gt_argmax, gt_to_anchor_max;
   anchor_to_gt_max.mutable_data<T>({anchor_num}, place);
   int* argmax = anchor_to_gt_argmax.mutable_data<int>({anchor_num}, place);
   gt_to_anchor_max.mutable_data<T>({gt_num}, place);
@@ -364,7 +365,8 @@ std::vector<Tensor> SampleRpnFgBgGt(
   for (int i = 0; i < fg_fake_num; ++i) {
     gt_inds.emplace_back(argmax[fg_fake[i]]);
   }
-  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
+  phi::DenseTensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t,
+      bbox_inside_weight_t;
   int* loc_index_data = loc_index_t.mutable_data<int>({fg_fake_num}, place);
   int* score_index_data =
       score_index_t.mutable_data<int>({fg_num + bg_num}, place);
@@ -380,7 +382,7 @@ std::vector<Tensor> SampleRpnFgBgGt(
   std::copy(bbox_inside_weight.begin(),
             bbox_inside_weight.end(),
             bbox_inside_weight_data);
-  std::vector<Tensor> loc_score_tgtlbl_gt;
+  std::vector<phi::DenseTensor> loc_score_tgtlbl_gt;
   loc_score_tgtlbl_gt.emplace_back(loc_index_t);
   loc_score_tgtlbl_gt.emplace_back(score_index_t);
   loc_score_tgtlbl_gt.emplace_back(tgt_lbl_t);
@@ -395,15 +397,16 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<phi::DenseTensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
+    auto* loc_index = context.Output<phi::DenseTensor>("LocationIndex");
+    auto* score_index = context.Output<phi::DenseTensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<phi::DenseTensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<phi::DenseTensor>("TargetLabel");
+    auto* bbox_inside_weight =
+        context.Output<phi::DenseTensor>("BBoxInsideWeight");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(),
                       1UL,
@@ -453,30 +456,30 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     auto gt_boxes_lod = gt_boxes->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();
     for (int i = 0; i < batch_num; ++i) {
-      Tensor gt_boxes_slice =
+      phi::DenseTensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
-      Tensor is_crowd_slice =
+      phi::DenseTensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
       auto* im_info_data = im_info_slice.data<T>();
       auto im_height = im_info_data[0];
       auto im_width = im_info_data[1];
       auto im_scale = im_info_data[2];
 
       // Filter straddle anchor
-      std::vector<Tensor> filter_output = FilterStraddleAnchor<T>(
+      std::vector<phi::DenseTensor> filter_output = FilterStraddleAnchor<T>(
           dev_ctx, anchor, rpn_straddle_thresh, im_height, im_width);
-      Tensor inds_inside = filter_output[0];
-      Tensor inside_anchor = filter_output[1];
+      phi::DenseTensor inds_inside = filter_output[0];
+      phi::DenseTensor inside_anchor = filter_output[1];
 
       // Filter crowd gt
-      Tensor ncrowd_gt_boxes =
+      phi::DenseTensor ncrowd_gt_boxes =
           FilterCrowdGt<T>(dev_ctx, &gt_boxes_slice, &is_crowd_slice);
       auto ncrowd_gt_boxes_et =
           framework::EigenTensor<T, 2>::From(ncrowd_gt_boxes);
       ncrowd_gt_boxes_et = ncrowd_gt_boxes_et * im_scale;
 
-      Tensor anchor_by_gt_overlap;
+      phi::DenseTensor anchor_by_gt_overlap;
       anchor_by_gt_overlap.mutable_data<T>(
           {inside_anchor.dims()[0], ncrowd_gt_boxes.dims()[0]}, place);
       BboxOverlaps<T>(inside_anchor, ncrowd_gt_boxes, &anchor_by_gt_overlap);
@@ -490,16 +493,16 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                                                     engine,
                                                     use_random);
 
-      Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
-      Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
-      Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
-      Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
-      Tensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
+      phi::DenseTensor sampled_loc_index = loc_score_tgtlbl_gt[0];
+      phi::DenseTensor sampled_score_index = loc_score_tgtlbl_gt[1];
+      phi::DenseTensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
+      phi::DenseTensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+      phi::DenseTensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
 
       int loc_num = sampled_loc_index.dims()[0];
       int score_num = sampled_score_index.dims()[0];
       // unmap to all anchor
-      Tensor sampled_loc_index_unmap, sampled_score_index_unmap;
+      phi::DenseTensor sampled_loc_index_unmap, sampled_score_index_unmap;
       sampled_loc_index_unmap.mutable_data<int>({loc_num}, place);
       sampled_score_index_unmap.mutable_data<int>({score_num}, place);
       Gather<int>(inds_inside.data<int>(),
@@ -514,7 +517,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                   sampled_score_index_unmap.data<int>());
 
       // get target bbox deltas
-      Tensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
+      phi::DenseTensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
       auto* sampled_anchor_data =
           sampled_anchor.mutable_data<T>({loc_num, 4}, place);
       auto* sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);
@@ -598,11 +601,11 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+             "(phi::DenseTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(phi::DenseTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(phi::DenseTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<int>("rpn_batch_size_per_im",
@@ -685,13 +688,13 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+             "(phi::DenseTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("GtLabels",
-             "(LoDTensor) input ground-truth label with shape [K, 1].");
+             "(phi::DenseTensor) input ground-truth label with shape [K, 1].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(phi::DenseTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(phi::DenseTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<float>(
@@ -848,19 +851,20 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };
 
 template <typename T>
-std::vector<Tensor> FilterCrowdGtBoxLabel(const phi::CPUContext& context,
-                                          phi::DenseTensor* gt_boxes,
-                                          phi::DenseTensor* gt_labels,
-                                          phi::DenseTensor* is_crowd) {
+std::vector<phi::DenseTensor> FilterCrowdGtBoxLabel(
+    const phi::CPUContext& context,
+    phi::DenseTensor* gt_boxes,
+    phi::DenseTensor* gt_labels,
+    phi::DenseTensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
   std::vector<int> not_crowd_inds;
   auto* is_crowd_data = is_crowd->data<int>();
@@ -870,7 +874,7 @@ std::vector<Tensor> FilterCrowdGtBoxLabel(const phi::CPUContext& context,
     }
   }
   int ncrowd_num = not_crowd_inds.size();
-  Tensor ncrowd_gt_boxes, ncrowd_gt_labels;
+  phi::DenseTensor ncrowd_gt_boxes, ncrowd_gt_labels;
   T* ncrowd_gt_boxes_data =
       ncrowd_gt_boxes.mutable_data<T>({ncrowd_num, 4}, context.GetPlace());
   int* ncrowd_gt_labels_data =
@@ -885,19 +889,20 @@ std::vector<Tensor> FilterCrowdGtBoxLabel(const phi::CPUContext& context,
               not_crowd_inds.data(),
               ncrowd_num,
               ncrowd_gt_labels_data);
-  std::vector<Tensor> res;
+  std::vector<phi::DenseTensor> res;
   res.emplace_back(ncrowd_gt_boxes);
   res.emplace_back(ncrowd_gt_labels);
   return res;
 }
 
 template <typename T>
-std::vector<Tensor> GetAllFgBgGt(const phi::CPUContext& ctx,
-                                 const phi::DenseTensor& anchor_by_gt_overlap,
-                                 const phi::DenseTensor& ncrowd_gt_labels,
-                                 const float positive_overlap,
-                                 const float negative_overlap,
-                                 std::minstd_rand engine) {
+std::vector<phi::DenseTensor> GetAllFgBgGt(
+    const phi::CPUContext& ctx,
+    const phi::DenseTensor& anchor_by_gt_overlap,
+    const phi::DenseTensor& ncrowd_gt_labels,
+    const float positive_overlap,
+    const float negative_overlap,
+    std::minstd_rand engine) {
   auto* anchor_by_gt_overlap_data = anchor_by_gt_overlap.data<T>();
   int anchor_num = anchor_by_gt_overlap.dims()[0];
   int gt_num = anchor_by_gt_overlap.dims()[1];
@@ -911,7 +916,7 @@ std::vector<Tensor> GetAllFgBgGt(const phi::CPUContext& ctx,
   // Calculate the max IoU between anchors and gt boxes
   // Map from anchor to gt box that has highest overlap
   auto place = ctx.GetPlace();
-  Tensor anchor_to_gt_max, anchor_to_gt_argmax, gt_to_anchor_max;
+  phi::DenseTensor anchor_to_gt_max, anchor_to_gt_argmax, gt_to_anchor_max;
   anchor_to_gt_max.mutable_data<T>({anchor_num}, place);
   int* argmax = anchor_to_gt_argmax.mutable_data<int>({anchor_num}, place);
   gt_to_anchor_max.mutable_data<T>({gt_num}, place);
@@ -959,8 +964,9 @@ std::vector<Tensor> GetAllFgBgGt(const phi::CPUContext& ctx,
     gt_inds.emplace_back(argmax[fg_fake[i]]);
   }
 
-  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
-  Tensor fg_num_t;
+  phi::DenseTensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t,
+      bbox_inside_weight_t;
+  phi::DenseTensor fg_num_t;
   int* loc_index_data = loc_index_t.mutable_data<int>({fg_fake_num}, place);
   int* score_index_data =
       score_index_t.mutable_data<int>({fg_num + bg_num}, place);
@@ -978,7 +984,7 @@ std::vector<Tensor> GetAllFgBgGt(const phi::CPUContext& ctx,
             bbox_inside_weight.end(),
             bbox_inside_weight_data);
   fg_num_data[0] = fg_fake.size() + 1;
-  std::vector<Tensor> loc_score_tgtlbl_gt;
+  std::vector<phi::DenseTensor> loc_score_tgtlbl_gt;
   loc_score_tgtlbl_gt.emplace_back(loc_index_t);
   loc_score_tgtlbl_gt.emplace_back(score_index_t);
   loc_score_tgtlbl_gt.emplace_back(tgt_lbl_t);
@@ -994,17 +1000,18 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<phi::DenseTensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* gt_labels = context.Input<LoDTensor>("GtLabels");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* gt_labels = context.Input<phi::DenseTensor>("GtLabels");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
-    auto* fg_num = context.Output<LoDTensor>("ForegroundNumber");
+    auto* loc_index = context.Output<phi::DenseTensor>("LocationIndex");
+    auto* score_index = context.Output<phi::DenseTensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<phi::DenseTensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<phi::DenseTensor>("TargetLabel");
+    auto* bbox_inside_weight =
+        context.Output<phi::DenseTensor>("BBoxInsideWeight");
+    auto* fg_num = context.Output<phi::DenseTensor>("ForegroundNumber");
 
     PADDLE_ENFORCE_EQ(
         gt_boxes->lod().size(),
@@ -1062,35 +1069,35 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     auto gt_labels_lod = gt_labels->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();
     for (int i = 0; i < batch_num; ++i) {
-      Tensor gt_boxes_slice =
+      phi::DenseTensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
-      Tensor gt_labels_slice =
+      phi::DenseTensor gt_labels_slice =
           gt_labels->Slice(gt_labels_lod[i], gt_labels_lod[i + 1]);
-      Tensor is_crowd_slice =
+      phi::DenseTensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
       auto* im_info_data = im_info_slice.data<T>();
       auto im_height = im_info_data[0];
       auto im_width = im_info_data[1];
       auto im_scale = im_info_data[2];
 
       // Filter straddle anchor
-      std::vector<Tensor> filter_output =
+      std::vector<phi::DenseTensor> filter_output =
           FilterStraddleAnchor<T>(dev_ctx, anchor, -1, im_height, im_width);
-      Tensor inds_inside = filter_output[0];
-      Tensor inside_anchor = filter_output[1];
+      phi::DenseTensor inds_inside = filter_output[0];
+      phi::DenseTensor inside_anchor = filter_output[1];
 
       // Filter crowd gt
-      std::vector<Tensor> ncrowd_output = FilterCrowdGtBoxLabel<T>(
+      std::vector<phi::DenseTensor> ncrowd_output = FilterCrowdGtBoxLabel<T>(
           dev_ctx, &gt_boxes_slice, &gt_labels_slice, &is_crowd_slice);
-      Tensor ncrowd_gt_boxes = ncrowd_output[0];
-      Tensor ncrowd_gt_labels = ncrowd_output[1];
+      phi::DenseTensor ncrowd_gt_boxes = ncrowd_output[0];
+      phi::DenseTensor ncrowd_gt_labels = ncrowd_output[1];
 
       auto ncrowd_gt_boxes_et =
           framework::EigenTensor<T, 2>::From(ncrowd_gt_boxes);
       ncrowd_gt_boxes_et = ncrowd_gt_boxes_et * im_scale;
 
-      Tensor anchor_by_gt_overlap;
+      phi::DenseTensor anchor_by_gt_overlap;
       anchor_by_gt_overlap.mutable_data<T>(
           {inside_anchor.dims()[0], ncrowd_gt_boxes.dims()[0]}, place);
       BboxOverlaps<T>(inside_anchor, ncrowd_gt_boxes, &anchor_by_gt_overlap);
@@ -1102,17 +1109,17 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
                                                  negative_overlap,
                                                  engine);
 
-      Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
-      Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
-      Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
-      Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
-      Tensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
-      Tensor sampled_fg_num = loc_score_tgtlbl_gt[5];
+      phi::DenseTensor sampled_loc_index = loc_score_tgtlbl_gt[0];
+      phi::DenseTensor sampled_score_index = loc_score_tgtlbl_gt[1];
+      phi::DenseTensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
+      phi::DenseTensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+      phi::DenseTensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
+      phi::DenseTensor sampled_fg_num = loc_score_tgtlbl_gt[5];
 
       int loc_num = sampled_loc_index.dims()[0];
       int score_num = sampled_score_index.dims()[0];
       // unmap to all anchor
-      Tensor sampled_loc_index_unmap, sampled_score_index_unmap;
+      phi::DenseTensor sampled_loc_index_unmap, sampled_score_index_unmap;
       sampled_loc_index_unmap.mutable_data<int>({loc_num}, place);
       sampled_score_index_unmap.mutable_data<int>({score_num}, place);
       Gather<int>(inds_inside.data<int>(),
@@ -1127,7 +1134,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
                   sampled_score_index_unmap.data<int>());
 
       // get target bbox deltas
-      Tensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
+      phi::DenseTensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
       auto* sampled_anchor_data =
           sampled_anchor.mutable_data<T>({loc_num, 4}, place);
       auto* sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);

@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 np.random.seed(2021)
 paddle.seed(1024)
@@ -26,7 +24,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = paddle.nn.Sequential(
@@ -66,7 +64,7 @@ class TestSimpleNet(TestParallelDyGraphRunnerBase):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        x_data = np.array([x for x in batch])
+        x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
         x = paddle.to_tensor(x_data)
         out = model(x)

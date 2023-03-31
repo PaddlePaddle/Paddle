@@ -14,7 +14,21 @@
 
 import logging
 
-import paddle.fluid as fluid
+import paddle
+from paddle.fluid.layers.learning_rate_scheduler import (
+    exponential_decay,
+    inverse_time_decay,
+    natural_exp_decay,
+    noam_decay,
+)
+from paddle.optimizer.lr import (
+    ExponentialDecay,
+    InverseTimeDecay,
+    LRScheduler,
+    NaturalExpDecay,
+    NoamDecay,
+)
+
 from ..ps.utils.public import (
     get_optimize_ops,
     get_ps_endpoint,
@@ -22,19 +36,6 @@ from ..ps.utils.public import (
     get_trainers,
 )
 from .pass_base import PassBase, register_pass
-from paddle.optimizer.lr import LRScheduler
-from paddle.optimizer.lr import (
-    ExponentialDecay,
-    InverseTimeDecay,
-    NaturalExpDecay,
-    NoamDecay,
-)
-from paddle.fluid.layers.learning_rate_scheduler import (
-    exponential_decay,
-    inverse_time_decay,
-    natural_exp_decay,
-    noam_decay,
-)
 
 
 @register_pass("add_lr_decay_table_pass")
@@ -68,7 +69,7 @@ class AddLrDecayTablePass(PassBase):
         ] = tensor_table_class
         attrs['tensor_table'] = tensor_table_dict
 
-    def _get_lr_sheduler_program(self, lr_sheduler, lr_decay_steps):
+    def _get_lr_scheduler_program(self, lr_scheduler, lr_decay_steps):
         schedler_decay = [
             'NoamDecay',
             'NaturalExpDecay',
@@ -76,14 +77,16 @@ class AddLrDecayTablePass(PassBase):
             'ExponentialDecay',
         ]
 
-        decay_main_program = fluid.framework.Program()
-        decay_startup_program = fluid.framework.Program()
+        decay_main_program = paddle.static.Program()
+        decay_startup_program = paddle.static.Program()
         lr_name = ""
 
-        if isinstance(lr_sheduler, ExponentialDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+        if isinstance(lr_scheduler, ExponentialDecay):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = exponential_decay(
-                    1.0, lr_decay_steps, lr_sheduler.gamma, True
+                    1.0, lr_decay_steps, lr_scheduler.gamma, True
                 )
                 lr_name = lr.name
                 logging.warn(
@@ -93,20 +96,24 @@ class AddLrDecayTablePass(PassBase):
                     "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
                     % lr_decay_steps
                 )
-        elif isinstance(lr_sheduler, NoamDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+        elif isinstance(lr_scheduler, NoamDecay):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = noam_decay(
-                    lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0
+                    lr_scheduler.d_model, lr_scheduler.warmup_steps, 1.0
                 )
                 lr_name = lr.name
                 logging.warn(
                     "NoamDecay is set, warmup steps is [ %d ]"
-                    % lr_sheduler.warmup_steps
+                    % lr_scheduler.warmup_steps
                 )
-        elif isinstance(lr_sheduler, NaturalExpDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+        elif isinstance(lr_scheduler, NaturalExpDecay):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = natural_exp_decay(
-                    1.0, lr_decay_steps, lr_sheduler.gamma, True
+                    1.0, lr_decay_steps, lr_scheduler.gamma, True
                 )
                 lr_name = lr.name
                 logging.warn(
@@ -116,10 +123,12 @@ class AddLrDecayTablePass(PassBase):
                     "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
                     % lr_decay_steps
                 )
-        elif isinstance(lr_sheduler, InverseTimeDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+        elif isinstance(lr_scheduler, InverseTimeDecay):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = inverse_time_decay(
-                    1.0, lr_decay_steps, lr_sheduler.gamma, True
+                    1.0, lr_decay_steps, lr_scheduler.gamma, True
                 )
                 lr_name = lr.name
                 logging.warn(
@@ -140,11 +149,11 @@ class AddLrDecayTablePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        if not hasattr(attrs['origin_main_program'], 'lr_sheduler'):
+        if not hasattr(attrs['origin_main_program'], 'lr_scheduler'):
             return
 
         assert isinstance(
-            attrs['origin_main_program'].lr_sheduler, LRScheduler
+            attrs['origin_main_program'].lr_scheduler, LRScheduler
         ), "must be LRScheduler"
 
         ops = get_optimize_ops(attrs['origin_main_program'])
@@ -152,8 +161,8 @@ class AddLrDecayTablePass(PassBase):
             lr_decay_main_program,
             lr_decay_startup_program,
             lr_name,
-        ) = self._get_lr_sheduler_program(
-            attrs['origin_main_program'].lr_sheduler, attrs['lr_decay_steps']
+        ) = self._get_lr_scheduler_program(
+            attrs['origin_main_program'].lr_scheduler, attrs['lr_decay_steps']
         )
         self._add_tensor_table(
             attrs,

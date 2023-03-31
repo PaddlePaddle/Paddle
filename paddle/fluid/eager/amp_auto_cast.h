@@ -20,8 +20,8 @@
 
 namespace egr {
 
-static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
-                            const paddle::experimental::DataType& dst_dtype) {
+static inline bool NeedCast(const paddle::Tensor& tensor,
+                            const phi::DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
   if (paddle::platform::is_gpu_place(place) ||
@@ -29,11 +29,12 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
+      paddle::platform::is_npu_pinned_place(place) ||
+      paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
-    if ((data_type == paddle::experimental::DataType::FLOAT32 ||
-         data_type == paddle::experimental::DataType::FLOAT16 ||
-         data_type == paddle::experimental::DataType::BFLOAT16) &&
+    if ((data_type == phi::DataType::FLOAT32 ||
+         data_type == phi::DataType::FLOAT16 ||
+         data_type == phi::DataType::BFLOAT16) &&
         (data_type != dst_dtype)) {
       return true;
     }
@@ -41,15 +42,15 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
   return false;
 }
 
-inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
+inline std::vector<paddle::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
-    const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype,
+    const std::vector<paddle::Tensor>& inputs,
+    const phi::DataType& dst_dtype,
     std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
-  std::vector<paddle::experimental::Tensor> inputs_casted;
+          << phi::DataTypeToString(dst_dtype) << ").";
+  std::vector<paddle::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
       paddle::framework::AttributeMap cast_attrs = {
@@ -64,15 +65,14 @@ inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
   return inputs_casted;
 }
 
-inline paddle::experimental::Tensor AmpAutoCast(
-    const std::string& input_name,
-    const paddle::experimental::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype,
-    std::string op_name) {
+inline paddle::Tensor AmpAutoCast(const std::string& input_name,
+                                  const paddle::Tensor& input,
+                                  const phi::DataType& dst_dtype,
+                                  std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
-  if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
+          << phi::DataTypeToString(dst_dtype) << ").";
+  if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
     }

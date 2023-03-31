@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -100,8 +101,8 @@ for stype in support_types:
 class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
-            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
-            result = fluid.layers.where(cond)
+            cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
+            result = paddle.nonzero(cond)
 
             exe = fluid.Executor(paddle.XPUPlace(0))
             exe.run(fluid.default_startup_program())
@@ -112,9 +113,9 @@ class TestWhereOpError(unittest.TestCase):
 class TestWhereRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.where([10])
+            paddle.nonzero([10])
 
-        self.assertRaises(TypeError, test_type)
+        self.assertRaises(AttributeError, test_type)
 
 
 if __name__ == "__main__":

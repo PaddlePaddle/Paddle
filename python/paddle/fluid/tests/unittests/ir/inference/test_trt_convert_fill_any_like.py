@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import List, Dict, Any
 import unittest
+from functools import partial
+from typing import Any, Dict, List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
@@ -34,7 +36,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
             if self.dims == 4:
                 self.input_shape = [1, 1, 4, 6]
                 if self.dtype == 0:
-                    return np.random.random([1, 1, 4, 6]).astype(np.bool)
+                    return np.random.random([1, 1, 4, 6]).astype(np.bool_)
                 elif self.dtype == 2 or self.dtype == -1:
                     return np.random.random([1, 1, 4, 6]).astype(np.int32)
                 elif self.dtype == 3:

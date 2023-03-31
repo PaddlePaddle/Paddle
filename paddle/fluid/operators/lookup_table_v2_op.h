@@ -27,15 +27,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
 template <typename InT, typename OutT>
-static std::vector<OutT> CopyIdsToVector(const Tensor &ids) {
+static std::vector<OutT> CopyIdsToVector(const phi::DenseTensor &ids) {
   auto numel = ids.numel();
   const auto *src = ids.data<InT>();
   std::vector<OutT> ret(numel);
@@ -52,12 +50,12 @@ static std::vector<OutT> CopyIdsToVector(const Tensor &ids) {
 template <typename T>
 struct LookupTableV2CPUFunctor {
   LookupTableV2CPUFunctor(const framework::ExecutionContext &context,
-                          const Tensor *ids_t)
+                          const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
   void apply() {
-    auto *output_t = context_.Output<LoDTensor>("Out");  // float tensor
+    auto *output_t = context_.Output<phi::DenseTensor>("Out");  // float tensor
     auto *table_var = context_.InputVar("W");
 
     int64_t padding_idx = context_.Attr<int64_t>("padding_idx");
@@ -65,8 +63,8 @@ struct LookupTableV2CPUFunctor {
     auto ids = CopyIdsToVector<IdT, int64_t>(*ids_t_);
     auto ids_numel = static_cast<int64_t>(ids.size());
 
-    if (table_var->template IsType<LoDTensor>()) {
-      const auto &table_t = table_var->template Get<LoDTensor>();
+    if (table_var->template IsType<phi::DenseTensor>()) {
+      const auto &table_t = table_var->template Get<phi::DenseTensor>();
       int64_t row_number = table_t.dims()[0];
       int64_t row_width = table_t.dims()[1];
 
@@ -132,7 +130,8 @@ struct LookupTableV2CPUFunctor {
                    table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context_);
+            auto &dev_ctx = context_.template device_context<phi::CPUContext>();
+            auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
             blas.VCOPY(row_width,
                        table + id_index * row_width,
                        output + i * row_width);
@@ -144,7 +143,7 @@ struct LookupTableV2CPUFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>
@@ -161,22 +160,22 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
 template <typename T>
 struct LookupTableV2GradCPUFunctor {
   LookupTableV2GradCPUFunctor(const framework::ExecutionContext &context,
-                              const Tensor *ids_t)
+                              const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
   void apply() {
     auto *table_var = context_.InputVar("W");
     DDim table_dim;
-    if (table_var->template IsType<LoDTensor>()) {
-      table_dim = context_.Input<LoDTensor>("W")->dims();
+    if (table_var->template IsType<phi::DenseTensor>()) {
+      table_dim = context_.Input<phi::DenseTensor>("W")->dims();
     } else if (table_var->template IsType<phi::SelectedRows>()) {
       auto *table_t = context_.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The parameter W of a LookupTableV2 "
-          "must be either LoDTensor or SelectedRows"));
+          "must be either phi::DenseTensor or SelectedRows"));
     }
 
     int64_t padding_idx = context_.Attr<int64_t>("padding_idx");
@@ -188,7 +187,8 @@ struct LookupTableV2GradCPUFunctor {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *d_output = context_.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *d_output =
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context_.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -219,8 +219,10 @@ struct LookupTableV2GradCPUFunctor {
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
 
     } else {
-      auto *d_output = context_.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context_.Output<LoDTensor>(framework::GradVarName("W"));
+      auto *d_output =
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto *d_table =
+          context_.Output<phi::DenseTensor>(framework::GradVarName("W"));
       auto *ids_data = ids.data();
 
       int64_t N = table_dim[0];
@@ -265,7 +267,7 @@ struct LookupTableV2GradCPUFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>

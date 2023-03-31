@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
+
 import paddle
-from paddle import fluid
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class LinearTestCase(unittest.TestCase):
@@ -25,7 +27,7 @@ class LinearTestCase(unittest.TestCase):
         self.dtype = 'float32'
         self.input = np.ones((3, 1, 2)).astype(self.dtype)
         self.weight = np.ones((2, 2)).astype(self.dtype)
-        self.bias = np.ones((2)).astype(self.dtype)
+        self.bias = np.ones(2).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -48,14 +50,14 @@ class LinearTestCase(unittest.TestCase):
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
-            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         bias_attr = fluid.ParamAttr(
             name="linear_bias",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
-            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         linear = paddle.nn.Linear(
             2, 2, weight_attr=weight_attr, bias_attr=bias_attr

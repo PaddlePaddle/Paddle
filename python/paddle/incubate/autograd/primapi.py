@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import typing
 
-from paddle.fluid import backward, framework
+import paddle
+from paddle.fluid import backward, core, framework
+from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -23,7 +26,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators.**
+        **ONLY available in the static graph mode and primitive operators.**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
@@ -106,7 +109,7 @@ def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators**
+        **ONLY available in the static graph mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
@@ -211,3 +214,75 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+
+
+@framework.static_only
+def to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=-1,
+    backward_length=-1,
+):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
+    The operators in blacklist will be excluded from program when lowering into primitives, and only the
+    operators in whitelist will be lowering. The priority of blacklist is higher than whitelist, it means
+    an operator both in blacklist and whitelist will not be lowering.
+
+    The finally set that will be lowering is:
+        (blocks.ops & ops have decomposite rule & whitelist) - blacklist
+
+    Args:
+        blacklist(frozenset): The Operators that will be exclude when lowering into primitives.
+        whitelist(frozenset): Only the operators in whitelist will be lowering into primitives.
+        start_idx(int): If start_idx exceeds -1, ops[start_idx:] will be processed. Default: -1.
+        backward_length(int): If backward_length exceeds -1, ops[:-backward_length] will be processed. Default: -1.
+    """
+    if not core._is_fwd_prim_enabled():
+        return
+    if isinstance(blocks, paddle.fluid.framework.Block):
+        logging.info("Atomize composite op to primitive ops begin.")
+        main_program = blocks.program
+    elif isinstance(blocks, typing.Sequence):
+        for item in blocks:
+            if not isinstance(item, paddle.fluid.framework.Block):
+                raise TypeError(
+                    f"Expect block or sequence of blocks, but sequence contains {type(item)}."
+                )
+        main_program = blocks[0].program
+    else:
+        raise TypeError(
+            f"Expect block or sequence of blocks, but got {type(blocks)}."
+        )
+    if not isinstance(blacklist, (set, frozenset)):
+        raise TypeError(
+            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+        )
+    if not isinstance(whitelist, (set, frozenset)):
+        raise TypeError(
+            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+        )
+
+    blacklist = prim_config["forward_blacklist"] | blacklist
+
+    with framework.program_guard(main_program):
+        print("Lowering composite forward ops begin...", flush=True)
+
+        if len(blacklist) > 0 and len(whitelist) > 0:
+            filter_ = lambda x: x.type in whitelist and x.type not in blacklist
+        elif len(blacklist) > 0 and len(whitelist) == 0:
+            filter_ = lambda x: x.type not in blacklist
+        elif len(blacklist) == 0 and len(whitelist) > 0:
+            filter_ = lambda x: x.type in whitelist
+        else:
+            filter_ = lambda x: True
+        primx._lower_composite(
+            blocks,
+            filter_,
+            start_idx=start_idx,
+            backward_length=backward_length,
+        )
+        replace_ops = prim_config["composite_ops_record"]
+        print(
+            f"Lowering composite forward ops finish: {replace_ops}", flush=True
+        )

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 
 namespace phi {
@@ -50,7 +50,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
   Out_2d.ShareDataWith(out).Resize({n, d});
   dOut_2d.ShareDataWith(out_grad).Resize({n, d});
 
-  paddle::operators::math::SoftmaxGradFunctor<Context, T>()(
+  phi::funcs::SoftmaxGradFunctor<Context, T>()(
       dev_ctx, axis_dim, &Out_2d, &dOut_2d, &dX_2d);
 }
 

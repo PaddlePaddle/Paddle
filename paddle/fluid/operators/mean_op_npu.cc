@@ -16,8 +16,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
  public:
@@ -51,31 +49,32 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 
     auto grad = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(grad->numel(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "Mean Gradient Input Tensor len should be 1. But "
-                          "received Out@Grad's elements num is %d.",
-                          grad->numel()));
+    PADDLE_ENFORCE_EQ(
+        grad->numel(),
+        1,
+        platform::errors::InvalidArgument(
+            "Mean Gradient Input phi::DenseTensor len should be 1. But "
+            "received Out@Grad's elements num is %d.",
+            grad->numel()));
 
     auto IG = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
     // ones
-    Tensor ones(grad->dtype());
+    phi::DenseTensor ones(grad->dtype());
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
     const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
-    Tensor mean_tensor(grad->dtype());
+    phi::DenseTensor mean_tensor(grad->dtype());
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     FillNpuTensorWithConstant<T>(
         &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
-    Tensor mean_ma(grad->dtype());
+    phi::DenseTensor mean_ma(grad->dtype());
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
     const auto& runner_mul_1 =

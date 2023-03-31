@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest, skip_check_grad_ci
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestSvdOp(OpTest):
@@ -49,7 +51,7 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'], check_eager=True)
+        self.check_output(no_check_set=['U', 'VH'])
 
     def test_svd_forward(self):
         """u matmul diag(s) matmul vt must become X"""
@@ -69,19 +71,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(
-            ['X'], ['S'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
 
     def check_U_grad(self):
-        self.check_grad(
-            ['X'], ['U'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
 
     def check_V_grad(self):
-        self.check_grad(
-            ['X'], ['VH'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
 
     def test_check_grad(self):
         """
@@ -305,7 +301,7 @@ class TestSvdAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 a = np.random.rand(5, 5)
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
@@ -317,6 +313,16 @@ class TestSvdAPI(unittest.TestCase):
                     fetch_list=[s],
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
+
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in svd should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+                paddle.linalg.svd(x, full_matrices=False)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

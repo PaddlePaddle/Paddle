@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -111,14 +113,13 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ["X", "Y"],
             "Out",
             user_defined_grads=self.gradient,
-            check_eager=True,
         )
 
 
@@ -168,8 +169,12 @@ class TestDistAPI(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5], dtype=self.data_type)
-            y = fluid.data(name='y', shape=[3, 1, 5], dtype=self.data_type)
+            x = paddle.static.data(
+                name='x', shape=[2, 3, 4, 5], dtype=self.data_type
+            )
+            y = paddle.static.data(
+                name='y', shape=[3, 1, 5], dtype=self.data_type
+            )
             p = 2
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)

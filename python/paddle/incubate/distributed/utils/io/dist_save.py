@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+import copy
 import re
+import sys
+
 import paddle
+import paddle.distributed as dist
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import dygraph_only
-import copy
-import sys
+
 from .save_for_auto import save_for_auto_inference
-from paddle.distributed.fleet.utils.log_util import logger
 
 __all__ = ["save", "save_for_auto_inference"]
 
@@ -172,7 +173,7 @@ def _state_dict_groups(state_dict, max_size):
     max_size = max(max_size, max_tensor_size)
     logger.debug(f"max tensor size: {max_size}")
 
-    state_group = dict()
+    state_group = {}
     k_list = list(state_dict.keys())
     index = 0
     bits = 0
@@ -184,7 +185,7 @@ def _state_dict_groups(state_dict, max_size):
         )
         if bits + bsize >= max_size:
             yield state_group
-            state_group = dict()
+            state_group = {}
             bits = 0
 
         state_group[k_list[index]] = state_dict[k_list[index]]
@@ -316,7 +317,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
             )
 
     total = 0
-    output_state = dict()
+    output_state = {}
 
     logger.info("start all gather ...")
     # gather all state_dict by groups

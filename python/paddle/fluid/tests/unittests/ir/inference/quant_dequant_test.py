@@ -12,22 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
-import paddle.fluid as fluid
-import paddle
+import unittest
 import warnings
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, Variable, core
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
-from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
-from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
-from paddle.fluid import core, Program, Variable
-from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
-from paddle.fluid.core import create_paddle_predictor
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
+from paddle.static.quantization import (
+    AddQuantDequantPass,
+    OutScaleForInferencePass,
+    OutScaleForTrainingPass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 
 class QuantDequantTest(unittest.TestCase):

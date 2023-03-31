@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def PolygonBoxRestore(input):
@@ -68,17 +68,6 @@ class TestCase1(TestPolygonBoxRestoreOp):
 class TestCase2(TestPolygonBoxRestoreOp):
     def config(self):
         self.input_shape = (3, 12, 4, 5)
-
-
-class TestPolygonBoxInvalidInput(unittest.TestCase):
-    def test_error(self):
-        def test_invalid_input():
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int64'
-            )
-            out = fluid.layers.polygon_box_transform(input)
-
-        self.assertRaises(TypeError, test_invalid_input)
 
 
 if __name__ == '__main__':

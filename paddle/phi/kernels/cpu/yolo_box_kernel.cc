@@ -51,16 +51,19 @@ void YoloBoxKernel(const Context& dev_ctx,
   const int an_stride = (class_num + 5) * stride;
 
   DenseTensor anchors_;
-  auto anchors_data =
-      anchors_.mutable_data<int>({an_num * 2}, dev_ctx.GetPlace());
+  anchors_.Resize({an_num * 2});
+  auto anchors_data = dev_ctx.template Alloc<int>(&anchors_);
   std::copy(anchors.begin(), anchors.end(), anchors_data);
 
   const T* input_data = input->data<T>();
   const int* imgsize_data = imgsize->data<int>();
-  T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, dev_ctx.GetPlace());
+  boxes->Resize({n, box_num, 4});
+  T* boxes_data = dev_ctx.template Alloc<T>(boxes);
   memset(boxes_data, 0, boxes->numel() * sizeof(T));
-  T* scores_data =
-      scores->mutable_data<T>({n, box_num, class_num}, dev_ctx.GetPlace());
+
+  scores->Resize({n, box_num, class_num});
+  T* scores_data = dev_ctx.template Alloc<T>(scores);
+
   memset(scores_data, 0, scores->numel() * sizeof(T));
 
   T box[4];

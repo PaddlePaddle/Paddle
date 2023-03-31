@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
-from gradient_checker import grad_check
 from decorator_helper import prog_scope
+from eager_op_test import OpTest, skip_check_grad_ci
+from gradient_checker import grad_check
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 @skip_check_grad_ci(
@@ -35,6 +36,7 @@ from decorator_helper import prog_scope
 class TestCholeskyOp(OpTest):
     def setUp(self):
         self.op_type = "cholesky"
+        self.python_api = paddle.cholesky
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
@@ -71,11 +73,11 @@ class TestCholeskyOp(OpTest):
         root_data = self.root_data[..., :3, :3]
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            root = layers.create_parameter(
+            root = paddle.create_parameter(
                 dtype=root_data.dtype, shape=root_data.shape
             )
-            root_t = layers.transpose(root, self.trans_dims)
-            x = layers.matmul(x=root, y=root_t) + 1e-05
+            root_t = paddle.transpose(root, self.trans_dims)
+            x = paddle.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
             grad_check(root, out, x_init=root_data, place=place)
 
@@ -114,7 +116,9 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
     def check_static_result(self, place, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.cholesky(input)
 
             input_np = np.zeros([4, 4]).astype("float64")

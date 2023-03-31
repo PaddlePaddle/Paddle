@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import abc
-import os
 import enum
-import time
 import logging
+import os
 import shutil
-import paddle
-from paddle.fluid.core import PassVersionChecker
-import paddle.inference as paddle_infer
-from typing import Optional, List, Callable, Dict, Any
+import time
+import unittest
+from typing import Any, Callable, Dict, List, Optional
+
+import hypothesis
+import hypothesis.strategies as st
+import numpy as np
+from hypothesis import given, settings
 from program_config import (
     OpConfig,
     ProgramConfig,
@@ -31,9 +32,9 @@ from program_config import (
     create_quant_model,
 )
 
-import hypothesis
-from hypothesis import given, settings
-import hypothesis.strategies as st
+import paddle
+import paddle.inference as paddle_infer
+from paddle.fluid.core import PassVersionChecker
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -73,6 +74,8 @@ class IgnoreReasons(enum.Enum):
     PASS_ACCURACY_ERROR = 2
     # Accuracy is abnormal after enabling mkldnn.
     MKLDNN_ACCURACY_ERROR = 3
+    # Accuracy is abnormal after enabling cutlass.
+    CUTLASS_ACCURACY_ERROR = 3
 
 
 # TODO(wilber): just for backward compatible
@@ -220,6 +223,7 @@ class AutoScanTest(unittest.TestCase):
         passes: Optional[List[str]] = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
+        use_xpu: bool = False,
         ir_optim: Optional[bool] = None,
     ):
         config = paddle_infer.Config()
@@ -232,6 +236,8 @@ class AutoScanTest(unittest.TestCase):
             config.enable_use_gpu(100, 0)
         if use_mkldnn:
             config.enable_mkldnn()
+        if use_xpu:
+            config.enable_xpu()
         if passes is not None:
             config.pass_builder().set_passes(passes)
             self.passes = passes
@@ -312,7 +318,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     if not ignore_flag:
                         status = False
@@ -345,7 +351,7 @@ class PassAutoScanTest(AutoScanTest):
             if pass_name not in self.available_passes_in_framework:
                 continue
             if not PassVersionChecker.IsCompatible(pass_name):
-                self.fail_log('{} version check failed.'.format(pass_name))
+                self.fail_log(f'{pass_name} version check failed.')
                 status = False
         return status
 
@@ -369,7 +375,7 @@ class PassAutoScanTest(AutoScanTest):
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
-        after_op_list = list()
+        after_op_list = []
         for i in range(main_block.op_size()):
             if main_block.op(i).type() in ["feed", "fetch"]:
                 continue
@@ -423,7 +429,7 @@ class PassAutoScanTest(AutoScanTest):
         loop_func = given(generator())(run_test)
         if reproduce is not None:
             loop_func = reproduce(loop_func)
-        logging.info("Start to running test of {}".format(type(self)))
+        logging.info(f"Start to running test of {type(self)}")
         loop_func()
         logging.info(
             "===================Statistical Information==================="
@@ -433,11 +439,9 @@ class PassAutoScanTest(AutoScanTest):
                 self.num_ran_programs + self.num_invalid_programs
             )
         )
-        logging.info(
-            "Number of Invalid Programs: {}".format(self.num_invalid_programs)
-        )
-        logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
-        logging.info("Number of Ignore Tests: {}".format(self.num_ignore_tests))
+        logging.info(f"Number of Invalid Programs: {self.num_invalid_programs}")
+        logging.info(f"Number of Ran Programs: {self.num_ran_programs}")
+        logging.info(f"Number of Ignore Tests: {self.num_ignore_tests}")
         successful_ran_programs = int(
             self.num_ran_programs
             - self.num_ignore_tests / max(self.num_predictor_kinds, 1)
@@ -456,7 +460,7 @@ class PassAutoScanTest(AutoScanTest):
                     min_success_num, successful_ran_programs
                 )
             )
-            assert False
+            raise AssertionError()
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
@@ -464,7 +468,7 @@ class PassAutoScanTest(AutoScanTest):
                     max_duration
                 )
             )
-            assert False
+            raise AssertionError()
 
     def run_test(self, quant=False, prog_configs=None):
         status = True
@@ -548,7 +552,7 @@ class PassAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     if not ignore_flag:
                         status = False
@@ -568,6 +572,8 @@ class PassAutoScanTest(AutoScanTest):
         dic['use_mkldnn'] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu
+        enable_xpu = config.use_xpu()
+        dic['use_xpu'] = enable_xpu
         if not self.passes:
             dic['passes'] = self.passes
 
@@ -645,7 +651,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')
         )
 
-        # Use a seperate random generator for skipping tests
+        # Use a separate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
@@ -787,9 +793,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if isinstance(threshold, float):
                     atol = threshold
                     rtol = 1e-8
-                elif isinstance(threshold, list) or isinstance(
-                    threshold, tuple
-                ):
+                elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:
@@ -862,7 +866,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     all_passes = False
 
@@ -876,3 +880,96 @@ class TrtLayerAutoScanTest(AutoScanTest):
         note: str,
     ):
         self.ignore_cases.append((teller, reason, note))
+
+
+class CutlassAutoScanTest(AutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run_test(self, quant=False, *args, **kwargs):
+        status = True
+
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
+            model, params = create_fake_model(prog_config)
+            feed_data = {}
+            for name, tensor_config in prog_config.inputs.items():
+                feed_data[name] = {
+                    'data': tensor_config.data,
+                    'lod': tensor_config.lod,
+                }
+            results: List[Dict[str, np.ndarray]] = []
+
+            # baseline: gpu no ir_optim run
+            base_config = self.create_inference_config(
+                ir_optim=False, use_gpu=True
+            )
+            logging.info('RUN program_config: ' + str(prog_config))
+            results.append(
+                self.run_test_config(
+                    model, params, prog_config, base_config, feed_data
+                )
+            )
+            self.success_log('RUN_GPU_BASELINE done')
+
+            for pred_config, (atol, rtol) in self.sample_predictor_configs(
+                prog_config
+            ):
+                # skip info
+                ignore_flag = False
+                for ignore_info in self.ignore_cases:
+                    if ignore_info[0](prog_config, pred_config):
+                        ignore_flag = True
+                        if (
+                            ignore_info[1]
+                            == IgnoreReasons.CUTLASS_ACCURACY_ERROR
+                        ):
+                            self.ignore_log(
+                                "[CUTLASS_ACCURACY_ERROR] "
+                                + ignore_info[2]
+                                + ' '
+                                + ' vs '
+                                + self.inference_config_str(pred_config)
+                            )
+                        else:
+                            raise NotImplementedError
+                        break
+
+                if os.path.exists(self.cache_dir):
+                    shutil.rmtree(self.cache_dir)
+                if not os.path.exists(self.cache_dir):
+                    os.mkdir(self.cache_dir)
+
+                try:
+                    results.append(
+                        self.run_test_config(
+                            model, params, prog_config, pred_config, feed_data
+                        )
+                    )
+                    self.assert_tensors_near(
+                        atol, rtol, results[-1], results[0]
+                    )
+                except Exception as e:
+                    self.fail_log(
+                        self.inference_config_str(pred_config)
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
+                    )
+                    if not ignore_flag:
+                        status = False
+                    continue
+                self.success_log(
+                    'RUN predictor_config '
+                    + self.inference_config_str(pred_config)
+                    + ' done'
+                )
+
+        self.assertTrue(status)
+
+    def inference_config_str(self, config) -> str:
+        dic = {}
+        enable_gpu = config.use_gpu()
+        dic['use_gpu'] = enable_gpu
+        return str(dic)

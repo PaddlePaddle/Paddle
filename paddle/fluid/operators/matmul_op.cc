@@ -69,7 +69,7 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
@@ -237,7 +237,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               bool trans_b,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -376,7 +377,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               bool flag,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -583,11 +585,11 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_y = GetDimForInput(*context, "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    // (jczaja): For NHWC execution output shape needs
-    // to be computed like instead x*y we are to do y*x
+    // For NHWC execution output shape needs to be
+    // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
-        (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC);
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
@@ -693,39 +695,36 @@ class MatMulOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()),
-          tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(),
-                                       phi::DataLayout::kNHWC);
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
+        return phi::KernelKey(tensor.place(),
+                              phi::DataLayout::kNHWC,
+                              expected_kernel_type.dtype());
       }
 #endif
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -874,11 +873,11 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
 import os
-
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle.fluid.framework import program_guard
-from paddle.fluid import unique_name
+import unittest
 
 import numpy as np
+
+import paddle
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle import fluid
+from paddle.fluid import unique_name
+from paddle.fluid.framework import program_guard
 
 BATCH_NUM = 4
 BATCH_SIZE = 1
@@ -64,14 +65,18 @@ class AutoCheckpointBase(unittest.TestCase):
         self, exe, main_prog, startup_prog, minimize=True, iterable=True
     ):
         def simple_net():
-            image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+            image = paddle.static.data(
+                name='image', shape=[-1, 4, 4], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
-            fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
-            cross_entropy = fluid.layers.softmax_with_cross_entropy(
+            fc_tmp = paddle.static.nn.fc(image, size=CLASS_NUM)
+            cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(
                 fc_tmp, label
             )
-            loss = fluid.layers.reduce_mean(cross_entropy)
+            loss = paddle.mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             if minimize:
                 sgd.minimize(loss)
@@ -81,9 +86,7 @@ class AutoCheckpointBase(unittest.TestCase):
             sgd, loss, image, label = simple_net()
 
             if minimize:
-                compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
-                    loss_name=loss.name
-                )
+                compiled = fluid.CompiledProgram(main_prog)
             else:
                 compiled = None
             loader = fluid.io.DataLoader.from_generator(

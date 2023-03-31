@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import os
 import unittest
+
+import numpy as np
+
 import paddle
 from paddle.fluid import core
-
-import os
 
 os.environ['FLAGS_new_einsum'] = "1"
 
@@ -599,7 +600,7 @@ class TestSimpleUndiagonal2(unittest.TestCase):
 
 class TestSimpleComplexGrad(unittest.TestCase):
     """
-    EinsumOp support complex grad. but op_test don't support numeric grad for complex dtype.
+    EinsumOp support complex grad. but eager_op_test don't support numeric grad for complex dtype.
     """
 
     def test_shape(self):

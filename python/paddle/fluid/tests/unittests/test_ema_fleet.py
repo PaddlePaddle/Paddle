@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.utils as utils
-import paddle.static as static
+from paddle import static, utils
 
 
 def gen_data():

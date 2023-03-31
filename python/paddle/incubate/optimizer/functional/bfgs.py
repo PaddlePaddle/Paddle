@@ -14,14 +14,14 @@
 
 import numpy as np
 
+import paddle
+
 from .line_search import strong_wolfe
 from .utils import (
     _value_and_gradient,
-    check_input_type,
     check_initial_inverse_hessian_estimate,
+    check_input_type,
 )
-
-import paddle
 
 
 def minimize_bfgs(

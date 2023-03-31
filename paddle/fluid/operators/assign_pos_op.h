@@ -20,9 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
-template <typename T>
+template <typename T, typename DeviceContext>
 class AssignPosOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

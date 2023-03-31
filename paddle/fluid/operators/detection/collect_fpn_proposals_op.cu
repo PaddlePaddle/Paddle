@@ -19,22 +19,19 @@ namespace cub = hipcub;
 
 #include <paddle/fluid/memory/allocation/allocator.h>
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -50,7 +47,7 @@ static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
   CUDA_KERNEL_LOOP(i, nthreads) {
-    platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
+    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
 
@@ -58,9 +55,9 @@ template <typename DeviceContext, typename T>
 class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto roi_ins = ctx.MultiInput<LoDTensor>("MultiLevelRois");
-    const auto score_ins = ctx.MultiInput<LoDTensor>("MultiLevelScores");
-    auto fpn_rois = ctx.Output<LoDTensor>("FpnRois");
+    const auto roi_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelRois");
+    const auto score_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelScores");
+    auto fpn_rois = ctx.Output<phi::DenseTensor>("FpnRois");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     const int post_nms_topN = ctx.Attr<int>("post_nms_topN");
@@ -75,13 +72,13 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     int real_post_num = min(post_nms_topN, total_roi_num);
     fpn_rois->mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
-    Tensor concat_rois;
-    Tensor concat_scores;
+    phi::DenseTensor concat_rois;
+    phi::DenseTensor concat_scores;
     T* concat_rois_data = concat_rois.mutable_data<T>(
         {total_roi_num, kBBoxSize}, dev_ctx.GetPlace());
     T* concat_scores_data =
         concat_scores.mutable_data<T>({total_roi_num, 1}, dev_ctx.GetPlace());
-    Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
@@ -131,20 +128,20 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
 
     // copy batch id list to GPU
-    Tensor roi_batch_id_list_gpu;
+    phi::DenseTensor roi_batch_id_list_gpu;
     framework::TensorCopy(
         roi_batch_id_list, dev_ctx.GetPlace(), &roi_batch_id_list_gpu);
 
-    Tensor index_in_t;
+    phi::DenseTensor index_in_t;
     int* idx_in =
         index_in_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
     platform::ForRange<phi::GPUContext> for_range_total(dev_ctx, total_roi_num);
     for_range_total(RangeInitFunctor{0, 1, idx_in});
 
-    Tensor keys_out_t;
+    phi::DenseTensor keys_out_t;
     T* keys_out =
         keys_out_t.mutable_data<T>({total_roi_num}, dev_ctx.GetPlace());
-    Tensor index_out_t;
+    phi::DenseTensor index_out_t;
     int* idx_out =
         index_out_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
 
@@ -176,21 +173,21 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
                                                       sizeof(T) * 8,
                                                       dev_ctx.stream());
     index_out_t.Resize({real_post_num});
-    Tensor sorted_rois;
+    phi::DenseTensor sorted_rois;
     sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
-    Tensor sorted_batch_id;
+    phi::DenseTensor sorted_batch_id;
     sorted_batch_id.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     phi::funcs::GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
     phi::funcs::GPUGather<int>(
         dev_ctx, roi_batch_id_list_gpu, index_out_t, &sorted_batch_id);
 
-    Tensor batch_index_t;
+    phi::DenseTensor batch_index_t;
     int* batch_idx_in =
         batch_index_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     platform::ForRange<phi::GPUContext> for_range_post(dev_ctx, real_post_num);
     for_range_post(RangeInitFunctor{0, 1, batch_idx_in});
 
-    Tensor out_id_t;
+    phi::DenseTensor out_id_t;
     int* out_id_data =
         out_id_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     // Determine temporary device storage requirements
@@ -223,7 +220,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     phi::funcs::GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
-    Tensor length_lod;
+    phi::DenseTensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
     phi::funcs::SetConstant<phi::GPUContext, int> set_zero;

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+import unittest
+
+import numpy as np
+
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import (
-    conv2d_forward_naive,
     TestConv2DOp,
+    conv2d_forward_naive,
 )
 
 
@@ -155,6 +157,9 @@ class TestConv2DInt8Op(TestConv2DOp):
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 input_residual
             )
+
+        if self.fuse_activation != "" or self.fuse_residual:
+            self.op_type = "fused_conv2d"
 
         self.attrs = {
             'strides': self.stride,
@@ -339,6 +344,7 @@ class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
 
 
 def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
+    self.op_type = "fused_conv2d"
     self.srctype = input_dt
     self.dsttype = np.uint8 if fuse_activation == "relu" else np.int8
 
@@ -379,15 +385,15 @@ def create_test_int8_class(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", True)
 
-    cls_name_s8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
-    cls_name_s8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
-    cls_name_u8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
-    cls_name_u8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
+    cls_name_s8u8 = "{}_relu_{}_residual_0".format(parent.__name__, "1")
+    cls_name_s8s8 = "{}_relu_{}_residual_0".format(parent.__name__, "0")
+    cls_name_u8s8 = "{}_relu_{}_residual_0".format(parent.__name__, "0")
+    cls_name_u8u8 = "{}_relu_{}_residual_0".format(parent.__name__, "1")
 
-    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+    cls_name_s8s8_re_1 = "{}_relu_{}_residual_{}".format(
         parent.__name__, "0", "1"
     )
-    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+    cls_name_u8s8_re_1 = "{}_relu_{}_residual_{}".format(
         parent.__name__, "0", "1"
     )
     TestS8U8Case.__name__ = cls_name_s8u8
@@ -410,7 +416,7 @@ def create_test_int8_class(parent):
             def init_data_type(self):
                 init_data_type_with_fusion(self, np.int8, "relu", True)
 
-        cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(
+        cls_name_s8u8_re_1 = "{}_relu_{}_residual_{}".format(
             parent.__name__, "1", "1"
         )
         TestS8U8ResCase.__name__ = cls_name_s8u8_re_1

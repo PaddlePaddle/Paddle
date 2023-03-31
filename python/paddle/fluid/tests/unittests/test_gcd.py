@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -32,8 +34,12 @@ class TestGcdAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x = fluid.data(name='input1', dtype='int32', shape=self.x_shape)
-            y = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
+            x = paddle.static.data(
+                name='input1', dtype='int32', shape=self.x_shape
+            )
+            y = paddle.static.data(
+                name='input2', dtype='int32', shape=self.y_shape
+            )
             out = paddle.gcd(x, y)
 
             place = (

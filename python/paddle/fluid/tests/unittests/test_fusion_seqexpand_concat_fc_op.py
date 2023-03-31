@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from test_fusion_lstm_op import fc, ACTIVATION
+from eager_op_test import OpTest
+from test_fusion_lstm_op import ACTIVATION, fc
 
 
 def fusion_seqexpand_concat_fc(xs, lod, w, b, fc_act):

@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.distributed.fleet as fleet
-from paddle.vision.models import resnet50 as resnet
+
 import numpy as np
-import paddle.nn as nn
+
+import paddle
+from paddle import nn
+from paddle.distributed import fleet
+from paddle.vision.models import resnet50 as resnet
 
 __all__ = [
     'resnet_model',

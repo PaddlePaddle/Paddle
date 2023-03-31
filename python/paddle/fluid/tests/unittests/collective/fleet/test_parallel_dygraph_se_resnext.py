@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
-from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_se_resnext import TestSeResNeXt
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
+
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -42,7 +42,7 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
 
 class TestParallelDygraphSeResNeXtSpawn(TestDistSpawnRunner):
     def test_se_resnext_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestSeResNeXt, delta=0.01
             )

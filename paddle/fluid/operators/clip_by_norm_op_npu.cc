@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class NPUClipByNormKernel : public framework::OpKernel<T> {
  public:
@@ -48,7 +46,7 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
                                 "Input(X) of ClipByNormOp should not be null. "
                                 "Please check if it is created correctly."));
 
-    Tensor square_sum(input->type());
+    phi::DenseTensor square_sum(input->type());
     square_sum.mutable_data<T>(framework::DDim({1}), place);
     const auto& x_dims = input->dims();
     std::vector<int> axis;
@@ -62,12 +60,12 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
                     {{"axis", axis}, {"keep_dims", false}});
     square_sum_runner.Run(stream);
 
-    Tensor x_norm(input->type());
+    phi::DenseTensor x_norm(input->type());
     x_norm.mutable_data<T>(framework::DDim({1}), place);
     const auto& x_norm_runner = NpuOpRunner("Sqrt", {square_sum}, {x_norm}, {});
     x_norm_runner.Run(stream);
 
-    Tensor x_norm_t;
+    phi::DenseTensor x_norm_t;
     framework::TensorCopySync(x_norm, platform::CPUPlace(), &x_norm_t);
     auto x_norm_v = static_cast<float>(*x_norm_t.data<T>());
     if (x_norm_v <= max_norm) {

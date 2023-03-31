@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import partial
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import paddle
-import paddle.nn as nn
-from paddle import Tensor
+from paddle import Tensor, nn
 
-from ..functional import compute_fbank_matrix
-from ..functional import create_dct
-from ..functional import power_to_db
+from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
 
 

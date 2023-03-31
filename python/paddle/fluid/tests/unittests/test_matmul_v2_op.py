@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
-from paddle.fluid.tests.unittests.testsuite import create_op
-import paddle.fluid.core as core
+from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from testsuite import create_op
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
+from paddle.fluid import core
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -33,14 +33,14 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
             Y = Y.reshape((Y.size,))
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -72,6 +72,7 @@ class TestMatMulV2Op(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
         if self.is_bfloat16_op():
             x = np.random.random(self.x_shape).astype(np.float32)
             y = np.random.random(self.y_shape).astype(np.float32)
@@ -102,15 +103,13 @@ class TestMatMulV2Op(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['X', 'Y'], 'Out', max_relative_error=1e-2, check_eager=False
-            )
+            self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestMatMulOp2(TestMatMulV2Op):
@@ -344,9 +343,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(
-                        place, atol=atol, check_eager=False
-                    )
+                    self.check_output_with_place(place, atol=atol)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -356,10 +353,9 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     ['X', 'Y'],
                     'Out',
                     max_relative_error=max_relative_error,
-                    check_eager=False,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name
     globals()[cls_name] = TestMatMulOpFp16Case
 
@@ -381,6 +377,8 @@ create_test_fp16_class(TestMatMulOp14)
 create_test_fp16_class(TestMatMulOp15)
 create_test_fp16_class(TestMatMulOp16)
 create_test_fp16_class(TestMatMulOp17)
+create_test_fp16_class(TestMatMulOpBroadcast1)
+create_test_fp16_class(TestMatMulOpBroadcast2)
 
 # --------------------test matmul bf16--------------------
 
@@ -416,7 +414,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['X'],
                 'Out',
-                no_grad_set=set(['Y']),
+                no_grad_set={'Y'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -427,14 +425,14 @@ def create_test_bf16_class(parent, atol=0.01):
                 place,
                 ['Y'],
                 'Out',
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
                 user_defined_grads=[numeric_grads],
             )
 
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestMatMulOpBf16Case.__name__ = cls_name
     globals()[cls_name] = TestMatMulOpBf16Case
 
@@ -466,8 +464,12 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+            input_x = paddle.static.data(
+                name="input_x", shape=[4, 3], dtype="float32"
+            )
+            input_y = paddle.static.data(
+                name="input_y", shape=[3, 4], dtype="float32"
+            )
 
             result = paddle.matmul(input_x, input_y)
 
@@ -558,15 +560,11 @@ class TestMatMulV2API(unittest.TestCase):
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_dygraph_fp16()
-
 
 class TestComplexMatMulOp(OpTest):
     def setUp(self):
         self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()
@@ -598,7 +596,7 @@ class TestComplexMatMulOp(OpTest):
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -606,7 +604,6 @@ class TestComplexMatMulOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -616,7 +613,6 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -626,13 +622,13 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
 
 class TestComplexMatMulOpBroadcast(OpTest):
     def setUp(self):
         self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()
@@ -666,7 +662,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -674,7 +670,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -684,7 +679,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -694,7 +688,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
         )
 
 
@@ -712,6 +705,24 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
         )
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
+
+
+class TestMatmulop(unittest.TestCase):
+    def func_dygraph_matmul(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 4)).astype(np.float32)
+        np_b = np.random.random((4, 2)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor @ nparray
+        expect_out = np_a @ np_b
+        actual_out = tensor_a @ np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

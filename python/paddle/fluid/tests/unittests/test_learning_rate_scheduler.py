@@ -14,13 +14,13 @@
 
 import copy
 import math
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
-import paddle.fluid.core as core
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core, framework, layers
 
 
 def exponential_decay(
@@ -120,7 +120,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_LR_state_dict(self):
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             Exponential_scheduler = fluid.dygraph.ExponentialDecay(
@@ -149,7 +149,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(10):
                 out = linear(input)
-                loss = fluid.layers.reduce_mean(out)
+                loss = paddle.mean(out)
                 loss.backward()
                 adam1.minimize(loss)
                 adam2.minimize(loss)
@@ -159,7 +159,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 Step_scheduler.epoch()
                 Reducelr_scheduler.step(loss)
 
-            fluid.dygraph.save_dygraph(linear.state_dict(), "save_path")
+            paddle.save(linear.state_dict(), "save_path.pdparams")
 
             Exponential_scheduler_test = fluid.dygraph.ExponentialDecay(
                 learning_rate=0.1,
@@ -172,8 +172,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
             )
 
-            fluid.dygraph.save_dygraph(adam1.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam1.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Exponential_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -185,8 +185,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "epoch_num is different before and after set_dict",
             )
 
-            fluid.dygraph.save_dygraph(adam2.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam2.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Step_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -203,8 +203,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "current learning rate is different before and after set_dict",
             )
 
-            fluid.dygraph.save_dygraph(adam3.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam3.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Reducelr_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -252,7 +252,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result[0],
-                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.format(
+                    msg='Failed lr scheduler in step {}, Python result is {}, Fluid result is {}'.format(
                         step, right_result, fluid_result[0]
                     ),
                 )
@@ -291,7 +291,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             scheduler = fluid.dygraph.MultiStepDecay(
                 learning_rate, milestones, decay_rate
@@ -309,7 +309,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.format(
+                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
                         epoch, right_result, fluid_result
                     ),
                 )
@@ -347,7 +347,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.format(
+                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
                         epoch, right_result, fluid_result
                     ),
                 )
@@ -364,7 +364,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             lr_lambda = lambda x: 0.95**x
             scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             adam = fluid.optimizer.Adam(
                 scheduler, parameter_list=linear.parameters()
             )
@@ -376,7 +376,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.format(
+                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
                         epoch, right_result, fluid_result
                     ),
                 )
@@ -420,7 +420,7 @@ class TestLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg='Failed lr scheduler is {0}, step {1}, Python result is {2}, Fluid result is {3}'.format(
+                msg='Failed lr scheduler is {}, step {}, Python result is {}, Fluid result is {}'.format(
                     python_decay_fn.__name__,
                     str(step),
                     str(python_decayed_lr),
@@ -527,7 +527,7 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg='Test {0} Failed, step {1}, Python result is {2}, Fluid result is {3}'.format(
+                msg='Test {} Failed, step {}, Python result is {}, Fluid result is {}'.format(
                     python_decay_fn.__name__,
                     str(step),
                     str(python_decayed_lr),
@@ -562,7 +562,7 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
             self.assertAlmostEqual(
                 expected_lr,
                 lr_val[0],
-                msg='Test failed, step {0}, expected {1}, but got {2}'.format(
+                msg='Test failed, step {}, expected {}, but got {}'.format(
                     step, expected_lr, lr_val[0]
                 ),
             )

@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class SquaredL2NormMLUKernel : public framework::OpKernel<T> {
  public:
@@ -82,7 +80,7 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
     auto place = context.GetPlace();
 
     // broadcast out_grad
-    Tensor broadcasted_out_grad;
+    phi::DenseTensor broadcasted_out_grad;
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     MLUCnnlTensorDesc broadcasted_out_grad_desc(broadcasted_out_grad);
     MLUCnnlTensorDesc out_grad_desc(*out_grad);
@@ -93,7 +91,7 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
                          GetBasePtr(&broadcasted_out_grad));
 
     // mul x
-    Tensor tmp_x_grad;
+    phi::DenseTensor tmp_x_grad;
     tmp_x_grad.mutable_data<T>(x_grad->dims(), place);
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc tmp_x_grad_desc(tmp_x_grad);

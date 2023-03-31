@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -96,7 +96,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = GetDataFromTensor<float>(scale_tensor);
+        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
 
         if (scale_data.size() > 1 && scale_data.size() <= 2) {
           scale_h = scale_data[0];
@@ -147,7 +147,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = GetDataFromTensor<int>(out_size);
+        out_size_data = phi::GetVectorFromTensor<int>(out_size);
         if (out_size_data.size() <= 2) {
           out_h = out_size_data[0];
           out_w = out_size_data[1];
@@ -175,7 +175,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     // cnnlInterp_v2 only accepts NHWC when mode is CNNL_INTERP_BILINEAR and
     // CNNL_INTERP_NEAREST,
     framework::DDim dim_in, dim_in_trans, dim_out, dim_out_trans;
-    Tensor transformed_input, transformed_output;
+    phi::DenseTensor transformed_input, transformed_output;
     bool need_transpose = input_dims.size() != 2;
     if (input_dims.size() == 4) {
       // need to do transpose if layout is kNCHW
@@ -398,7 +398,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = GetDataFromTensor<float>(scale_tensor);
+        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -430,7 +430,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
       auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = GetDataFromTensor<int>(out_size);
+        out_size_data = phi::GetVectorFromTensor<int>(out_size);
         out_h = out_size_data[0];
         out_w = out_size_data[1];
       }
@@ -439,7 +439,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     framework::DDim dim_grad;
     framework::DDim dim_out_grad, dim_out_trans_grad, dim_in_grad,
         dim_in_trans_grad;
-    Tensor transformed_output_grad, transformed_input_grad;
+    phi::DenseTensor transformed_output_grad, transformed_input_grad;
     bool need_transpose =
         input_dims.size() != 2 && data_layout == DataLayout::kNCHW;
 

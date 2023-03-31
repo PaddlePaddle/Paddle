@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 paddle.disable_static()
 SEED = 2020
@@ -23,18 +25,18 @@ np.random.seed(SEED)
 paddle.seed(SEED)
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = fluid.layers.tanh(x)
+        x = paddle.tanh(x)
         return x
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.convd = paddle.nn.Conv2D(6, 3, 1)
@@ -72,13 +74,13 @@ class TestRetainGraph(unittest.TestCase):
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
-                raise NotImplementedError('{} not implemented'.format(type))
+                raise NotImplementedError(f'{type} not implemented')
             interpolatesv.stop_gradient = False
             real_data.stop_gradient = True
             fake_AB = paddle.concat((real_data.detach(), interpolatesv), 1)
             disc_interpolates = netD(fake_AB)
 
-            outs = paddle.fluid.layers.fill_constant(
+            outs = paddle.tensor.fill_constant(
                 disc_interpolates.shape, disc_interpolates.dtype, 1.0
             )
             gradients = paddle.grad(
@@ -123,7 +125,7 @@ class TestRetainGraph(unittest.TestCase):
         fake_AB = paddle.concat((realA, fakeB), 1)
         G_pred_fake = d(fake_AB.detach())
 
-        false_target = paddle.fluid.layers.fill_constant(
+        false_target = paddle.tensor.fill_constant(
             G_pred_fake.shape, 'float32', 0.0
         )
 
@@ -138,7 +140,7 @@ class TestRetainGraph(unittest.TestCase):
         optim_g.clear_gradients()
         fake_AB = paddle.concat((realA, fakeB), 1)
         G_pred_fake = d(fake_AB)
-        true_target = paddle.fluid.layers.fill_constant(
+        true_target = paddle.tensor.fill_constant(
             G_pred_fake.shape, 'float32', 1.0
         )
         loss_g = l1_criterion(fakeB, realB) + gan_criterion(
@@ -148,15 +150,10 @@ class TestRetainGraph(unittest.TestCase):
         loss_g.backward()
         optim_g.minimize(loss_g)
 
-    def func_retain(self):
+    def test_retain(self):
         self.run_retain(need_retain=True)
         if not fluid.framework.in_dygraph_mode():
             self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
-
-    def test_retain(self):
-        with fluid.framework._test_eager_guard():
-            self.func_retain()
-        self.func_retain()
 
 
 if __name__ == '__main__':

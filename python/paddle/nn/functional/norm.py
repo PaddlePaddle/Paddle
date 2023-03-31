@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
+
 # TODO: define normalization api
 import paddle
-import paddle.fluid as fluid
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from paddle import _C_ops, fluid, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
+
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid import dygraph_utils
-import numbers
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -77,52 +76,39 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             #        [[0.        , 0.24253564, 0.37139067],
             #         [1.        , 0.97014254, 0.92847669]])
     """
+
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
-    if _in_legacy_dygraph():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _legacy_C_ops.p_norm(
-            x,
-            'axis',
-            axis,
-            'porder',
-            float(p),
-            'keepdim',
-            True,
-            'epsilon',
-            epsilon,
+    else:
+        check_type(p, 'p', (float, int), 'normalize')
+        check_type(axis, 'axis', (int), 'normalize')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'normalize'
         )
-        return x / _legacy_C_ops.elementwise_max(out, eps)
-
-    check_type(p, 'p', (float, int), 'normalize')
-    check_type(axis, 'axis', (int), 'normalize')
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'normalize'
-    )
-    if len(x.shape) == 1 and axis != 0 and axis != -1:
-        raise ValueError(
-            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
-                axis
+        if len(x.shape) == 1 and axis != 0 and axis != -1:
+            raise ValueError(
+                "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
+                    axis
+                )
             )
-        )
 
-    attrs = {
-        'axis': axis,
-        'porder': float(p),
-        'keepdim': True,
-        'epsilon': epsilon,
-    }
-    helper = LayerHelper('p_norm', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    eps = out.block.create_var(dtype=out.dtype)
-    eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
-    return paddle.divide(x, paddle.maximum(out, eps), name=name)
+        attrs = {
+            'axis': axis,
+            'porder': float(p),
+            'keepdim': True,
+            'epsilon': epsilon,
+        }
+        helper = LayerHelper('p_norm', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
+        )
+        eps = out.block.create_var(dtype=out.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
+        return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(
@@ -150,9 +136,9 @@ def batch_norm(
         weight(Tensor): The weight tensor of batch_norm, can not be None.
         bias(Tensor): The bias tensor of batch_norm can not be None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
-        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Default False.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default "NCHW".
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC", where `N` is batch size, `C` is the number of the feature map, `D` is the depth of the feature, `H` is the height of the feature map, `W` is the width of the feature map, `L` is the length of the feature map. Default "NCHW".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -223,110 +209,75 @@ def batch_norm(
             use_global_stats,
             trainable_statistics,
         )
+        return batch_norm_out
 
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None
+    else:
+        check_variable_and_dtype(
+            x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
         )
 
-    elif _in_legacy_dygraph():
-        # for dygraph need tuple
-        attrs = (
-            "momentum",
-            momentum,
-            "epsilon",
-            epsilon,
-            "is_test",
-            not training,
-            "data_layout",
-            data_format,
-            "use_mkldnn",
-            False,
-            "fuse_with_relu",
-            False,
-            "use_global_stats",
-            use_global_stats,
-            "trainable_statistics",
-            trainable_statistics,
+        # for static need dict
+        attrs = {
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": not training,
+            "data_layout": data_format,
+            "use_mkldnn": False,
+            "fuse_with_relu": False,
+            "use_global_stats": use_global_stats,
+            "trainable_statistics": trainable_statistics,
+        }
+
+        inputs = {
+            "X": [x],
+            "Scale": [weight],
+            "Bias": [bias],
+            "Mean": [running_mean],
+            "Variance": [running_var],
+        }
+
+        helper = LayerHelper('batch_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
+
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
+        saved_mean = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        saved_variance = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
+
+        outputs = {
+            "Y": [batch_norm_out],
+            "MeanOut": [running_mean],
+            "VarianceOut": [running_var],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance],
+        }
+
+        if training or trainable_statistics:
+            # reserve_space is only used for training.
+            reserve_space = helper.create_variable_for_type_inference(
+                dtype=x.dtype, stop_gradient=True
+            )
+            outputs["ReserveSpace"] = [reserve_space]
+
+        helper.append_op(
+            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
         )
 
-        batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
-            x,
-            weight,
-            bias,
-            running_mean,
-            running_var,
-            None,
-            mean_out,
-            variance_out,
-            *attrs
-        )
-
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None
-        )
-
-    check_variable_and_dtype(
-        x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
-    )
-
-    # for static need dict
-    attrs = {
-        "momentum": momentum,
-        "epsilon": epsilon,
-        "is_test": not training,
-        "data_layout": data_format,
-        "use_mkldnn": False,
-        "fuse_with_relu": False,
-        "use_global_stats": use_global_stats,
-        "trainable_statistics": trainable_statistics,
-    }
-
-    inputs = {
-        "X": [x],
-        "Scale": [weight],
-        "Bias": [bias],
-        "Mean": [running_mean],
-        "Variance": [running_var],
-    }
-
-    helper = LayerHelper('batch_norm', **locals())
-
-    param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=param_dtype, stop_gradient=True
-    )
-    saved_variance = helper.create_variable_for_type_inference(
-        dtype=param_dtype, stop_gradient=True
-    )
-    batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
-
-    outputs = {
-        "Y": [batch_norm_out],
-        "MeanOut": [running_mean],
-        "VarianceOut": [running_var],
-        "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance],
-    }
-
-    if training or trainable_statistics:
-        # reserve_space is only used for training.
-        reserve_space = helper.create_variable_for_type_inference(
-            dtype=x.dtype, stop_gradient=True
-        )
-        outputs["ReserveSpace"] = [reserve_space]
-
-    helper.append_op(
-        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
-    )
-
-    return helper.append_activation(batch_norm_out)
+        return helper.append_activation(batch_norm_out)
 
 
 def layer_norm(
     x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
 ):
     """
-    see more detail in paddle.nn.LayerNorm
+    nn.LayerNorm is recommended.
+    For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
@@ -334,11 +285,11 @@ def layer_norm(
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
-        epsilon(float, optional): The small value added to the variance to prevent
-            division by zero. Default: 1e-05.
         weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
         bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
-        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         None
@@ -381,62 +332,49 @@ def layer_norm(
         )
 
     if in_dygraph_mode():
-        (
-            pre_act,
-            _,
-            _,
-        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        return out
 
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
-
-    if _in_legacy_dygraph():
-        pre_act, _, _ = _legacy_C_ops.layer_norm(
-            x,
-            weight,
-            bias,
-            'epsilon',
-            epsilon,
-            'begin_norm_axis',
-            begin_norm_axis,
+    else:
+        check_variable_and_dtype(
+            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
         )
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
-    check_variable_and_dtype(
-        x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
-    )
+        inputs = {}
+        inputs['X'] = [x]
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
+        attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
 
-    inputs = dict()
-    inputs['X'] = [x]
-    if weight:
-        inputs['Scale'] = [weight]
-    if bias:
-        inputs['Bias'] = [bias]
-    attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
+        # create output
+        helper = LayerHelper('layer_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-    # create output
-    helper = LayerHelper('layer_norm', **locals())
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
+        mean_out = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        variance_out = helper.create_variable_for_type_inference(
+            dtype=param_dtype, stop_gradient=True
+        )
+        layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
-    dtype = x.dtype
-    mean_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    variance_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    layer_norm_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+        )
 
-    helper.append_op(
-        type="layer_norm",
-        inputs=inputs,
-        outputs={
-            "Y": layer_norm_out,
-            "Mean": mean_out,
-            "Variance": variance_out,
-        },
-        attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
-    )
-
-    return helper.append_activation(layer_norm_out)
+        return helper.append_activation(layer_norm_out)
 
 
 def instance_norm(
@@ -452,7 +390,7 @@ def instance_norm(
     name=None,
 ):
     """
-    See more detail in nn.layer.InstanceNorm2D.
+    It is recommended to use :ref:`api_paddle_nn_InstanceNorm1D` , :ref:`api_paddle_nn_InstanceNorm2D` , :ref:`api_paddle_nn_InstanceNorm3D` to call this method internally.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
@@ -486,48 +424,41 @@ def instance_norm(
     if in_dygraph_mode():
         out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
-    if _in_legacy_dygraph():
-        out, _, _ = _legacy_C_ops.instance_norm(
-            x,
-            weight,
-            bias,
-            "epsilon",
-            eps,
-            "momentum",
-            momentum,
-            "data_format",
-            data_format,
-        )
-        return out
-
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
-
-    attrs = {"epsilon": eps, "momentum": momentum, "data_format": data_format}
-
-    if weight and bias:
-        inputs = {"X": [x], "Scale": [weight], "Bias": [bias]}
     else:
-        inputs = {"X": [x]}
+        check_variable_and_dtype(
+            x, 'input', ['float32', 'float64'], "InstanceNorm"
+        )
 
-    helper = LayerHelper('instance_norm', **locals())
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True
-    )
-    saved_variance = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True
-    )
-    instance_norm_out = helper.create_variable_for_type_inference(x.dtype)
+        attrs = {
+            "epsilon": eps,
+            "momentum": momentum,
+            "data_format": data_format,
+        }
 
-    outputs = {
-        "Y": [instance_norm_out],
-        "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance],
-    }
+        if weight and bias:
+            inputs = {"X": [x], "Scale": [weight], "Bias": [bias]}
+        else:
+            inputs = {"X": [x]}
 
-    helper.append_op(
-        type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs
-    )
-    return instance_norm_out
+        helper = LayerHelper('instance_norm', **locals())
+        saved_mean = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+        saved_variance = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+        instance_norm_out = helper.create_variable_for_type_inference(x.dtype)
+
+        outputs = {
+            "Y": [instance_norm_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance],
+        }
+
+        helper.append_op(
+            type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs
+        )
+        return instance_norm_out
 
 
 def local_response_norm(
@@ -552,7 +483,7 @@ def local_response_norm(
 
 
     Args:
-        x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
+        x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float16 or float32.
         size (int): The number of channels to sum over.
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
@@ -583,7 +514,9 @@ def local_response_norm(
         print(y.shape)  # [3, 3, 112, 112]
     """
     if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32'], 'local_response_norm'
+        )
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "

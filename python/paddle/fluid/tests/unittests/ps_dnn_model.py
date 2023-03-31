@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
 import math
+
+import paddle
+from paddle import nn
 
 
 class DNNLayer(nn.Layer):
@@ -229,9 +230,7 @@ class FlDNNLayer(nn.Layer):
         with paddle.fluid.device_guard(
             self.PART_B_JOINT_OP_DEVICE_FlAG
         ):  # joint point
-            interactive = paddle.fluid.layers.elementwise_add(
-                bottom_a, bottom_b
-            )
+            interactive = paddle.add(bottom_a, bottom_b)
         return interactive
 
     def top_layer(self, interactive, label_input):

@@ -16,16 +16,15 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -384,12 +383,12 @@ class SequencePoolFunctor<phi::CPUContext, T> {
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
-      jit::seq_pool_attr_t attr(
+      phi::jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
-          jit::SeqPoolType::kSum);
-      auto seqpool =
-          jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache()
-              .At(attr);
+          phi::jit::SeqPoolType::kSum);
+      auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
         if (attr.h == 0) {
@@ -406,7 +405,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     }
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      Tensor out_t = output->Slice(i, i + 1);
+      phi::DenseTensor out_t = output->Slice(i, i + 1);
       int64_t w = input.numel() / input.dims()[0];
       if (lod[i] == lod[i + 1]) {
         for (int j = 0; j < w; ++j) {
@@ -414,7 +413,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
         }
         continue;
       }
-      Tensor in_t =
+      phi::DenseTensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));

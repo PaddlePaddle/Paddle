@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.nn.functional import interpolate
+from eager_op_test import OpTest
+
+from paddle.fluid import core
 
 
 def trilinear_interp_np(
@@ -144,8 +144,6 @@ class TestTrilinearInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "trilinear_interp"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
         input_np = np.random.random(self.input_shape).astype("float32")
 
         if self.data_layout == "NCDHW":
@@ -180,10 +178,8 @@ class TestTrilinearInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
         # c++ end treat NCDHW the same way as NCHW
         if self.data_layout == 'NCDHW':
             data_layout = 'NCHW'
@@ -202,12 +198,11 @@ class TestTrilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -353,7 +348,6 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp"
-        self.check_eager = True
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
@@ -380,7 +374,6 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
 
         self.attrs = {
             'out_d': self.out_d,
@@ -395,7 +388,7 @@ class TestTrilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_eager=self.check_eager
+            place=core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def init_test_case(self):
@@ -506,7 +499,6 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp"
-        self.check_eager = True
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
@@ -532,15 +524,13 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
-            self.check_eager = False
 
         self.attrs['out_d'] = self.out_d
         self.attrs['out_h'] = self.out_h
@@ -558,12 +548,10 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -619,86 +607,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.align_corners = True
         self.align_mode = 1
         self.scale_by_1Dtensor = True
-
-
-class TestTrilinearInterpAPI(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
-        y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[3], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_trilinear(
-            y, out_shape=[12, 18, 8], data_format='NDHWC'
-        )
-        out2 = fluid.layers.resize_trilinear(x, out_shape=[12, dim, 8])
-        out3 = fluid.layers.resize_trilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_trilinear(
-            x, out_shape=[4, 4, 8], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
-        out6 = interpolate(
-            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW"
-        )
-        out7 = interpolate(
-            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW"
-        )
-        out8 = interpolate(
-            x, size=shape_tensor, mode='trilinear', data_format="NCDHW"
-        )
-
-        x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
-        dim_data = np.array([18]).astype("int32")
-        shape_data = np.array([12, 18, 8]).astype("int32")
-        actual_size_data = np.array([12, 18, 8]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = trilinear_interp_np(
-            x_data, out_d=12, out_h=18, out_w=8, align_mode=1
-        )
-        np.testing.assert_allclose(
-            results[0], np.transpose(expect_res, (0, 2, 3, 4, 1)), rtol=1e-05
-        )
-        for i in range(len(results) - 1):
-            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
-
-
-class TestTrilinearInterpOpException(unittest.TestCase):
-    def test_exception(self):
-        input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
-
-        def attr_data_format():
-            # for 5-D input, data_format only can be NCDHW or NDHWC
-            out = fluid.layers.resize_trilinear(
-                input, out_shape=[4, 8, 4], data_format='NHWC'
-            )
-
-        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == "__main__":

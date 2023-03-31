@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import fleet
 import os
+import unittest
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
+
+import paddle
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle import fluid
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
+from paddle.incubate.distributed.fleet import role_maker
+from paddle.incubate.distributed.fleet.collective import fleet
 
 paddle.enable_static()
 logger = get_logger()
@@ -88,7 +88,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
             name = o.name
-            logger.info("_run_save_0 name:{} epoch_no:{}".format(o.name, i))
+            logger.info(f"_run_save_0 name:{o.name} epoch_no:{i}")
 
             for data in data_loader():
                 fetch = exe.run(

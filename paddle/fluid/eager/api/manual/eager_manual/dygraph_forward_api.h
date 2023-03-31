@@ -16,15 +16,50 @@
 
 #include "paddle/phi/api/include/tensor.h"
 
-paddle::experimental::Tensor add_n_ad_func(
-    const std::vector<paddle::experimental::Tensor>& x);
+paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x);
 
-paddle::experimental::Tensor conv2d_ad_func(
-    const paddle::experimental::Tensor& input,
-    const paddle::experimental::Tensor& filter,
-    std::vector<int> strides,
-    std::vector<int> paddings,
-    std::string padding_algorithm,
-    std::vector<int> dilations,
-    int groups,
-    std::string data_format);
+paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
+                              const paddle::Tensor& filter,
+                              std::vector<int> strides,
+                              std::vector<int> paddings,
+                              std::string padding_algorithm,
+                              std::vector<int> dilations,
+                              int groups,
+                              std::string data_format);
+
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool use_global_stats,
+                         bool trainable_statistics);
+namespace sparse {
+std::tuple<paddle::Tensor,
+           paddle::Tensor&,
+           paddle::Tensor&,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
+sync_batch_norm__ad_func(const paddle::Tensor& x,
+                         paddle::Tensor& mean,      // NOLINT
+                         paddle::Tensor& variance,  // NOLINT
+                         const paddle::Tensor& scale,
+                         const paddle::Tensor& bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon,
+                         std::string data_layout,
+                         bool use_global_stats,
+                         bool trainable_statistics);
+}  // namespace sparse

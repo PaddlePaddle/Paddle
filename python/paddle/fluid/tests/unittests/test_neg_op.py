@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
@@ -34,7 +36,9 @@ class TestNegOp(unittest.TestCase):
         )
 
     def run_static(self, use_gpu=False):
-        input = paddle.fluid.data(name='input', shape=[32, 8], dtype=self.dtype)
+        input = paddle.static.data(
+            name='input', shape=[32, 8], dtype=self.dtype
+        )
         result = paddle.neg(input)
 
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()

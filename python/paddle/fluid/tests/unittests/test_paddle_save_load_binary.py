@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from io import BytesIO
 import os
 import platform
 import tempfile
+import unittest
+from io import BytesIO
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-from test_imperative_base import new_program_scope
+from paddle import fluid
+from paddle.fluid import framework
 
 IMAGE_SIZE = 784
 
@@ -78,7 +79,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             )
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             place = (
                 fluid.CPUPlace()
                 if not paddle.fluid.core.is_compiled_with_cuda()
@@ -106,7 +107,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             var_list = list(
                 filter(lambda var: var.persistable, prog.list_vars())
             )
-            fluid.io.load_vars(
+            paddle.static.io.load_vars(
                 exe, path_vars1, main_program=prog, vars=var_list
             )
 
@@ -122,7 +123,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             path_vars2 = os.path.join(
                 self.temp_dir.name, 'test_replace_save_load_vars_binary2/model/'
             )
-            fluid.io.save_vars(
+            paddle.static.io.save_vars(
                 exe, path_vars2, main_program=prog, vars=var_list
             )
             self.set_zero(prog, place)
@@ -140,8 +141,10 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         paddle.enable_static()
         OUTPUT_NUM = 32
         with new_program_scope():
-            x = fluid.data(name="x", shape=[None, IMAGE_SIZE], dtype='float32')
-            y = fluid.layers.fc(
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32'
+            )
+            y = paddle.static.nn.fc(
                 x,
                 OUTPUT_NUM,
                 name='fc_vars',

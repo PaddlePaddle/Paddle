@@ -12,25 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import random
-import numpy as np
 import os
+import random
 import shutil
+import unittest
+
+import numpy as np
 
 import paddle
-import paddle.nn as nn
-import paddle.utils as utils
-import paddle.static as static
 import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
-
+from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed.auto_parallel.utils import (
-    save_distributed_checkpoint,
     load_checkpoint_into_program,
+    save_distributed_checkpoint,
 )
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -48,7 +45,9 @@ class MLPLayer(nn.Layer):
         dim_feedforward = intermediate_size
         np.random.seed(2021)
         arr = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
-        weight_attr = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr))
+        weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Assign(arr)
+        )
         bias_attr = None
 
         self.linear0 = nn.Linear(
@@ -163,7 +162,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_dp{}".format(paddle.distributed.get_rank())
+                path = f"./output_dp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -197,7 +196,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             )
 
         self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_dp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_dp{paddle.distributed.get_rank()}")
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
@@ -215,7 +214,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_mp{}".format(paddle.distributed.get_rank())
+                path = f"./output_mp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -249,7 +248,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             )
 
         self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_mp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_mp{paddle.distributed.get_rank()}")
 
     def test_mlp_pp(self):
         global _global_parallel_strategy
@@ -271,7 +270,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_pp{}".format(paddle.distributed.get_rank())
+                path = f"./output_pp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -326,7 +325,7 @@ class TestMLPSaveLoad(unittest.TestCase):
 
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_pp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_pp{paddle.distributed.get_rank()}")
 
 
 if __name__ == "__main__":

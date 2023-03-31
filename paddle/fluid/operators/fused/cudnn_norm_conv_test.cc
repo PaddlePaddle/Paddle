@@ -28,7 +28,6 @@ limitations under the License. */
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
-using Tensor = phi::DenseTensor;
 
 USE_OP_ITSELF(conv2d);
 USE_OP_ITSELF(conv2d_grad);
@@ -95,9 +94,9 @@ void CheckOutput(const phi::DenseTensor &cpu_res,
 
 // Use Paddle conv2d op results as baseline
 void ComputeConv2DForward(const phi::GPUContext &ctx,
-                          const Tensor &cpu_input,
-                          const Tensor &cpu_filter,
-                          Tensor *cpu_output,
+                          const phi::DenseTensor &cpu_input,
+                          const phi::DenseTensor &cpu_filter,
+                          phi::DenseTensor *cpu_output,
                           int stride,
                           int padding) {
   framework::Scope scope;
@@ -131,9 +130,9 @@ void ComputeConv2DForward(const phi::GPUContext &ctx,
 
 // Use Paddle conv2d_grad op results as baseline
 void ComputeConv2DBackward(const phi::GPUContext &ctx,
-                           const Tensor &cpu_input,
-                           const Tensor &cpu_filter,
-                           const Tensor &cpu_output_grad,
+                           const phi::DenseTensor &cpu_input,
+                           const phi::DenseTensor &cpu_filter,
+                           const phi::DenseTensor &cpu_output_grad,
                            phi::DenseTensor *cpu_input_grad,
                            phi::DenseTensor *cpu_filter_grad,
                            int stride,
@@ -439,7 +438,7 @@ TEST(CudnnNormConvFp16, K1S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -469,7 +468,7 @@ TEST(CudnnNormConvFp16, K3S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -499,7 +498,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -529,7 +528,7 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() <= 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);

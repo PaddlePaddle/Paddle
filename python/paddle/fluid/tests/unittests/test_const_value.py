@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid.framework as framework
+
+from paddle.fluid import framework
 
 
 class ConstantTest(unittest.TestCase):

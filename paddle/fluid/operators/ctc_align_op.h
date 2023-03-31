@@ -24,29 +24,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class CTCAlignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("Input");
-    auto* output = ctx.Output<LoDTensor>("Output");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    auto input_dims = input->dims();
+    auto input_dims = phi::vectorize<int>(input->dims());
     const T* input_data = input->data<T>();
 
     // support tensor input, no lod information
     if (input->lod().empty()) {
       size_t padding_value =
           static_cast<size_t>(ctx.Attr<int>("padding_value"));
-      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      auto* input_length = ctx.Input<phi::DenseTensor>("InputLength");
       const T* input_length_data = input_length->data<T>();
 
-      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+      auto* output_length = ctx.Output<phi::DenseTensor>("OutputLength");
       T* output_length_data = output_length->mutable_data<T>(ctx.GetPlace());
 
       for (size_t batch_id = 0; batch_id < (unsigned)input_dims[0];

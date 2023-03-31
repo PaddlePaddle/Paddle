@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -43,13 +46,13 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[3, 3, 3, 3], dtype="float32"
+            )
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends
-            )
+            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphFleetAPI(unittest.TestCase):
@@ -32,8 +32,8 @@ class TestDygraphFleetAPI(unittest.TestCase):
         self.shape = (2, 10, 5)
 
     def test_dygraph_fleet_api(self):
-        import paddle.distributed.fleet as fleet
         import paddle.distributed as dist
+        from paddle.distributed import fleet
 
         strategy = fleet.DistributedStrategy()
         strategy.amp = True
@@ -49,6 +49,4 @@ class TestDygraphFleetAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with _test_eager_guard():
-        pass
     unittest.main()

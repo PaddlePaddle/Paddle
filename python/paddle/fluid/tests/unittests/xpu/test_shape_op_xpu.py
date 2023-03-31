@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
@@ -77,12 +79,7 @@ class XPUTestShapeOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def get_places(self):
-            places = [core.CPUPlace()]
-            if core.is_compiled_with_cuda():
-                places.append(core.CUDAPlace(0))
-            if core.is_compiled_with_xpu():
-                places.append(core.XPUPlace(0))
-            return places
+            return [core.CPUPlace(), core.XPUPlace(0)]
 
         def check_with_place(self, place):
             scope = core.Scope()
@@ -108,7 +105,14 @@ class XPUTestShapeOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             for place in self.get_places():
-                self.check_with_place(place)
+                if (
+                    type(place) is paddle.fluid.libpaddle.CPUPlace
+                    and self.dtype == np.float16
+                ):
+                    # fp16 not available on cpu
+                    pass
+                else:
+                    self.check_with_place(place)
 
 
 support_types = get_xpu_op_support_types("shape")

@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
@@ -53,7 +52,7 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
       runner.Run(dev_ctx.stream());
     } else {
-      Tensor transformed_x, transformed_y;
+      phi::DenseTensor transformed_x, transformed_y;
       NpuElementWiseOpBroadcast<T>(
           dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
@@ -96,7 +95,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
-          Tensor tmp;
+          phi::DenseTensor tmp;
           tmp.ShareDataWith(*dx);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
@@ -128,7 +127,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
-          Tensor tmp;
+          phi::DenseTensor tmp;
           tmp.ShareDataWith(*dy);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =

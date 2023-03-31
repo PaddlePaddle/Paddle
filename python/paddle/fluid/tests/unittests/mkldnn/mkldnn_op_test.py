@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+
+from paddle import fluid
+from paddle.fluid import core
 
 
 def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):

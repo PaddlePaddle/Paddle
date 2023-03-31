@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import json
 import warnings
+
+import paddle
 from paddle.fluid import core
 
 __all__ = ['set_config']
@@ -94,7 +95,7 @@ def set_config(config=None):
             with open(config, 'r') as filehandle:
                 config_dict = json.load(filehandle)
         except Exception as e:
-            print('Load config error: {}'.format(e))
+            print(f'Load config error: {e}')
             warnings.warn("Use default configuration for auto-tuning.")
 
     if "kernel" in config_dict:

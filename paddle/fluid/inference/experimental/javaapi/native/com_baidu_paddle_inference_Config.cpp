@@ -161,7 +161,8 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_enableUseGpu(
     jint deviceId) {
   PD_ConfigEnableUseGpu(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
                         (uint64_t)memorySize,
-                        (int32_t)deviceId);
+                        (int32_t)deviceId,
+                        0);
 }
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_disableGpu(

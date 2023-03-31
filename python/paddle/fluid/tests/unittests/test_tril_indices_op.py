@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
 class TestTrilIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "tril_indices"
+        self.python_api = paddle.tril_indices
         self.inputs = {}
         self.init_config()
         self.outputs = {'out': self.target}
@@ -86,10 +88,6 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
                 out1 = paddle.tril_indices(4, 4, 2)
             expected_result1 = np.tril_indices(4, 2, 4)
             self.assertEqual((out1.numpy() == expected_result1).all(), True)
-
-    def test_dygraph_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 class TestTrilIndicesAPICaseError(unittest.TestCase):

@@ -18,11 +18,10 @@ Distribute CTR model for test fleet api
 import os
 
 import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from paddle import fluid
 
 
 def fake_ctr_reader():
@@ -53,26 +52,23 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = 10, 10
 
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        lr_data = fluid.layers.data(
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
-            append_batch_size=False,
         )
 
         datas = [dnn_data, lr_data, label]
@@ -90,13 +86,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
-            init = fluid.initializer.Constant(value=0.01)
+            init = paddle.nn.initializer.Constant(value=0.01)
         elif initializer == 1:
-            init = fluid.initializer.Uniform()
+            init = paddle.nn.initializer.Uniform()
         elif initializer == 2:
-            init = fluid.initializer.Normal()
+            init = paddle.nn.initializer.Normal()
         else:
-            raise ValueError("error initializer code: {}".format(initializer))
+            raise ValueError(f"error initializer code: {initializer}")
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
@@ -107,17 +103,17 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
+            fc = paddle.static.nn.fc(
+                x=dnn_out,
                 size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -131,17 +127,24 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
         )
 
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 
-        acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, _, _ = fluid.layers.auc(input=predict, label=label)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        predict = paddle.static.nn.fc(
+            x=merge_layer, size=2, activation='softmax'
+        )
+
+        acc = paddle.static.accuracy(input=predict, label=label)
+        auc_var, _, _ = paddle.static.auc(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas

@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
 import time
+
+import requests
 
 
 class KVClient:
     def __init__(self, endpoint='localhost:2379'):
         self.endpoint = (
-            endpoint
-            if endpoint.startswith("http://")
-            else "http://{}".format(endpoint)
+            endpoint if endpoint.startswith("http://") else f"http://{endpoint}"
         )
 
     def put(self, key, value):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
             r = requests.post(u, data=value, timeout=3)
             if r.status_code == 200:
@@ -37,8 +36,8 @@ class KVClient:
             return False
 
     def get(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
             r = requests.get(u, timeout=3)
             if r.status_code == 200:
@@ -50,8 +49,8 @@ class KVClient:
             return ""
 
     def get_prefix(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
             r = requests.get(u, timeout=3)
             if r.status_code == 200:
@@ -60,8 +59,8 @@ class KVClient:
             return ""
 
     def delete(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
             r = requests.delete(u, timeout=3)
             if r.status_code == 200:

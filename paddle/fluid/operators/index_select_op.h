@@ -17,27 +17,26 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                      LoDTensor* input,
-                      const LoDTensor& index,
-                      LoDTensor* output,
+                      phi::DenseTensor* input,
+                      const phi::DenseTensor& index,
+                      phi::DenseTensor* output,
                       int dim) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
 
-  LoDTensor index_cpu_copy;
+  phi::DenseTensor index_cpu_copy;
   if (!platform::is_cpu_place(index.place())) {
     framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
   }
@@ -120,16 +119,17 @@ struct IndexSelectAdd<
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
-                          const LoDTensor& out_grad,
-                          const LoDTensor& index,
-                          LoDTensor* x_grad,
+                          const phi::DenseTensor& out_grad,
+                          const phi::DenseTensor& index,
+                          phi::DenseTensor* x_grad,
                           int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();

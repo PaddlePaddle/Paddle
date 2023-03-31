@@ -16,15 +16,11 @@ import unittest
 import unittest.mock
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
-import paddle.tensor as tensor
-from paddle.fluid import layers
-from paddle.distributed.fleet import auto
+from paddle import nn, static, tensor, utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -301,9 +297,8 @@ class AttentionLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -568,9 +563,8 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tarfile
-import numpy as np
 import collections
+import tarfile
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -66,7 +67,7 @@ class Imikolov(Dataset):
 
                 model = SimpleNet()
                 src, trg = model(src, trg)
-                print(src.numpy().shape, trg.numpy().shape)
+                print(src.shape, trg.shape)
 
     """
 
@@ -82,13 +83,13 @@ class Imikolov(Dataset):
         assert data_type.upper() in [
             'NGRAM',
             'SEQ',
-        ], "data type should be 'NGRAM', 'SEQ', but got {}".format(data_type)
+        ], f"data type should be 'NGRAM', 'SEQ', but got {data_type}"
         self.data_type = data_type.upper()
 
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.window_size = window_size
@@ -146,7 +147,7 @@ class Imikolov(Dataset):
     def _load_anno(self):
         self.data = []
         with tarfile.open(self.data_file) as tf:
-            filename = './simple-examples/data/ptb.{}.txt'.format(self.mode)
+            filename = f'./simple-examples/data/ptb.{self.mode}.txt'
             f = tf.extractfile(filename)
 
             UNK = self.word_idx['<unk>']
@@ -167,7 +168,7 @@ class Imikolov(Dataset):
                         continue
                     self.data.append((src_seq, trg_seq))
                 else:
-                    assert False, 'Unknow data type'
+                    raise AssertionError('Unknow data type')
 
     def __getitem__(self, idx):
         return tuple([np.array(d) for d in self.data[idx]])

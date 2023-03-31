@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
 
-from op_test import OpTest
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 def distribute_fpn_proposals_wrapper(
@@ -141,7 +142,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):

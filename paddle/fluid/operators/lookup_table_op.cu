@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -93,7 +93,7 @@ __global__ void LookupTableGrad(T *table,
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      phi::CudaAtomicAdd(&tab[i], out[i]);
     }
     idy += BlockDimY * GridDimX;
   }
@@ -103,9 +103,9 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_t = context.Input<LoDTensor>("W");
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *table_t = context.Input<phi::DenseTensor>("W");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto *output_t = context.Output<phi::DenseTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     auto id_name = context.InputNames("Ids").front();
@@ -157,9 +157,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *table = context.Input<LoDTensor>("W");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<phi::DenseTensor>("Ids");
+      auto *table = context.Input<phi::DenseTensor>("W");
+      auto *d_output =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -168,12 +169,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
-      framework::Vector<int64_t> new_rows;
+      phi::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      phi::MixVector<int64_t> mixv_new_rows(&new_rows);
       memory::Copy(gpu_place,
                    mixv_new_rows.CUDAMutableData(context.GetPlace()),
                    gpu_place,
@@ -209,9 +210,11 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
                    stream);
 
     } else {
-      auto ids_t = context.Input<LoDTensor>("Ids");
-      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto ids_t = context.Input<phi::DenseTensor>("Ids");
+      auto d_output_t =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto d_table_t =
+          context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];

@@ -62,20 +62,21 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
 
     // prepare output
-    LoDTensor* sentenceIds = nullptr;
-    LoDTensor* sentenceScores = nullptr;
+    phi::DenseTensor* sentenceIds = nullptr;
+    phi::DenseTensor* sentenceScores = nullptr;
 
-    LoDTensor* sentenceIds_temp = context.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceScores_temp =
-        context.Output<LoDTensor>("SentenceScores");
+    phi::DenseTensor* sentenceIds_temp =
+        context.Output<phi::DenseTensor>("SentenceIds");
+    phi::DenseTensor* sentenceScores_temp =
+        context.Output<phi::DenseTensor>("SentenceScores");
 
     if (platform::is_xpu_place(ids->at(0).place())) {
-      sentenceIds = new LoDTensor();
+      sentenceIds = new phi::DenseTensor();
       sentenceIds->set_lod(sentenceIds_temp->lod());
     }
 
     if (platform::is_xpu_place(ids->at(0).place())) {
-      sentenceScores = new LoDTensor();
+      sentenceScores = new phi::DenseTensor();
       sentenceScores->set_lod(sentenceScores_temp->lod());
     }
 
@@ -100,6 +101,8 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
           xpu::Error_t::SUCCESS,
           platform::errors::External(
               "Execute function CopyTensorByXPU failed by [%d]", r));
+      sentenceIds_temp->set_lod(sentenceIds->lod());
+      sentenceScores_temp->set_lod(sentenceScores->lod());
     }
   }
 };

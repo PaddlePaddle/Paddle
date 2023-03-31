@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import test_collective_api_base as test_base
+
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
-import test_collective_api_base as test_base
+from paddle import fluid
 
 
 class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):

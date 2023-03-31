@@ -111,14 +111,13 @@ void SerializeLodTensor(framework::Variable* var,
   }
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
-    auto data_len = tensor->numel() * framework::DataTypeSize(tensor->dtype());
+    auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
-        new char[tensor->numel() *
-                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
+        new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         platform::CPUPlace(),
@@ -128,7 +127,7 @@ void SerializeLodTensor(framework::Variable* var,
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
         stream);
-    auto data_len = tensor->numel() * framework::DataTypeSize(tensor->dtype());
+    auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
     delete[] temp_ptr;
@@ -159,14 +158,13 @@ void SerializeSelectedRows(framework::Variable* var,
   }
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
-    auto data_len = tensor->numel() * framework::DataTypeSize(tensor->dtype());
+    auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
-        new char[tensor->numel() *
-                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
+        new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         platform::CPUPlace(),
@@ -176,7 +174,7 @@ void SerializeSelectedRows(framework::Variable* var,
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
         stream);
-    auto data_len = tensor->numel() * framework::DataTypeSize(tensor->dtype());
+    auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
     delete[] temp_ptr;
@@ -238,7 +236,7 @@ void DeserializeLodTensor(framework::Variable* var,
 
   framework::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {
       v.push_back(msg.lod(i).lod_data(j));
     }
@@ -259,16 +257,15 @@ void DeserializeLodTensor(framework::Variable* var,
 #ifdef PADDLE_WITH_CUDA
     unsigned long data_len;  // NOLINT
     char* temp_ptr =
-        new char[tensor->numel() *
-                 framework::DataTypeSize(tensor->dtype())];     // NOLINT
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);      // NOLINT
-    io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);  // NOLINT
+        new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);         // NOLINT
+    io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);     // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
                  platform::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
-                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+                 tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
     delete[] temp_ptr;
 #endif
@@ -303,17 +300,16 @@ void DeserializeSelectedRows(
   } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
-        new char[tensor->numel() *
-                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
-    unsigned long data_len;                                  // NOLINT
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);   // NOLINT
+        new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
+    unsigned long data_len;                                        // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);         // NOLINT
     io_buffer_itr.copy_and_forward(temp_ptr, data_len);
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
                  platform::CPUPlace(),
                  temp_ptr,
-                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+                 tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
     delete[] temp_ptr;
 #endif

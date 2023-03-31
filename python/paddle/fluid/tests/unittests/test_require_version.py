@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.version as fluid_version
 import warnings
+
 import paddle
+import paddle.version as fluid_version
+from paddle import fluid
 
 
 class VersionTest(unittest.TestCase):

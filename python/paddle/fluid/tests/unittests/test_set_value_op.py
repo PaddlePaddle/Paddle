@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Test set_value op in static mode
+# Test set_value op in static graph mode
 
 import unittest
+from functools import reduce
+
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from functools import reduce
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -69,7 +70,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
-    def func_test_api(self):
+    def test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
@@ -85,11 +86,6 @@ class TestSetValueApi(TestSetValueBase):
             (self.data == dynamic_out).all(),
             msg=error_msg.format("dynamic", self.data, dynamic_out),
         )
-
-    def test_api(self):
-        with _test_eager_guard():
-            self.func_test_api()
-        self.func_test_api()
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -155,7 +151,7 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
             return i, x
 
         i = paddle.zeros(shape=(1,), dtype='int32')
-        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+        i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
     def _get_answer(self):
         self.data[0] = self.value
@@ -502,7 +498,7 @@ def create_test_value_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -522,7 +518,7 @@ def create_test_value_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -542,7 +538,7 @@ def create_test_value_fp16(parent):
         def set_dtype(self):
             self.dtype = "float16"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    cls_name = "{}_{}".format(parent.__name__, "Valuefp16")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -562,7 +558,7 @@ def create_test_value_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -582,7 +578,7 @@ def create_test_value_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -602,7 +598,7 @@ def create_test_value_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -623,7 +619,7 @@ def create_test_value_numpy_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -643,7 +639,7 @@ def create_test_value_numpy_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -663,7 +659,7 @@ def create_test_value_numpy_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -683,7 +679,7 @@ def create_test_value_numpy_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -703,7 +699,7 @@ def create_test_value_numpy_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -728,7 +724,7 @@ def create_test_value_tensor_int32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -752,7 +748,7 @@ def create_test_value_tensor_int64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -776,7 +772,7 @@ def create_test_value_tensor_fp32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -800,7 +796,7 @@ def create_test_value_tensor_fp64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -824,7 +820,7 @@ def create_test_value_tensor_bool(parent):
         def _get_answer(self):
             self.data[0, 1] = False
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -904,7 +900,7 @@ class TestSetValueValueShape5(TestSetValueApi):
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
         ):
@@ -913,7 +909,7 @@ class TestError(TestSetValueBase):
             x[0] = value
 
     def _dtype_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
         ):
@@ -921,17 +917,17 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
+        with self.assertRaisesRegex(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:0] = self.value
 
     def _ellipsis_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             IndexError, "An index can only have a single ellipsis"
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
-        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+        with self.assertRaisesRegex(ValueError, "the start or end is None"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             one = paddle.ones([1])
             x[::one] = self.value
@@ -1002,6 +998,8 @@ class TestBackward(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
             y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
 
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype='int64'
@@ -1042,16 +1040,9 @@ class TestBackward(unittest.TestCase):
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
-    def test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_test_dynamic()
-        self.func_test_dynamic()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
-
 
 class TestGradientTruncated(unittest.TestCase):
-    def func_test_consistent_with_competitor(self):
+    def test_consistent_with_competitor(self):
         paddle.disable_static()
 
         def set_value(t, value):
@@ -1308,11 +1299,6 @@ class TestGradientTruncated(unittest.TestCase):
         self.assertTrue(not x.stop_gradient)
         self.assertTrue(not x.is_leaf)
 
-    def test_consistent_with_competitor(self):
-        with _test_eager_guard():
-            self.func_test_consistent_with_competitor()
-        self.func_test_consistent_with_competitor()
-
     def test_static_graph(self):
         paddle.enable_static()
 
@@ -1320,19 +1306,13 @@ class TestGradientTruncated(unittest.TestCase):
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
-            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            value = paddle.tensor.fill_constant([1], "float32", 1)
             # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
-            )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
-            )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", -2, force_cpu=True
-            )
+            start = paddle.tensor.fill_constant([1], "int32", 5, force_cpu=True)
+            end = paddle.tensor.fill_constant([1], "int32", 0, force_cpu=True)
+            step = paddle.tensor.fill_constant([1], "int32", -2, force_cpu=True)
 
             inputs = {
                 'Input': x,
@@ -1361,7 +1341,7 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op2(x):
-            value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
+            value = paddle.tensor.fill_constant([1, 3, 2], "float32", 1)
             # test stop_gradient
             value.stop_gradient = False
             x.stop_gradient = False
@@ -1386,18 +1366,12 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op3(x):
-            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            value = paddle.tensor.fill_constant([1], "float32", 1)
             x.stop_gradient = True
             value.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
-            )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
-            )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", 3, force_cpu=True
-            )
+            start = paddle.tensor.fill_constant([1], "int32", 0, force_cpu=True)
+            end = paddle.tensor.fill_constant([1], "int32", 5, force_cpu=True)
+            step = paddle.tensor.fill_constant([1], "int32", 3, force_cpu=True)
 
             inputs = {
                 'Input': x,
@@ -1436,7 +1410,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.fluid.layers.reduce_sum(y2)
+            loss = paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (
@@ -1496,7 +1470,7 @@ class TestSetValueInplace(unittest.TestCase):
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
-            self.assertEqual(b.inplace_version, 1)
+            self.assertEqual(b.inplace_version, 0)
 
         paddle.enable_static()
 
@@ -1535,6 +1509,32 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestSetValueBFloat16(OpTest):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4]
+        self.__class__.op_type = self.op_type
+        self.data = np.ones(self.shape).astype(self.dtype)
+        x = np.random.rand([6]).astype('float32')
+        self.data[0, 0] = np.random.rand([6]).astype('float32')
+        out = self.data[0, 0]
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':

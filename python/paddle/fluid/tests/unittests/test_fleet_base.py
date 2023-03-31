@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import os
-import paddle.fluid as fluid
+import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestFleetBase(unittest.TestCase):
@@ -142,7 +144,7 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
 
     def test_exception(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         self.assertRaises(Exception, fleet.init_worker)
 
@@ -199,9 +201,16 @@ class TestFleetBaseSingleError(unittest.TestCase):
             )
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=fc_1, size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
             fleet.init(is_collective=True)
 

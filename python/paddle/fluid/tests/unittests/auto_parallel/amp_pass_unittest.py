@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
-import paddle
+import unittest
 
-from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
+import numpy as np
 from get_gpt_model import FakeDataset, generate_model
+
+import paddle
+from paddle.distributed.fleet import auto
 
 
 def apply_pass(use_amp=False, level=None):
@@ -29,6 +29,8 @@ def apply_pass(use_amp=False, level=None):
     if use_amp:
         amp = strategy.amp
         amp.enable = True
+        amp.dtype = "float16"
+        amp.level = level
         amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
         amp.custom_black_list = [
             'c_softmax_with_cross_entropy',
@@ -37,8 +39,6 @@ def apply_pass(use_amp=False, level=None):
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
-        amp.use_pure_fp16 = level in ["o2", "o3"]
-        amp.use_optimizer_fp16 = level == "o3"
         print("amp level: ", level)
     return strategy
 
@@ -61,7 +61,7 @@ class TestAMPPass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_amp=False, level=None):

@@ -14,15 +14,15 @@
 
 import os
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest, _set_use_system_allocator
+
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import grad_var_name
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 _set_use_system_allocator(True)
 
@@ -617,7 +617,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -641,7 +641,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['x@GRAD'])
+        self.no_grad_set = {'x@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
 
 
@@ -747,7 +747,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 ):
     def init_test_case(self):
         self.use_global_stats = True
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -758,18 +758,24 @@ class TestBatchNormOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
+            self.assertRaises(TypeError, paddle.static.nn.batch_norm, x1)
 
             # the input dtype of batch_norm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.batch_norm, x2)
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
+            self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
+
+            # the first dimension of input for batch_norm must between [2d, 5d].
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            self.assertRaises(ValueError, paddle.static.nn.batch_norm, x3)
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            batch_norm = fluid.dygraph.BatchNorm(10)
+            batch_norm = paddle.nn.BatchNorm(10)
             # the input of BatchNorm must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
@@ -778,7 +784,9 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
             self.assertRaises(TypeError, batch_norm, x2)
 
 
@@ -792,7 +800,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -815,12 +823,14 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x_np, is_test, trainable_statistics):
                 with program_guard(Program(), Program()):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -837,16 +847,14 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
+            x = paddle.static.data(name='x', shape=x.shape, dtype=x.dtype)
             # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
-            batch_norm = fluid.dygraph.BatchNorm(7, data_layout="NHWC")
+            batch_norm = paddle.nn.BatchNorm(7, data_layout="NHWC")
             hidden1 = batch_norm(x)
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

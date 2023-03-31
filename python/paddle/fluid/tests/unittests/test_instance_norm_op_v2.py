@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestInstanceNorm(unittest.TestCase):
@@ -69,7 +68,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.InstanceNorm(shape[1])
+                    bn = paddle.nn.InstanceNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -96,8 +95,10 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.dygraph.InstanceNorm(shape[1])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    ins = paddle.nn.InstanceNorm2D(shape[1])
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -106,7 +107,9 @@ class TestInstanceNorm(unittest.TestCase):
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
                     ins = paddle.nn.InstanceNorm2D(shape[1])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -116,11 +119,6 @@ class TestInstanceNorm(unittest.TestCase):
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_error()
 
 
 if __name__ == '__main__':

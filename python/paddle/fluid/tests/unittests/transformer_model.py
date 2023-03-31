@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from functools import partial
+
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle
+from paddle import fluid
+from paddle.fluid import layers
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -71,29 +73,28 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
+            weight_attr=paddle.nn.initializer.XavierNormal(
+                fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
+            weight_attr=paddle.nn.initializer.XavierNormal(
+                fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False,
+            weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_value,
                 fan_out=n_head * d_value,
             ),
@@ -114,13 +115,13 @@ def multi_head_attention(
 
         hidden_size = x.shape[-1]
         # FIXME(guosheng): Decouple the program desc with batch_size.
-        reshaped = layers.reshape(
+        reshaped = paddle.reshape(
             x=x, shape=[batch_size, -1, n_head, hidden_size // n_head]
         )
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -132,9 +133,9 @@ def multi_head_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         # FIXME(guosheng): Decouple the program desc with batch_size.
-        return layers.reshape(
+        return paddle.reshape(
             x=trans_x,
             shape=list(
                 map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]])
@@ -156,18 +157,17 @@ def multi_head_attention(
         # So, here define the softmax for temporary solution.
 
         def __softmax(x, eps=1e-9):
-            exp_out = layers.exp(x=x)
-            sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
-            return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
+            exp_out = paddle.exp(x=x)
+            sum_out = paddle.sum(exp_out, axis=-1, keepdim=True)
+            return paddle.divide(x=exp_out, y=sum_out)
 
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
-        weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
+        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+        weights = __softmax(paddle.add(x=product, y=attn_bias))
         if dropout_rate:
-            weights = layers.dropout(
-                weights, dropout_prob=dropout_rate, is_test=False
-            )
-        out = layers.matmul(weights, v)
+            weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
+        out = paddle.matmul(weights, v)
+
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -183,10 +183,10 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
-        param_attr=fluid.initializer.Xavier(uniform=False),
+        weight_attr=paddle.nn.initializer.XavierNormal(),
         bias_attr=False,
         num_flatten_dims=2,
     )
@@ -199,20 +199,20 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        act="relu",
+        activation="relu",
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
     )
@@ -231,15 +231,15 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
-                param_attr=fluid.initializer.Constant(1.0),
-                bias_attr=fluid.initializer.Constant(0.0),
+                param_attr=paddle.nn.initializer.Constant(1.0),
+                bias_attr=paddle.nn.initializer.Constant(0.0),
             )
         elif cmd == "d":  # add dropout
             if dropout:
-                out = layers.dropout(out, dropout_prob=dropout, is_test=False)
+                out = paddle.nn.functional.dropout(out, p=dropout)
     return out
 
 
@@ -268,7 +268,7 @@ def prepare_encoder(
         src_word,
         size=[src_vocab_size, src_emb_dim],
         padding_idx=src_pad_idx,
-        param_attr=fluid.initializer.Normal(0.0, 1.0),
+        param_attr=paddle.nn.initializer.Normal(0.0, 1.0),
     )
     src_pos_enc = layers.embedding(
         src_pos,
@@ -280,9 +280,9 @@ def prepare_encoder(
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.
-    enc_input = layers.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
+    enc_input = paddle.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
     return (
-        layers.dropout(enc_input, dropout_prob=dropout, is_test=False)
+        paddle.nn.functional.dropout(enc_input, p=dropout)
         if dropout
         else enc_input
     )
@@ -498,11 +498,13 @@ def build_inputs(max_length, n_head):
 
     all_inputs = []
     for name, shape, dtype in zip(names, shapes, dtypes):
-        all_inputs.append(
-            fluid.layers.data(
-                name=name, shape=shape, dtype=dtype, append_batch_size=False
-            )
+        data_input = paddle.static.data(
+            name=name,
+            shape=shape,
+            dtype=dtype,
         )
+        data_input.desc.set_need_check_feed(False)
+        all_inputs.append(data_input)
     return all_inputs
 
 
@@ -580,18 +582,20 @@ def transformer(
 
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
-    predict = layers.reshape(
-        x=layers.fc(
-            input=dec_output,
+    predict = paddle.reshape(
+        x=paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
-            param_attr=fluid.initializer.Xavier(uniform=False),
+            weight_attr=paddle.nn.initializer.XavierNormal(),
             bias_attr=False,
             num_flatten_dims=2,
         ),
         shape=[-1, trg_vocab_size],
-        act="softmax",
     )
+    predict = paddle.nn.functional.softmax(predict)
 
-    cost = layers.cross_entropy(input=predict, label=gold)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=gold, reduction='none', use_softmax=False
+    )
     weighted_cost = cost * weights
-    return layers.reduce_sum(weighted_cost)
+    return paddle.sum(weighted_cost)

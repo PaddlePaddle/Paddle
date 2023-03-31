@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class DropoutMLUKernel : public framework::OpKernel<T> {
  public:
@@ -106,8 +104,8 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
     }
 
     // In downgrade_in_infer mode, need to multiply (1.0f - dropout_prob).
-    Tensor scale_tensor(x->dtype());
-    Tensor bias_tensor(x->dtype());
+    phi::DenseTensor scale_tensor(x->dtype());
+    phi::DenseTensor bias_tensor(x->dtype());
     scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
     bias_tensor.mutable_data<T>({1}, ctx.GetPlace());
     MLUCnnlTensorDesc scale_desc(scale_tensor);
@@ -157,7 +155,7 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
     }
 
     // cast mask from uint8 to float32/float16
-    Tensor cast_mask(grad_x->dtype());
+    phi::DenseTensor cast_mask(grad_x->dtype());
     cast_mask.Resize(mask->dims());
     cast_mask.mutable_data<T>(ctx.GetPlace());
 

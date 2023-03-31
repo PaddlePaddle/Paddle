@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import program_guard, Program
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestGatherTreeOp(OpTest):
@@ -35,7 +36,7 @@ class TestGatherTreeOp(OpTest):
         self.outputs = {'Out': self.backtrace(ids, parents)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     @staticmethod
     def backtrace(ids, parents):
@@ -56,16 +57,13 @@ class TestGatherTreeOp(OpTest):
 class TestGatherTreeOpAPI(unittest.TestCase):
     def test_case(self):
         paddle.enable_static()
-        ids = fluid.layers.data(
-            name='ids', shape=[5, 2, 2], dtype='int64', append_batch_size=False
-        )
-        parents = fluid.layers.data(
+        ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
+        parents = paddle.static.data(
             name='parents',
             shape=[5, 2, 2],
             dtype='int64',
-            append_batch_size=False,
         )
-        final_sequences = fluid.layers.gather_tree(ids, parents)
+        final_sequences = paddle.nn.functional.gather_tree(ids, parents)
         paddle.disable_static()
 
     def test_case2(self):
@@ -82,74 +80,54 @@ class TestGatherTreeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            ids = fluid.layers.data(
-                name='ids',
-                shape=[5, 2, 2],
-                dtype='int64',
-                append_batch_size=False,
-            )
-            parents = fluid.layers.data(
-                name='parents',
-                shape=[5, 2, 2],
-                dtype='int64',
-                append_batch_size=False,
+            ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
+            parents = paddle.static.data(
+                name='parents', shape=[5, 2, 2], dtype='int64'
             )
 
             def test_Variable_ids():
                 # the input type must be Variable
                 np_ids = np.random.random((5, 2, 2), dtype='int64')
-                fluid.layers.gather_tree(np_ids, parents)
+                paddle.nn.functional.gather_tree(np_ids, parents)
 
             self.assertRaises(TypeError, test_Variable_ids)
 
             def test_Variable_parents():
                 # the input type must be Variable
                 np_parents = np.random.random((5, 2, 2), dtype='int64')
-                fluid.layers.gather_tree(ids, np_parents)
+                paddle.nn.functional.gather_tree(ids, np_parents)
 
             self.assertRaises(TypeError, test_Variable_parents)
 
             def test_type_ids():
                 # dtype must be int32 or int64
-                bad_ids = fluid.layers.data(
-                    name='bad_ids',
-                    shape=[5, 2, 2],
-                    dtype='float32',
-                    append_batch_size=False,
+                bad_ids = paddle.static.data(
+                    name='bad_ids', shape=[5, 2, 2], dtype='float32'
                 )
-                fluid.layers.gather_tree(bad_ids, parents)
+                paddle.nn.functional.gather_tree(bad_ids, parents)
 
             self.assertRaises(TypeError, test_type_ids)
 
             def test_type_parents():
                 # dtype must be int32 or int64
-                bad_parents = fluid.layers.data(
-                    name='bad_parents',
-                    shape=[5, 2, 2],
-                    dtype='float32',
-                    append_batch_size=False,
+                bad_parents = paddle.static.data(
+                    name='bad_parents', shape=[5, 2, 2], dtype='float32'
                 )
-                fluid.layers.gather_tree(ids, bad_parents)
+                paddle.nn.functional.gather_tree(ids, bad_parents)
 
             self.assertRaises(TypeError, test_type_parents)
 
             def test_ids_ndim():
-                bad_ids = fluid.layers.data(
-                    name='bad_test_ids',
-                    shape=[5, 2],
-                    dtype='int64',
-                    append_batch_size=False,
+                bad_ids = paddle.static.data(
+                    name='bad_test_ids', shape=[5, 2], dtype='int64'
                 )
                 paddle.nn.functional.gather_tree(bad_ids, parents)
 
             self.assertRaises(ValueError, test_ids_ndim)
 
             def test_parents_ndim():
-                bad_parents = fluid.layers.data(
-                    name='bad_test_parents',
-                    shape=[5, 2],
-                    dtype='int64',
-                    append_batch_size=False,
+                bad_parents = paddle.static.data(
+                    name='bad_test_parents', shape=[5, 2], dtype='int64'
                 )
                 paddle.nn.functional.gather_tree(ids, bad_parents)
 

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.framework import _apply_pass as _apply_cpp_pass
+from paddle.framework import core
 from paddle.static import Executor
-from .pass_base import PassType, CPPPassWrapper, register_pass
-from paddle.fluid.framework import core, _apply_pass as _apply_cpp_pass
+
+from .pass_base import CPPPassWrapper, PassType, register_pass
 
 
 @register_pass("fuse_elewise_add_act")
@@ -64,6 +66,58 @@ class FuseReluDepthwiseConvPass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return "fuse_relu_depthwise_conv_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fused_attention")
+class FusedAttentionPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_attention_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fused_feedforward")
+class FusedFeedforwardPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_feedforward_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_gemm_epilogue")
+class FuseGemmEpiloguePass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_gemm_epilogue_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_adamw")
+class FuseAdamWPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_adamw_op_pass"
 
     def _type(self):
         return PassType.FUSION_OPT

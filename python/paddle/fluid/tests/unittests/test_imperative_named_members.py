@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, num_channel, dim, num_filter=5):
         super().__init__()
-        self.fc = fluid.dygraph.Linear(dim, dim)
+        self.fc = paddle.nn.Linear(dim, dim)
         self.conv = paddle.nn.Conv2D(num_channel, num_channel, num_filter)
 
     def forward(self, x):
@@ -32,12 +33,12 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeNamedSubLayers(unittest.TestCase):
-    def func_test_named_sublayers(self):
+    def test_named_sublayers(self):
         with fluid.dygraph.guard():
-            fc1 = fluid.Linear(10, 3)
-            fc2 = fluid.Linear(3, 10, bias_attr=False)
+            fc1 = paddle.nn.Linear(10, 3)
+            fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
-            model = fluid.dygraph.Sequential(fc1, fc2, custom)
+            model = paddle.nn.Sequential(fc1, fc2, custom)
             named_sublayers = model.named_sublayers()
             list_named_sublayers = list(named_sublayers)
 
@@ -60,22 +61,17 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
                 [model] + expected_sublayers,
             )
 
-    def test_named_sublayers(self):
-        with _test_eager_guard():
-            self.func_test_named_sublayers()
-        self.func_test_named_sublayers()
-
 
 class TestImperativeNamedParameters(unittest.TestCase):
-    def func_test_named_parameters(self):
+    def test_named_parameters(self):
         with fluid.dygraph.guard():
-            fc1 = fluid.Linear(10, 3)
-            fc2 = fluid.Linear(3, 10, bias_attr=False)
+            fc1 = paddle.nn.Linear(10, 3)
+            fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
             model = paddle.nn.Sequential(fc1, fc2, custom)
 
             named_parameters = list(model.named_parameters())
-            expected_named_parameters = list()
+            expected_named_parameters = []
             for prefix, layer in model.named_sublayers():
                 for name, param in layer.named_parameters(
                     include_sublayers=False
@@ -85,21 +81,16 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             self.assertListEqual(expected_named_parameters, named_parameters)
 
-    def test_named_parameters(self):
-        with _test_eager_guard():
-            self.func_test_named_parameters()
-        self.func_test_named_parameters()
-
-    def func_test_dir_layer(self):
+    def test_dir_layer(self):
         with fluid.dygraph.guard():
 
-            class Mymodel(fluid.dygraph.Layer):
+            class Mymodel(paddle.nn.Layer):
                 def __init__(self):
                     super().__init__()
-                    self.linear1 = fluid.dygraph.Linear(10, 10)
-                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.linear1 = paddle.nn.Linear(10, 10)
+                    self.linear2 = paddle.nn.Linear(5, 5)
                     self.conv2d = paddle.nn.Conv2D(3, 2, 3)
-                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.embedding = paddle.nn.Embedding(128, 16)
                     self.h_0 = fluid.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32')
                     )
@@ -137,11 +128,6 @@ class TestImperativeNamedParameters(unittest.TestCase):
                 "weight" in expected_members,
                 "model should contain parameter: weight",
             )
-
-    def test_dir_layer(self):
-        with _test_eager_guard():
-            self.func_test_dir_layer()
-        self.func_test_dir_layer()
 
 
 if __name__ == '__main__':

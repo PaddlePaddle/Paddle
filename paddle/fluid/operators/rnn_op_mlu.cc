@@ -11,16 +11,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 using TensorList = std::vector<phi::DenseTensor>;
 template <typename TensorType, typename T>
@@ -98,7 +97,7 @@ class RNNMLUKernel : public framework::OpKernel<T> {
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {  // set seq_len if no padding, otherwise seq_len for
                            // each element.
-      seq_len_vec = operators::GetDataFromTensor(sequence_length);
+      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;
@@ -459,7 +458,7 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
     FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0), input_grad);
 
-    Tensor a, b;
+    phi::DenseTensor a, b;
     phi::DenseTensor* dynamic_grad_pre_h = &a;
     phi::DenseTensor* dynamic_grad_pre_c = &b;
     if (init_h_grad) {
@@ -481,7 +480,7 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {
-      seq_len_vec = operators::GetDataFromTensor(sequence_length);
+      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;

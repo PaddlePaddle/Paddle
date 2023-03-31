@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cost import CostEstimator
 from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.cost import CostEstimator
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
 
 
 def train():
-    from auto_parallel_relaunch_model import mlp_pretrain_forward
-    from auto_parallel_relaunch_model import batch_generator_creator
+    from auto_parallel_relaunch_model import (
+        batch_generator_creator,
+        mlp_pretrain_forward,
+    )
 
     dist_strategy = fleet.DistributedStrategy()
     # init parallel optimizer

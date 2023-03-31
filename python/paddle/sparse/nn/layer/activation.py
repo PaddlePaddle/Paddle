@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import functional as F
 from paddle.nn import Layer
+
+from .. import functional as F
 
 __all__ = []
 
 
 class ReLU(Layer):
     """
+
     Sparse ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -44,6 +46,7 @@ class ReLU(Layer):
             relu = paddle.sparse.nn.ReLU()
             out = relu(sparse_x)
             # [0., 0., 1.]
+
     """
 
     def __init__(self, name=None):
@@ -54,12 +57,13 @@ class ReLU(Layer):
         return F.relu(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
 class Softmax(Layer):
     r"""
+
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
@@ -123,12 +127,13 @@ class Softmax(Layer):
         return F.softmax(x, self._axis, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
 class ReLU6(Layer):
     """
+
     Sparse ReLU6 Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -152,6 +157,7 @@ class ReLU6(Layer):
             sparse_x = dense_x.to_sparse_coo(1)
             relu6 = paddle.sparse.nn.ReLU6()
             out = relu6(sparse_x)
+
     """
 
     def __init__(self, name=None):
@@ -162,12 +168,13 @@ class ReLU6(Layer):
         return F.relu6(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
 class LeakyReLU(Layer):
     r"""
+
     Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -199,6 +206,7 @@ class LeakyReLU(Layer):
             sparse_x = dense_x.to_sparse_coo(1)
             leaky_relu = paddle.sparse.nn.LeakyReLU(0.5)
             out = leaky_relu(sparse_x)
+
     """
 
     def __init__(self, negative_slope=0.01, name=None):
@@ -210,5 +218,5 @@ class LeakyReLU(Layer):
         return F.leaky_relu(x, self._negative_slope, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str

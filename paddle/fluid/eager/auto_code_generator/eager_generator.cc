@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/pybind/op_function_generator.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -51,13 +51,15 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
-static std::unordered_set<std::string> black_ops_list = {"run_program",
-                                                         "fused_gate_attention",
-                                                         "fused_feedforward",
-                                                         "fused_attention",
-                                                         "fused_gemm_epilogue",
-                                                         "sparse_divide_scalar",
-                                                         "sparse_scale"};
+static std::unordered_set<std::string> black_ops_list = {
+    "run_program",
+    "fused_gate_attention",
+    "fused_feedforward",
+    "fused_attention",
+    "fused_gemm_epilogue",
+    "fused_bias_dropout_residual_layer_norm",
+    "sparse_divide_scalar",
+    "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -1303,15 +1305,6 @@ static std::string GenerateGradNodeCreationContent(
           paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
                                   LegalizeVarName(inplace_input_name),
                                   output_position);
-
-      // Intermediate Tensor does not require CheckAndRetainGrad
-      if (!output.intermediate()) {
-        VLOG(6) << "Generated Call RetainGradForTensor";
-        const char* RETAIN_GRAD_TEMPLATE =
-            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-        grad_node_creation_str += paddle::string::Sprintf(
-            RETAIN_GRAD_TEMPLATE, LegalizeVarName(inplace_input_name));
-      }
     } else {
       const std::string& output_autograd_name =
           "p_autograd_" + LegalizeVarName(output_name);
@@ -1360,15 +1353,6 @@ static std::string GenerateGradNodeCreationContent(
             paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
                                     LegalizeVarName(output_name),
                                     output_position);
-      }
-
-      // Intermediate Tensor does not require CheckAndRetainGrad
-      if (!output.intermediate()) {
-        VLOG(6) << "Generated Call RetainGradForTensor";
-        const char* RETAIN_GRAD_TEMPLATE =
-            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-        grad_node_creation_str += paddle::string::Sprintf(
-            RETAIN_GRAD_TEMPLATE, LegalizeVarName(output_name));
       }
     }
   }
@@ -1454,10 +1438,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
-        std::vector<paddle::experimental::Tensor> Out0 =
+        std::vector<paddle::Tensor> Out0 =
   GetOutputs(outs["Out0"]);
-        paddle::experimental::Tensor Out1 = GetOutputs(outs["Out1"][0]);
-        std::vector<paddle::experimental::Tensor> Out2 =
+        paddle::Tensor Out1 = GetOutputs(outs["Out1"][0]);
+        std::vector<paddle::Tensor> Out2 =
   GetOutputs(outs["Out2"]);
 
         // Grad Node Generation Codes
@@ -1496,7 +1480,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
     if (input.duplicable()) {
       const char* FWD_INS_ARG_TEMPLATE =
-          "const std::vector<paddle::experimental::Tensor>& %s";
+          "const std::vector<paddle::Tensor>& %s";
       input_args_str_list[input_position] = paddle::string::Sprintf(
           FWD_INS_ARG_TEMPLATE, LegalizeVarName(input_name));
       amp_function_call_args_str_list[input_position] =
@@ -1511,13 +1495,13 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         for (auto& inplace_pair : forward_inplace_map) {
           if (inplace_pair.second == input_name) {
             flag_find_input_name = true;
-            FWD_INS_ARG_TEMPLATE = "paddle::experimental::Tensor& %s";
+            FWD_INS_ARG_TEMPLATE = "paddle::Tensor& %s";
             break;
           }
         }
       }
       if (!flag_find_input_name) {
-        FWD_INS_ARG_TEMPLATE = "const paddle::experimental::Tensor& %s";
+        FWD_INS_ARG_TEMPLATE = "const paddle::Tensor& %s";
       }
       input_args_str_list[input_position] = paddle::string::Sprintf(
           FWD_INS_ARG_TEMPLATE, LegalizeVarName(input_name));
@@ -1661,8 +1645,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       // argument(EagerVariable*/vector<EagerVariable*>&),
       // in form of shared_ptr<EagerVariable>/vector<shared_ptr<EagerVariable>>
       if (output.duplicable()) {
-        const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<paddle::experimental::Tensor*>& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", std::vector<paddle::Tensor*>& %s";
         std::string arg_str = paddle::string::Sprintf(
             FWD_NUM_ARG_TEMPLATE, LegalizeVarName(output_var_name));
         dygraph_function_args_str += arg_str;
@@ -1670,7 +1653,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         core_ops_legacy_args_type_info[op_type].push_back("list");
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE = ", paddle::experimental::Tensor* %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", paddle::Tensor* %s";
         std::string arg_str = paddle::string::Sprintf(
             FWD_NUM_ARG_TEMPLATE, LegalizeVarName(output_var_name));
         dygraph_function_args_str += arg_str;
@@ -1758,7 +1741,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     std::string amp_logic_str = "";
     if (in_vars.size() != 0) {
       const char* AMP_TENSORS_VECTOR_TEMPLATE =
-          "    paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+          "    paddle::small_vector<std::vector<paddle::Tensor>, "
           "egr::kSlotSmallVectorSize> "
           "amp_tensors_vector = { "
           "%s };\n";
@@ -1913,7 +1896,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       if (op_passing_outs_map[op_type].count(output_name)) {
         if (output.dispensable()) {
           const char* FWD_OUT_TENSORS_TEMPLATE =
-              "  std::vector<paddle::experimental::Tensor> %s;\n"
+              "  std::vector<paddle::Tensor> %s;\n"
               "  if (outs.count(\"%s\"))  "
               "egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
               "  egr::EagerUtils::Output2Result(%s, &%s);\n";
@@ -1926,7 +1909,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                                    output_varname);
         } else {
           const char* FWD_OUT_TENSORS_TEMPLATE =
-              "  std::vector<paddle::experimental::Tensor> %s;\n"
+              "  std::vector<paddle::Tensor> %s;\n"
               "  egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
               "  egr::EagerUtils::Output2Result(%s, &%s);\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
@@ -1938,22 +1921,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         }
       } else {
         const char* FWD_OUT_TENSORS_TEMPLATE =
-            "  std::vector<paddle::experimental::Tensor> %s;\n"
+            "  std::vector<paddle::Tensor> %s;\n"
             "  egr::EagerUtils::GetOutputs(outs[\"%s\"], &%s);\n";
         out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
                                                  output_varname,
                                                  output_name,
                                                  output_varname);
       }
-      return_types[return_position] =
-          "std::vector<paddle::experimental::Tensor>";
+      return_types[return_position] = "std::vector<paddle::Tensor>";
     } else {
       if (op_passing_outs_map[op_type].count(output_name)) {
         if (output.dispensable()) {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  if (outs.count(\"%s\"))  "
               "egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
-              "  paddle::experimental::Tensor& %s = *%s;\n";
+              "  paddle::Tensor& %s = *%s;\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_name,
                                                    output_name,
@@ -1963,7 +1945,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
-              "  paddle::experimental::Tensor& %s = *%s;\n";
+              "  paddle::Tensor& %s = *%s;\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_name,
                                                    output_var_args_name,
@@ -1989,7 +1971,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                       LegalizeVarName(inplace_input_name));
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  paddle::experimental::Tensor %s;\n"
+              "  paddle::Tensor %s;\n"
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_varname,
@@ -1997,7 +1979,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                                    output_varname);
         }
       }
-      return_types[return_position] = "paddle::experimental::Tensor";
+      return_types[return_position] = "paddle::Tensor";
     }
 
     if (!forward_inplace_map.empty() &&
@@ -2176,7 +2158,7 @@ static std::string GenerateSingleOpBase(
   }
   generated_grad_function_body += fill_zero_str;
   generated_grad_function_body +=
-      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "  paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize> " +
       hooked_grads + " = " + fwd_op_type +
       "GradNodeCompat::ApplyGradientHooks(grads);\n";
@@ -2691,7 +2673,7 @@ static std::string GenerateGradNodeCCContents(
             egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
-    vector<vector<paddle::experimental::Tensor>> outputs(outs.size());
+    vector<vector<paddle::Tensor>> outputs(outs.size());
     for(auto& kv : outs) {
         outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] =
   GetOutputs(outs["kv.first"]);
@@ -2767,7 +2749,7 @@ static std::string GenerateGradNodeCCContents(
 
   const char* BWD_RETURN_TEMPLATE =
       "  const auto& out_metas = OutputMeta();\n"
-      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "  paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize> outputs(%d);\n"
       "%s\n"
       "  if(NeedComplexToRealConversion()) "
@@ -2778,10 +2760,10 @@ static std::string GenerateGradNodeCCContents(
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
-      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize> "
       "%sGradNodeCompat::operator()("
-      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize>& grads, bool "
       "create_graph, bool is_new_grad) {\n"
       "%s"
@@ -2820,10 +2802,10 @@ static std::string GenerateGradNodeHeaderContents(
       "%sGradNodeCompat \"; }\n"
       "\n"
       "  virtual "
-      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize> "
       "operator()("
-      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "paddle::small_vector<std::vector<paddle::Tensor>, "
       "egr::kSlotSmallVectorSize>& grads, bool "
       "create_graph = false, bool is_new_grad = false) "
       "override;\n"
@@ -2899,7 +2881,7 @@ static std::string GenerateGradNodeHeaderContents(
       }
       if (duplicable_tensors.count(tensor_wrapper_name)) {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
-            "const std::vector<paddle::experimental::Tensor>& %s";
+            "const std::vector<paddle::Tensor>& %s";
         tensor_wrapper_arg_str = paddle::string::Sprintf(
             ATTR_TENSOR_WRAPPER_ARG_TEMPLATE, tensor_wrapper_name);
 
@@ -2928,7 +2910,7 @@ static std::string GenerateGradNodeHeaderContents(
 
       } else {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
-            "const paddle::experimental::Tensor& %s";
+            "const paddle::Tensor& %s";
         tensor_wrapper_arg_str = paddle::string::Sprintf(
             ATTR_TENSOR_WRAPPER_ARG_TEMPLATE, tensor_wrapper_name);
 

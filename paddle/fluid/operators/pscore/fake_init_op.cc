@@ -45,7 +45,7 @@ class FakeInitOp : public framework::OperatorBase {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "fake init op's output only"
-          "supports SelectedRows and LoDTensor"));
+          "supports SelectedRows and phi::DenseTensor"));
     }
   }
 };

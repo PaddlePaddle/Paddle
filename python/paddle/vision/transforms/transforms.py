@@ -13,23 +13,16 @@
 # limitations under the License.
 
 import math
-import sys
+import numbers
 import random
+import traceback
+from collections.abc import Iterable, Sequence
 
 import numpy as np
-import numbers
-import collections
-import traceback
 
 import paddle
-from . import functional as F
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
+from . import functional as F
 
 __all__ = []
 
@@ -51,7 +44,7 @@ def _get_image_size(img):
                 )
             )
     else:
-        raise TypeError("Unexpected type {}".format(type(img)))
+        raise TypeError(f"Unexpected type {type(img)}")
 
 
 def _check_input(
@@ -69,9 +62,7 @@ def _check_input(
             value[0] = max(value[0], 0)
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         if not bound[0] <= value[0] <= value[1] <= bound[1]:
-            raise ValueError(
-                "{} values should be between {}".format(name, bound)
-            )
+            raise ValueError(f"{name} values should be between {bound}")
     else:
         raise TypeError(
             "{} should be a single number or a list/tuple with lenght 2.".format(
@@ -132,7 +123,7 @@ class Compose:
         format_string = self.__class__.__name__ + '('
         for t in self.transforms:
             format_string += '\n'
-            format_string += '    {0}'.format(t)
+            format_string += f'    {t}'
         format_string += '\n)'
         return format_string
 
@@ -142,6 +133,8 @@ class BaseTransform:
     Base class of all transforms used in computer vision.
 
     calling logic:
+
+    .. code-block:: text
 
         if keys is None:
             _get_params -> _apply_image()
@@ -160,14 +153,11 @@ class BaseTransform:
 
             Current available strings & data type are describe below:
 
-            - "image": input image, with shape of (H, W, C)
-            - "coords": coordinates, with shape of (N, 2)
-            - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
-
-                       the 1st "xy" represents top left point of a box,
-                       the 2nd "xy" represents right bottom point.
-
-            - "mask": map used for segmentation, with shape of (H, W, 1)
+                - "image": input image, with shape of (H, W, C)
+                - "coords": coordinates, with shape of (N, 2)
+                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,the 1st "xy" represents
+                  top left point of a box,the 2nd "xy" represents right bottom point.
+                - "mask": map used for segmentation, with shape of (H, W, 1)
 
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
@@ -249,14 +239,10 @@ class BaseTransform:
         if keys is None:
             keys = ("image",)
         elif not isinstance(keys, Sequence):
-            raise ValueError(
-                "keys should be a sequence, but got keys={}".format(keys)
-            )
+            raise ValueError(f"keys should be a sequence, but got keys={keys}")
         for k in keys:
             if self._get_apply(k) is None:
-                raise NotImplementedError(
-                    "{} is unsupported data structure".format(k)
-                )
+                raise NotImplementedError(f"{k} is unsupported data structure")
         self.keys = keys
 
         # storage some params get from function get_params()
@@ -289,7 +275,7 @@ class BaseTransform:
         return outputs
 
     def _get_apply(self, key):
-        return getattr(self, "_apply_{}".format(key), None)
+        return getattr(self, f"_apply_{key}", None)
 
     def _apply_image(self, image):
         raise NotImplementedError
@@ -440,9 +426,9 @@ class RandomResizedCrop(BaseTransform):
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
-        scale (list|tuple): Scale range of the cropped image before resizing, relatively to the origin
-            image. Default: (0.08, 1.0)
-        ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
+        scale (list|tuple, optional): Scale range of the cropped image before resizing, relatively to the origin
+            image. Default: (0.08, 1.0).
+        ratio (list|tuple, optional): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
@@ -502,7 +488,7 @@ class RandomResizedCrop(BaseTransform):
         self.ratio = ratio
         self.interpolation = interpolation
 
-    def _get_param(self, image, attempts=10):
+    def _dynamic_get_param(self, image, attempts=10):
         width, height = _get_image_size(image)
         area = height * width
 
@@ -535,8 +521,106 @@ class RandomResizedCrop(BaseTransform):
         j = (width - w) // 2
         return i, j, h, w
 
+    def _static_get_param(self, image, attempts=10):
+        width, height = _get_image_size(image)
+        area = height * width
+        log_ratio = tuple(math.log(x) for x in self.ratio)
+
+        counter = paddle.full(
+            shape=[1], fill_value=0, dtype='int32'
+        )  # loop counter
+
+        ten = paddle.full(
+            shape=[1], fill_value=10, dtype='int32'
+        )  # loop length
+
+        i = paddle.zeros([1], dtype="int32")
+        j = paddle.zeros([1], dtype="int32")
+        h = paddle.ones([1], dtype="int32") * (height + 1)
+        w = paddle.ones([1], dtype="int32") * (width + 1)
+
+        def cond(counter, ten, i, j, h, w):
+            return (counter < ten) and (w > width or h > height)
+
+        def body(counter, ten, i, j, h, w):
+            target_area = (
+                paddle.uniform(shape=[1], min=self.scale[0], max=self.scale[1])
+                * area
+            )
+            aspect_ratio = paddle.exp(
+                paddle.uniform(shape=[1], min=log_ratio[0], max=log_ratio[1])
+            )
+
+            w = paddle.round(paddle.sqrt(target_area * aspect_ratio)).astype(
+                'int32'
+            )
+            h = paddle.round(paddle.sqrt(target_area / aspect_ratio)).astype(
+                'int32'
+            )
+
+            i = paddle.static.nn.cond(
+                0 < w <= width and 0 < h <= height,
+                lambda: paddle.uniform(shape=[1], min=0, max=height - h).astype(
+                    "int32"
+                ),
+                lambda: i,
+            )
+
+            j = paddle.static.nn.cond(
+                0 < w <= width and 0 < h <= height,
+                lambda: paddle.uniform(shape=[1], min=0, max=width - w).astype(
+                    "int32"
+                ),
+                lambda: j,
+            )
+
+            counter += 1
+
+            return counter, ten, i, j, h, w
+
+        counter, ten, i, j, h, w = paddle.static.nn.while_loop(
+            cond, body, [counter, ten, i, j, h, w]
+        )
+
+        def central_crop(width, height):
+
+            height = paddle.assign([height]).astype("float32")
+            width = paddle.assign([width]).astype("float32")
+
+            # Fallback to central crop
+            in_ratio = width / height
+
+            w, h = paddle.static.nn.cond(
+                in_ratio < self.ratio[0],
+                lambda: [
+                    width.astype("int32"),
+                    paddle.round(width / self.ratio[0]).astype("int32"),
+                ],
+                lambda: paddle.static.nn.cond(
+                    in_ratio > self.ratio[1],
+                    lambda: [
+                        paddle.round(height * self.ratio[1]),
+                        height.astype("int32"),
+                    ],
+                    lambda: [width.astype("int32"), height.astype("int32")],
+                ),
+            )
+            i = (height.astype("int32") - h) // 2
+            j = (width.astype("int32") - w) // 2
+
+            return i, j, h, w, counter
+
+        return paddle.static.nn.cond(
+            0 < w <= width and 0 < h <= height,
+            lambda: [i, j, h, w, counter],
+            lambda: central_crop(width, height),
+        )
+
     def _apply_image(self, img):
-        i, j, h, w = self._get_param(img)
+        if paddle.in_dynamic_mode():
+            i, j, h, w = self._dynamic_get_param(img)
+        else:
+            i, j, h, w, counter = self._static_get_param(img)
 
         cropped_img = F.crop(img, i, j, h, w)
         return F.resize(cropped_img, self.size, self.interpolation)
@@ -619,9 +703,22 @@ class RandomHorizontalFlip(BaseTransform):
         self.prob = prob
 
     def _apply_image(self, img):
+        if paddle.in_dynamic_mode():
+            return self._dynamic_apply_image(img)
+        else:
+            return self._static_apply_image(img)
+
+    def _dynamic_apply_image(self, img):
         if random.random() < self.prob:
             return F.hflip(img)
         return img
+
+    def _static_apply_image(self, img):
+        return paddle.static.nn.cond(
+            paddle.rand(shape=(1,)) < self.prob,
+            lambda: F.hflip(img),
+            lambda: img,
+        )
 
 
 class RandomVerticalFlip(BaseTransform):
@@ -661,9 +758,22 @@ class RandomVerticalFlip(BaseTransform):
         self.prob = prob
 
     def _apply_image(self, img):
+        if paddle.in_dynamic_mode():
+            return self._dynamic_apply_image(img)
+        else:
+            return self._static_apply_image(img)
+
+    def _dynamic_apply_image(self, img):
         if random.random() < self.prob:
             return F.vflip(img)
         return img
+
+    def _static_apply_image(self, img):
+        return paddle.static.nn.cond(
+            paddle.rand(shape=(1,)) < self.prob,
+            lambda: F.vflip(img),
+            lambda: img,
+        )
 
 
 class Normalize(BaseTransform):
@@ -785,7 +895,7 @@ class BrightnessTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the brightness. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -828,7 +938,7 @@ class ContrastTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the contrast. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -873,7 +983,7 @@ class SaturationTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the saturation. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -916,7 +1026,7 @@ class HueTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the hue. Can be any number
-            between 0 and 0.5, 0 gives the original image
+            between 0 and 0.5, 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -960,14 +1070,14 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness (float): How much to jitter brightness.
-            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast (float): How much to jitter contrast.
-            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation (float): How much to jitter saturation.
-            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue (float): How much to jitter hue.
-            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
+        brightness (float, optional): How much to jitter brightness.
+            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers. Default: 0.
+        contrast (float, optional): How much to jitter contrast.
+            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers. Default: 0.
+        saturation (float, optional): How much to jitter saturation.
+            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers. Default: 0.
+        hue (float, optional): How much to jitter hue.
+            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5. Default: 0.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -1133,8 +1243,12 @@ class RandomCrop(BaseTransform):
         if w == tw and h == th:
             return 0, 0, h, w
 
-        i = random.randint(0, h - th)
-        j = random.randint(0, w - tw)
+        if paddle.in_dynamic_mode():
+            i = random.randint(0, h - th)
+            j = random.randint(0, w - tw)
+        else:
+            i = paddle.randint(low=0, high=h - th)
+            j = paddle.randint(low=0, high=w - tw)
         return i, j, th, tw
 
     def _apply_image(self, img):
@@ -1225,7 +1339,7 @@ class Pad(BaseTransform):
         if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
             raise ValueError(
                 "Padding must be an int or a 2, or 4 element tuple, not a "
-                + "{} element tuple".format(len(padding))
+                + f"{len(padding)} element tuple"
             )
 
         super().__init__(keys)
@@ -1511,7 +1625,12 @@ class RandomRotation(BaseTransform):
         self.fill = fill
 
     def _get_param(self, degrees):
-        angle = random.uniform(degrees[0], degrees[1])
+        if paddle.in_dynamic_mode():
+            angle = random.uniform(degrees[0], degrees[1])
+        else:
+            angle = paddle.uniform(
+                [1], dtype="float32", min=degrees[0], max=degrees[1]
+            )
 
         return angle
 
@@ -1672,7 +1791,7 @@ class Grayscale(BaseTransform):
     """Converts image to grayscale.
 
     Args:
-        num_output_channels (int): (1 or 3) number of channels desired for output image
+        num_output_channels (int, optional): (1 or 3) number of channels desired for output image. Default: 1.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -1789,8 +1908,8 @@ class RandomErasing(BaseTransform):
         self.value = value
         self.inplace = inplace
 
-    def _get_param(self, img, scale, ratio, value):
-        """Get parameters for ``erase`` for a random erasing.
+    def _dynamic_get_param(self, img, scale, ratio, value):
+        """Get parameters for ``erase`` for a random erasing in dynamic mode.
 
         Args:
             img (paddle.Tensor | np.array | PIL.Image): Image to be erased.
@@ -1839,13 +1958,104 @@ class RandomErasing(BaseTransform):
 
         return 0, 0, h, w, img
 
-    def _apply_image(self, img):
+    def _static_get_param(self, img, scale, ratio, value):
+        """Get parameters for ``erase`` for a random erasing in static mode.
+
+        Args:
+            img (paddle.static.Variable): Image to be erased.
+            scale (sequence, optional): The proportional range of the erased area to the input image.
+            ratio (sequence, optional): Aspect ratio range of the erased area.
+            value (sequence | None): The value each pixel in erased area will be replaced with.
+                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               respectively. If value is None, each pixel will be erased with random values.
+
+        Returns:
+            tuple: params (i, j, h, w, v) to be passed to ``erase`` for random erase.
+        """
+
+        c, h, w = img.shape[-3], img.shape[-2], img.shape[-1]
+
+        img_area = h * w
+        log_ratio = np.log(np.array(ratio))
+
+        def cond(counter, ten, erase_h, erase_w):
+            return counter < ten and (erase_h >= h or erase_w >= w)
+
+        def body(counter, ten, erase_h, erase_w):
+
+            erase_area = (
+                paddle.uniform([1], min=scale[0], max=scale[1]) * img_area
+            )
+            aspect_ratio = paddle.exp(
+                paddle.uniform([1], min=log_ratio[0], max=log_ratio[1])
+            )
+            erase_h = paddle.round(paddle.sqrt(erase_area * aspect_ratio)).cast(
+                "int32"
+            )
+            erase_w = paddle.round(paddle.sqrt(erase_area / aspect_ratio)).cast(
+                "int32"
+            )
+
+            counter += 1
+
+            return [counter, ten, erase_h, erase_w]
+
+        h = paddle.assign([h]).astype("int32")
+        w = paddle.assign([w]).astype("int32")
+        erase_h, erase_w = h.clone(), w.clone()
+        counter = paddle.full(
+            shape=[1], fill_value=0, dtype='int32'
+        )  # loop counter
+        ten = paddle.full(
+            shape=[1], fill_value=10, dtype='int32'
+        )  # loop length
+        counter, ten, erase_h, erase_w = paddle.static.nn.while_loop(
+            cond, body, [counter, ten, erase_h, erase_w]
+        )
+
+        if value is None:
+            v = paddle.normal(shape=[c, erase_h, erase_w]).astype(img.dtype)
+        else:
+            v = value[:, None, None]
+
+        zero = paddle.zeros([1]).astype("int32")
+        top = paddle.static.nn.cond(
+            erase_h < h and erase_w < w,
+            lambda: paddle.uniform(
+                shape=[1], min=0, max=h - erase_h + 1
+            ).astype("int32"),
+            lambda: zero,
+        )
+
+        left = paddle.static.nn.cond(
+            erase_h < h and erase_w < w,
+            lambda: paddle.uniform(
+                shape=[1], min=0, max=w - erase_w + 1
+            ).astype("int32"),
+            lambda: zero,
+        )
+
+        erase_h = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: erase_h, lambda: h
+        )
+
+        erase_w = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: erase_w, lambda: w
+        )
+
+        v = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: v, lambda: img
+        )
+
+        return top, left, erase_h, erase_w, v, counter
+
+    def _dynamic_apply_image(self, img):
         """
         Args:
             img (paddle.Tensor | np.array | PIL.Image): Image to be Erased.
 
         Returns:
-            output (paddle.Tensor np.array | PIL.Image): A random erased image.
+            output (paddle.Tensor | np.array | PIL.Image): A random erased image.
         """
 
         if random.random() < self.prob:
@@ -1859,8 +2069,45 @@ class RandomErasing(BaseTransform):
                 raise ValueError(
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
-            top, left, erase_h, erase_w, v = self._get_param(
+            top, left, erase_h, erase_w, v = self._dynamic_get_param(
                 img, self.scale, self.ratio, value
             )
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img
+
+    def _static_apply_image(self, img):
+        """
+        Args:
+            img (paddle.static.Variable): Image to be Erased.
+
+        Returns:
+            output (paddle.static.Variable): A random erased image.
+        """
+
+        if isinstance(self.value, numbers.Number):
+            value = paddle.assign([self.value]).astype(img.dtype)
+        elif isinstance(self.value, str):
+            value = None
+        else:
+            value = paddle.assign(self.value).astype(img.dtype)
+        if value is not None and not (
+            value.shape[0] == 1 or value.shape[0] == 3
+        ):
+            raise ValueError(
+                "Value should be a single number or a sequence with length equals to image's channel."
+            )
+
+        top, left, erase_h, erase_w, v, counter = self._static_get_param(
+            img, self.scale, self.ratio, value
+        )
+        return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
+
+    def _apply_image(self, img):
+        if paddle.in_dynamic_mode():
+            return self._dynamic_apply_image(img)
+        else:
+            return paddle.static.nn.cond(
+                paddle.rand([1]) < self.prob,
+                lambda: self._static_apply_image(img),
+                lambda: img,
+            )

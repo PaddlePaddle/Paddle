@@ -13,21 +13,20 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import numpy as np
-import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
 
+import numpy as np
+
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid, nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.utils import make_data_unshard
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 
@@ -116,11 +115,11 @@ def get_program():
     with fluid.program_guard(train_program, start_program):
 
         # 循环计数器
-        i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
         auto.shard_tensor(i, _g_process_mesh, [None])
 
         # 循环次数
-        loop_len = fluid.layers.fill_constant(
+        loop_len = paddle.tensor.fill_constant(
             shape=[1], dtype='int64', value=epoch_num
         )
         auto.shard_tensor(loop_len, _g_process_mesh, [None])
@@ -162,7 +161,7 @@ def get_program():
         )
         pred = mlp_start(input)
 
-        input_array = fluid.layers.array_write(pred, i)
+        input_array = paddle.tensor.array_write(pred, i)
         # TODO: check whether this annotation is needed
         # auto.shard_tensor(input_array,
         #                   dist_attr={
@@ -170,13 +169,13 @@ def get_program():
         #                       "dims_mapping": [-1, -1, -1]
         #                   })
 
-        cond = fluid.layers.less_than(x=i, y=loop_len)
+        cond = paddle.less_than(x=i, y=loop_len)
         auto.shard_tensor(cond, _g_process_mesh, [None])
 
-        while_op = fluid.layers.While(cond=cond)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
         with while_op.block():
 
-            pre_input = fluid.layers.array_read(array=input_array, i=i)
+            pre_input = paddle.tensor.array_read(array=input_array, i=i)
             auto.shard_tensor(pre_input, _g_process_mesh, [None, None, None])
 
             mlp_while = MLPLayer(
@@ -188,11 +187,11 @@ def get_program():
             cur_pred = mlp_while(pre_input)
 
             # 更新循环条件
-            i = fluid.layers.increment(x=i, value=1, in_place=True)
-            fluid.layers.array_write(cur_pred, array=input_array, i=i)
-            fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+            i = paddle.increment(x=i, value=1)
+            paddle.tensor.array_write(cur_pred, array=input_array, i=i)
+            paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
-        end_pred = fluid.layers.array_read(array=input_array, i=i)
+        end_pred = paddle.tensor.array_read(array=input_array, i=i)
         auto.shard_tensor(end_pred, _g_process_mesh, [None, None, None])
 
         mlp_end = MLPLayer(
@@ -224,7 +223,7 @@ def completion(train_program, start_program, dist_context):
     #                     out_var)
     #                 if tensor_dist_attr:
     #                     continue
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 tensor_dist_attr.dims_mapping = [-1]
     #                 dist_context.set_tensor_dist_attr_for_program(
@@ -233,7 +232,7 @@ def completion(train_program, start_program, dist_context):
     #         elif op.type == "elementwise_sub":
     #             for out_name in op.output_arg_names:
     #                 out_var = block.vars[out_name]
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 tensor_dist_attr.dims_mapping = [-1, -1, -1]
     #                 dist_context.set_tensor_dist_attr_for_program(
@@ -259,7 +258,7 @@ def completion(train_program, start_program, dist_context):
     #                     out_var)
     #                 if tensor_dist_attr:
     #                     continue
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 if col:
     #                     tensor_dist_attr.dims_mapping = [-1, -1, 0]
@@ -270,7 +269,7 @@ def completion(train_program, start_program, dist_context):
     #         elif op.type == "while":
     #             out_name = op.desc.output("StepScopes")[0]
     #             out_var = block.vars[out_name]
-    #             tensor_dist_attr = TensorDistributedAttribute()
+    #             tensor_dist_attr = TensorDistAttr()
     #             tensor_dist_attr.process_mesh = _g_process_mesh
     #             tensor_dist_attr.dims_mapping = [-1]
     #             dist_context.set_tensor_dist_attr_for_program(out_var,
@@ -279,7 +278,7 @@ def completion(train_program, start_program, dist_context):
     # # completion ops
     # for block in blocks:
     #     for op in block.ops:
-    #         op_dist_attr = OperatorDistributedAttribute()
+    #         op_dist_attr = OperatorDistAttr()
     #         op_dist_attr.process_mesh = _g_process_mesh
     #         if op.type == "create_by_read" or op.type == "create_double_buffer_reader":
     #             for in_name in op.input_arg_names:

@@ -32,10 +32,14 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -116,8 +120,7 @@ void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
 template <typename T>
-PaddleBuf PaddleBufCreate(
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+PaddleBuf PaddleBufCreate(py::array_t<T, py::array::c_style> data) {
   PaddleBuf buf(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()),
               data.size(),
@@ -126,9 +129,8 @@ PaddleBuf PaddleBufCreate(
 }
 
 template <typename T>
-void PaddleBufReset(
-    PaddleBuf &buf,                                                    // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
+void PaddleBufReset(PaddleBuf &buf,                             // NOLINT
+                    py::array_t<T, py::array::c_style> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
   std::copy_n(static_cast<const T *>(data.data()),
               data.size(),
@@ -137,7 +139,7 @@ void PaddleBufReset(
 
 template <typename T>
 PaddleTensor PaddleTensorCreate(
-    py::array_t<T, py::array::c_style | py::array::forcecast> data,
+    py::array_t<T, py::array::c_style> data,
     const std::string name = "",
     const std::vector<std::vector<size_t>> &lod = {},
     bool copy = true) {
@@ -171,19 +173,28 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
     case PaddleDType::INT64:
       dt = py::dtype::of<int64_t>();
       break;
+    case PaddleDType::FLOAT64:
+      dt = py::dtype::of<double>();
+      break;
     case PaddleDType::FLOAT32:
       dt = py::dtype::of<float>();
-      break;
-    case PaddleDType::UINT8:
-      dt = py::dtype::of<uint8_t>();
       break;
     case PaddleDType::FLOAT16:
       dt = py::dtype::of<paddle_infer::float16>();
       break;
+    case PaddleDType::UINT8:
+      dt = py::dtype::of<uint8_t>();
+      break;
+    case PaddleDType::INT8:
+      dt = py::dtype::of<int8_t>();
+      break;
+    case PaddleDType::BOOL:
+      dt = py::dtype::of<bool>();
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
-          "FLOAT32."));
+          "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
+          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
   }
 
   return dt;
@@ -195,9 +206,8 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
 }
 
 template <typename T>
-void ZeroCopyTensorCreate(
-    ZeroCopyTensor &tensor,  // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                          py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
@@ -217,9 +227,8 @@ void ZeroCopyStringTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
 }
 
 template <typename T>
-void PaddleInferTensorCreate(
-    paddle_infer::Tensor &tensor,  // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
+                             py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
@@ -243,7 +252,12 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
     shape.push_back(input_tensor.dims()[i]);
   }
-  if (input_tensor.dtype() == phi::DataType::FLOAT32) {
+  if (input_tensor.dtype() == phi::DataType::FLOAT64) {
+    tensor.ShareExternalData(
+        static_cast<double *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::FLOAT32) {
     tensor.ShareExternalData(
         static_cast<float *>(input_tensor.data()),
         shape,
@@ -253,6 +267,60 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<paddle::platform::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::INT32) {
+    tensor.ShareExternalData(
+        static_cast<int32_t *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::INT64) {
+    tensor.ShareExternalData(
+        static_cast<int64_t *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported data type. Now share_external_data only supports INT32, "
+        "INT64, FLOAT64, FLOAT32 and FLOAT16."));
+  }
+}
+
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                   paddle::Tensor &&paddle_tensor) {
+  std::vector<int> shape;
+  for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
+    shape.push_back(paddle_tensor.dims()[i]);
+  }
+
+  if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
+    tensor.ShareExternalData(
+        static_cast<double *>(paddle_tensor.data<double>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::FLOAT32) {
+    tensor.ShareExternalData(
+        static_cast<float *>(paddle_tensor.data<float>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::FLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<paddle::platform::float16 *>(
+            paddle_tensor.data<paddle::platform::float16>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::INT32) {
+    tensor.ShareExternalData(
+        static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::INT64) {
+    tensor.ShareExternalData(
+        static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported data type. Now share_external_data only supports INT32, "
+        "INT64, FLOAT32 and FLOAT16."));
   }
 }
 
@@ -278,13 +346,28 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
     case PaddleDType::INT64:
       size = sizeof(int64_t);
       break;
+    case PaddleDType::FLOAT64:
+      size = sizeof(double);
+      break;
     case PaddleDType::FLOAT32:
       size = sizeof(float);
       break;
+    case PaddleDType::FLOAT16:
+      size = sizeof(paddle_infer::float16);
+      break;
+    case PaddleDType::INT8:
+      size = sizeof(int8_t);
+      break;
+    case PaddleDType::UINT8:
+      size = sizeof(uint8_t);
+      break;
+    case PaddleDType::BOOL:
+      size = sizeof(bool);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type. Now only supports INT32, INT64 and "
-          "FLOAT32."));
+          "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
+          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
   }
   return size;
 }
@@ -302,6 +385,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::INT64:
       tensor.copy_to_cpu(static_cast<int64_t *>(array.mutable_data()));
       break;
+    case PaddleDType::FLOAT64:
+      tensor.copy_to_cpu<double>(static_cast<double *>(array.mutable_data()));
+      break;
     case PaddleDType::FLOAT32:
       tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
       break;
@@ -315,10 +401,13 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::INT8:
       tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::BOOL:
+      tensor.copy_to_cpu<bool>(static_cast<bool *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
-          "FLOAT32."));
+          "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
+          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
   }
   return array;
 }
@@ -336,6 +425,9 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
     case PaddleDType::INT64:
       tensor.CopyToCpu(static_cast<int64_t *>(array.mutable_data()));
       break;
+    case PaddleDType::FLOAT64:
+      tensor.CopyToCpu<double>(static_cast<double *>(array.mutable_data()));
+      break;
     case PaddleDType::FLOAT32:
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
       break;
@@ -349,10 +441,13 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
     case PaddleDType::INT8:
       tensor.CopyToCpu(static_cast<int8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::BOOL:
+      tensor.CopyToCpu(static_cast<bool *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type. Now only supports INT32, INT64 and "
-          "FLOAT32."));
+          "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
+          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
   }
   return array;
 }
@@ -431,9 +526,14 @@ void BindInferenceApi(py::module *m) {
 namespace {
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
+      .value("FLOAT64", PaddleDType::FLOAT64)
       .value("FLOAT32", PaddleDType::FLOAT32)
+      .value("FLOAT16", PaddleDType::FLOAT16)
       .value("INT64", PaddleDType::INT64)
-      .value("INT32", PaddleDType::INT32);
+      .value("INT32", PaddleDType::INT32)
+      .value("UINT8", PaddleDType::UINT8)
+      .value("INT8", PaddleDType::INT8)
+      .value("BOOL", PaddleDType::BOOL);
 }
 
 void BindPaddleDataLayout(py::module *m) {
@@ -537,7 +637,8 @@ void BindPaddlePlace(py::module *m) {
       .value("CPU", PaddlePlace::kCPU)
       .value("GPU", PaddlePlace::kGPU)
       .value("XPU", PaddlePlace::kXPU)
-      .value("NPU", PaddlePlace::kNPU);
+      .value("NPU", PaddlePlace::kNPU)
+      .value("CUSTOM", PaddlePlace::kCUSTOM);
 }
 
 void BindPaddlePredictor(py::module *m) {
@@ -643,7 +744,11 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_use_gpu",
            &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"),
-           py::arg("device_id") = 0)
+           py::arg("device_id") = 0,
+           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
+      .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
+      .def("exp_disable_mixed_precision_ops",
+           &AnalysisConfig::Exp_DisableMixedPrecisionOps)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -665,7 +770,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),
-           py::arg("device_id") = 0)
+           py::arg("device_id") = 0,
+           py::arg("precision") = AnalysisConfig::Precision::kFloat32)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("enable_ipu",
            &AnalysisConfig::EnableIpu,
@@ -733,6 +839,10 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false,
            py::arg("use_calib_mode") = true)
+      .def("enable_tensorrt_memory_optim",
+           &AnalysisConfig::EnableTensorRTMemoryOptim,
+           py::arg("engine_memory_sharing") = true,
+           py::arg("sharing_identifier") = 0)
       .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,
@@ -984,10 +1094,15 @@ void BindZeroCopyTensor(py::module *m) {
       .def("reshape",
            py::overload_cast<const std::size_t &>(
                &paddle_infer::Tensor::ReshapeStrings))
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<int8_t>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<uint8_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
+      // NOTE(liuyuanle): double must be bound after float.
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<double>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<bool>)
       .def("copy_from_cpu", &ZeroCopyStringTensorCreate)
       .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
       .def("shape", &ZeroCopyTensor::shape)
@@ -1004,13 +1119,24 @@ void BindPaddleInferTensor(py::module *m) {
       .def("reshape",
            py::overload_cast<const std::size_t &>(
                &paddle_infer::Tensor::ReshapeStrings))
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu_bind",
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      // NOTE(liuyuanle): double must be bound after float.
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
+      .def("_copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
-      .def("share_external_data_bind", &PaddleInferShareExternalData)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
+      .def("_copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("_share_external_data_bind", &PaddleInferShareExternalData)
+      .def("_share_external_data_paddle_tensor_bind",
+           [](paddle_infer::Tensor &self, const py::handle &input) {
+             PyObject *obj = input.ptr();
+             PaddleTensorShareExternalData(self,
+                                           std::move(CastPyArg2Tensor(obj, 0)));
+           })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

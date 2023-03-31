@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
-import operator
 import functools
-import paddle
+import operator
+import os
 from collections import deque
-from .graph import Graph
+
+import paddle
+
 from .cluster import DeviceType
+from .graph import Graph
 from .process_group import get_process_group
 
 
@@ -70,7 +72,7 @@ def get_dtype_bytes(dtype):
     elif dtype == paddle.uint8:
         num_bytes = 1
     else:
-        raise ValueError("Unrecognized dtype {}.".format(dtype))
+        raise ValueError(f"Unrecognized dtype {dtype}.")
     return num_bytes
 
 

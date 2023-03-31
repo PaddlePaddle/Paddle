@@ -15,20 +15,13 @@
 decorator to deprecate a function or class
 """
 
-import warnings
 import functools
-import paddle
 import sys
+import warnings
+
+import paddle
 
 __all__ = []
-
-# NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
-# and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
-# See details: https://docs.python.org/3/library/warnings.html#default-warning-filter
-# The following line set DeprecationWarning to show once, which is expected to work in python 3.2 -> 3.6
-# However, doing this could introduce one samll side effect, i.e., the DeprecationWarning which is not issued by @deprecated.
-# The side effect is acceptable, and we will find better way to do this if we could.
-warnings.simplefilter('default', DeprecationWarning)
 
 
 def deprecated(update_to="", since="", reason="", level=0):
@@ -69,10 +62,10 @@ def deprecated(update_to="", since="", reason="", level=0):
         _update_to = update_to.strip()
         _reason = reason.strip()
 
-        msg = 'API "{}.{}" is deprecated'.format(func.__module__, func.__name__)
+        msg = f'API "{func.__module__}.{func.__name__}" is deprecated'
 
         if len(_since) > 0:
-            msg += " since {}".format(_since)
+            msg += f" since {_since}"
         msg += ", and will be removed in future versions."
         if len(_update_to) > 0:
             assert _update_to.startswith(
@@ -80,9 +73,9 @@ def deprecated(update_to="", since="", reason="", level=0):
             ), 'Argument update_to must start with "paddle.", your value is "{}"'.format(
                 update_to
             )
-            msg += ' Please use "{}" instead.'.format(_update_to)
+            msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
-            msg += "\nreason: {}".format(_reason)
+            msg += f"\nreason: {_reason}"
         if func.__doc__:
             func.__doc__ = ('\n\nWarning: ' + msg + '\n') + func.__doc__
 

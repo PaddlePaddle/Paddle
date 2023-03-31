@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+import unittest
+
+import numpy as np
+
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    skip_check_grad_ci,
+)
 
 
 def bilinear_interp_mkldnn_np(

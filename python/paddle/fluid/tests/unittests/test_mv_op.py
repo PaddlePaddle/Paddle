@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-from paddle.static import program_guard, Program
-from op_test import OpTest
+from paddle.static import Program, program_guard
 
 
 class TestMVOp(OpTest):
@@ -28,14 +30,14 @@ class TestMVOp(OpTest):
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Vec'], 'Out')
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
-        self.vec = np.random.random((100)).astype("float64")
+        self.vec = np.random.random(100).astype("float64")
 
 
 class TestMVAPI(unittest.TestCase):
@@ -44,7 +46,7 @@ class TestMVAPI(unittest.TestCase):
 
         self.x_data = np.random.random((5, 100)).astype("float64")
         self.x = paddle.to_tensor(self.x_data)
-        self.vec_data = np.random.random((100)).astype("float64")
+        self.vec_data = np.random.random(100).astype("float64")
         self.vec = paddle.to_tensor(self.vec_data)
         z = paddle.mv(self.x, self.vec)
         np_z = z.numpy()

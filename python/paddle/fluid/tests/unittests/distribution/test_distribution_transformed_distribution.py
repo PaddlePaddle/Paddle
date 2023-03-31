@@ -13,11 +13,11 @@
 # limitations under the License.
 import unittest
 
-import numpy as np
-import paddle
-
 import config
+import numpy as np
 import parameterize as param
+
+import paddle
 
 
 @param.place(config.DEVICES)
@@ -69,7 +69,7 @@ class TestIndependent(unittest.TestCase):
 
     def test_rsample(self):
         shape = [5, 10, 8]
-        expected_shape = (5, 10, 8, 1)
+        expected_shape = (5, 10, 8)
         data = self._t.rsample(shape)
         self.assertEqual(tuple(data.shape), expected_shape)
         self.assertEqual(data.dtype, self.base.loc.dtype)

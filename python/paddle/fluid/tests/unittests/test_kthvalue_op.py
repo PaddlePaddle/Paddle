@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
@@ -52,11 +54,11 @@ class TestKthvalueOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad({'X'}, 'Out')
 
 
 class TestKthvalueOpWithKeepdim(OpTest):
@@ -79,11 +81,11 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad({'X'}, 'Out')
 
 
 class TestKthvalueOpKernels(unittest.TestCase):
@@ -174,6 +176,12 @@ class TestKthvalueOpErrors(unittest.TestCase):
             self.x.kthvalue(k=10, axis=5)
 
         self.assertRaises(ValueError, test_dim_range_error)
+
+        def test_k_error_0_dim_input():
+            x_0d = paddle.full([], 1)
+            x_0d.kthvalue(k=8)
+
+        self.assertRaises(ValueError, test_k_error_0_dim_input)
 
 
 class TestModeOpInStatic(unittest.TestCase):

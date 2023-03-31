@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTYoloBoxTest(InferencePassTest):
@@ -26,8 +27,10 @@ class TRTYoloBoxTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)
@@ -55,7 +58,7 @@ class TRTYoloBoxTest(InferencePassTest):
         self.downsample_ratio = 32
 
     def append_yolobox(self, image, image_size):
-        return fluid.layers.yolo_box(
+        return paddle.vision.ops.yolo_box(
             x=image,
             img_size=image_size,
             class_num=self.class_num,
@@ -65,7 +68,7 @@ class TRTYoloBoxTest(InferencePassTest):
         )
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
@@ -78,8 +81,10 @@ class TRTYoloBoxFP16Test(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)
@@ -105,7 +110,7 @@ class TRTYoloBoxFP16Test(InferencePassTest):
         self.downsample_ratio = 32
 
     def append_yolobox(self, image, image_size):
-        return fluid.layers.yolo_box(
+        return paddle.vision.ops.yolo_box(
             x=image,
             img_size=image_size,
             class_num=self.class_num,
@@ -115,7 +120,7 @@ class TRTYoloBoxFP16Test(InferencePassTest):
         )
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True, rtol=1e-1)
             self.assertTrue(
@@ -128,8 +133,10 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
-            image = fluid.data(name='image', shape=image_shape, dtype='float32')
-            image_size = fluid.data(
+            image = paddle.static.data(
+                name='image', shape=image_shape, dtype='float32'
+            )
+            image_size = paddle.static.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
             boxes, scores = self.append_yolobox(image, image_size)
@@ -159,7 +166,7 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
         self.iou_aware_factor = 0.5
 
     def append_yolobox(self, image, image_size):
-        return fluid.layers.yolo_box(
+        return paddle.vision.ops.yolo_box(
             x=image,
             img_size=image_size,
             class_num=self.class_num,
@@ -171,7 +178,7 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
         )
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(

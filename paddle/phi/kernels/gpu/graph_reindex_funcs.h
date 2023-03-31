@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T>
 inline __device__ size_t Hash(T id, int64_t size) {
-  return id % size;
+  return static_cast<unsigned long long int>(id) % size;  // NOLINT
 }
 
 template <typename T>
@@ -169,7 +169,7 @@ __global__ void FillUniqueItems(const T* items,
 
 template <typename T>
 __global__ void ReindexSrcOutput(T* src_output,
-                                 int num_items,
+                                 int64_t num_items,
                                  int64_t size,
                                  const T* keys,
                                  const int* values) {

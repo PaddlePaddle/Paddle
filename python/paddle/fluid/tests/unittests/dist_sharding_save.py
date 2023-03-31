@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-from dist_mnist import cnn_model  # noqa: F401
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet.meta_optimizers.sharding as sharding
-
 import os
-import sys
 import pickle
+import sys
+
+from dist_mnist import cnn_model  # noqa: F401
+
+import paddle
+from paddle import fluid
+from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.fleet.meta_optimizers import sharding
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -28,7 +29,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def runtime_main():
-    import paddle.distributed.fleet as fleet
+    from paddle.distributed import fleet
 
     # model definition
     train_prog = paddle.fluid.Program()
@@ -37,20 +38,21 @@ def runtime_main():
     fleet.init(role)
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 
@@ -87,7 +89,7 @@ def runtime_main():
 if __name__ == "__main__":
     # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
-    # paddle.fluid.incubate.fleet.collective which is not support by sharding (paddle.distributed.fleet).
+    # paddle.incubate.distributed.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.
     # runtime_main(TestDistMnist2x2)
     runtime_main()

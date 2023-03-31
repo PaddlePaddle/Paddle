@@ -14,25 +14,26 @@
 
 import copy
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..process_group import new_process_group
-from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
-from ..utils import (
-    compute_compatible_dim_mapping,
-    set_dist_op_desc_original_id,
-    _get_comm_group,
-)
-from ..dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
+from paddle.common_ops_import import check_dtype, check_variable_and_dtype
+from paddle.framework import core
+from paddle.static import Operator
 
-from paddle.fluid import core
-from paddle.fluid.framework import Operator
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ..dist_attribute import OperatorDistAttr, TensorDistAttr
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedPNorm(DistributedOperatorImplContainer):
@@ -43,8 +44,23 @@ class DistributedPNorm(DistributedOperatorImplContainer):
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 
 
-# Row Parallel
-class DistributedPNormImpl(DistributedOperatorImpl):
+# Data Parallel
+class DistributedPNormImpl0(DistributedOperatorImpl):
+    """
+    TODO: p_norm scene
+
+    1. axis == None, isinstance(p, (int, float)), asvector = True
+        1.1 x_dims_mapping == [0, -1, -1]
+            allgather input if it is splitted by dp group
+        1.2 x_dims_mapping == [-1, 0, -1]
+            allgather, split and concat input if it is splitted by mp group
+    2. isinstance(axis, int), asvector = False
+        1.1 axis == 0 and x_dims_mapping == [0, -1, -1]
+            allgather input if it's input[0] is splited by dp group.
+        1.2 axis == 1 and x_dims_mapping == [-1, 0, -1]
+            allgather, split and concat input if it's input[1] is splitted by mp group
+    """
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -53,6 +69,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
+        axis = op_desc.attr('axis')
+        asvector = op_desc.attr('asvector')
         x_name = op_desc.input('X')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         if is_dim_replicate(x_dims_mapping[0]):
@@ -61,6 +79,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         for mapping in x_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
+        if not (axis == -1 and asvector) and not (axis == 0 and not asvector):
+            return False
         return True
 
     def is_output_compatible(self, dist_op):
@@ -86,6 +106,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         changed = False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
+        axis = op_desc.attr('axis')
+        keepdim = op_desc.attr('keepdim')
 
         batch_dim_mappings = []
         for arg_name in op_desc.input_arg_names():
@@ -110,15 +132,26 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 and compatible_dim_mapping != dims_mapping[0]
             ):
                 dims_mapping[0] = compatible_dim_mapping
+                op_dist_attr.set_input_dims_mapping(arg_name, dims_mapping)
                 changed = True
-        for arg_name in op_desc.output_arg_names():
-            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
-            if (
-                len(dims_mapping) >= 1
-                and compatible_dim_mapping != dims_mapping[0]
-            ):
-                dims_mapping[0] = compatible_dim_mapping
-                changed = True
+
+        if axis == 0 and not keepdim:
+            for arg_name in op_desc.output_arg_names():
+                dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+                if len(dims_mapping) >= 1 and dims_mapping[0] != -1:
+                    dims_mapping[0] = -1
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
+                    changed = True
+        else:
+            for arg_name in op_desc.output_arg_names():
+                dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+                if (
+                    len(dims_mapping) >= 1
+                    and compatible_dim_mapping != dims_mapping[0]
+                ):
+                    dims_mapping[0] = compatible_dim_mapping
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
+                    changed = True
 
         return changed
 
@@ -139,7 +172,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -150,18 +183,18 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 output_name
             )
 
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(X_var.name)
         for axis in range(len(in_dims_mapping)):
             if in_dims_mapping[axis] != -1:
                 break
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
         group_ranks = _get_comm_group(
             process_mesh_group, process_mesh_shape, axis, rank_id
         )
@@ -185,7 +218,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             stop_gradient=X_var.stop_gradient,
         )
         # set allgather_out tensor dist_attr
-        allgather_out_dist_attr = TensorDistributedAttribute()
+        allgather_out_dist_attr = TensorDistAttr()
         allgather_out_dist_attr.process_mesh = op_dist_attr.process_mesh
         allgather_out_dist_attr.dims_mapping = [
             -1 for i in range(len(allgather_out.shape))
@@ -205,7 +238,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             },
         )
         # set c_allgather op dist_attr
-        allgather_op_dist_attr = OperatorDistributedAttribute()
+        allgather_op_dist_attr = OperatorDistAttr()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allgather_op_dist_attr.set_input_dims_mapping(
             X_var.name, in_dims_mapping
@@ -219,7 +252,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         # rename input
         kwargs['X'] = [allgather_out.name]
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
@@ -230,7 +264,10 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         op_dist_attr.set_input_dims_mapping(
             allgather_out.name, allgather_out_dist_attr.dims_mapping
         )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_input_dist_attr(X_var.name)
         ctx.set_op_dist_attr_for_program(pnorm_op, op_dist_attr)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -249,7 +286,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 backward_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in backward_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -260,13 +297,13 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        X_grad_var = main_block.var(kwargs['X@GRAD'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        X_grad_var = main_block._var_recursive(kwargs['X@GRAD'][0])
 
         # 1. copy p_norm_grad op and reset input name and output name
         new_kwargs = copy.deepcopy(kwargs)
         new_kwargs['X'] = [".".join(["c_allgather", X_var.name])]
-        new_X_var = main_block.var(new_kwargs['X'][0])
+        new_X_var = main_block._var_recursive(new_kwargs['X'][0])
         new_X_grad = main_block.create_var(
             name=".".join(["c_allgather", X_grad_var.name]),
             dtype=X_grad_var.dtype,
@@ -279,7 +316,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         new_X_var_dist_attr = ctx.get_tensor_dist_attr_for_program(new_X_var)
         ctx.set_tensor_dist_attr_for_program(new_X_grad, new_X_var_dist_attr)
         # replicate op in dist program with new kwargs
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(backward_op.desc)
         # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
@@ -291,14 +329,23 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         op_dist_attr.set_input_dims_mapping(
             new_X_var.name, new_X_var_dist_attr.dims_mapping
         )
+        # Store X_grad_var dims_mapping for later use
+        X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            X_grad_var.name
+        )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_input_dist_attr(X_var.name)
         op_dist_attr.set_output_dims_mapping(
             new_X_grad.name, new_X_var_dist_attr.dims_mapping
         )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_output_dist_attr(X_grad_var.name)
         ctx.set_op_dist_attr_for_program(p_norm_grad_op, op_dist_attr)
+        # TODO: should we add a new dist attr for the new op here?
 
         # 2. insert slice op
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
         from ..reshard import Resharder
 
@@ -317,7 +364,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             slice_ends.append(item[1])
             slices_axes.append(idx)
 
-        infer_flags = list(1 for i in range(len(slices_axes)))
+        infer_flags = [1 for i in range(len(slices_axes))]
         attrs = {
             "axes": slices_axes,
             "starts": slice_starts,
@@ -331,10 +378,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             outputs={'Out': [X_grad_var]},
             attrs=attrs,
         )
-        X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
-            X_grad_var.name
-        )
-        slice_op_dist_attr = OperatorDistributedAttribute()
+        slice_op_dist_attr = OperatorDistAttr()
         slice_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         slice_op_dist_attr.set_input_dims_mapping(
             new_X_grad.name, new_X_var_dist_attr.dims_mapping
@@ -346,5 +390,5 @@ class DistributedPNormImpl(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "p_norm", DistributedPNormImpl("row_parallel")
+    "p_norm", DistributedPNormImpl0("data_parallel")
 )

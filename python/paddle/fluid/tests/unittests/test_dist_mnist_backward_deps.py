@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -28,7 +30,7 @@ class TestDistMnistNCCL2BackWardDeps(TestDistBase):
         self._enable_backward_deps = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)

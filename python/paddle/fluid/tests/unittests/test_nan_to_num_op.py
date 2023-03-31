@@ -14,11 +14,13 @@
 
 import unittest
 from typing import Optional
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 
-# from op_test import OpTest
+import numpy as np
+
+import paddle
+from paddle.fluid import core
+
+# from eager_op_test import OpTest
 
 
 def np_nan_to_num(
@@ -69,7 +71,7 @@ class TestNanToNum(unittest.TestCase):
         out4_np = np_nan_to_num(x_np, 1.0, 9.0, -12.0)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', x_np.shape)
+            x = paddle.static.data('X', x_np.shape)
             out1 = paddle.nan_to_num(x)
             out2 = paddle.nan_to_num(x, 1.0)
             out3 = paddle.nan_to_num(x, 1.0, 9.0)

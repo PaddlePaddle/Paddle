@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 from sparse_api_gen import SparseAPI
 
@@ -52,8 +52,10 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/multiary.h"
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
+
+DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -147,7 +149,7 @@ def main():
         '--api_yaml_path',
         nargs='+',
         help='path to api yaml file',
-        default='paddle/phi/api/yaml/ops.yaml',
+        default=['paddle/phi/api/yaml/ops.yaml'],
     )
 
     parser.add_argument(

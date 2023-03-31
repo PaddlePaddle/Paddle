@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_send_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -62,23 +62,23 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
-    int send_numel = numel / num;
-    int offset = send_numel * id;
+    int64_t send_numel = numel / num;
+    int64_t offset = send_numel * id;
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
       phi::DenseTensor tmp = *x;
-      auto task = pg->Send(&tmp, peer, offset, send_numel, /*sync_op*/ true);
+      auto task = pg->Send(tmp, peer, offset, send_numel, /*sync_op*/ true);
       task->Wait();
     } else {
       gpuStream_t stream = nullptr;
       auto place = ctx.GetPlace();
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
       } else {
         stream = comm->stream();
       }

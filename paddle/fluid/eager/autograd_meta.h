@@ -18,12 +18,12 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 namespace egr {
 
-using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
+using AbstractAutogradMeta = paddle::AbstractAutogradMeta;
 /**
  *
  * AutogradMeta is what record the backward info for tensor. When we run
  * computation graph eagerly, we can not build a static paddle program like
- * static mode do, so we need a new method to record forward info to trace
+ * static graph mode do, so we need a new method to record forward info to trace
  * backward when we finish all forward computation. This require our
  * AutogradMeta class record following main members
  *
@@ -68,7 +68,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const paddle::experimental::Tensor& Grad() const {
+  const paddle::Tensor& Grad() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_.get(),
         paddle::platform::errors::InvalidArgument(
@@ -79,9 +79,9 @@ class AutogradMeta : public AbstractAutogradMeta {
     return *(grad_.get());
   }
 
-  paddle::experimental::Tensor* MutableGrad() { return grad_.get(); }
+  paddle::Tensor* MutableGrad() { return grad_.get(); }
 
-  std::weak_ptr<paddle::experimental::Tensor> WeakGrad() { return grad_; }
+  std::weak_ptr<paddle::Tensor> WeakGrad() { return grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -133,8 +133,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  std::shared_ptr<paddle::experimental::Tensor> grad_{
-      std::make_shared<paddle::experimental::Tensor>()};
+  std::shared_ptr<paddle::Tensor> grad_{std::make_shared<paddle::Tensor>()};
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy

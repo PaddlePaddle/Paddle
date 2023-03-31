@@ -78,52 +78,52 @@ class TransferLayoutFunctor {
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (in_layout != DataLayout::ONEDNN && out_layout == DataLayout::ONEDNN) {
-        // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+        // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
         // Just set layout/format. No real transform occur
 
         auto out_format = phi::funcs::OneDNNFormatForSize(
-            in_tensor.dims().size(), framework::ToOneDNNFormat(in_layout));
+            in_tensor.dims().size(), phi::funcs::ToOneDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         if (in_layout == DataLayout::kNHWC) {
           VLOG(4) << "kNHWC";
           phi::funcs::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .set_cur_paddle_data_layout(in_layout);
+          phi::OneDNNContext::tls().set_cur_paddle_data_layout(in_layout);
         }
-
-        auto out_tz = phi::vectorize<int64_t>(out_tensor.dims());
-        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
-            framework::TransToProtoVarType(in_tensor.dtype()));
+        auto out_tz = out_tensor.dims().size() == 0
+                          ? std::vector<int64_t>{1}
+                          : phi::vectorize(out_tensor.dims());
+        dnnl::memory::data_type in_type =
+            phi::funcs::ToOneDNNDataType(in_tensor.dtype());
 
         dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
         out_tensor.set_mem_desc(out_mem_desc);
       } else {
-        auto target_layout = paddle::platform::MKLDNNDeviceContext::tls()
-                                 .get_cur_paddle_data_layout();
+        auto target_layout =
+            phi::OneDNNContext::tls().get_cur_paddle_data_layout();
         // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in
         // fetch_op.cc
         if (out_layout == DataLayout::kNCHW &&
             in_name_ == framework::GradVarName("Filter")) {
           target_layout = out_layout;
         }
-        VLOG(4) << "innerTransDataLayoutFromMKLDNN: " << in_layout << "->"
+        VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
                 << target_layout;
-        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
-        // Do transform via MKLDNN lib
-        paddle::framework::innerTransDataLayoutFromMKLDNN(in_layout,
-                                                          target_layout,
-                                                          in_tensor,
-                                                          &out_tensor,
-                                                          dev_ctx_.GetPlace());
+        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Do transform via ONEDNN lib
+        phi::funcs::TransDataLayoutFromOneDNN(in_layout,
+                                              target_layout,
+                                              in_tensor,
+                                              &out_tensor,
+                                              dev_ctx_.GetPlace());
       }
     } else {
-      // Case3 - transfrom between Non-MKLDNN OPKernels
+      // Case3 - transfrom between Non-ONEDNN OPKernels
       TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
     }
 #else
-    // Case3 - transfrom between Non-MKLDNN OPKernels
+    // Case3 - transfrom between Non-ONEDNN OPKernels
     TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
 #endif
     framework::SetTensorToVariable(*in_, out_tensor, out_);

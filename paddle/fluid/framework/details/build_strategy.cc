@@ -56,7 +56,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
+    if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
@@ -187,6 +187,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_adamw_, "fuse_adamw_op_pass");
+#endif
+
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
@@ -206,6 +211,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_feedforward_, "fused_feedforward_pass");
+#endif
   }
 
   void SetCollectiveContext() const {
@@ -519,8 +527,15 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_attention_pass);
+USE_PASS(fuse_adamw_op_pass);
+#endif
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
+#endif
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_feedforward_pass);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);

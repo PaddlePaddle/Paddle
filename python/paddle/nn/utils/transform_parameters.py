@@ -15,13 +15,13 @@
 from functools import reduce
 
 import paddle
+from paddle import _C_ops
 from paddle.fluid.framework import (
-    dygraph_only,
     _dygraph_tracer,
     _varbase_creator,
+    dygraph_only,
     in_dygraph_mode,
 )
-from paddle import _C_ops
 
 
 # input==output, inplace strategy of reshape has no cost almostly

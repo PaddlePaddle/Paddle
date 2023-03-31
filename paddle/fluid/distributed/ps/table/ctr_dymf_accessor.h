@@ -21,6 +21,7 @@
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
@@ -30,7 +31,7 @@ namespace distributed {
 class CtrDymfAccessor : public ValueAccessor {
  public:
   struct CtrDymfFeatureValue {
-    /*
+    /*v1: old version
       float unseen_days;
       float delta_score;
       float show;
@@ -44,6 +45,20 @@ class CtrDymfAccessor : public ValueAccessor {
       // float embedx_g2sum;
       std::vector<float> embedx_w;
        */
+    /* V2: support pass_id
+      uint16_t pass_id;
+      uint16_t unseen_days;
+      float show;
+      float click;
+      float embed_w;
+      // float embed_g2sum;
+      std::vector<float> embed_g2sum;
+      float slot;
+      float mf_dim
+      std::<vector>float embedx_g2sum;
+      // float embedx_g2sum;
+      std::vector<float> embedx_w;
+    */
 
     int Dim() { return 7 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; }
     int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
@@ -60,7 +75,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
 
     // 根据mf_dim计算的总长度
-    int Dim(int& mf_dim) {
+    int Dim(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_name == "SparseAdamSGDRule") {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -71,9 +86,19 @@ class CtrDymfAccessor : public ValueAccessor {
     }
 
     // 根据mf_dim计算的总byte数
-    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
+    int Size(int mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
-    float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
+    uint16_t& PassId(float* val) {
+      uint16_t* int16_val =
+          reinterpret_cast<uint16_t*>(val + UnseenDaysIndex());
+      return int16_val[0];
+    }
+
+    uint16_t& UnseenDays(float* val) {
+      uint16_t* int16_val =
+          reinterpret_cast<uint16_t*>(val + UnseenDaysIndex());
+      return int16_val[1];
+    }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
     float& Show(float* val) { return val[ShowIndex()]; }
     float& Click(float* val) { return val[ClickIndex()]; }
@@ -184,6 +209,7 @@ class CtrDymfAccessor : public ValueAccessor {
                  int param,
                  double global_cache_threshold) override;
   bool SaveSSD(float* value) override;
+  bool FilterSlot(float* value);
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值
@@ -217,6 +243,14 @@ class CtrDymfAccessor : public ValueAccessor {
     return 0.0;
   }
 
+  // 根据pass_id和show_threashold阈值来判断cache到ssd
+  bool SaveMemCache(float* value,
+                    int param,
+                    double global_cache_threshold,
+                    uint16_t pass_id);
+  // 更新pass_id
+  void UpdatePassId(float* value, uint16_t pass_id);
+
  private:
   // float ShowClickScore(float show, float click);
 
@@ -233,6 +267,7 @@ class CtrDymfAccessor : public ValueAccessor {
   float ShowClickScore(float show, float click);
   SparseValueSGDRule* _embed_sgd_rule;
   SparseValueSGDRule* _embedx_sgd_rule;
+  robin_hood::unordered_set<float> _filtered_slots;
 };
 }  // namespace distributed
 }  // namespace paddle

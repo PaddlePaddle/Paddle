@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -26,11 +26,10 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
+            tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],
                 dtype='float32',
-                append_batch_size=False,
             )
             if rank == 0:
                 paddle.distributed.send(tindata, dst=1)

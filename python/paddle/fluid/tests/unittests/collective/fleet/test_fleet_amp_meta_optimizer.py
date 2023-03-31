@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
+
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
-import paddle.distributed.fleet.base.role_maker as role_maker
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
 
 paddle.enable_static()
 
@@ -182,7 +184,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         applied_meta_list = fleet._get_applied_meta_list()
         applied_graph_list = fleet._get_applied_graph_list()
         print(applied_meta_list, applied_graph_list)
-        self.assertEqual(len(applied_meta_list), 3)
+        self.assertEqual(len(applied_meta_list), 4)
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [

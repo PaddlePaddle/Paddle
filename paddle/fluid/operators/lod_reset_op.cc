@@ -62,20 +62,19 @@ class LoDResetOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -105,18 +104,20 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, LoDTensor) Input variable of LoDResetOp which "
-             "could be a Tensor or LoDTensor, where the data of output "
+             "(Tensor, phi::DenseTensor) Input variable of LoDResetOp which "
+             "could be a Tensor or phi::DenseTensor, where the data of output "
              "variable inherits from.");
     AddInput("Y",
-             "(Tensor, LoDTensor, optional) If provided and Y is LoDTensor, "
+             "(phi::DenseTensor, optional) If provided and Y is "
+             "phi::DenseTensor, "
              "lod of Input(Y) would be considered as the target lod first, "
              "otherwise data of Input(Y) would be considered as the "
              "target lod.")
         .AsDispensable();
-    AddOutput("Out",
-              "(LoDTensor) Output variable of LoDResetOp which should be a "
-              "LoDTensor.");
+    AddOutput(
+        "Out",
+        "(phi::DenseTensor) Output variable of LoDResetOp which should be a "
+        "phi::DenseTensor.");
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
@@ -124,7 +125,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
-provided and `Y` is a LoDTensor, `Y.lod` would be considered as target LoD
+provided and `Y` is a phi::DenseTensor, `Y.lod` would be considered as target LoD
 first, otherwise `Y.data` would be considered as target LoD. If `Y` is not
 provided, target LoD should be specified by attribute `target_lod`.
 If target LoD is specified by `Y.data` or `target_lod`, only one level LoD
@@ -132,7 +133,7 @@ is supported.
 
 Example 1:
 
-Given a 1-level LoDTensor input(X):
+Given a 1-level phi::DenseTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -146,7 +147,7 @@ then we get a 1-level LoDTensor:
 
 Example 2:
 
-Given a 1-level LoDTensor input(X):
+Given a 1-level phi::DenseTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -162,7 +163,7 @@ then we get a 1-level LoDTensor:
 
 Example 3:
 
-Given a 1-level LoDTensor input(X):
+Given a 1-level phi::DenseTensor input(X):
     X.lod =  [[ 0,      2,                   5     6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -200,11 +201,11 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -248,12 +249,27 @@ REGISTER_OPERATOR(lod_reset_grad,
 
 REGISTER_OP_CPU_KERNEL(
     lod_reset,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, paddle::platform::float16>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL(
+    lod_reset,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext,
+                        paddle::platform::float16>,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, double>,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int64_t>);
+#endif
+
 REGISTER_OP_CPU_KERNEL(
     lod_reset_grad,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace,
+                            paddle::platform::float16>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,

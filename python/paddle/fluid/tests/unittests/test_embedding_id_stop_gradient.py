@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
@@ -47,16 +49,18 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):
             with fluid.scope_guard(scope):
-                x_1 = fluid.data(name='x1', shape=[4, 1], dtype='int64')
-                x_2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
-                x = fluid.layers.concat([x_1, x_2], axis=-1)
+                x_1 = paddle.static.data(name='x1', shape=[4, 1], dtype='int64')
+                x_2 = paddle.static.data(name='x2', shape=[4, 1], dtype='int64')
+                x = paddle.concat([x_1, x_2], axis=-1)
 
                 for _ in range(self.reshape_times):
-                    x = fluid.layers.reshape(x, [-1, 1])
+                    x = paddle.reshape(x, [-1, 1])
 
                 x.stop_gradient = stop_gradient
 
-                emb = fluid.embedding(x, size=[10, 32], dtype='float32')
+                emb = paddle.static.nn.embedding(
+                    x, size=[10, 32], dtype='float32'
+                )
                 avg_cost = paddle.mean(emb, name='mean_loss')
                 optim = fluid.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)

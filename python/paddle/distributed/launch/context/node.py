@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .device import Device
-
 import os
 import random
 import socket
 import struct
 from contextlib import closing
+
+from .device import Device
 
 
 class Node:

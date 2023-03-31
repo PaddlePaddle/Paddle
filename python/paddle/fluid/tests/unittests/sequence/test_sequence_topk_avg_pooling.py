@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from copy import deepcopy
 import sys
+import unittest
+from copy import deepcopy
+
+import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestSequenceTopkAvgPoolingOp(OpTest):
@@ -94,7 +95,7 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
             x_len = x_lod[0][idx]
             self.assertTrue(
                 x_len == channel_num * row_lod[0][idx] * col_lod[0][idx],
-                "x_len: %s can't mod channel_num: %s" % (x_len, channel_num),
+                f"x_len: {x_len} can't mod channel_num: {channel_num}",
             )
             out_tmp = np.zeros((0,), dtype=x_data.dtype)
             pos_tmp = np.zeros((0,), dtype='int32')
@@ -161,35 +162,6 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
         row = [36]
         col = [48]
         self.init_data(topks, channel_num, row, col, dim)
-
-    def test_api(self):
-        import paddle.fluid as fluid
-
-        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
-        row = fluid.layers.data(name='row', shape=[10], lod_level=1)
-        col = fluid.layers.data(name='col', shape=[10], lod_level=1)
-        topk_avg = fluid.contrib.sequence_topk_avg_pooling(
-            input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5
-        )
-
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
-            np.random.rand(45, 1).astype('float32'), [[30, 15]], place
-        )
-        row_tensor = fluid.create_lod_tensor(
-            np.random.rand(5, 10).astype('float32'), [[2, 3]], place
-        )
-        col_tensor = fluid.create_lod_tensor(
-            np.random.rand(4, 10).astype('float32'), [[3, 1]], place
-        )
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={'x': x_tensor, 'row': row_tensor, 'col': col_tensor},
-            fetch_list=[topk_avg],
-            return_numpy=False,
-        )
 
 
 if __name__ == '__main__':

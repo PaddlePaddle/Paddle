@@ -14,13 +14,14 @@
 
 import os
 import tarfile
+
 import numpy as np
 from PIL import Image
 
 import paddle
+from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 from paddle.utils import try_import
-from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
 
@@ -120,7 +121,7 @@ class Flowers(Dataset):
             'train',
             'valid',
             'test',
-        ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'valid' or 'test', but got {mode}"
 
         if backend is None:
             backend = paddle.vision.get_image_backend()

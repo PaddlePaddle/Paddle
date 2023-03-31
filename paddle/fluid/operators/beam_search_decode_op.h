@@ -23,8 +23,8 @@ namespace operators {
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
-                          LoDTensor* id_tensor,
-                          LoDTensor* score_tensor,
+                          phi::DenseTensor* id_tensor,
+                          phi::DenseTensor* score_tensor,
                           size_t beam_size,
                           int end_id)
       : beam_size_(beam_size),
@@ -119,11 +119,11 @@ struct BeamSearchDecodeFunctor {
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
-  LoDTensor* id_tensor_;
-  LoDTensor* score_tensor_;
+  phi::DenseTensor* id_tensor_;
+  phi::DenseTensor* score_tensor_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -164,8 +164,10 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
 
     // prepare output
-    LoDTensor* sentenceIds = context.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceScores = context.Output<LoDTensor>("SentenceScores");
+    phi::DenseTensor* sentenceIds =
+        context.Output<phi::DenseTensor>("SentenceIds");
+    phi::DenseTensor* sentenceScores =
+        context.Output<phi::DenseTensor>("SentenceScores");
 
     BeamSearchDecodeFunctor bs(
         *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);

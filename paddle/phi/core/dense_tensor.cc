@@ -37,7 +37,6 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
-#include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
 
@@ -98,7 +97,8 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
 
 void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
-                                size_t requested_size) {
+                                size_t requested_size,
+                                bool fake_alloc) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       phi::errors::InvalidArgument(
@@ -107,28 +107,44 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
-  PADDLE_ENFORCE(
-      valid(),
-      phi::errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
+
   size_t bytes = numel() * SizeOf(this->dtype());
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size,
-                      bytes,
-                      phi::errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          requested_size,
-                          bytes));
-    bytes = requested_size;
+
+  if (fake_alloc) {
+    bytes = 0;
+  } else {
+    PADDLE_ENFORCE(
+        valid(),
+        phi::errors::PreconditionNotMet("The meta data must be valid when "
+                                        "call the mutable data function."));
+    if (requested_size) {
+      PADDLE_ENFORCE_GE(requested_size,
+                        bytes,
+                        phi::errors::InvalidArgument(
+                            "The reserved size %d should be enough to meet the "
+                            "volume required by metadata %d.",
+                            requested_size,
+                            bytes));
+      bytes = requested_size;
+    }
   }
+
   // NOTE(paddle-dev): In case of the allocator of storage_ is different with
   // the incoming allocator, we will re-alloc data using the incoming
   // allocator. See DeviceContext.Alloc in core/device_context.cc.
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
-    ResetHolder(allocator->Allocate(bytes));
+    auto holder = allocator->Allocate(bytes);
+    if (holder_) {
+      PADDLE_ENFORCE_LE(
+          numel() * static_cast<int64_t>(SizeOf(dtype)) +
+              static_cast<int64_t>(meta_.offset),
+          static_cast<int64_t>(holder->size()),
+          phi::errors::InvalidArgument(
+              "The size of Holder is not enough to store the Tensor."));
+    }
+    holder_ = std::move(holder);
   }
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -139,11 +155,11 @@ template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE_EQ(
       dtype(),
-      paddle::experimental::CppTypeToDataType<T>::Type(),
+      phi::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return static_cast<const T*>(data());
 }
@@ -152,11 +168,11 @@ template <typename T>
 T* DenseTensor::data() {
   T* ret = static_cast<T*>(data());
   PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      (dtype() == phi::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return ret;
 }
@@ -200,9 +216,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+  meta_.use_gpudnn = meta.use_gpudnn;
 }
 
-/* @jim19930609: This interface will be further modified util we finalized the
+/* @jim19930609: This interface will be further modified until we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
    1. Designed behaviour: DenseTensor constructed with its underlying storage_

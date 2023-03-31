@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (
+
+import paddle
+from paddle import enable_static, fluid
+from paddle.fluid import core
+from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle import enable_static
 
 
 def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
@@ -126,7 +128,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def prepare_w(self):
-        rows = [a for a in range(self.w_bf16.shape[0])]
+        rows = list(range(self.w_bf16.shape[0]))
         row_numel = self.w_bf16.shape[1]
 
         w_selected_rows = self.scope.var('W').get_selected_rows()
@@ -214,7 +216,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.ids_shape = [4, 1]
@@ -231,7 +233,9 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.set_initializer()
 
         with fluid.program_guard(self.prog, self.startup_prog):
-            x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=self.ids_shape, dtype='int64'
+            )
             self.emb = fluid.layers.embedding(
                 input=x,
                 size=self.w_shape,

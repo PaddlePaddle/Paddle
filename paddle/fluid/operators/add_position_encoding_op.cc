@@ -34,11 +34,10 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -54,11 +53,11 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          platform::CPUPlace());
   }
 };
 
@@ -122,11 +121,15 @@ REGISTER_OPERATOR(
     ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
-REGISTER_OP_CPU_KERNEL(add_position_encoding,
-                       ops::AddPositionEncodingKernel<phi::CPUContext, float>,
-                       ops::AddPositionEncodingKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    add_position_encoding_grad,
-    ops::AddPositionEncodingGradKernel<phi::CPUContext, float>,
-    ops::AddPositionEncodingGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(add_position_encoding,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AddPositionEncodingKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(add_position_encoding_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AddPositionEncodingGradKernel,
+                          float,
+                          double) {}

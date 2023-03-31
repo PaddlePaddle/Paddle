@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
+import unittest
+
+import numpy as np
 
 import paddle
-import numpy as np
-import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-
+from paddle import nn, static
 from paddle.distributed import fleet
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 

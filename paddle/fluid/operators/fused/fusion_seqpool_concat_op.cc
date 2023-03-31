@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -68,15 +68,16 @@ void FusionSeqPoolConcatOp::InferShape(
   }
 }
 
-framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqPoolConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqPoolConcatOpMaker::Make() {
-  AddInput("X", "(LoDTensor) Input tensors of this operator.").AsDuplicable();
-  AddOutput("Out", "(LoDTensor) Output tensor of concat operator.");
+  AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
+      .AsDuplicable();
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<std::string>("pooltype",
                        "(string, default 'SUM') some of the pooling "
                        "pooltype of SequencePoolOp.")
@@ -95,8 +96,8 @@ template <typename T>
 class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
     const auto& x0_dims = ins[0]->dims();
@@ -120,15 +121,15 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
                           "dims[1] is %d, w is %d.",
                           y_dims[1],
                           w));
-    jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
+    phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
-      attr.type = jit::SeqPoolType::kAvg;
+      attr.type = phi::jit::SeqPoolType::kAvg;
     } else if (pooltype == "SQRT") {
-      attr.type = jit::SeqPoolType::kSqrt;
+      attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool =
-        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
+                                         platform::CPUPlace>::Cache()
+                       .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {

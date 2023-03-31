@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
-from .tensor.attribute import is_complex
-from .fft import fft_r2c, fft_c2r, fft_c2c
+from .fft import fft_c2c, fft_c2r, fft_r2c
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from .tensor.attribute import is_complex
 
 __all__ = [
     'stft',
@@ -46,7 +46,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
         The output frames tensor with shape `[..., frame_length, num_frames]` if `axis==-1`,
             otherwise `[num_frames, frame_length, ...]` where
 
-            `num_framse = 1 + (x.shape[axis] - frame_length) // hop_length`
+            `num_frames = 1 + (x.shape[axis] - frame_length) // hop_length`
 
     Examples:
 
@@ -125,23 +125,10 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
                 f'but got ({frame_length}) > ({x.shape[axis]}).'
             )
 
-    op_type = 'frame'
-
     if in_dygraph_mode():
         return _C_ops.frame(x, frame_length, hop_length, axis)
-
-    if _in_legacy_dygraph():
-        attrs = (
-            'frame_length',
-            frame_length,
-            'hop_length',
-            hop_length,
-            'axis',
-            axis,
-        )
-        op = getattr(_legacy_C_ops, op_type)
-        out = op(x, *attrs)
     else:
+        op_type = 'frame'
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], op_type
         )
@@ -259,20 +246,19 @@ def stft(
     name=None,
 ):
     r"""
+
     Short-time Fourier transform (STFT).
 
     The STFT computes the discrete Fourier transforms (DFT) of short overlapping
     windows of the input using this formula:
 
     .. math::
-        X_t[\omega] = \sum_{n = 0}^{N-1}%
-                      \text{window}[n]\ x[t \times H + n]\ %
-                      e^{-{2 \pi j \omega n}/{N}}
+        X_t[f] = \sum_{n = 0}^{N-1} \text{window}[n]\ x[t \times H + n]\ e^{-{2 \pi j f n}/{N}}
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
-    - :math:`\omega`: Frequency :math:`0 \leq \omega < \text{n\_fft}` for `onesided=False`,
-        or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`.
+    - :math:`f`: Frequency :math:`0 \leq f < \text{n_fft}` for `onesided=False`,
+    or :math:`0 \leq f < \lfloor \text{n_fft} / 2 \rfloor + 1` for `onesided=True`.
     - :math:`N`: Value of `n_fft`.
     - :math:`H`: Value of `hop_length`.
 
@@ -281,11 +267,11 @@ def stft(
             shape `[..., seq_length]`. It can be a real-valued or a complex Tensor.
         n_fft (int): The number of input samples to perform Fourier transform.
         hop_length (int, optional): Number of steps to advance between adjacent windows
-            and `0 < hop_length`. Default: `None`(treated as equal to `n_fft//4`)
-        win_length (int, optional): The size of window. Default: `None`(treated as equal
+            and `0 < hop_length`. Default: `None` (treated as equal to `n_fft//4`)
+        win_length (int, optional): The size of window. Default: `None` (treated as equal
             to `n_fft`)
         window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
-            be center padded to length `n_fft` if `win_length < n_fft`. Default: `None`(
+            be center padded to length `n_fft` if `win_length < n_fft`. Default: `None` (
             treated as a rectangle window with value equal to 1 of size `win_length`).
         center (bool, optional): Whether to pad `x` to make that the
             :math:`t \times hop\_length` at the center of :math:`t`-th frame. Default: `True`.
@@ -300,9 +286,9 @@ def stft(
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`(
-            real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
-            `onesided` is `False`)
+        The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`
+        (real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`
+        (`onesided` is `False`)
 
     Examples:
         .. code-block:: python
@@ -319,10 +305,8 @@ def stft(
             x = paddle.randn([8, 48000], dtype=paddle.float64) + \
                     paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
+
     """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft'
-    )
 
     x_rank = len(x.shape)
     assert x_rank in [
@@ -373,7 +357,7 @@ def stft(
         )
 
         pad_length = n_fft // 2
-        # FIXME: Input `x` can be a complex tensor but pad does not supprt complex input.
+        # FIXME: Input `x` can be a complex tensor but pad does not support complex input.
         x = paddle.nn.functional.pad(
             x.unsqueeze(-1),
             pad=[pad_length, pad_length],
@@ -433,31 +417,30 @@ def istft(
     Inverse short-time Fourier transform (ISTFT).
 
     Reconstruct time-domain signal from the giving complex input and window tensor when
-        nonzero overlap-add (NOLA) condition is met:
+    nonzero overlap-add (NOLA) condition is met:
 
     .. math::
-        \sum_{t = -\infty}^{\infty}%
-            \text{window}^2[n - t \times H]\ \neq \ 0, \ \text{for } all \ n
+        \sum_{t = -\infty}^{\infty} \text{window}^2[n - t \times H]\ \neq \ 0, \ \text{for } all \ n
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
     - :math:`N`: Value of `n_fft`.
     - :math:`H`: Value of `hop_length`.
 
-    Result of `istft` expected to be the inverse of `paddle.signal.stft`, but it is
-        not guaranteed to reconstruct a exactly realizible time-domain signal from a STFT
+        Result of `istft` expected to be the inverse of `paddle.signal.stft`, but it is
+        not guaranteed to reconstruct a exactly realizable time-domain signal from a STFT
         complex tensor which has been modified (via masking or otherwise). Therefore, `istft`
-        gives the [Griffin-Lim optimal estimate](https://ieeexplore.ieee.org/document/1164317)
+        gives the `[Griffin-Lim optimal estimate] <https://ieeexplore.ieee.org/document/1164317>`_
         (optimal in a least-squares sense) for the corresponding signal.
 
     Args:
-        x (Tensor): The input data which is a 2-dimensional or 3-dimensional **complesx**
+        x (Tensor): The input data which is a 2-dimensional or 3-dimensional **complex**
             Tensor with shape `[..., n_fft, num_frames]`.
         n_fft (int): The size of Fourier transform.
         hop_length (int, optional): Number of steps to advance between adjacent windows
-            from time-domain signal and `0 < hop_length < win_length`. Default: `None`(
+            from time-domain signal and `0 < hop_length < win_length`. Default: `None` (
             treated as equal to `n_fft//4`)
-        win_length (int, optional): The size of window. Default: `None`(treated as equal
+        win_length (int, optional): The size of window. Default: `None` (treated as equal
             to `n_fft`)
         window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
             be center padded to length `n_fft` if `win_length < n_fft`. It should be a
@@ -465,7 +448,7 @@ def istft(
             a rectangle window with value equal to 1 of size `win_length`).
         center (bool, optional): It means that whether the time-domain signal has been
             center padded. Default: `True`.
-        normalized (bool, optional): Control whether to scale the output by `1/sqrt(n_fft)`.
+        normalized (bool, optional): Control whether to scale the output by :math:`1/sqrt(n_{fft})`.
             Default: `False`
         onesided (bool, optional): It means that whether the input STFT tensor is a half
             of the conjugate symmetry STFT tensor transformed from a real-valued signal
@@ -481,7 +464,7 @@ def istft(
 
     Returns:
         A tensor of least squares estimation of the reconstructed signal(s) with shape
-            `[..., seq_length]`
+        `[..., seq_length]`
 
     Examples:
         .. code-block:: python
@@ -567,7 +550,7 @@ def istft(
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
         pad_right = n_fft - win_length - pad_left
-        # FIXME: Input `window` can be a complex tensor but pad does not supprt complex input.
+        # FIXME: Input `window` can be a complex tensor but pad does not support complex input.
         window = paddle.nn.functional.pad(
             window, pad=[pad_left, pad_right], mode='constant'
         )

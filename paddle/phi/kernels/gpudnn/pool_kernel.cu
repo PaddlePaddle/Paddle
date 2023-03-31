@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -36,7 +36,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                          const std::string& padding_algorithm,
                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(ctx.GetPlace()),
+      ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));

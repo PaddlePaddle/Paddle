@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
-from paddle.fluid import layers
-import unittest
-from op_test import OpTest
 from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_main_program
-from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.incubate.nn import FusedMultiTransformer
+from paddle.incubate.nn.functional import fused_multi_transformer
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
+from paddle.nn.layer.transformer import _convert_attention_mask
 
+random.seed(42)
 default_main_program().random_seed = 42
 
 
@@ -53,7 +54,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.__class__.no_need_check_grad = False
 
         bias_attr = paddle.fluid.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(value=0.0005)
+            initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
             self.embed_dim,
@@ -109,7 +110,7 @@ class TestFusedMultiTransformerOp(OpTest):
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
-        # self.attn_mask_type = np.bool
+        # self.attn_mask_type = np.bool_
         self.pre_layer_norm = True
         self.has_attn_mask = True
 
@@ -120,10 +121,15 @@ class TestFusedMultiTransformerOp(OpTest):
         self.has_cache_kv = False
         self.gen_cache_kv = False
         self.has_pre_cache = False
+        self.rotary_embs = None
+        self.rotary_emb_dims = 0
+
+        self.remove_padding = False
 
         self.training = False
 
         self.layers = 4
+
         self.batch_size = 8
         self.query_length = 128
         self.cache_length = 128
@@ -144,21 +150,27 @@ class TestFusedMultiTransformerOp(OpTest):
         )
 
     def generate_input_data(self):
-        self.query = np.random.rand(
-            self.batch_size, self.query_length, self.embed_dim
+        self.query = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
+
         out_seq_len = self.key_length
         if self.has_cache_kv:
             assert self.training is False, ValueError(
                 'cache_kv can only used in inference'
             )
-            self.cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.cache_length,
-                self.head_dim,
+            self.cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.cache_length,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
+
             if self.gen_cache_kv:
                 self.cache_kv[:] = 0
             else:
@@ -166,14 +178,39 @@ class TestFusedMultiTransformerOp(OpTest):
         else:
             self.cache_kv = None
 
+        if self.remove_padding:
+            if self.has_cache_kv and not self.gen_cache_kv:
+                # decoder
+                self.seq_lens = [
+                    random.randint(1, self.cache_length)
+                    for _ in range(self.batch_size)
+                ]
+                self.seq_lens[
+                    random.randint(0, self.batch_size)
+                ] = self.cache_length
+                self.seq_lens = np.array(self.seq_lens).astype(np.int32)
+            else:
+                self.seq_lens = [
+                    random.randint(1, self.query_length)
+                    for _ in range(self.batch_size)
+                ]
+                self.seq_lens[
+                    random.randint(0, self.batch_size)
+                ] = self.query_length
+                self.seq_lens = np.array(self.seq_lens).astype(np.int32)
+
         if self.has_pre_cache:
             out_seq_len += self.pre_cache_num
-            self.pre_cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.pre_cache_num,
-                self.head_dim,
+            self.pre_cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.pre_cache_num,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
 
         if self.has_attn_mask:
@@ -202,11 +239,52 @@ class TestFusedMultiTransformerOp(OpTest):
                 )
         else:
             self.attn_mask = None
+
+        if self.rotary_emb_dims > 0:
+            self.rotary_emb = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    1,
+                    self.query_length,
+                    self.head_dim // 2 // self.rotary_emb_dims,
+                ),
+            ).astype(self.x_type)
+            concat_nums = 2 * self.rotary_emb_dims
+            rotary_embs = []
+            for _ in range(concat_nums):
+                rotary_embs.append(self.rotary_emb)
+            self.rotary_embs = np.concatenate(rotary_embs, -1)
+
         self.key, self.value = self.query, self.query
 
-        self.dout = np.random.random(
-            (self.batch_size, self.query_length, self.embed_dim)
+        self.dout = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
+
+    def rotate_half(self, x):
+        x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
+        return paddle.concat((-x2, x1), axis=-1)
+
+    def apply_rotary_emb(self, x, cos_emb, sin_emb, rotary_emb_dims):
+        # x shape [bsz, num_heads, seq_len, head_dim]
+        # cos_emb, sin_emb shape [bsz, 1, seq_len, head_dim]
+        x_dims = paddle.split(x, num_or_sections=rotary_emb_dims, axis=-1)
+        cos_dims = paddle.split(
+            cos_emb, num_or_sections=rotary_emb_dims, axis=-1
+        )
+        sin_dims = paddle.split(
+            sin_emb, num_or_sections=rotary_emb_dims, axis=-1
+        )
+
+        rotary_dims = []
+        for x_dim, cos_dim, sin_dim in zip(x_dims, cos_dims, sin_dims):
+            rotary_dims.append(
+                x_dim * cos_dim + self.rotate_half(x_dim) * sin_dim
+            )
+        return paddle.concat(rotary_dims, axis=-1)
 
     def GetBaselineOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -227,6 +305,11 @@ class TestFusedMultiTransformerOp(OpTest):
         else:
             attn_mask = None
 
+        if self.rotary_emb_dims > 0:
+            rotary_embs = paddle.to_tensor(
+                self.rotary_embs, stop_gradient=False
+            )
+
         for i in range(self.layers):
             residual = tensor_query
             ln1_out = tensor_query
@@ -242,6 +325,16 @@ class TestFusedMultiTransformerOp(OpTest):
             k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
             v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
             v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+
+            if self.rotary_emb_dims > 0:
+                cos_emb = rotary_embs[0]
+                sin_emb = rotary_embs[1]
+                q_out = self.apply_rotary_emb(
+                    q_out, cos_emb, sin_emb, self.rotary_emb_dims
+                )
+                k_out = self.apply_rotary_emb(
+                    k_out, cos_emb, sin_emb, self.rotary_emb_dims
+                )
 
             if self.has_cache_kv:
                 # [1, B, n_head, cache_seq_len, head_dim]
@@ -270,9 +363,8 @@ class TestFusedMultiTransformerOp(OpTest):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
-            )
+            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
             if self.debug:
                 print('qk out is')
@@ -337,6 +429,138 @@ class TestFusedMultiTransformerOp(OpTest):
         if self.has_cache_kv and self.gen_cache_kv:
             return final_out, cache_kvs
         return final_out
+
+    def GetVariableDecoderBaselineOut(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        final_outs = []
+        cache_outs = []
+        if self.rotary_emb_dims > 0:
+            rotary_embs = paddle.to_tensor(
+                self.rotary_embs, stop_gradient=False
+            )
+
+        for i in range(self.batch_size):
+            tensor_query = paddle.to_tensor(
+                self.query[i : i + 1], stop_gradient=False
+            )
+
+            cache_kvs = []
+            cache_kv = None
+            if self.has_cache_kv:
+                cache_kv = paddle.to_tensor(
+                    self.cache_kv[:, i : i + 1, :, : self.seq_lens[i], :],
+                    stop_gradient=False,
+                )
+
+            if self.has_attn_mask:
+                attn_mask = paddle.to_tensor(
+                    self.attn_mask[i : i + 1, :, :, : self.seq_lens[i] + 1],
+                    stop_gradient=False,
+                )
+            else:
+                attn_mask = None
+
+            for j in range(self.layers):
+                residual = tensor_query
+                ln1_out = tensor_query
+                if self.pre_layer_norm:
+                    ln1_out = self.norm(tensor_query)
+
+                q = self.q_proj(ln1_out)
+                q = tensor.reshape(
+                    x=q, shape=[0, 0, self.num_heads, self.head_dim]
+                )
+                q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+                k = self.k_proj(ln1_out)
+                v = self.v_proj(ln1_out)
+                k = tensor.reshape(
+                    x=k, shape=[0, 0, self.num_heads, self.head_dim]
+                )
+                k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+                v = tensor.reshape(
+                    x=v, shape=[0, 0, self.num_heads, self.head_dim]
+                )
+                v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+
+                if self.rotary_emb_dims > 0:
+                    cos_emb = rotary_embs[0][i : i + 1]
+                    sin_emb = rotary_embs[1][i : i + 1]
+                    q_out = self.apply_rotary_emb(
+                        q_out, cos_emb, sin_emb, self.rotary_emb_dims
+                    )
+                    k_out = self.apply_rotary_emb(
+                        k_out, cos_emb, sin_emb, self.rotary_emb_dims
+                    )
+
+                if self.has_cache_kv:
+                    # [1, B, n_head, cache_seq_len, head_dim]
+                    cache_k, cache_v = paddle.split(cache_kv, 2)
+                    cache_k = paddle.squeeze(cache_k, axis=0)
+                    cache_v = paddle.squeeze(cache_v, axis=0)
+                    # [B, n_head, cache_seq_len + seq_len, head_dim]
+                    # out_seq_len = cache_seq_len + seq_len
+                    if self.gen_cache_kv:
+                        cache_kvs.append((k_out, v_out))
+                    else:
+                        cache_outs.append([k_out, v_out])
+                        k_out = paddle.concat([cache_k, k_out], axis=-2)
+                        v_out = paddle.concat([cache_v, v_out], axis=-2)
+
+                # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+                # --> [B, n_head, seq_len, out_seq_len]
+                qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+                qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
+
+                if attn_mask is not None:
+                    attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
+                    attn_mask_out = qk_out + attn_mask
+                    softmax_out = F.softmax(attn_mask_out)
+                else:
+                    softmax_out = F.softmax(qk_out)
+
+                if self.dropout_prob:
+                    dropout_out = F.dropout(
+                        softmax_out,
+                        self.dropout_prob,
+                        training=self.training,
+                        mode="upscale_in_train",
+                    )
+                    # [B, n_head, seq_len, out_seq_len] * [B, n_head, out_seq_len, head_dim]
+                    # --> [B, n_head, seq_len, head_dim]
+                    qktv_out = tensor.matmul(dropout_out, v_out)
+                else:
+                    qktv_out = tensor.matmul(softmax_out, v_out)
+
+                fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
+                out_linear_in = tensor.reshape(
+                    x=fmha_out,
+                    shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]],
+                )
+                out = self.out_proj(out_linear_in)
+
+                residual_out = residual + self.dropout(out)
+                if not self.pre_layer_norm:
+                    attn_out = self.norm(residual_out)
+                else:
+                    attn_out = residual_out
+
+                ffn_ln_out = attn_out
+                if self.pre_layer_norm:
+                    ffn_ln_out = self.ffn_norm(attn_out)
+
+                ffn1_out = self.ffn1_proj(ffn_ln_out)
+                ffn1_out = self.dropout(self.activation(ffn1_out))
+                ffn2_out = self.ffn2_proj(ffn1_out)
+
+                residual_out = attn_out + self.dropout(ffn2_out)
+                final_out = residual_out
+                if not self.pre_layer_norm:
+                    final_out = self.ffn_norm(residual_out)
+
+                tensor_query = final_out
+            final_outs.append(final_out)
+        final_out = paddle.concat(final_outs, axis=0)
+        return final_out, cache_outs
 
     def GetFusedMultiTransformerOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -404,10 +628,17 @@ class TestFusedMultiTransformerOp(OpTest):
             (3, self.num_heads, self.head_dim, self.embed_dim)
         )
 
+        if self.rotary_emb_dims > 0:
+            rotary_embs = paddle.to_tensor(
+                self.rotary_embs, stop_gradient=False
+            )
+        else:
+            rotary_embs = None
+
         x = paddle.to_tensor(self.query, stop_gradient=False)
         cache_kvs, cache_kv = None, None
         time_step = None
-        pre_caches, pre_cache = None, None
+        pre_caches = None
         if self.has_cache_kv:
             cache_kvs = []
 
@@ -463,6 +694,11 @@ class TestFusedMultiTransformerOp(OpTest):
                 time_step = paddle.to_tensor(
                     [self.cache_length], dtype='int32', place=paddle.CPUPlace()
                 )
+
+        if self.remove_padding:
+            seq_lens = paddle.to_tensor(self.seq_lens, dtype='int32')
+        else:
+            seq_lens = None
 
         if self.has_pre_cache:
             cache_kvs = []
@@ -540,10 +776,14 @@ class TestFusedMultiTransformerOp(OpTest):
             pre_layer_norm=self.pre_layer_norm,
             epsilon=epsilon,
             cache_kvs=cache_kvs,
+            rotary_embs=rotary_embs,
+            rotary_emb_dims=self.rotary_emb_dims,
             pre_caches=pre_caches,
             time_step=time_step,
+            seq_lens=seq_lens,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_prob,
+            activation=self.act_method,
             training=self.training,
         )
 
@@ -557,11 +797,22 @@ class TestFusedMultiTransformerOp(OpTest):
 
     def GetFusedMultiTransformerOutStatic(self):
         paddle.enable_static()
-        x = paddle.fluid.data('x', self.query.shape, self.query.dtype)
+        x = paddle.static.data('x', self.query.shape, self.query.dtype)
         cache_kvs, cache_kv = None, None
+        cache_kvs_feed = None
         time_step = None
         time_step_feed = None
-        pre_caches, pre_cache = None, None
+        seq_lens = None
+        seq_lens_feed = None
+        pre_caches = None
+        pre_caches_feed = None
+        rotary_embs = None
+
+        if self.rotary_emb_dims > 0:
+            rotary_embs = paddle.static.data(
+                'rotary_embs', self.rotary_embs.shape, self.rotary_embs.dtype
+            )
+
         if self.has_cache_kv:
             cache_kvs = []
 
@@ -610,10 +861,16 @@ class TestFusedMultiTransformerOp(OpTest):
                 assert self.query_length == self.cache_length
                 cache_kv[:] = 0
             else:
-                time_step = layers.fill_constant(
+                time_step = paddle.tensor.fill_constant(
                     shape=[1], dtype="int32", value=0, force_cpu=True
                 )
                 time_step_feed = self.cache_length
+
+        if self.remove_padding:
+            seq_lens = paddle.static.data(
+                'seq_lens', self.seq_lens.shape, self.seq_lens.dtype
+            )
+            seq_lens_feed = self.seq_lens
 
         if self.has_pre_cache:
             cache_kvs = []
@@ -668,6 +925,7 @@ class TestFusedMultiTransformerOp(OpTest):
             self.num_heads,
             4 * self.embed_dim,
             self.dropout_prob,
+            activation=self.act_method,
             normalize_before=self.pre_layer_norm,
             ln_scale_attrs=ln_scales_attr,
             ln_bias_attrs=ln_biases_attr,
@@ -688,7 +946,7 @@ class TestFusedMultiTransformerOp(OpTest):
         for i in range(self.layers):
             if self.has_cache_kv:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
@@ -696,13 +954,13 @@ class TestFusedMultiTransformerOp(OpTest):
 
             if self.has_pre_cache:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
                 cache_kvs_feed.append(cache_kv)
                 pre_caches.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=self.pre_cache_kv.shape,
                         dtype=self.pre_cache_kv.dtype,
                         value=0,
@@ -715,27 +973,43 @@ class TestFusedMultiTransformerOp(OpTest):
             attn_mask=attn_mask,
             caches=cache_kvs,
             pre_caches=pre_caches,
+            seq_lens=seq_lens,
+            rotary_embs=rotary_embs,
+            rotary_emb_dims=self.rotary_emb_dims,
             time_step=time_step,
-        )[0]
+        )
         exe = paddle.static.Executor(place=paddle.CUDAPlace(0))
         exe.run(paddle.static.default_startup_program())
         feed_data = {
             'x': self.query,
             'cache_kvs': cache_kvs_feed,
             'pre_caches': pre_caches_feed,
+            'rotary_embs': self.rotary_embs,
             'time_step': time_step_feed,
+            'rotary_emb_dims': self.rotary_emb_dims,
             'attn_mask': attn_mask,
+            'seq_lens': seq_lens_feed,
         }
-        out = exe.run(
-            paddle.fluid.default_main_program(),
-            feed=feed_data,
-            fetch_list=[final_out],
-        )
+        if self.has_pre_cache:
+            out = exe.run(
+                paddle.fluid.default_main_program(),
+                feed=feed_data,
+                fetch_list=[final_out[0].name],
+            )
+        else:
+            out = exe.run(
+                paddle.fluid.default_main_program(),
+                feed=feed_data,
+                fetch_list=[final_out.name],
+            )
         paddle.disable_static()
-        return out[0]
+        return out
 
     def test_fused_multi_transformer_op(self):
-        final_out_ref = self.GetBaselineOut()
+        if self.has_cache_kv and not self.gen_cache_kv and self.remove_padding:
+            final_out_ref = self.GetVariableDecoderBaselineOut()
+        else:
+            final_out_ref = self.GetBaselineOut()
         final_out = self.GetFusedMultiTransformerOut()
         if self.has_cache_kv:
             final_out, cache_kv_out = final_out
@@ -758,6 +1032,39 @@ class TestFusedMultiTransformerOp(OpTest):
                 print("cache_v out timestep=128")
                 print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
 
+            if self.remove_padding and not self.gen_cache_kv:
+                # test decoder
+                final_out_ref, cache_kvs = final_out_ref
+                for i in range(self.batch_size):
+                    for j in range(self.layers):
+                        cache_k = cache_kv_out[j][0, :]
+                        cache_k = cache_k.reshape(
+                            [bsz, num_head, v_elems, max_seq_len, elems]
+                        )
+                        cache_k = cache_k[:, :, :, : self.seq_lens[i] + 1, :]
+                        cache_k = cache_k.transpose([0, 1, 3, 2, 4])
+                        cache_k = cache_k.reshape(
+                            [bsz, num_head, self.seq_lens[i] + 1, head_dim]
+                        )
+
+                        cache_v = cache_kv_out[j][
+                            1, :, :, : self.seq_lens[i] + 1, :
+                        ]
+                        cache_k_ref = cache_kvs[i * self.layers + j][0]
+                        cache_v_ref = cache_kvs[i * self.layers + j][1]
+                        np.testing.assert_allclose(
+                            cache_k_ref,
+                            cache_k[i : i + 1, :, -1:, :],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                        )
+                        np.testing.assert_allclose(
+                            cache_v_ref,
+                            cache_v[i : i + 1, :, -1:, :],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                        )
+
             if self.gen_cache_kv:
                 final_out_ref, cache_kvs = final_out_ref
                 for i in range(self.layers):
@@ -776,24 +1083,88 @@ class TestFusedMultiTransformerOp(OpTest):
 
                     cache_v = cache_kv_out[i][1, :, :, : self.cache_length, :]
 
-                    np.testing.assert_allclose(
-                        cache_k_ref, cache_k, rtol=self.rtol, atol=self.atol
-                    )
-                    np.testing.assert_allclose(
-                        cache_v_ref, cache_v, rtol=self.rtol, atol=self.atol
-                    )
+                    if self.remove_padding:
+                        for i in range(self.batch_size):
+                            np.testing.assert_allclose(
+                                cache_k_ref[i, :, : self.seq_lens[i], :],
+                                cache_k[i, :, : self.seq_lens[i], :],
+                                rtol=self.rtol,
+                                atol=self.atol,
+                            )
+                            np.testing.assert_allclose(
+                                cache_v_ref[i, :, : self.seq_lens[i], :],
+                                cache_v[i, :, : self.seq_lens[i], :],
+                                rtol=self.rtol,
+                                atol=self.atol,
+                            )
+                    else:
+                        np.testing.assert_allclose(
+                            cache_k_ref, cache_k, rtol=self.rtol, atol=self.atol
+                        )
+                        np.testing.assert_allclose(
+                            cache_v_ref, cache_v, rtol=self.rtol, atol=self.atol
+                        )
                     if i == 0:
                         break
 
-        np.testing.assert_allclose(
-            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
+        if self.remove_padding:
+            for i in range(self.batch_size):
+                np.testing.assert_allclose(
+                    final_out_ref[i, : self.seq_lens[i]],
+                    final_out[i, : self.seq_lens[i]],
+                    rtol=self.rtol,
+                    atol=self.atol,
+                )
+        else:
+            np.testing.assert_allclose(
+                final_out_ref, final_out, rtol=self.rtol, atol=self.atol
+            )
+
+
+class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.rotary_emb_dims = 1
+
+
+class TestFusedMultiTransformerOpGenRotaryFP16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.query_length = 1
+        self.key_length, self.value_length = (
+            self.query_length,
+            self.query_length,
         )
+        self.rotary_emb_dims = 2
+
+
+class TestFusedMultiTransformerOpGenCacheRotaryFP16(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.rotary_emb_dims = 1
 
 
 class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
         self.x_type = np.float16
+        self.layers = 3  # odd layers
+
+
+class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.act_method = "relu"
         self.layers = 3  # odd layers
 
 
@@ -892,32 +1263,175 @@ class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
         self.x_type = np.float16
 
 
-class TestFusedMultiTransformerOpPreCacheStatic(TestFusedMultiTransformerOp):
+class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
-        self.has_pre_cache = True
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+
+
+class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+
+
+class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 3  # odd layers
+        self.rotary_emb_dims = 2
+
+
+class TestFusedMultiTransformerOpVariableNormTransformer1(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpVariableNormTransformer2(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.layers = 4  # even layers
+
+
+class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+
+
+class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+
+
+class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
         self.has_attn_mask = False
         self.x_type = np.float32
         self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
         self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0005)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
         )
         self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(1.0)
+            initializer=paddle.paddle.nn.initializer.Constant(1.0)
         )
         self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
 
     def test_fused_multi_transformer_op(self):
+        self.has_pre_cache = True
+        self.remove_padding = False
+        self.rotary_emb_dims = 2
+        self.generate_input_data()
         final_out_ref = self.GetBaselineOut()
-        final_out = self.GetFusedMultiTransformerOutStatic()
+        final_out = self.GetFusedMultiTransformerOutStatic()[0]
 
         np.testing.assert_allclose(
             final_out_ref, final_out, rtol=self.rtol, atol=self.atol
         )
+
+        self.has_pre_cache = False
+        self.remove_padding = True
+        self.generate_input_data()
+        final_out_ref = self.GetBaselineOut()
+        final_out = self.GetFusedMultiTransformerOutStatic()[0]
+
+        for i in range(self.batch_size):
+            np.testing.assert_allclose(
+                final_out_ref[i, : self.seq_lens[i]],
+                final_out[i, : self.seq_lens[i]],
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+
+
+class TestFusedMultiAttentionAPIError(unittest.TestCase):
+    def test_errors(self):
+        def test_invalid_input_dim():
+            array = np.array([1.9], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+            layer = paddle.incubate.nn.FusedMultiHeadAttention(
+                embed_dim=1, num_heads=1
+            )
+            out = layer(x)
+
+        self.assertRaises(ValueError, test_invalid_input_dim)
+
+
+class TestFusedMultiTransformerAPIError(unittest.TestCase):
+    def test_errors(self):
+        def test_invalid_input_dim():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
+                108, 108, 108, 0.0, 'relu'
+            )
+            out = layer(x)
+
+        self.assertRaises(ValueError, test_invalid_input_dim)
 
 
 if __name__ == "__main__":

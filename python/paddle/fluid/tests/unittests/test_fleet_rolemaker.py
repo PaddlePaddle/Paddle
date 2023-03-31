@@ -15,7 +15,9 @@
 
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+import paddle
+from paddle.incubate.distributed.fleet import role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -60,9 +62,13 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -80,23 +86,15 @@ class TestCloudRoleMaker(unittest.TestCase):
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(
-                name="show",
-                shape=[-1, 1],
-                dtype="float32",
-                lod_level=1,
-                append_batch_size=False,
+            show = paddle.static.data(
+                name="show", shape=[-1, 1], dtype="float32", lod_level=1
             )
-            fc = fluid.layers.fc(input=show, size=1, act=None)
-            label = fluid.layers.data(
-                name="click",
-                shape=[-1, 1],
-                dtype="int64",
-                lod_level=1,
-                append_batch_size=False,
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
+            label = paddle.static.data(
+                name="click", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            label_cast = paddle.cast(label, dtype='float32')
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
@@ -106,7 +104,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("do not support pslib test, skip")
             return
         fleet.clear_one_table(0)
-        from paddle.fluid.incubate.fleet.base.role_maker import (
+        from paddle.incubate.distributed.fleet.role_maker import (
             MPISymetricRoleMaker,
         )
 

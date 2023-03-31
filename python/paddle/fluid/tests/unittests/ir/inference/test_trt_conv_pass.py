@@ -14,12 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -28,10 +30,10 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -106,10 +108,10 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d_transpose(
+            conv_out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -205,10 +207,10 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, -1, -1], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

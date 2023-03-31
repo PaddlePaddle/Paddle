@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
+import paddle
 from paddle.fluid.optimizer import PipelineOptimizer as PO
-from .meta_optimizer_base import MetaOptimizerBase
+
 from .common import (
-    CollectiveHelper,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
+    CollectiveHelper,
     OpRole,
     is_backward_op,
     is_loss_grad_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
@@ -34,9 +35,7 @@ class PipelineOptimizer(MetaOptimizerBase):
             "RecomputeOptimizer",
             "AMPOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 1
         self.dp_ring_id = 2
         self.start_pipeline_ring_id = 20  # Just a magic number
@@ -210,12 +209,12 @@ class PipelineOptimizer(MetaOptimizerBase):
         orig_startup_program = (
             startup_program
             if startup_program
-            else fluid.default_startup_program()
+            else paddle.static.default_startup_program()
         )
         block = loss.block
         program = block.program
 
-        program._pipeline_opt = dict()
+        program._pipeline_opt = {}
         program._pipeline_opt['local_rank'] = self.rank
         program._pipeline_opt['global_ring_id'] = self.global_ring_id
         program._pipeline_opt['ring_id'] = self.start_pipeline_ring_id

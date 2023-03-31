@@ -21,12 +21,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
@@ -48,7 +47,6 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
@@ -90,7 +88,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
       PADDLE_ENFORCE_LT(e,
                         dim_size,
                         paddle::platform::errors::InvalidArgument(
-                            "ReduceOp: invalid axis, when x_dims is %d, "
+                            "ReduceBaseOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
                             e));
@@ -137,13 +135,27 @@ void HandleLargeDim(const framework::ExecutionContext& context,
                     const std::vector<int>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  Tensor shuffled_input;
+  phi::DenseTensor shuffled_input;
   GetShuffledInput<DeviceContext, OutT>(context, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
-  const int64_t reduced = shuffled_input.numel() / unreduced;
+  const int64_t input_numel = shuffled_input.numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      input_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDim, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          input_numel,
+          unreduced,
+          reduced));
+
   shuffled_input.Resize({unreduced, reduced});
+
   DDim output_dim = output->dims();
   output->Resize({unreduced});
   paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
@@ -164,11 +176,24 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
                         Functor functor,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
+  const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
+
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
-  Tensor shuffled_x;
+  phi::DenseTensor shuffled_x;
   GetShuffledInput<DeviceContext, T>(context, x, &shuffled_x, dims);
   DDim shuffled_dim = shuffled_x.dims();
   shuffled_x.Resize({unreduced, reduced});
@@ -185,7 +210,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
-  Tensor dx_tmp;
+  phi::DenseTensor dx_tmp;
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
@@ -453,15 +478,15 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     int in_dtype = context.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       auto* pre_input =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-      auto in_kernel_type = framework::OpKernelType(
-          framework::TransToProtoVarType(pre_input->dtype()),
-          context.GetPlace());
-      auto out_kernel_type = framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          context.GetPlace());
+      auto in_kernel_type =
+          phi::KernelKey(framework::TransToProtoVarType(pre_input->dtype()),
+                         context.GetPlace());
+      auto out_kernel_type =
+          phi::KernelKey(static_cast<framework::proto::VarType::Type>(in_dtype),
+                         context.GetPlace());
       framework::TransDataType(
           in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
       ComputeFromInput(&tmp_tensor, context);
@@ -474,20 +499,20 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   }
 };
 
-class ReduceOp : public framework::OperatorWithKernel {
+class ReduceBaseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceBaseOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(),
                       0,
                       platform::errors::InvalidArgument(
-                          "The input dim dimensions of ReduceOp "
+                          "The input dim dimensions of ReduceBaseOp "
                           "should be greater than 0. But received the dim "
                           "dimesions of Reduce = %d.",
                           dims.size()));
@@ -555,8 +580,7 @@ class ReduceOp : public framework::OperatorWithKernel {
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
     // native reduce kernels don't support bf16
     // so oneDNN kernel is enforced in that case
-    if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
-        experimental::DataType::BFLOAT16)
+    if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
       return true;
 
     if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
@@ -585,7 +609,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     return true;
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -602,24 +626,26 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_mlu_place(ctx.GetPlace()) ||
+              platform::is_xpu_place(ctx.GetPlace()) ||
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
-              "float16 can only be used on GPU or NPU or MLU place"));
+              "float16 can only be used on GPU or NPU or MLU or XPU place"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
-class ReduceOpUseInputPlace : public ReduceOp {
+class ReduceOpUseInputPlace : public ReduceBaseOp {
  public:
-  using ReduceOp::ReduceOp;
+  using ReduceBaseOp::ReduceBaseOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
     return kt;
   }
 };
@@ -629,11 +655,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
                    "Input",
                    "Out@GRAD",
-                   "ReduceOp");
+                   "ReduceBaseOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     // TODO(dev): We should delete Infershape and migrate it into
@@ -664,7 +690,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int out_dtype = ctx.Attr<int>("out_dtype");
     auto input_data_type =
@@ -680,11 +706,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
-class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceBaseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
     AddInput("X",
@@ -737,7 +763,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 #if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 template <typename T,
           template <typename>
-          class ReduceOp,
+          class ReduceBaseOp,
           template <typename, typename>
           class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
@@ -764,7 +790,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
 
-    phi::Reduce<T, ReduceOp, TransformOp>(
+    phi::Reduce<T, ReduceBaseOp, TransformOp>(
         dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
   }
 };
@@ -803,8 +829,8 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     } else {
       d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
     }
-    auto pt_d_out = paddle::experimental::MakePhiDenseTensor(new_d_out);
-    auto pt_d_x = paddle::experimental::MakePhiDenseTensor(*d_x);
+    auto pt_d_out = std::make_unique<phi::DenseTensor>(new_d_out);
+    auto pt_d_x = std::make_unique<phi::DenseTensor>(*d_x);
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }
@@ -843,14 +869,14 @@ struct DivideFunctor {
 namespace ops = paddle::operators;
 
 #define REGISTER_REDUCE_OP(op_name)                                           \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {                \
    protected:                                                                 \
     virtual std::string GetName() const { return #op_name; }                  \
     virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
   };                                                                          \
   REGISTER_OPERATOR(                                                          \
       op_name,                                                                \
-      ops::ReduceOp,                                                          \
+      ops::ReduceBaseOp,                                                      \
       __##op_name##Maker__,                                                   \
       paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
       paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
@@ -858,14 +884,14 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
 #define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {           \
    protected:                                                            \
     virtual std::string GetName() const { return #op_name; }             \
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
   REGISTER_OPERATOR(                                                     \
       op_name,                                                           \
-      ops::ReduceOp##__VA_ARGS__,                                        \
+      ops::ReduceBaseOp##__VA_ARGS__,                                    \
       __##op_name##Maker__,                                              \
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

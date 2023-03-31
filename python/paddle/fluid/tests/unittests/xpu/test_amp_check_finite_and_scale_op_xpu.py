@@ -15,15 +15,17 @@
 import sys
 
 sys.path.append("..")
-import paddle
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -38,7 +40,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
             x = np.random.random((8, 8)).astype(self.dtype)
-            scale = np.random.random((1)).astype(np.float32)
+            scale = np.random.random(1).astype(np.float32)
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
                 'FoundInfinite': np.array([0]),
@@ -62,7 +64,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             idx2 = np.random.randint(255)
             x[idx1][idx2] = np.nan
             x[idx2][idx1] = np.nan
-            scale = np.random.random((1)).astype(np.float32)
+            scale = np.random.random(1).astype(np.float32)
 
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
@@ -89,7 +91,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             idx2 = np.random.randint(255)
             x[idx1][idx2] = np.nan
             x[idx2][idx1] = np.nan
-            scale = np.random.random((1)).astype(np.float32)
+            scale = np.random.random(1).astype(np.float32)
             myscale = np.array([0.05]).astype(self.dtype)
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
@@ -116,7 +118,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             idx2 = np.random.randint(255)
             x[idx1][idx2] = np.inf
             x[idx2][idx1] = np.nan
-            scale = np.random.random((1)).astype(np.float32)
+            scale = np.random.random(1).astype(np.float32)
             myscale = np.array([0.05]).astype(self.dtype)
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {

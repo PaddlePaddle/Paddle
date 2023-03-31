@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
@@ -224,7 +226,7 @@ class TrtConvertLayerNormTest_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 64, 3, 3]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 3, 3]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 3, 9]}
             self.dynamic_shape.opt_input_shape = {"input_data": [2, 64, 3, 3]}
 
         def clear_dynamic_shape():

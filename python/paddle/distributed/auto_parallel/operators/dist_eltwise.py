@@ -12,18 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, is_parameter_related
-from .common import is_elementwise_op
-from ..utils import compute_compatible_dim_mapping
-from ..utils import compute_compatible_dims_mapping
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    _g_op_cost_factory,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import (
+    compute_compatible_dim_mapping,
+    compute_compatible_dims_mapping,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_elementwise_op,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 from .dist_default import DistributedDefaultImpl0
-from ..cost import _g_op_cost_factory
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):
@@ -58,7 +67,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
@@ -75,7 +84,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         backward_op = dist_op.serial_op
         op_type = backward_op.type
         cost_mapping = build_comp_costs_from_descs(
@@ -84,7 +93,6 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         res.append(cost_mapping)
 
         main_block = backward_op.block
-        vars = main_block.vars
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
@@ -92,7 +100,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     varname, main_block
                 ):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
@@ -107,7 +115,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                         var_dim_mapping = dist_attr.get_input_dims_mapping(
                             varname
                         )
-                        mesh_shape = process_mesh.topology
+                        mesh_shape = process_mesh.shape
                         batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}

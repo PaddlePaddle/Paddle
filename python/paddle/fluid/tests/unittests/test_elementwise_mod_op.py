@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from op_test import OpTest
-
 import random
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
 
 
 class TestElementwiseModOp(OpTest):
@@ -43,9 +44,9 @@ class TestElementwiseModOp(OpTest):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -100,9 +101,9 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
 
 class TestElementwiseModOpFp16(TestElementwiseModOp):
@@ -116,9 +117,9 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
@@ -132,8 +133,8 @@ class TestRemainderOp(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="int64")
-            y = fluid.data(name='y', shape=[2, 3], dtype='int64')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
 
             y_1 = self._executed_api(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)

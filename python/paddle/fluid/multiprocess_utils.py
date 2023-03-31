@@ -18,7 +18,6 @@ import atexit
 
 from . import core
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # multi-process worker check indices queue interval, avoid

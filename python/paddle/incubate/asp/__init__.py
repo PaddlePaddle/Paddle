@@ -13,11 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.contrib.sparsity import calculate_density  # noqa: F401
-from ...fluid.contrib.sparsity import decorate  # noqa: F401
-from ...fluid.contrib.sparsity import prune_model  # noqa: F401
-from ...fluid.contrib.sparsity import set_excluded_layers  # noqa: F401
-from ...fluid.contrib.sparsity import reset_excluded_layers  # noqa: F401
+
+from .utils import check_mask_1d  # noqa: F401
+from .utils import get_mask_1d  # noqa: F401
+from .utils import check_mask_2d  # noqa: F401
+from .utils import get_mask_2d_greedy  # noqa: F401
+from .utils import get_mask_2d_best  # noqa: F401
+from .utils import create_mask  # noqa: F401
+from .utils import check_sparsity  # noqa: F401
+from .utils import MaskAlgo  # noqa: F401
+from .utils import CheckMethod  # noqa: F401
+from .utils import calculate_density  # noqa: F401
+
+from .asp import decorate  # noqa: F401
+from .asp import prune_model  # noqa: F401
+from .asp import set_excluded_layers  # noqa: F401
+from .asp import reset_excluded_layers  # noqa: F401
+from .asp import ASPHelper  # noqa: F401
+
+from .supported_layer_list import add_supported_layer  # noqa: F401
+
 
 __all__ = [  # noqa
     'calculate_density',
@@ -25,4 +40,5 @@ __all__ = [  # noqa
     'prune_model',
     'set_excluded_layers',
     'reset_excluded_layers',
+    'add_supported_layer',
 ]

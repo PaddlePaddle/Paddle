@@ -16,16 +16,13 @@ import collections
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.tensor as tensor
-import paddle.utils as utils
-from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-import paddle.static as static
-from paddle.distributed.fleet import auto
+from paddle import nn, static, tensor, utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
+from paddle.fluid import layers
+from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -210,9 +207,8 @@ class MultiHeadAttention(nn.Layer):
                 query, key, value, use_cache, cache
             )
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if attn_mask is not None:
             product = product + attn_mask
@@ -616,9 +612,7 @@ class GPTModel(nn.Layer):
             )
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(
-                position_ids, input_ids
-            )
+            position_ids = paddle.expand_as(position_ids, input_ids)
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids
         )

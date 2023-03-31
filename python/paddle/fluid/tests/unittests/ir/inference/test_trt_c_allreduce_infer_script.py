@@ -14,14 +14,14 @@
 
 import os
 import sys
-import numpy as np
 import tempfile
+
+import numpy as np
+
 import paddle
-import paddle.distributed.fleet as fleet
-from paddle.inference import Config
-from paddle.inference import create_predictor
-from paddle.inference import PrecisionType
+from paddle.distributed import fleet
 from paddle.fluid import core
+from paddle.inference import Config, PrecisionType, create_predictor
 
 
 def run(op_type, precision):

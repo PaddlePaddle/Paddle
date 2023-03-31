@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
-from paddle import fluid, nn
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import paddle.fluid.initializer as I
-import unittest
-import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid, nn
 
 
 def _reverse_repeat_list(t, n):
-    return list(x for x in reversed(t) for _ in range(n))
+    return [x for x in reversed(t) for _ in range(n)]
 
 
 class Conv2DTestCase(unittest.TestCase):
@@ -53,7 +53,7 @@ class Conv2DTestCase(unittest.TestCase):
 
         self.padding = padding
         if padding_mode in {'reflect', 'replicate', 'circular'}:
-            _paired_padding = fluid.layers.utils.convert_to_list(
+            _paired_padding = paddle.utils.convert_to_list(
                 padding, 2, 'padding'
             )
             self._reversed_padding_repeated_twice = _reverse_repeat_list(
@@ -108,12 +108,14 @@ class Conv2DTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
                 else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
                 if self.padding_mode != 'zeros':
                     x_var = F.pad(
                         x_var,
@@ -125,7 +127,7 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     padding = self.padding
 
-                y_var = fluid.layers.conv2d(
+                y_var = paddle.static.nn.conv2d(
                     x_var,
                     self.num_filters,
                     self.filter_size,
@@ -154,11 +156,13 @@ class Conv2DTestCase(unittest.TestCase):
                     if self.channel_last
                     else (-1, self.num_channels, -1, -1)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
 
@@ -220,12 +224,8 @@ class Conv2DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
-            with _test_eager_guard():
-                res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
-        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()

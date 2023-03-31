@@ -73,11 +73,10 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.device_context());
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
   }
 };
 
@@ -107,6 +106,10 @@ class CSoftmaxWithCrossEntropyOpMaker
               "Input(Logits) "
               "except the shape in dimension :attr:`axis` as 1. The cross "
               "entropy loss.");
+    AddAttr<int64_t>("ignore_index",
+                     "(int default -100) Specifies a target value "
+                     "that is ignored and does not contribute to the loss.")
+        .SetDefault(-100);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("rank",
@@ -150,11 +153,11 @@ class CSoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Loss")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Loss")),
+                          ctx.GetPlace());
   }
 };
 

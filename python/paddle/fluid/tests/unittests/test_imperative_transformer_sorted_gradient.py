@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
-from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph import TracedLayer
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.fluid import core
+
 import numpy as np
+from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.dygraph import guard, to_variable
+from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
 
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 # Copy from models
@@ -208,7 +209,7 @@ def create_feed_dict_list(data, init=False):
             + decoder_data_input_fields[:-1]
             + label_data_input_fields
         )
-    feed_dict_list = dict()
+    feed_dict_list = {}
     for i in range(len(data_input_names)):
         feed_dict_list[data_input_names[i]] = data[i]
     return feed_dict_list
@@ -220,14 +221,13 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = fluid.layers.data(
+        input_var = paddle.static.data(
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
             lod_level=input_descs[input_field][2]
             if len(input_descs[input_field]) == 3
             else 0,
-            append_batch_size=False,
         )
         inputs.append(input_var)
     return inputs
@@ -396,13 +396,13 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                    weight_attr=fluid.ParamAttr(
+                        initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0)
+                        initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
 
@@ -414,11 +414,9 @@ class PrePostProcessLayer(Layer):
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
                 if dropout_rate:
-                    out = fluid.layers.dropout(
+                    out = paddle.nn.functional.dropout(
                         out,
-                        dropout_prob=dropout_rate,
-                        seed=ModelHyperParams.dropout_seed,
-                        is_test=False,
+                        p=dropout_rate,
                     )
         return out
 
@@ -426,18 +424,17 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._i2h = Linear(d_hid, d_inner_hid)
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
         hidden = self._i2h(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
-            hidden = fluid.layers.dropout(
+            hidden = paddle.nn.functional.dropout(
                 hidden,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
         out = self._h2o(hidden)
         return out
@@ -476,48 +473,46 @@ class MultiHeadAttentionLayer(Layer):
         v = self._v_fc(values)
 
         # split head
-        reshaped_q = fluid.layers.reshape(
-            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_q = paddle.reshape(
+            x=q, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
-        reshaped_k = fluid.layers.reshape(
-            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=False
+
+        transpose_q = paddle.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+        reshaped_k = paddle.reshape(
+            x=k, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
-        reshaped_v = fluid.layers.reshape(
-            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False
+        transpose_k = paddle.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+        reshaped_v = paddle.reshape(
+            x=v, shape=[0, 0, self._n_head, self._d_value]
         )
-        transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+        transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = fluid.layers.matmul(
+        product = paddle.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
-            alpha=self._d_model**-0.5,
         )
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = fluid.layers.dropout(
+            weights_droped = paddle.nn.functional.dropout(
                 weights,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
-            out = fluid.layers.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_droped, transpose_v)
         else:
-            out = fluid.layers.matmul(weights, transpose_v)
+            out = paddle.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
-        trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-        final_out = fluid.layers.reshape(
+        trans_x = paddle.transpose(out, perm=[0, 2, 1, 3])
+        final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=False,
         )
 
         # fc to output
@@ -610,7 +605,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._preprocess_layer = PrePostProcessLayer(
@@ -661,13 +656,15 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
-        self._input_emb = Embedding(
-            size=[src_vocab_size, src_emb_dim],
-            is_sparse=is_sparse,
-            padding_idx=0,
-            param_attr=fluid.ParamAttr(
+        self._input_emb = paddle.nn.Embedding(
+            src_vocab_size,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -675,12 +672,13 @@ class PrepareEncoderDecoderLayer(Layer):
             pos_inp = pos_inp1
         else:
             pos_inp = pos_inp2
-        self._pos_emb = Embedding(
-            size=[self._src_max_len, src_emb_dim],
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._src_max_len,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
             ),
         )
@@ -691,7 +689,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
-        src_word_emb = fluid.layers.scale(
+        src_word_emb = paddle.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
         # # TODO change this to fit dynamic length input
@@ -699,11 +697,9 @@ class PrepareEncoderDecoderLayer(Layer):
         src_pos_emb.stop_gradient = True
         enc_input = src_word_emb + src_pos_emb
         return (
-            fluid.layers.dropout(
+            paddle.nn.functional.dropout(
                 enc_input,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
             if self._dropout_rate
             else enc_input
@@ -890,7 +886,7 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
-        self._decoder_sub_layers = list()
+        self._decoder_sub_layers = []
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -994,12 +990,12 @@ class WrapDecoderLayer(Layer):
             dec_input, enc_output, trg_slf_attn_bias, trg_src_attn_bias
         )
 
-        dec_output_reshape = fluid.layers.reshape(
-            dec_output, shape=[-1, dec_output.shape[-1]], inplace=False
+        dec_output_reshape = paddle.reshape(
+            dec_output, shape=[-1, dec_output.shape[-1]]
         )
 
         if self._weight_sharing:
-            predict = fluid.layers.matmul(
+            predict = paddle.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,
@@ -1009,7 +1005,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 
@@ -1088,21 +1084,21 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
-                label=fluid.layers.one_hot(
-                    input=label, depth=self._trg_vocab_size
+            label_out = F.label_smooth(
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, self._trg_vocab_size)
                 ),
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num
@@ -1159,35 +1155,15 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=0.003, parameter_list=transformer.parameters()
                 )
-            dy_param_init = dict()
-            dy_param_updated = dict()
+            dy_param_init = {}
+            dy_param_updated = {}
 
             helper = DyGraphProgramDescTracerTestHelper(self)
             program = None
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if False:
-                    outs, traced_layer = TracedLayer.trace(
-                        transformer, [enc_inputs, dec_inputs, label, weights]
-                    )
-
-                    ins_static = enc_inputs + dec_inputs + [label, weights]
-                    outs_static = traced_layer(ins_static)
-                    helper.assertEachVar(outs, outs_static)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    program = traced_layer.program
-                    traced_layer.save_inference_model(
-                        './infer_imperative_transformer',
-                        feed=list(range(len(ins_static))),
-                        fetch=list(range(len(outs_static))),
-                    )
-                else:
-                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+                outs = transformer(enc_inputs, dec_inputs, label, weights)
 
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 
@@ -1216,18 +1192,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 dy_param_init,
                 dy_param_updated,
             )
-
-        with guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            if _in_legacy_dygraph():
-                (
-                    dy_avg_cost_value,
-                    dy_sum_cost_value,
-                    dy_predict_value,
-                    dy_token_num_value,
-                    dy_param_init,
-                    dy_param_updated,
-                ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -1274,9 +1238,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ]
             label = all_inputs[-2]
             weights = all_inputs[-1]
-            static_param_updated = dict()
-            static_param_init = dict()
-            static_param_name_list = list()
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
             (
                 static_sum_cost,
                 static_avg_cost,
@@ -1320,24 +1284,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[
                             static_param_name_list[k - 4]
                         ] = out[k]
-        if _in_legacy_dygraph():
-            np.testing.assert_array_equal(
-                static_avg_cost_value, dy_avg_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_sum_cost_value, dy_sum_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_predict_value, dy_predict_value
-            )
-            np.testing.assert_array_equal(
-                static_token_num_value, dy_token_num_value
-            )
-
-            for key, value in static_param_init.items():
-                np.testing.assert_array_equal(value, dy_param_init[key])
-            for key, value in static_param_updated.items():
-                np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
         with guard():
@@ -1352,15 +1298,14 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ) = run_dygraph()
 
         with guard():
-            with _test_eager_guard():
-                (
-                    eager_avg_cost_value,
-                    eager_sum_cost_value,
-                    eager_predict_value,
-                    eager_token_num_value,
-                    eager_param_init,
-                    eager_param_updated,
-                ) = run_dygraph()
+            (
+                eager_avg_cost_value,
+                eager_sum_cost_value,
+                eager_predict_value,
+                eager_token_num_value,
+                eager_param_init,
+                eager_param_updated,
+            ) = run_dygraph()
         np.testing.assert_allclose(
             dy_avg_cost_value, eager_avg_cost_value, rtol=1e-05
         )

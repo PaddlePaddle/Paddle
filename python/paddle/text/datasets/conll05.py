@@ -14,10 +14,11 @@
 
 import gzip
 import tarfile
+
 import numpy as np
 
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -87,7 +88,7 @@ class Conll05st(Dataset):
 
                 model = SimpleNet()
                 pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx.numpy(), mark.numpy(), label.numpy())
+                print(pred_idx, mark, label)
 
     """
 
@@ -165,7 +166,7 @@ class Conll05st(Dataset):
         self._load_anno()
 
     def _load_label_dict(self, filename):
-        d = dict()
+        d = {}
         tag_dict = set()
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
@@ -184,7 +185,7 @@ class Conll05st(Dataset):
         return d
 
     def _load_dict(self, filename):
-        d = dict()
+        d = {}
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
                 d[line.strip()] = i

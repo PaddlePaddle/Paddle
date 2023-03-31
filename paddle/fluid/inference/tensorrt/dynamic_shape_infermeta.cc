@@ -235,6 +235,15 @@ nvinfer1::DimsExprs UnchangedInferMeta(
   return inputs[0];
 }
 
+nvinfer1::DimsExprs MoeInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  return inputs[0];
+}
+
 nvinfer1::DimsExprs Pad3dInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -368,7 +377,7 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
     output.d[2] = grid_dims.d[1];
     output.d[3] = grid_dims.d[2];
   } else {
-    output.nbDims = 4;
+    output.nbDims = 5;
     output.d[0] = x_dims.d[0];
     output.d[1] = x_dims.d[1];
     output.d[2] = grid_dims.d[1];
@@ -384,6 +393,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 }  // namespace tensorrt

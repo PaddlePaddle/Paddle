@@ -14,8 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/mixed_vector.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"
@@ -73,35 +82,35 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T));
   }
 };
 
@@ -200,27 +209,27 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
+    phi::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
   }
 };
 
@@ -254,7 +263,7 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const paddle::framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      const phi::Vector<int64_t>& in_rows = (*iter)->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -542,11 +551,10 @@ struct MergeAddImpl {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     if (merged_row_set.size() == row_num && !sorted_result) {
       // no duplicated ids, just concat the result together
@@ -564,11 +572,11 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        paddle::memory::Copy(out_place,
-                             out_data + copied_numel,
-                             in_place,
-                             in_data,
-                             in_numel * sizeof(T));
+        memory_utils::Copy(out_place,
+                           out_data + copied_numel,
+                           in_place,
+                           in_data,
+                           in_numel * sizeof(T));
         copied_numel += in_numel;
       }
     } else {
@@ -647,7 +655,7 @@ struct MergeAdd<phi::XPUContext, T> {
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    paddle::framework::Vector<int64_t> input_rows(input.rows());
+    phi::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
@@ -659,9 +667,10 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -677,16 +686,16 @@ struct MergeAdd<phi::XPUContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    paddle::memory::Copy(context.GetPlace(),
-                         y_rows_data,
-                         phi::CPUPlace(),
-                         merge_rows.data(),
-                         ym * sizeof(int64_t));
-    paddle::memory::Copy(context.GetPlace(),
-                         x_rows_data,
-                         phi::CPUPlace(),
-                         input_rows.data(),
-                         xm * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       y_rows_data,
+                       phi::CPUPlace(),
+                       merge_rows.data(),
+                       ym * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       x_rows_data,
+                       phi::CPUPlace(),
+                       input_rows.data(),
+                       xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                             x_data,
                                             y_data,
@@ -748,12 +757,13 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
 
-    float* y_data = reinterpret_cast<float*>(out.mutable_value()->data<T>());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
+
+    float* y_data = reinterpret_cast<float*>(out_tensor->data<T>());
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -774,16 +784,16 @@ struct MergeAdd<phi::XPUContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      paddle::memory::Copy(context.GetPlace(),
-                           y_rows_data,
-                           phi::CPUPlace(),
-                           merge_rows.data(),
-                           ym * sizeof(int64_t));
-      paddle::memory::Copy(context.GetPlace(),
-                           x_rows_data,
-                           phi::CPUPlace(),
-                           input_rows.data(),
-                           xm * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         y_rows_data,
+                         phi::CPUPlace(),
+                         merge_rows.data(),
+                         ym * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         x_rows_data,
+                         phi::CPUPlace(),
+                         input_rows.data(),
+                         xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                               x_data,
                                               y_data,
@@ -856,11 +866,11 @@ struct MergeAverage<phi::CPUContext, T> {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());

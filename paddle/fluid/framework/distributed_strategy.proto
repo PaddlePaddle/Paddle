@@ -124,6 +124,8 @@ message BuildStrategy {
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
   optional string debug_graphviz_path = 17;
+  optional bool fused_attention = 18 [ default = false];
+  optional bool fused_feedforward = 19 [ default = false];
 }
 
 message ExecutionStrategy {
@@ -287,6 +289,7 @@ message CtrAccessorParameter {
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
   optional bool show_scale = 10 [ default = true ];
+  repeated float load_filter_slots = 11;
 }
 
 message TableAccessorSaveParameter {
@@ -333,7 +336,7 @@ message DistributedStrategy {
   optional float last_comm_group_size_MB = 27 [ default = 1 ];
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
-  optional bool without_graph_optimization = 30 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = true ];
   optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];

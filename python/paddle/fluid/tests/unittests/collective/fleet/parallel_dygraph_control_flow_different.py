@@ -13,26 +13,24 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.nn.functional as F
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 paddle.seed(123)
 np.random.seed(2021)
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self, hidden_size, vocab_size, is_sparse=False):
         super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
-        self.embedding = Embedding(
-            size=[self.vocab_size, self.hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse,
+        self.embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.hidden_size,
+            sparse=is_sparse,
         )
 
         self.lin_a = paddle.nn.Linear(self.hidden_size, self.vocab_size)

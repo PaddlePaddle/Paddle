@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.framework import Variable
 
 
 def check_input_type(input, name, op_name):
     r"""Check whether the input is tensor or variable."""
     if paddle.in_dynamic_mode():
         if not isinstance(input, paddle.Tensor):
-            raise ValueError("The input: {} must be tensor.".format(input))
+            raise ValueError(f"The input: {input} must be tensor.")
     else:
         check_type(input, name, Variable, op_name)
 

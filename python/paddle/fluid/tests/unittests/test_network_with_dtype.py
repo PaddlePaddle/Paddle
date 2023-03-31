@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 BATCH_SIZE = 20
 
@@ -30,10 +30,12 @@ class TestNetWithDtype(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-            y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype=self.dtype)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype=self.dtype)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)

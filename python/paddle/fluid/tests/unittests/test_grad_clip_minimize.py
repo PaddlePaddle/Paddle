@@ -13,17 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-import paddle.fluid as fluid
-
+from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
-
-from paddle.fluid.clip import (
-    GradientClipByValue,
-    GradientClipByNorm,
-    GradientClipByGlobalNorm,
-)
+from paddle.nn import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
@@ -68,7 +63,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
     def get_dygrap_global_norm_result(self):
         with fluid.dygraph.guard():
 
-            gloabl_norm_clip = GradientClipByGlobalNorm(self.max_global_norm)
+            gloabl_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -143,7 +138,7 @@ class TestGradClipByNorm(unittest.TestCase):
     def get_dygrap_norm_result(self):
         with fluid.dygraph.guard():
 
-            norm_clip = GradientClipByNorm(self.max_norm)
+            norm_clip = ClipGradByNorm(self.max_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -213,9 +208,7 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
-            value_clip = GradientClipByValue(
-                max=self.max_value, min=self.min_value
-            )
+            value_clip = ClipGradByValue(max=self.max_value, min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)

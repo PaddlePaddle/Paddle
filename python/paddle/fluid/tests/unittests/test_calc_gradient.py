@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
+import paddle
+from paddle import fluid
 from paddle.fluid.backward import calc_gradient
 
 
@@ -25,9 +26,9 @@ class TestCalcGradient(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            x = layers.create_parameter(dtype="float32", shape=[5, 10])
-            y = layers.create_parameter(dtype="float32", shape=[10, 8])
-            mul_out = layers.mul(x=x, y=y)
+            x = paddle.create_parameter(dtype="float32", shape=[5, 10])
+            y = paddle.create_parameter(dtype="float32", shape=[10, 8])
+            mul_out = paddle.matmul(x=x, y=y)
             mean_out = paddle.mean(mul_out)
             a = calc_gradient(mean_out, mul_out)
             b = calc_gradient(mean_out, x)
@@ -43,11 +44,11 @@ class TestDoubleGrad(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             net = lambda x: x * x
-            x = fluid.layers.create_parameter(
+            x = paddle.create_parameter(
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(3),
+                default_initializer=paddle.nn.initializer.Constant(3),
             )
             (grad1,) = fluid.gradients(net(x), x)  # 2x = 6
             z = net(x - grad1)
@@ -64,11 +65,11 @@ class TestDoubleGrad(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            x = fluid.layers.create_parameter(
+            x = paddle.create_parameter(
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(1),
+                default_initializer=paddle.nn.initializer.Constant(1),
             )
             y = x * x
             (dx1,) = fluid.gradients(y, x)
@@ -85,9 +86,9 @@ class TestDoubleGrad(unittest.TestCase):
 class TestGradientWithPrune(unittest.TestCase):
     def test_prune(self):
         with paddle.fluid.scope_guard(paddle.static.Scope()):
-            x = fluid.data(name='x', shape=[3], dtype='float32')
+            x = paddle.static.data(name='x', shape=[3], dtype='float32')
             x.stop_gradient = False
-            x1, x2, x3 = fluid.layers.split(x, dim=0, num_or_sections=3)
+            x1, x2, x3 = paddle.split(x, axis=0, num_or_sections=3)
             y = x1 * 2
             x1_grad = fluid.gradients(y, x)
 

@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.framework import core
-from paddle.utils import unique_name
-from paddle.framework import ParamAttr
-from paddle.fluid.framework import _varbase_creator
-from paddle.nn.initializer import Constant
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.nn import functional as F
 import logging
+
+import paddle
+from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.log_helper import get_logger
-from paddle import _legacy_C_ops
-from paddle import in_dynamic_mode
+from paddle.framework import ParamAttr, core
 from paddle.nn import Layer
+from paddle.nn import functional as F
+from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
+from paddle.utils import unique_name
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -40,6 +39,7 @@ __all__ = [
     'QuantStub',
     'QuantizedRowParallelLinear',
     'QuantizedColumnParallelLinear',
+    'QuantizedMatmul',
 ]
 
 _logger = get_logger(
@@ -69,9 +69,7 @@ class FakeQuantAbsMax(Layer):
         self._quant_bits = quant_bits
         self._name = name
         self._reduce_type = reduce_type
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         if quant_on_weight:
             scale_attr = ParamAttr(
@@ -91,7 +89,7 @@ class FakeQuantAbsMax(Layer):
             attrs = ('bit_length', self._quant_bits)
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
+                name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False,
@@ -120,7 +118,7 @@ class FakeQuantAbsMax(Layer):
         attrs = {'bit_length': self._quant_bits}
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
-            name="{}.quantized.dequantized".format(input.name),
+            name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
@@ -169,9 +167,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._reduce_type = reduce_type
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         scale_attr = ParamAttr(
             name=unique_name.generate(scale_prefix),
             initializer=Constant(0.001),
@@ -182,9 +178,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         )
         self._scale.stop_gradient = True
 
-        state_prefix = (
-            "{}.state".format(name) if name else 'quant_dequant.state'
-        )
+        state_prefix = f"{name}.state" if name else 'quant_dequant.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
             initializer=Constant(1),
@@ -195,9 +189,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         )
         self._state.stop_gradient = True
 
-        accum_prefix = (
-            "{}.accum".format(name) if name else 'quant_dequant.accum'
-        )
+        accum_prefix = f"{name}.accum" if name else 'quant_dequant.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
             initializer=Constant(1),
@@ -220,7 +212,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
             )
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
+                name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False,
@@ -247,7 +239,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
                 self._scale,
                 state,
                 accum,
-                *attrs
+                *attrs,
             )
 
             return out
@@ -262,7 +254,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         }
         inputs = {"X": [input], "InScale": [self._scale]}
         quant_out = self._helper.create_variable(
-            name="{}.quantized.dequantized".format(input.name),
+            name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
@@ -307,9 +299,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
         self._name = name
         self._channel_num = channel_num
         self._reduce_type = reduce_type
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         if quant_on_weight:
             scale_attr = ParamAttr(
@@ -334,7 +324,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
             )
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
+                name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False,
@@ -369,7 +359,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
         attrs = {'bit_length': self._quant_bits, 'quant_axis': self._quant_axis}
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
-            name="{}.quantized.dequantized".format(input.name),
+            name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
@@ -410,7 +400,7 @@ class MovingAverageAbsMaxScale(Layer):
         super().__init__()
         self._moving_rate = moving_rate
         self._reduce_type = reduce_type
-        scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
+        scale_prefix = f'{name}.scale' if name else 'outscale.scale'
         scale_name = unique_name.generate(scale_prefix)
         scale_attr = ParamAttr(
             name=scale_name, initializer=Constant(0), trainable=False
@@ -420,7 +410,7 @@ class MovingAverageAbsMaxScale(Layer):
         )
         self._scale.stop_gradient = True
 
-        state_prefix = "{}.state".format(name) if name else 'outscale.state'
+        state_prefix = f"{name}.state" if name else 'outscale.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
             initializer=Constant(0),
@@ -431,7 +421,7 @@ class MovingAverageAbsMaxScale(Layer):
         )
         self._state.stop_gradient = True
 
-        accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
+        accum_prefix = f"{name}.accum" if name else 'outscale.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
             initializer=Constant(0),
@@ -453,7 +443,7 @@ class MovingAverageAbsMaxScale(Layer):
 
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}.tmp".format(input.name),
+                name=f"{input.name}.tmp",
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False,
@@ -474,7 +464,7 @@ class MovingAverageAbsMaxScale(Layer):
                 self._scale,
                 state,
                 accum,
-                *attrs
+                *attrs,
             )
             return out
 
@@ -485,7 +475,7 @@ class MovingAverageAbsMaxScale(Layer):
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
-            name="{}.tmp".format(input.name),
+            name=f"{input.name}.tmp",
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
@@ -533,18 +523,18 @@ class QuantizedConv2D(Layer):
     ):
         super().__init__()
         # For Conv2D
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._padding_mode = getattr(layer, '_padding_mode')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._padding_mode = layer._padding_mode
         if self._padding_mode != 'zeros':
-            self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice'
+            self._reversed_padding_repeated_twice = (
+                layer._reversed_padding_repeated_twice
             )
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
 
         # For FakeQuant
         self._conv2d_quant_axis = 0
@@ -613,23 +603,25 @@ class QuantizedConv2D(Layer):
 
 class QuantizedConv2DTranspose(Layer):
     """
+
     The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
     The only difference is that its inputs are all fake quantized.
 
     Examples:
        .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           conv_quantized = QuantizedConv2DTranspose(conv)
           y_quantized = conv_quantized(x_var)
           y_var = conv(x_var)
-          y_quantized_np = y_quantized.numpy()
-          y_np = y_var.numpy()
-          print(y_np.shape, y_quantized_np.shape)
-          # (2, 6, 10, 10), (2, 6, 10, 10)
+          print(y_var.shape, y_quantized.shape)
+          # [2, 6, 10, 10], [2, 6, 10, 10]
+
     """
 
     def __init__(
@@ -652,14 +644,14 @@ class QuantizedConv2DTranspose(Layer):
         """
         super().__init__()
         # For Conv2DTranspose
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._output_padding = getattr(layer, 'output_padding')
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._output_padding = layer.output_padding
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
         # For FakeQuant
         self._conv2d_transpose_quant_axis = 1
         if weight_quant_layer is not None:
@@ -746,9 +738,9 @@ class QuantizedLinear(Layer):
     ):
         super().__init__()
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, 'name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer.name
         # For FakeQuant
         self._linear_quant_axis = 1
 
@@ -827,15 +819,15 @@ class QuantizedColumnParallelLinear(Layer):
             act_quant_layer is None
         ), "When quantizing ColumnParallelLinear, act_quant_layer should be None."
 
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, '_name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer._name
         # For FakeQuant
         self._linear_quant_axis = 1
 
-        self.is_mp = getattr(layer, 'is_mp')
-        self.model_parallel_group = getattr(layer, 'model_parallel_group')
-        self.gather_output = getattr(layer, 'gather_output')
+        self.is_mp = layer.is_mp
+        self.model_parallel_group = layer.model_parallel_group
+        self.gather_output = layer.gather_output
 
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type,
@@ -921,15 +913,15 @@ class QuantizedRowParallelLinear(Layer):
         ), "When quantizing RowParallelLinear, act_quant_layer cannot defined by yourself."
 
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, '_name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer._name
         # For FakeQuant
         self._linear_quant_axis = 1
 
-        self.input_is_parallel = getattr(layer, 'input_is_parallel')
-        self.is_mp = getattr(layer, 'is_mp')
-        self.model_parallel_group = getattr(layer, 'model_parallel_group')
+        self.input_is_parallel = layer.input_is_parallel
+        self.is_mp = layer.is_mp
+        self.model_parallel_group = layer.model_parallel_group
 
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type,
@@ -998,6 +990,65 @@ class QuantizedRowParallelLinear(Layer):
         return output
 
 
+class QuantizedMatmul(Layer):
+    """
+    The computational logic of QuantizedMatmul is the same with Matmul.
+    The only difference is that its inputs are all fake quantized.
+    """
+
+    def __init__(
+        self,
+        layer=None,
+        weight_bits=8,
+        activation_bits=8,
+        moving_rate=0.9,
+        weight_quantize_type='abs_max',
+        activation_quantize_type='abs_max',
+        weight_pre_layer=None,
+        act_pre_layer=None,
+        weight_quant_layer=None,
+        act_quant_layer=None,
+    ):
+        super().__init__()
+
+        # For FakeQuant
+        if act_quant_layer is not None:
+            self._fake_quant_x = act_quant_layer()
+            self._fake_quant_y = act_quant_layer()
+        else:
+            self._fake_quant_x = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+            self._fake_quant_y = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+
+        self._act_preprocess_x = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+        self._act_preprocess_y = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+
+    def forward(self, x, y, transpose_x=False, transpose_y=False, name=None):
+        if self._act_preprocess_x is not None:
+            x = self._act_preprocess_x(x)
+        quant_x = self._fake_quant_x(x)
+
+        if self._act_preprocess_y is not None:
+            y = self._act_preprocess_y(y)
+        quant_y = self._fake_quant_y(y)
+
+        out = paddle.matmul(quant_x, quant_y, transpose_x, transpose_y, name)
+        return out
+
+
 class MAOutputScaleLayer(Layer):
     """
     Add MovingAverageMaxScale layer to the behind of the input layer.
@@ -1026,11 +1077,7 @@ class MAOutputScaleLayer(Layer):
     def forward(self, *inputs, **kwargs):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
-        if (
-            isinstance(out, list)
-            or isinstance(out, tuple)
-            or isinstance(out, dict)
-        ):
+        if isinstance(out, (list, tuple, dict)):
             return out
         else:
             return self._ma_output_scale(out)
@@ -1050,7 +1097,7 @@ class FakeQuantMAOutputScaleLayer(Layer):
         name=None,
         reduce_type=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         super().__init__()
@@ -1068,7 +1115,7 @@ class FakeQuantMAOutputScaleLayer(Layer):
     def forward(self, *inputs, **kwargs):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
-        if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
+        if (isinstance(out, (list, tuple))) and len(out) > 1:
             return out
         else:
             return self._fake_quant_output(out)

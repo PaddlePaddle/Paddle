@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import paddle
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
-from paddle.incubate import DistributedFusedLamb
-from paddle.vision.models import resnet18 as resnet
-from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid.clip import ClipGradBase
-import numpy as np
+import distutils
 import os
 import unittest
-from paddle.fluid.clip import _clip_by_global_norm_using_mp_type
-import distutils
+
+import numpy as np
+
+import paddle
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
+from paddle.fluid import core
+from paddle.incubate import DistributedFusedLamb
+from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
+from paddle.vision.models import resnet18 as resnet
 
 
 def get_role_maker():
@@ -220,7 +220,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         elif pd_dtype == paddle.float16:
             return np.float16
         else:
-            raise ValueError("supported dtype {}".format(pd_dtype))
+            raise ValueError(f"supported dtype {pd_dtype}")
 
     def gen_random_grad_tensor(grad):
         np_dtype = pd_dtype_to_np_dtype(grad.dtype)
@@ -231,9 +231,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
 
     def reader():
         for _ in range(6):
-            yield dict(
-                [(grad.name, gen_random_grad_tensor(grad)) for grad in grads]
-            )
+            yield {grad.name: gen_random_grad_tensor(grad) for grad in grads}
 
     scope = paddle.static.Scope()
     fetch_list = params

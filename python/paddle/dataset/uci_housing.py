@@ -19,12 +19,14 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
-import numpy as np
-import tempfile
-import tarfile
 import os
+import tarfile
+import tempfile
+
+import numpy as np
+
 import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 __all__ = []
 

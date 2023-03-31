@@ -13,20 +13,33 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
 from paddle import fluid
 from paddle.fluid import core
+
+
+def broadcast_wrapper(shape=[1, 10, 12, 1]):
+    def div_wrapper(x, y, axis=-1):
+        return paddle.divide(x, y.reshape(shape))
+
+    return div_wrapper
 
 
 class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
+        self.public_python_api = paddle.divide
+        self.prim_op_type = "prim"
         self.init_args()
         self.init_dtype()
         self.init_shape()
+        self.if_check_prim()
+        self.if_enable_cinn()
 
         x = self.gen_data(self.x_shape).astype(self.val_dtype)
         y = self.gen_data(self.y_shape).astype(self.val_dtype)
@@ -52,6 +65,9 @@ class ElementwiseDivOp(OpTest):
         self.grad_x = grad_x
         self.grad_y = grad_y
 
+    def if_enable_cinn(self):
+        self.enable_cinn = True
+
     def init_args(self):
         self.check_dygraph = True
         self.place = None
@@ -63,6 +79,9 @@ class ElementwiseDivOp(OpTest):
     def init_shape(self):
         self.x_shape = [13, 17]
         self.y_shape = [13, 17]
+
+    def if_check_prim(self):
+        self.check_prim = True
 
     def gen_data(self, shape):
         return np.random.uniform(0.1, 1, shape)
@@ -104,6 +123,7 @@ class ElementwiseDivOp(OpTest):
                 'user_defined_grads': check_option['val_grad'],
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
+                'check_prim': self.check_prim,
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs)
@@ -112,10 +132,19 @@ class ElementwiseDivOp(OpTest):
                 self.check_grad_with_place(*check_args, **check_kwargs)
 
 
+class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.val_dtype = np.float32
+
+
 class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = []
         self.y_shape = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
@@ -132,6 +161,9 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def init_shape(self):
@@ -146,6 +178,9 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -167,6 +202,42 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
         self.x_shape = [12, 13]
         self.y_shape = [12, 13]
 
+    def test_check_gradient(self):
+        check_list = []
+        check_list.append(
+            {
+                'grad': ['X', 'Y'],
+                'no_grad': None,
+                'val_grad': [self.grad_x, self.grad_y],
+            }
+        )
+        check_list.append(
+            {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+        )
+        check_list.append(
+            {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+        )
+        for check_option in check_list:
+            check_args = [check_option['grad'], 'Out']
+            check_kwargs = {
+                'no_grad_set': check_option['no_grad'],
+                'user_defined_grads': check_option['val_grad'],
+                'user_defined_grad_outputs': [self.grad_out],
+                'check_dygraph': self.check_dygraph,
+            }
+            if self.place is None:
+                self.check_grad(*check_args, **check_kwargs)
+            else:
+                check_args.insert(0, self.place)
+                self.check_grad_with_place(*check_args, **check_kwargs)
+
+    # elementwise_pow does't support bfloat16
+    def if_check_prim(self):
+        self.check_prim = False
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."
@@ -186,11 +257,43 @@ class TestElementwiseDivOpVector(ElementwiseDivOp):
         self.y_shape = [100]
 
 
-class TestElementwiseDivOpBroadcast0(ElementwiseDivOp):
+class TestElementwiseDivOpNoPrim(ElementwiseDivOp):
+    def test_check_gradient(self):
+        check_list = []
+        check_list.append(
+            {
+                'grad': ['X', 'Y'],
+                'no_grad': None,
+                'val_grad': [self.grad_x, self.grad_y],
+            }
+        )
+        check_list.append(
+            {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+        )
+        check_list.append(
+            {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+        )
+        for check_option in check_list:
+            check_args = [check_option['grad'], 'Out']
+            check_kwargs = {
+                'no_grad_set': check_option['no_grad'],
+                'user_defined_grads': check_option['val_grad'],
+                'user_defined_grad_outputs': [self.grad_out],
+                'check_dygraph': self.check_dygraph,
+            }
+            if self.place is None:
+                self.check_grad(*check_args, **check_kwargs)
+            else:
+                check_args.insert(0, self.place)
+                self.check_grad_with_place(*check_args, **check_kwargs)
+
+
+class TestElementwiseDivOpBroadcast0(TestElementwiseDivOpNoPrim):
     def init_shape(self):
         self.x_shape = [100, 3, 4]
         self.y_shape = [100]
         self.attrs = {'axis': 0}
+        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(100, 1, 1)
@@ -202,11 +305,12 @@ class TestElementwiseDivOpBroadcast0(ElementwiseDivOp):
         return np.sum(-1 * grad_out * out / y.reshape(100, 1, 1), axis=(1, 2))
 
 
-class TestElementwiseDivOpBroadcast1(ElementwiseDivOp):
+class TestElementwiseDivOpBroadcast1(TestElementwiseDivOpNoPrim):
     def init_shape(self):
         self.x_shape = [2, 100, 4]
         self.y_shape = [100]
         self.attrs = {'axis': 1}
+        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 100, 1)
@@ -218,10 +322,11 @@ class TestElementwiseDivOpBroadcast1(ElementwiseDivOp):
         return np.sum(-1 * grad_out * out / y.reshape(1, 100, 1), axis=(0, 2))
 
 
-class TestElementwiseDivOpBroadcast2(ElementwiseDivOp):
+class TestElementwiseDivOpBroadcast2(TestElementwiseDivOpNoPrim):
     def init_shape(self):
         self.x_shape = [2, 3, 100]
         self.y_shape = [100]
+        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 1, 100)
@@ -233,11 +338,12 @@ class TestElementwiseDivOpBroadcast2(ElementwiseDivOp):
         return np.sum(-1 * grad_out * out / y.reshape(1, 1, 100), axis=(0, 1))
 
 
-class TestElementwiseDivOpBroadcast3(ElementwiseDivOp):
+class TestElementwiseDivOpBroadcast3(TestElementwiseDivOpNoPrim):
     def init_shape(self):
         self.x_shape = [2, 10, 12, 5]
         self.y_shape = [10, 12]
         self.attrs = {'axis': 1}
+        self.python_api = broadcast_wrapper(shape=[1, 10, 12, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 10, 12, 1)
@@ -312,19 +418,74 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
         return x // y
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestElementwiseDivOpFp16(ElementwiseDivOp):
-    def init_dtype(self):
-        self.dtype = np.float16
-        self.val_dtype = np.float16
+def create_test_fp16_class(parent, max_relative_error=2e-3):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestElementwiseDivFP16Op(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+            self.val_dtype = np.float16
+
+        def if_enable_cinn(self):
+            self.enable_cinn = True
+
+        def test_check_gradient(self):
+            check_list = []
+            check_list.append(
+                {
+                    'grad': ['X', 'Y'],
+                    'no_grad': None,
+                    'val_grad': [self.grad_x, self.grad_y],
+                }
+            )
+            check_list.append(
+                {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+            )
+            check_list.append(
+                {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+            )
+            for check_option in check_list:
+                check_args = [check_option['grad'], 'Out']
+                check_kwargs = {
+                    'no_grad_set': check_option['no_grad'],
+                    'user_defined_grads': check_option['val_grad'],
+                    'user_defined_grad_outputs': [self.grad_out],
+                    'check_dygraph': self.check_dygraph,
+                    'max_relative_error': max_relative_error,
+                }
+                if self.place is None:
+                    self.check_grad(*check_args, **check_kwargs)
+                else:
+                    check_args.insert(0, self.place)
+                    self.check_grad_with_place(*check_args, **check_kwargs)
+
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
+    TestElementwiseDivFP16Op.__name__ = cls_name
+    globals()[cls_name] = TestElementwiseDivFP16Op
+
+
+create_test_fp16_class(ElementwiseDivOp)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim1)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim2)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim3)
+create_test_fp16_class(TestElementwiseDivOpScalar)
+create_test_fp16_class(TestElementwiseDivOpVector)
+create_test_fp16_class(TestElementwiseDivOpBroadcast0)
+create_test_fp16_class(TestElementwiseDivOpBroadcast1)
+create_test_fp16_class(TestElementwiseDivOpBroadcast2)
+create_test_fp16_class(TestElementwiseDivOpBroadcast3)
+create_test_fp16_class(TestElementwiseDivOpBroadcast4)
+create_test_fp16_class(TestElementwiseDivOpBroadcast5)
+create_test_fp16_class(TestElementwiseDivOpCommonuse1)
+create_test_fp16_class(TestElementwiseDivOpCommonuse2)
+create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
         with fluid.program_guard(fluid.Program()):
-            x_var = fluid.data(
+            x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
@@ -338,8 +499,8 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
@@ -391,7 +552,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -434,6 +595,30 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
         )
         self.grad_x = np.real(self.grad_out / np.conj(self.y))
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+
+
+class TestElementwiseDivop(unittest.TestCase):
+    def test_dygraph_div(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+        np_a[np.abs(np_a) < 0.0005] = 0.002
+        np_b[np.abs(np_b) < 0.0005] = 0.002
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray / tenor
+        expect_out = np_a / np_b
+        actual_out = np_a / tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor / nparray
+        actual_out = tensor_a / np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

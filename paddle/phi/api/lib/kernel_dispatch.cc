@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -54,14 +57,17 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
-    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
-    switch (t.layout()) {
-      case DataLayout::ONEDNN:
-        backend_set = backend_set | BackendSet(Backend::ONEDNN);
-        break;
-      default:
-        // do nothing
-        break;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // See Note [ Why `SetDevice` when parsing custom place? ]
+    if (t.place().GetType() == AllocationType::CUSTOM) {
+      phi::DeviceManager::SetDevice(t.place());
+    }
+#endif
+    phi::Backend backend_key = phi::TransToPhiBackend(t.place());
+    BackendSet backend_set(backend_key);
+    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
+        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
   }
@@ -107,7 +113,7 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
     if (tensors[i].type() != dtype) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The data_type of input tensor in list isn't consistent, "
           "the first tensor is %s, but %dth tensor is %s.",
           dtype,
@@ -123,10 +129,30 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 }
 
 Backend ParseBackend(const Place& place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  /**
+   * [ Why `SetDevice` when parsing custom place? ]
+   * Users are able to call C++ APIs under customOP + customDevice scenario. To
+   * make sure `GetDevice` function outputs the accurate place when executing
+   * `GetDeviceContextByBackend` function in C++ API, we need to call
+   * `SetDevice` first. However, in dygraph mode, `SetDevice` is called at
+   * CPython level and calling C++ API directly in customOP cannot reach
+   * CPython. Hence, we need to manually set the device here.
+   */
+  if (place.GetType() == AllocationType::CUSTOM) {
+    phi::DeviceManager::SetDevice(place);
+  }
+#endif
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPhiBackend(tensor.place());
+  Backend backend_key = phi::TransToPhiBackend(tensor.place());
+  if (backend_key == Backend::GPU &&
+      phi::DenseTensor::classof(tensor.impl().get()) &&
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
+    return Backend::GPUDNN;
+  }
+  return backend_key;
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {

@@ -14,17 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 inline std::string MemoryDebugString(const phi::DenseTensor& t) {
   int device_id = platform::GetCurrentDeviceId();
@@ -233,17 +231,17 @@ struct GateAttentionConfig {
   }
 
  protected:
-  Tensor qkv_out;
-  Tensor query_out;
-  Tensor key_out;
-  Tensor value_out;
+  phi::DenseTensor qkv_out;
+  phi::DenseTensor query_out;
+  phi::DenseTensor key_out;
+  phi::DenseTensor value_out;
   // qk_out = BatchedGEMM(Q, K^T)
   // qk_out: shape=[batch_size, seq_len_m, num_heads, seq_len_r, m_size]
   // softmax_out = softmax(qk_out + nonbatched_bias + src_mask)
   // The shape of qk_out, softmax_out is the same, thus can be called inplace.
-  Tensor qk_out;
+  phi::DenseTensor qk_out;
   // qktv_out may reuse gate_out.
-  Tensor qktv_out;
+  phi::DenseTensor qktv_out;
 };
 
 template <typename T>
@@ -312,11 +310,11 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   }
 
  protected:
-  Tensor qkv_out_grad;
-  Tensor query_out_grad;
-  Tensor key_out_grad;
-  Tensor value_out_grad;
-  Tensor qk_out_grad;
+  phi::DenseTensor qkv_out_grad;
+  phi::DenseTensor query_out_grad;
+  phi::DenseTensor key_out_grad;
+  phi::DenseTensor value_out_grad;
+  phi::DenseTensor qk_out_grad;
 };
 
 template <typename T>
@@ -461,10 +459,10 @@ class FMHAGateRef {
     T* k_grad_ptr = nullptr;
     T* v_grad_ptr = nullptr;
 
-    Tensor q_transpose_out_grad;
-    Tensor k_transpose_out_grad;
-    Tensor v_transpose_out_grad;
-    Tensor qkv_transpose_out_grad;
+    phi::DenseTensor q_transpose_out_grad;
+    phi::DenseTensor k_transpose_out_grad;
+    phi::DenseTensor v_transpose_out_grad;
+    phi::DenseTensor qkv_transpose_out_grad;
     if (merge_qkv_) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,
@@ -513,7 +511,7 @@ class FMHAGateRef {
                                      v_transpose_out_grad.numel() * sizeof(T));
     }
 
-    Tensor softmax_out_grad;
+    phi::DenseTensor softmax_out_grad;
     softmax_out_grad.Resize(config->softmax_out_dims);
     AllocWithDebugInfo<T>(dev_ctx_, "softmax_out_grad", &softmax_out_grad);
 
@@ -521,7 +519,7 @@ class FMHAGateRef {
         config->batch_size * config->seq_len_m * config->num_heads;
     {
       // Forward: fmha_out = transpose(qktv_out)
-      Tensor qktv_out_grad;
+      phi::DenseTensor qktv_out_grad;
       qktv_out_grad.Resize(config->qktv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx_, "qktv_out_grad", &qktv_out_grad);
       ComputeQKTVTransposeBackward(*fmha_out_grad, &qktv_out_grad);
@@ -626,9 +624,12 @@ class FMHAGateRef {
                                   phi::DenseTensor* k_transpose_out,
                                   phi::DenseTensor* v_transpose_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, q_out, perm, q_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, k_out, perm, k_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, v_out, perm, v_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, q_out, perm, q_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, k_out, perm, k_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, v_out, perm, v_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(const phi::DenseTensor& q_transpose_out_grad,
@@ -638,11 +639,11 @@ class FMHAGateRef {
                                    phi::DenseTensor* k_out_grad,
                                    phi::DenseTensor* v_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, q_transpose_out_grad, perm, q_out_grad);
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, k_transpose_out_grad, perm, k_out_grad);
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, v_transpose_out_grad, perm, v_out_grad);
   }
 
@@ -651,14 +652,15 @@ class FMHAGateRef {
   void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
                                   phi::DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, qkv_out, perm, qkv_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(
       const phi::DenseTensor& qkv_transpose_out_grad,
       phi::DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 4, 0, 3, 5};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
   }
 
@@ -667,13 +669,14 @@ class FMHAGateRef {
   void ComputeQKTVTransposeForward(const phi::DenseTensor& qktv_out,
                                    phi::DenseTensor* fmha_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
   }
 
   void ComputeQKTVTransposeBackward(const phi::DenseTensor& fmha_out_grad,
                                     phi::DenseTensor* qktv_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
   }
 
   // qk_out = qk_out + nonbatched_bias + src_mask
@@ -712,7 +715,7 @@ class FMHAGateRef {
                       softmax_out->dims(),
                       platform::errors::InvalidArgument(
                           "The shape of qk_out_grad and softmax_out is "
-                          "expected to be the same. But recieved qk_out_grad's "
+                          "expected to be the same. But received qk_out_grad's "
                           "shape = %s, softmax_out's shape = %s.",
                           qk_out_grad->dims(),
                           softmax_out->dims()));

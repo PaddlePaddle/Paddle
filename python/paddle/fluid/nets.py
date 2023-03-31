@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
+import paddle
 
 __all__ = [
     "simple_img_conv_pool",
@@ -109,7 +111,7 @@ def simple_img_conv_pool(
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            img = fluid.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
+            img = paddle.static.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
                                                         num_filters=20,
@@ -117,7 +119,7 @@ def simple_img_conv_pool(
                                                         pool_stride=2,
                                                         act="relu")
     """
-    conv_out = layers.conv2d(
+    conv_out = paddle.static.nn.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -130,16 +132,20 @@ def simple_img_conv_pool(
         act=act,
         use_cudnn=use_cudnn,
     )
-
-    pool_out = layers.pool2d(
-        input=conv_out,
-        pool_size=pool_size,
-        pool_type=pool_type,
-        pool_stride=pool_stride,
-        pool_padding=pool_padding,
-        global_pooling=global_pooling,
-        use_cudnn=use_cudnn,
-    )
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
     return pool_out
 
 
@@ -208,7 +214,7 @@ def img_conv_group(
             import paddle
             paddle.enable_static()
 
-            img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
+            img = paddle.static.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
@@ -240,7 +246,7 @@ def img_conv_group(
         if conv_with_batchnorm[i]:
             local_conv_act = None
 
-        tmp = layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=tmp,
             num_filters=conv_num_filter[i],
             filter_size=conv_filter_size[i],
@@ -251,18 +257,23 @@ def img_conv_group(
         )
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(input=tmp, act=conv_act)
+            tmp = paddle.static.nn.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
-                tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
+                tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)
 
-    pool_out = layers.pool2d(
-        input=tmp,
-        pool_size=pool_size,
-        pool_type=pool_type,
-        pool_stride=pool_stride,
-        use_cudnn=use_cudnn,
-    )
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
     return pool_out
 
 
@@ -285,7 +296,7 @@ def sequence_conv_pool(
     and :ref:`api_fluid_layers_sequence_pool` .
 
     Args:
-        input (Variable): 2-D LoDTensor, the input of sequence_conv,
+        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
             which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
@@ -309,7 +320,7 @@ def sequence_conv_pool(
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
         .. code-block:: python
@@ -320,7 +331,7 @@ def sequence_conv_pool(
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = fluid.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
+            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = fluid.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
@@ -330,7 +341,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(
+    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -339,7 +350,9 @@ def sequence_conv_pool(
         act=act,
     )
 
-    pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
+    pool_out = paddle.static.nn.sequence_lod.sequence_pool(
+        input=conv_out, pool_type=pool_type
+    )
     return pool_out
 
 
@@ -378,7 +391,7 @@ def glu(input, dim=-1):
             import paddle
             paddle.enable_static()
 
-            data = fluid.data(
+            data = paddle.static.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
@@ -386,9 +399,9 @@ def glu(input, dim=-1):
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
-    a, b = layers.split(input, num_or_sections=2, dim=dim)
-    act_b = layers.sigmoid(x=b)
-    out = layers.elementwise_mul(x=a, y=act_b)
+    a, b = paddle.split(input, num_or_sections=2, axis=dim)
+    act_b = paddle.nn.functional.sigmoid(x=b)
+    out = paddle.multiply(x=a, y=act_b)
     return out
 
 
@@ -459,9 +472,9 @@ def scaled_dot_product_attention(
             import paddle
             paddle.enable_static()
 
-            queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
-            keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
-            values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")
+            queries = paddle.static.data(name="queries", shape=[3, 5, 9], dtype="float32")
+            keys = paddle.static.data(name="keys", shape=[3, 6, 9], dtype="float32")
+            values = paddle.static.data(name="values", shape=[3, 6, 10], dtype="float32")
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
@@ -543,9 +556,13 @@ def scaled_dot_product_attention(
         if num_heads == 1:
             return queries, keys, values
 
-        q = layers.fc(input=queries, size=queries.shape[-1], num_flatten_dims=2)
-        k = layers.fc(input=keys, size=keys.shape[-1], num_flatten_dims=2)
-        v = layers.fc(input=values, size=values.shape[-1], num_flatten_dims=2)
+        q = paddle.static.nn.fc(
+            x=queries, size=queries.shape[-1], num_flatten_dims=2
+        )
+        k = paddle.static.nn.fc(x=keys, size=keys.shape[-1], num_flatten_dims=2)
+        v = paddle.static.nn.fc(
+            x=values, size=values.shape[-1], num_flatten_dims=2
+        )
         return q, k, v
 
     def __split_heads(x, num_heads):
@@ -568,14 +585,14 @@ def scaled_dot_product_attention(
         # reshape the 3-D input: [batch_size, max_sequence_length, hidden_dim]
         # into a 4-D output:
         # [batch_size, max_sequence_length, num_heads, hidden_size_per_head].
-        reshaped = layers.reshape(
+        reshaped = paddle.reshape(
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads],
         )
 
         # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -596,8 +613,8 @@ def scaled_dot_product_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
-        return layers.reshape(
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
+        return paddle.reshape(
             x=trans_x,
             shape=list(
                 map(
@@ -618,18 +635,14 @@ def scaled_dot_product_attention(
     v = __split_heads(v, num_heads)
 
     key_dim_per_head = keys.shape[-1] // num_heads
-    scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+    scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
+    product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
 
-    weights = layers.reshape(
-        x=layers.reshape(
-            x=product, shape=[-1, product.shape[-1]], act="softmax"
-        ),
-        shape=product.shape,
-    )
+    x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
+    x = paddle.nn.functional.softmax(x)
+    weights = paddle.reshape(x=x, shape=product.shape)
+
     if dropout_rate:
-        weights = layers.dropout(
-            weights, dropout_prob=dropout_rate, is_test=False
-        )
-    ctx_multiheads = layers.matmul(weights, v)
+        weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
+    ctx_multiheads = paddle.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

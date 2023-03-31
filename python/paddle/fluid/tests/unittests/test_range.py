@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
-from op_test import OpTest
 from functools import partial
+
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 def arange_wrapper(start, end, step, dtype=None):
@@ -45,7 +47,7 @@ class TestRangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestFloatRangeOpCase0(TestRangeOp):

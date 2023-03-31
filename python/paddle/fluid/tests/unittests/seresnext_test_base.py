@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import seresnext_net
-import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from parallel_executor_test_base import DeviceType
 import numpy as np
+import seresnext_net
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+from paddle.fluid import core
 
 
 class TestResnetBase(TestParallelExecutorBase):
@@ -50,16 +50,16 @@ class TestResnetBase(TestParallelExecutorBase):
 
         if compare_separately:
             for loss in zip(func_1_first_loss, func_2_first_loss):
-                self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+                self.assertAlmostEqual(loss[0], loss[1], delta=1e-5)
             for loss in zip(func_1_last_loss, func_2_last_loss):
-                self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+                self.assertAlmostEqual(loss[0], loss[1], delta=delta2)
         else:
             np.testing.assert_allclose(
                 func_1_loss_area, func_2_loss_area, rtol=delta2
             )
-            self.assertAlmostEquals(
+            self.assertAlmostEqual(
                 np.mean(func_1_first_loss), func_2_first_loss[0], delta=1e-5
             )
-            self.assertAlmostEquals(
+            self.assertAlmostEqual(
                 np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2
             )

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .meta_parallel_base import MetaParallelBase
 from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
+from .meta_parallel_base import MetaParallelBase
 
 __all__ = []
 

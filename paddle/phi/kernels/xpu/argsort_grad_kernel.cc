@@ -29,6 +29,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool descending,
                        DenseTensor* in_grad) {
   auto in_dims = indices.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   dev_ctx.template Alloc<T>(in_grad);
 
@@ -39,6 +40,11 @@ void ArgsortGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (out_grad.numel() == 0) return;
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    return;
+  }
 
   bool is_need_transpose = true;
   if (axis == -1 || axis + 1 == in_dims.size()) {

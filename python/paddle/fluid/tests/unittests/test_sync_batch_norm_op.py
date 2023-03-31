@@ -16,18 +16,19 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-import unittest
-import numpy as np
 import os
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn as nn
-from paddle.fluid import compiler
-from paddle.fluid import Program, program_guard
+import random
+import subprocess
+import tempfile
+import unittest
 
-from op_test import OpTest, _set_use_system_allocator
+import numpy as np
 from decorator_helper import prog_scope
+from eager_op_test import OpTest, _set_use_system_allocator
+
+import paddle
+from paddle import fluid, nn
+from paddle.fluid import Program, core, program_guard
 
 _set_use_system_allocator(True)
 
@@ -55,6 +56,39 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        self.data_dir.cleanup()
+        self.fleet_log_dir.cleanup()
+
+    def multi_device_run(self, layout, fetch_list, only_forward=False):
+        cmds = [
+            "python",
+            "-m",
+            "paddle.distributed.launch",
+        ]
+        cmds += ["--log_dir", self.fleet_log_dir.name]
+        cmds += ["dist_fleet_sync_batch_norm.py"]
+        cmds += ["--data_dir", self.data_dir.name]
+
+        dshape = [
+            self.N // core.get_cuda_device_count(),
+            self.C,
+            self.H,
+            self.W,
+        ]
+        cmds += ["--dshape", str(dshape)]
+        cmds += ["--dtype", str(self.dtype.__name__)]
+        cmds += ["--layout", layout]
+        cmds += ["--fetch_list", str(fetch_list)]
+        if only_forward:
+            cmds += ["--only_forward"]
+        if self.dtype == np.float16:
+            cmds += ["--use_cudnn"]
+        p = subprocess.run(cmds)
+        assert p.returncode == 0, f"Fleet train: Failed: {p}"
 
     def _build_program(
         self, place, layout, seed, sync_bn=False, only_forward=False
@@ -67,13 +101,13 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         use_cudnn = self.dtype == np.float16
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
-                conv = fluid.layers.conv2d(
+                data.desc.set_need_check_feed(False)
+                conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,
@@ -81,7 +115,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bias_attr=False,
                     use_cudnn=use_cudnn,
                 )
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -91,11 +125,11 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     is_test=only_forward,
                 )
                 if core.is_compiled_with_rocm():
-                    bn = fluid.layers.cast(bn, 'float32')
+                    bn = paddle.cast(bn, 'float32')
                 else:
-                    bn = fluid.layers.cast(bn, 'float64')
-                sigmoid = fluid.layers.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                    bn = paddle.cast(bn, 'float64')
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+                out = paddle.sum(sigmoid)
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
@@ -108,8 +142,18 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         """Compare results."""
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
+        paddle.enable_static()
         scope = core.Scope()
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
+        stride = self.N // core.get_cuda_device_count()
+        for id in range(core.get_cuda_device_count()):
+            filepath = os.path.join(
+                self.data_dir.name,
+                'input_{}_{}_{}_{}.npy'.format(
+                    id, only_forward, str(self.dtype.__name__), layout
+                ),
+            )
+            np.save(filepath, data[id * stride : (id + 1) * stride])
         data = create_or_get_tensor(
             scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
         )
@@ -143,12 +187,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         #####################################################################
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
         assert core.get_cuda_device_count() > 1
-        main, startup, outs = self._build_program(
-            place, layout, seed, True, only_forward
-        )
-        exe = fluid.Executor(place)
-        exe.run(startup)
-        fetch_names = [v.name for v in outs] + [
+
+        fetch_names = [
             'bn_moving_mean',
             'bn_moving_variance',
             'bn_scale',
@@ -164,26 +204,24 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 'conv2d_0.tmp_0@GRAD',
             ]
             fetch_names += others
-        for nm in fetch_names:
-            fv = fluid.framework._get_var(str(nm), program=main)
-            fv.persistable = True
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.sync_batch_norm = True
-        build_strategy.enable_inplace = False
-        build_strategy.memory_optimize = False
-        comp_prog = compiler.CompiledProgram(main).with_data_parallel(
-            outs[0].name if not only_forward else None,
-            build_strategy=build_strategy,
-        )
-        sync_bn_fetches = exe.run(
-            program=comp_prog, feed={'input': data}, fetch_list=fetch_names
+
+        self.multi_device_run(
+            layout, fetch_list=fetch_names, only_forward=only_forward
         )
 
-        for i in range(1, len(sync_bn_fetches)):
+        fetch_names = [v.name for v in outs] + fetch_names
+
+        for i in range(1, len(bn_fetches)):
             bn_val = bn_fetches[i]
-            sync_bn_val = sync_bn_fetches[i]
+            file_path = os.path.join(
+                self.data_dir.name,
+                'output_{}_{}_{}_{}.npy'.format(
+                    0, only_forward, self.dtype.__name__, i
+                ),
+            )
+            sync_bn_val = np.load(file_path)
             if sync_bn_val.shape != bn_val.shape:
-                sync_bn_val = sync_bn_val[: bn_val.shape[0]]
+                bn_val = bn_val[:stride]
             np.testing.assert_allclose(
                 bn_val,
                 sync_bn_val,
@@ -206,7 +244,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
         places = [core.CUDAPlace(0)]
         for place in places:
-            for layout in ["NCHW", "NHWC"]:
+            for layout in ["NHWC", "NCHW"]:
                 self._compare(place, layout, False)
 
     def test_infer(self):
@@ -216,7 +254,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
         places = [core.CUDAPlace(0)]
         for place in places:
-            for layout in ["NCHW", "NHWC"]:
+            for layout in ["NHWC", "NCHW"]:
                 self._compare(place, layout, True)
 
 
@@ -232,6 +270,8 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
@@ -248,7 +288,10 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of SyncBatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
+            x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 
@@ -387,4 +430,7 @@ class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.seed(0)
+    np.random.seed(0)
+    random.seed(0)
     unittest.main()

@@ -15,19 +15,17 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle import nn, static, utils
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = "mp_pp"
@@ -79,11 +77,9 @@ class MLPLayer(nn.Layer):
         auto.shard_tensor(self.linear2.weight, PP_MESH_1, ["x", None])
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
-        param = paddle.fluid.layers.create_parameter(
-            [4096, 4096], paddle.float32
-        )
+        param = paddle.create_parameter([4096, 4096], paddle.float32)
         auto.shard_tensor(param, PP_MESH_0, ["x", None])
-        out = paddle.fluid.layers.mul(out, param)
+        out = paddle.matmul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
         out1 = self.linear2(gelu_out)

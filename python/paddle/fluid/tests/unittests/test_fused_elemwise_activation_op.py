@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 from functools import partial
-import paddle.fluid.core as core
-from op_test import OpTest
+
+import numpy as np
+from eager_op_test import OpTest
+
+from paddle.fluid import core
 
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar

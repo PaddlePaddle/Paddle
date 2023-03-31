@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 import subprocess
-import unittest
+import sys
 import tempfile
+import unittest
+
 from paddle.fluid import core
 
 
@@ -47,7 +48,7 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
 
             _python = sys.executable
 
-            ps_cmd = '{} {}'.format(_python, test_file)
+            ps_cmd = f'{_python} {test_file}'
             ps_proc = subprocess.Popen(
                 ps_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,

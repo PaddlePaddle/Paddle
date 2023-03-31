@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
+from paddle import fluid
 from paddle.distributed.utils.launch_utils import (
-    find_free_ports,
-    watch_local_trainers,
-    get_cluster,
     TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
 )
 
 
@@ -78,19 +78,16 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -133,7 +130,7 @@ class TestMultipleGpus(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 

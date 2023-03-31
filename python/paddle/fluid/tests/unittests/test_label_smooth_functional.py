@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid
 
 
 class LabelSmoothTestCase(unittest.TestCase):
@@ -45,14 +47,13 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                label_var = fluid.data(
+                label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
-                y_var = fluid.layers.label_smooth(
+                y_var = F.label_smooth(
                     label_var,
                     prior_dist=self.prior_dist,
                     epsilon=self.epsilon,
-                    dtype=self.dtype,
                 )
         feed_dict = {"input": self.label}
         exe = fluid.Executor(place)
@@ -66,7 +67,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                label_var = fluid.data(
+                label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
                 y_var = F.label_smooth(

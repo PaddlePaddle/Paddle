@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle import fluid
-import paddle.fluid.dygraph as dg
 import unittest
 
+import numpy as np
+
 import paddle
+import paddle.fluid.dygraph as dg
+from paddle import fluid
 from paddle.nn import functional as F
 
 
@@ -69,6 +70,16 @@ class TestGLUV2(unittest.TestCase):
         self.check_identity(fluid.CPUPlace())
         if fluid.is_compiled_with_cuda():
             self.check_identity(fluid.CUDAPlace(0))
+
+
+class TestGlu(unittest.TestCase):
+    def glu_axis_size(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[1, 2, 3], dtype='float32')
+        paddle.nn.functional.glu(x, axis=256)
+
+    def test_errors(self):
+        self.assertRaises(ValueError, self.glu_axis_size)
 
 
 if __name__ == '__main__':

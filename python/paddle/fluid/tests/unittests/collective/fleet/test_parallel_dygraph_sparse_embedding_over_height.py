@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
-from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_sparse_embedding_over_height import (
     TestSparseEmbeddingOverHeight,
 )
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
+
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -46,7 +46,7 @@ class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
 
 class TestParallelDygraphSparseEmdeddingOverHeightSpawn(TestDistSpawnRunner):
     def test_sparse_embedding_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestSparseEmbeddingOverHeight, delta=1e-5
             )

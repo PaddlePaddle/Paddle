@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+import paddle
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -286,6 +286,67 @@ def pool2D_forward_naive(
     return out
 
 
+def pool2d_wrapper_not_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    tmp = X._use_gpudnn(False)
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        tmp,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
+def pool2d_wrapper_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        X,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
 class TestPool2D_Op_Mixin:
     def setUp(self):
         self.op_type = "pool2d"
@@ -338,6 +399,11 @@ class TestPool2D_Op_Mixin:
 
         self.outputs = {'Out': output}
 
+        if self.use_cudnn:
+            self.python_api = pool2d_wrapper_use_cudnn
+        else:
+            self.python_api = pool2d_wrapper_not_use_cudnn
+
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
@@ -359,14 +425,14 @@ class TestPool2D_Op_Mixin:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
             )
         elif self.pool_type != "max":
             self.check_grad(
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
@@ -480,7 +546,7 @@ def create_test_cudnn_class(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOp")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -525,13 +591,13 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
     globals()[cls_name] = TestCUDNNFp16Case
 
@@ -566,13 +632,13 @@ def create_test_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
     globals()[cls_name] = TestFp16Case
 
@@ -605,7 +671,7 @@ def create_test_cudnn_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOpCeilMode")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -619,7 +685,7 @@ def create_test_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
+    cls_name = "{}_{}".format(parent.__name__, "CeilModeCast")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -712,7 +778,7 @@ class TestCase4_AsyPadding(TestCase4):
         self.shape = [2, 3, 7, 7]
 
 
-class TestCase5_AsyPadding((TestCase5)):
+class TestCase5_AsyPadding(TestCase5):
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -865,10 +931,10 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00
             )
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):
@@ -1009,7 +1075,7 @@ def create_test_padding_SAME_class(parent):
             self.paddings = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -1041,7 +1107,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -1067,7 +1133,7 @@ def create_test_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -1099,7 +1165,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 
@@ -1131,439 +1197,6 @@ class TestCase1_strides(TestCase1):
 create_test_cudnn_class(TestCase1_strides)
 create_test_padding_SAME_class(TestCase1_strides)
 create_test_cudnn_padding_SAME_class(TestCase1_strides)
-
-
-# ----- test API
-class TestPool2DAPI(unittest.TestCase):
-    def test_api(self):
-        x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
-        x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
-
-        input_NHWC = fluid.layers.data(
-            name="input_NHWC",
-            shape=[2, 5, 5, 3],
-            append_batch_size=False,
-            dtype="float32",
-        )
-
-        input_NCHW = fluid.layers.data(
-            name="input_NCHW",
-            shape=[2, 3, 5, 5],
-            append_batch_size=False,
-            dtype="float32",
-        )
-
-        input_NHWC_negetive = fluid.layers.data(
-            name="input_NHWC_negetive",
-            shape=[2, -1, 5, 3],
-            append_batch_size=False,
-            dtype="float32",
-        )
-
-        input_NCHW_negetive = fluid.layers.data(
-            name="input_NCHW_negetive",
-            shape=[2, 3, -1, -1],
-            append_batch_size=False,
-            dtype="float32",
-        )
-
-        ksize = [3, 3]
-        out_1 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
-            pool_padding=[1, 1],
-            use_cudnn=False,
-            data_format="NHWC",
-        )
-
-        out_2 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
-            use_cudnn=False,
-            data_format="NHWC",
-        )
-
-        out_3 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
-            use_cudnn=False,
-            data_format="NCHW",
-        )
-
-        out_4 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[1, 2, 1, 0],
-            use_cudnn=False,
-            data_format="NCHW",
-        )
-        # test VALID
-        out_5 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding="VALID",
-            use_cudnn=False,
-            data_format="NCHW",
-        )
-
-        out_6 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
-            pool_padding="VALID",
-            use_cudnn=False,
-            data_format="NHWC",
-        )
-
-        # test SAME
-        out_7 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=[4, 4],
-            pool_type="avg",
-            pool_padding="SAME",
-            use_cudnn=False,
-            data_format="NCHW",
-        )
-
-        out_8 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=[4, 4],
-            pool_type="max",
-            pool_padding="SAME",
-            use_cudnn=False,
-            data_format="NHWC",
-        )
-
-        # test negetive
-        out_9 = fluid.layers.pool2d(
-            input=input_NHWC_negetive,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[0, 0],
-            use_cudnn=False,
-            data_format="NHWC",
-        )
-        assert out_9.shape == (2, -1, 3, 3)
-
-        out_10 = fluid.layers.pool2d(
-            input=input_NCHW_negetive,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[0, 0],
-            use_cudnn=False,
-            data_format="NCHW",
-        )
-        assert out_10.shape == (2, 3, -1, -1)
-
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8] = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "input_NHWC": x_NHWC,
-                "input_NCHW": x_NCHW,
-                "input_NHWC_negetive": x_NHWC,
-                "input_NCHW_negetive": x_NCHW,
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
-        )
-
-        assert np.allclose(
-            res_1,
-            pool2D_forward_naive(
-                x=x_NHWC,
-                ksize=ksize,
-                pool_type="max",
-                strides=[1, 1],
-                paddings=[1, 1],
-                data_format="NHWC",
-            ),
-        )
-
-        assert np.allclose(
-            res_2,
-            pool2D_forward_naive(
-                x=x_NHWC,
-                ksize=ksize,
-                pool_type="avg",
-                strides=[1, 1],
-                paddings=[1, 1, 1, 1],
-                data_format="NHWC",
-            ),
-        )
-        assert np.allclose(
-            res_3,
-            pool2D_forward_naive(
-                x=x_NCHW,
-                ksize=ksize,
-                pool_type="avg",
-                strides=[1, 1],
-                paddings=[1, 1, 1, 1],
-                data_format="NCHW",
-            ),
-            rtol=0.07,
-            atol=1e-05,
-        )
-
-        assert np.allclose(
-            res_4,
-            pool2D_forward_naive(
-                x=x_NCHW,
-                ksize=ksize,
-                pool_type="avg",
-                strides=[1, 1],
-                paddings=[1, 2, 1, 0],
-                data_format="NCHW",
-            ),
-            rtol=0.07,
-            atol=1e-05,
-        )
-
-        # VALID
-        assert np.allclose(
-            res_5,
-            pool2D_forward_naive(
-                x=x_NCHW,
-                ksize=ksize,
-                pool_type="avg",
-                strides=[1, 1],
-                paddings=[10, 20],  # any ele is ok
-                padding_algorithm="VALID",
-                data_format="NCHW",
-            ),
-            rtol=0.07,
-            atol=1e-05,
-        )
-        assert np.allclose(
-            res_6,
-            pool2D_forward_naive(
-                x=x_NHWC,
-                ksize=ksize,
-                pool_type="max",
-                strides=[1, 1],
-                paddings=[10, 20],
-                padding_algorithm="VALID",
-                data_format="NHWC",
-            ),
-        )
-        # SAME
-        assert np.allclose(
-            res_7,
-            pool2D_forward_naive(
-                x=x_NCHW,
-                ksize=[4, 4],
-                pool_type="avg",
-                strides=[1, 1],
-                paddings=[10, 20],
-                padding_algorithm="SAME",
-                data_format="NCHW",
-            ),
-            rtol=0.07,
-            atol=1e-05,
-        )
-
-        assert np.allclose(
-            res_8,
-            pool2D_forward_naive(
-                x=x_NHWC,
-                ksize=[4, 4],
-                pool_type="max",
-                strides=[1, 1],
-                paddings=[10, 20],
-                padding_algorithm="SAME",
-                data_format="NHWC",
-            ),
-        )
-
-
-class TestPool2DAPI_Error(unittest.TestCase):
-    def test_api(self):
-        input_NHWC = fluid.layers.data(
-            name="input_NHWC",
-            shape=[2, 5, 5, 3],
-            append_batch_size=False,
-            dtype="float32",
-        )
-        ksize = [3, 3]
-
-        # cudnn type error
-        def run_1():
-            out_1 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[1, 1],
-                use_cudnn=[0],
-                data_format="NHWC",
-            )
-
-        self.assertRaises(TypeError, run_1)
-
-        # data_format value error
-        def run_2():
-            out_2 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[1, 1],
-                use_cudnn=False,
-                data_format="NHWCC",
-            )
-
-        self.assertRaises(ValueError, run_2)
-
-        # padding str value error
-        def run_3():
-            out_3 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding="VALIDSAME",
-                use_cudnn=False,
-                data_format="NHWC",
-            )
-
-        self.assertRaises(ValueError, run_3)
-
-        # padding str valid and ceil_mode value error
-        def run_4():
-            out_4 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding="VALID",
-                use_cudnn=False,
-                ceil_mode=True,
-                data_format="NHWC",
-            )
-
-        self.assertRaises(ValueError, run_4)
-
-        # padding with 8 ele. value error
-        def run_5():
-            out_5 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
-                use_cudnn=False,
-                data_format="NHWC",
-            )
-
-        self.assertRaises(ValueError, run_5)
-
-
-class TestDygraphPool2DAPIError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of Pool2D must be Variable.
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-            )
-            self.assertRaises(TypeError, pool2d, data1)
-
-            # the input dtype of Pool2D must be uint8 or int8 or float16 or float32 or float64
-            # uint8 and int8 only can be set on mkldnn
-            # float16 only can be set on GPU place
-            data2 = fluid.layers.data(
-                name='x1', shape=[3, 32, 32, 5], dtype="int32"
-            )
-            self.assertRaises(TypeError, pool2d, data2)
-
-    def test_data_format_error(self):
-        with program_guard(Program(), Program()):
-            # the data_format must be 'NCHW' or 'NHWC'
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            self.assertRaises(
-                ValueError,
-                fluid.dygraph.Pool2D,
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-                data_format='NWHC',
-            )
-
-
-class TestDygraphPool2DAPI(unittest.TestCase):
-    def test_nhwc(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='NHWC',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
-
-    def test_lower_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
-
-    def test_upper_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='MAX',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestMultiheadAttention(unittest.TestCase):
@@ -28,18 +31,16 @@ class TestMultiheadAttention(unittest.TestCase):
 
     def set_program(self):
         """Build the test program."""
-        queries = fluid.layers.data(
+        queries = paddle.static.data(
             name="queries",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False,
         )
         queries.stop_gradient = False
-        keys = fluid.layers.data(
+        keys = paddle.static.data(
             name="keys",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False,
         )
         keys.stop_gradient = False
 
@@ -50,7 +51,7 @@ class TestMultiheadAttention(unittest.TestCase):
             num_heads=8,
             dropout_rate=0.0,
         )
-        out = fluid.layers.reduce_sum(contexts, dim=None)
+        out = paddle.sum(contexts, axis=None)
         fluid.backward.append_backward(loss=out)
 
         self.fetch_list = [contexts]

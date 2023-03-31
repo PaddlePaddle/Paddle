@@ -104,7 +104,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     out_lod->clear();
     size_t out_offset = 0;
 
-    // Build LoDTensor `out`
+    // Build phi::DenseTensor `out`
 
     size_t in_true_idx = 0;
     size_t in_false_idx = 0;
@@ -182,18 +182,18 @@ class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input LoDTensor, contains complete lod information to "
+             "The input phi::DenseTensor, contains complete lod information to "
              "construct the output");
     AddInput("Mask", "A bool column vector which mask the input");
     AddInput("InTrue", "The True branch to be merged");
     AddInput("InFalse", "The False branch to be merged");
-    AddOutput("Out", "The merged output LoDTensor");
+    AddOutput("Out", "The merged output phi::DenseTensor");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
         R"DOC(
-        Merge True and False branches of LoDTensor into a single Output,
+        Merge True and False branches of phi::DenseTensor into a single Output,
         with a mask at certain lod level. X is used to obtain complete
         lod information. Please refer to SplitLoDTensorOp.)DOC");
   }

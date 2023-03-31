@@ -13,14 +13,22 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from test_reorder_lod_tensor import convert_to_offset
+from eager_op_test import OpTest
 from sequence.test_sequence_pool import (
-    compute_seqpool_sum,
     compute_seqpool_avg,
     compute_seqpool_sqrt,
+    compute_seqpool_sum,
 )
+
+
+def convert_to_offset(lod):
+    offset = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset[i].append(offset[i][-1] + seq_len)
+    return offset
 
 
 class TestFusionSeqPoolConcatOp(OpTest):
@@ -50,7 +58,7 @@ class TestFusionSeqPoolConcatOp(OpTest):
                 compute_seqpool_sqrt(x, offset, out)
             else:
                 raise Exception("Unsupported pool type!")
-            inputs.append(('x_{0}'.format(i), (x, lod)))
+            inputs.append((f'x_{i}', (x, lod)))
             outs.append(out)
             i = i + 1
 
@@ -103,8 +111,8 @@ def create_test_avg_sqrt_class(parent):
         def set_pooltype(self):
             self.pooltype = "SQRT"
 
-    cls_name_avg = "{0}_{1}".format(parent.__name__, "avg")
-    cls_name_sqrt = "{0}_{1}".format(parent.__name__, "sqrt")
+    cls_name_avg = "{}_{}".format(parent.__name__, "avg")
+    cls_name_sqrt = "{}_{}".format(parent.__name__, "sqrt")
     TestSeqPoolAvgCase.__name__ = cls_name_avg
     TestSeqPoolSqrtCase.__name__ = cls_name_sqrt
     globals()[cls_name_avg] = TestSeqPoolAvgCase

@@ -15,18 +15,18 @@
 Distribute CTR model for test fleet api
 """
 
+import os
 import shutil
 import tempfile
 import time
 
-import paddle
-import paddle.fluid as fluid
-import os
-import numpy as np
-
 import ctr_dataset_reader
-from test_dist_fleet_base import runtime_main
+import numpy as np
 from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
+from test_dist_fleet_base import runtime_main
+
+import paddle
+from paddle import fluid
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1

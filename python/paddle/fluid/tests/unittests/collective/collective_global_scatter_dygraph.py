@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
-import paddle
-import paddle.fluid as fluid
+
+import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
-import paddle.distributed.utils.moe_utils as moe_utils
+
+import paddle
+from paddle import fluid
+from paddle.distributed.utils import moe_utils
 
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):

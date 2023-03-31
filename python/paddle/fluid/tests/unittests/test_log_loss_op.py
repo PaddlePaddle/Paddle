@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
+
+from paddle.nn import functional as F
 
 
 def sigmoid_array(x):
@@ -25,6 +27,7 @@ def sigmoid_array(x):
 class TestLogLossOp(OpTest):
     def setUp(self):
         self.op_type = 'log_loss'
+        self.python_api = F.log_loss
         samples_num = 100
 
         x = np.random.random((samples_num, 1)).astype("float32")
@@ -47,35 +50,6 @@ class TestLogLossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Predicted'], 'Loss', max_relative_error=0.03)
-
-
-class TestLogLossOpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_x_type():
-                input_data = np.random.random(100, 1).astype("float32")
-                fluid.layers.log_loss(input_data)
-
-            self.assertRaises(TypeError, test_x_type)
-
-            def test_x_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
-                fluid.layers.log_loss(x2)
-
-            self.assertRaises(TypeError, test_x_dtype)
-
-            def test_label_type():
-                input_data = np.random.random(100, 1).astype("float32")
-                fluid.layers.log_loss(input_data)
-
-            self.assertRaises(TypeError, test_label_type)
-
-            def test_label_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
-                fluid.layers.log_loss(x2)
-
-            self.assertRaises(TypeError, test_label_dtype)
 
 
 if __name__ == '__main__':

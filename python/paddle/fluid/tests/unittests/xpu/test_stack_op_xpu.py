@@ -16,16 +16,17 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from op_test import skip_check_grad_ci
-from op_test_xpu import XPUOpTest
-import paddle
+from eager_op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -72,7 +73,7 @@ class XPUTestStackOp(XPUOpTestWrapper):
         def get_x_names(self):
             x_names = []
             for i in range(self.num_inputs):
-                x_names.append('x{}'.format(i))
+                x_names.append(f'x{i}')
             return x_names
 
         def test_check_output(self):

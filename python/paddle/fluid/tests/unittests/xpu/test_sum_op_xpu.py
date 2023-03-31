@@ -16,17 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -95,7 +96,7 @@ def create_test_sum_fp16_class(parent):
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "SumFp16Test")
+    cls_name = "{}_{}".format(parent.__name__, "SumFp16Test")
     TestSumFp16Case.__name__ = cls_name
     globals()[cls_name] = TestSumFp16Case
 
@@ -103,10 +104,10 @@ def create_test_sum_fp16_class(parent):
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
+            input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
-            input1 = fluid.layers.fill_constant(
+            input1 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=3
             )
             expected_result = np.empty((2, 3))
@@ -129,20 +130,20 @@ class API_Test_Add_n(unittest.TestCase):
 class TestRaiseSumError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sum([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sum([data1, data2])
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sum(data1)
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
@@ -150,35 +151,44 @@ class TestRaiseSumError(unittest.TestCase):
 class TestRaiseSumsError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sums([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2])
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
-            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sums(data1)
+            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            fluid.layers.sums([data1, data2], out=[10])
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
+            out = [10]
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
         def test_out_dtype():
-            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
-            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            out = fluid.data(name="out", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2], out=out)
+            data1 = paddle.static.data(
+                name="input1", shape=[10], dtype="flaot32"
+            )
+            data2 = paddle.static.data(
+                name="input2", shape=[10], dtype="float32"
+            )
+            out = paddle.static.data(name="out", shape=[10], dtype="int8")
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
 
@@ -240,7 +250,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
@@ -271,9 +281,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         return var
 
     def create_lod_tensor(self, place):
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         return paddle.to_tensor(w_array)
 
     def test_w_is_selected_rows(self):

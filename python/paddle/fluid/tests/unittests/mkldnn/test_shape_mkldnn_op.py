@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+
 import paddle
 from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

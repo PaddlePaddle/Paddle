@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
-from op_test import OpTest
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 class TestL1NormOp(OpTest):

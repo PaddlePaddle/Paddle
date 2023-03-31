@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.fluid.tests.unittests.test_fusion_gru_op import TestFusionGRUOp
 
 

@@ -29,10 +29,10 @@
 # limitations under the License.
 # ============================================================================
 """generate hccl config file script"""
-import os
-import sys
 import json
+import os
 import socket
+import sys
 from argparse import ArgumentParser
 
 
@@ -96,7 +96,7 @@ def main():
 
     # visible_devices
     visible_devices = args.visible_devices.split(',')
-    print('visible_devices:{}'.format(visible_devices))
+    print(f'visible_devices:{visible_devices}')
 
     # server_id
     ip = get_host_ip()
@@ -106,14 +106,14 @@ def main():
         server_id = ip
     else:
         raise ValueError("please input server ip!")
-    print('server_id:{}'.format(server_id))
+    print(f'server_id:{server_id}')
 
     # device_num
     first_num = int(args.device_num[1])
     last_num = int(args.device_num[3])
     if first_num < 0 or last_num > 8:
         raise ValueError(
-            "device num {} must be in range [0,8] !".format(args.device_num)
+            f"device num {args.device_num} must be in range [0,8] !"
         )
     if first_num > last_num:
         raise ValueError(

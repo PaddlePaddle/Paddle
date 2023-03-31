@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class ApiMinimumTest(unittest.TestCase):

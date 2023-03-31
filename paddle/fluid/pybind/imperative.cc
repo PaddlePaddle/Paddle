@@ -15,6 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -46,7 +51,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
-#include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -54,7 +58,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -347,14 +350,11 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<phi::DenseTensor>());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "We should only get paddle::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }
 
-bool PyCheckTensor(PyObject *obj) {
-  return py::isinstance<imperative::VarBase>(obj);
-}
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
@@ -499,15 +499,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions1(&m);
-  BindOpFunctions2(&m);
-  BindOpFunctions3(&m);
-  BindOpFunctions4(&m);
-  BindOpFunctions5(&m);
-  BindOpFunctions6(&m);
-  BindOpFunctions7(&m);
-  BindOpFunctions8(&m);
-
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
@@ -551,7 +542,7 @@ void BindImperative(py::module *m_ptr) {
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
               platform::errors::InvalidArgument(
-                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Failed to convert input data to a regular ndarray.\n  * "
                   "Usually this means the input data contains nested "
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
@@ -562,7 +553,7 @@ void BindImperative(py::module *m_ptr) {
               &t, array, platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+          size_t data_size = t.numel() * phi::SizeOf(t.dtype());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -591,7 +582,7 @@ void BindImperative(py::module *m_ptr) {
             string::Sprintf("%s", array.dtype()).compare("object"),
             0,
             platform::errors::InvalidArgument(
-                "Faild to convert input data to a regular ndarray.\n  * "
+                "Failed to convert input data to a regular ndarray.\n  * "
                 "Usually this means the input data contains nested "
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
@@ -602,7 +593,7 @@ void BindImperative(py::module *m_ptr) {
             &t, array, platform::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
-        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+        size_t data_size = t.numel() * phi::SizeOf(t.dtype());
         auto shared_writer_holder =
             memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
         // 4. maintain mmap fd set & backup ipc_name
@@ -638,6 +629,11 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+
+  m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
+    memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
+        size);
+  });
 #endif
 
   m.def("start_imperative_gperf_profiler",
@@ -883,7 +879,7 @@ void BindImperative(py::module *m_ptr) {
                         self->Name()));
               }
 
-              if (PyCheckTensor(value_obj.ptr())) {
+              if (py::isinstance<imperative::VarBase>(value_obj.ptr())) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
@@ -2655,60 +2651,6 @@ void BindImperative(py::module *m_ptr) {
       .def(py::init<const imperative::ParallelStrategy &, const int &>())
       .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
-
-  m.def("pylayer_apply",
-        [](const platform::CPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::CUDAPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::XPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::CUDAPinnedPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::NPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-  m.def("pylayer_apply",
-        [](const platform::MLUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-  m.def("pylayer_apply",
-        [](const platform::CustomPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
 
 #if defined(PADDLE_WITH_CUDA)
   m.def(

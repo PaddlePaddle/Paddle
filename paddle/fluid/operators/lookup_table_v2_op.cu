@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -65,10 +65,10 @@ __global__ void LookupTableV2Grad(T *table,
     const T *out = output + idy * D;
     T *tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int i = idx; i < D; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -159,11 +159,11 @@ struct LookupTableV2GradCUDAFunctor {
       dim3 threads(128, 8);
       dim3 grids(8, 1);
       auto stream = dev_ctx.stream();
-      framework::Vector<int64_t> new_rows;
+      phi::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = context_.GetPlace();
 
-      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      phi::MixVector<int64_t> mixv_new_rows(&new_rows);
       if (!std::is_same<IdT, int64_t>::value) {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
             ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));

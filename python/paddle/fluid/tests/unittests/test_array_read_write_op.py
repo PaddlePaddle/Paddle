@@ -14,55 +14,55 @@
 
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program
-from paddle.fluid import Program, program_guard
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, layers, program_guard
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_main_program
 
 
 def _test_read_write(x):
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
-    arr = layers.array_write(x=x[0], i=i)
-    i = layers.increment(x=i)
-    arr = layers.array_write(x=x[1], i=i, array=arr)
-    i = layers.increment(x=i)
-    arr = layers.array_write(x=x[2], i=i, array=arr)
+    arr = paddle.tensor.array_write(x=x[0], i=i)
+    i = paddle.increment(x=i)
+    arr = paddle.tensor.array_write(x=x[1], i=i, array=arr)
+    i = paddle.increment(x=i)
+    arr = paddle.tensor.array_write(x=x[2], i=i, array=arr)
 
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
-    a0 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
-    a1 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
-    a2 = layers.array_read(array=arr, i=i)
+    a0 = paddle.tensor.array_read(array=arr, i=i)
+    i = paddle.increment(x=i)
+    a1 = paddle.tensor.array_read(array=arr, i=i)
+    i = paddle.increment(x=i)
+    a2 = paddle.tensor.array_read(array=arr, i=i)
 
     mean_a0 = paddle.mean(a0)
     mean_a1 = paddle.mean(a1)
     mean_a2 = paddle.mean(a2)
 
-    a_sum = layers.sums(input=[mean_a0, mean_a1, mean_a2])
+    a_sum = paddle.add_n([mean_a0, mean_a1, mean_a2])
 
     mean_x0 = paddle.mean(x[0])
     mean_x1 = paddle.mean(x[1])
     mean_x2 = paddle.mean(x[2])
 
-    x_sum = layers.sums(input=[mean_x0, mean_x1, mean_x2])
+    x_sum = paddle.add_n([mean_x0, mean_x1, mean_x2])
 
     return a_sum, x_sum
 
 
 class TestArrayReadWrite(unittest.TestCase):
     def test_read_write(self):
+        paddle.enable_static()
         x = [
-            layers.data(name='x0', shape=[100]),
-            layers.data(name='x1', shape=[100]),
-            layers.data(name='x2', shape=[100]),
+            paddle.static.data(name='x0', shape=[-1, 100]),
+            paddle.static.data(name='x1', shape=[-1, 100]),
+            paddle.static.data(name='x2', shape=[-1, 100]),
         ]
         for each_x in x:
             each_x.stop_gradient = False
@@ -79,8 +79,8 @@ class TestArrayReadWrite(unittest.TestCase):
         )
         self.assertEqual(outs[0], outs[1])
 
-        total_sum = layers.sums(input=[a_sum, x_sum])
-        total_sum_scaled = layers.scale(x=total_sum, scale=1 / 6.0)
+        total_sum = paddle.add_n([a_sum, x_sum])
+        total_sum_scaled = paddle.scale(x=total_sum, scale=1 / 6.0)
 
         append_backward(total_sum_scaled)
 
@@ -114,10 +114,8 @@ class TestArrayReadWrite(unittest.TestCase):
             a_sum_dygraph, x_sum_dygraph = _test_read_write(x_dygraph)
             self.assertEqual(a_sum_dygraph, x_sum_dygraph)
 
-            total_sum_dygraph = layers.sums(
-                input=[a_sum_dygraph, x_sum_dygraph]
-            )
-            total_sum_scaled_dygraph = layers.scale(
+            total_sum_dygraph = paddle.add_n([a_sum_dygraph, x_sum_dygraph])
+            total_sum_scaled_dygraph = paddle.scale(
                 x=total_sum_dygraph, scale=1 / 6.0
             )
             total_sum_scaled_dygraph.backward()
@@ -130,39 +128,18 @@ class TestArrayReadWrite(unittest.TestCase):
 
 
 class TestArrayReadWriteOpError(unittest.TestCase):
-    def _test_errors(self, use_fluid_api=True):
-        if use_fluid_api:
-            with program_guard(Program(), Program()):
-                x1 = np.random.randn(2, 4).astype('int32')
-                x2 = fluid.layers.fill_constant(
-                    shape=[1], dtype='int32', value=1
-                )
-                x3 = np.random.randn(2, 4).astype('int32')
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = np.random.randn(2, 4).astype('int32')
+            x2 = paddle.ones(shape=[1], dtype='int32')
+            x3 = np.random.randn(2, 4).astype('int32')
 
-                self.assertRaises(
-                    TypeError, fluid.layers.array_read, array=x1, i=x2
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.array_write, array=x1, i=x2, out=x3
-                )
-        else:
-            with program_guard(Program(), Program()):
-                x1 = np.random.randn(2, 4).astype('int32')
-                x2 = paddle.ones(shape=[1], dtype='int32')
-                x3 = np.random.randn(2, 4).astype('int32')
-
-                self.assertRaises(
-                    TypeError, paddle.tensor.array_read, array=x1, i=x2
-                )
-                self.assertRaises(
-                    TypeError, paddle.tensor.array_write, array=x1, i=x2, out=x3
-                )
-
-    def test_fluid_api(self):
-        self._test_errors(use_fluid_api=True)
-
-    def test_paddle_api(self):
-        self._test_errors(use_fluid_api=False)
+            self.assertRaises(
+                TypeError, paddle.tensor.array_read, array=x1, i=x2
+            )
+            self.assertRaises(
+                TypeError, paddle.tensor.array_write, array=x1, i=x2, out=x3
+            )
 
 
 class TestArrayReadWriteApi(unittest.TestCase):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# isort: skip_file
+
 import os
 import copy
 import re
@@ -54,7 +56,6 @@ from .extension_utils import (
     IS_WINDOWS,
     OS_NAME,
     MSVC_COMPILE_FLAGS,
-    MSVC_COMPILE_FLAGS,
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
@@ -83,7 +84,7 @@ def setup(**attr):
     ``import`` statement.
 
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
-    and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
+    and usage same as the native interface. Meanwhile, it hides Paddle inner framework
     concepts, such as necessary compiling flags, included paths of head files, and linking
     flags. It also will automatically search and valid local environment and versions of
     ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators
@@ -102,8 +103,8 @@ def setup(**attr):
 
     Note:
 
-        1. Currently we support Linux, MacOS and Windows platfrom.
-        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+        1. Currently we support Linux, MacOS and Windows platform.
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
@@ -162,7 +163,7 @@ def setup(**attr):
                                  ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
                                  head files. Default is None.
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
-                                will be applied for ``cc`` and ``nvcc`` compiler. It support specify flags only applied ``cc`` or ``nvcc``
+                                will be applied for ``cc`` and ``nvcc`` compiler. It supports specify flags only applied ``cc`` or ``nvcc``
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
@@ -209,7 +210,7 @@ def setup(**attr):
     ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
         len(ext_modules)
     )
-    # replace Extension.name with attr['name] to keep consistant with Package name.
+    # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
 
@@ -261,7 +262,7 @@ def CppExtension(sources, *args, **kwargs):
 
 
     Note:
-        It is mainly used in ``setup`` and the nama of built shared library keeps same
+        It is mainly used in ``setup`` and the name of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
 
@@ -275,7 +276,7 @@ def CppExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
-    # be replaced as `setup.name` to keep consistant with package. Because we allow
+    # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -313,7 +314,7 @@ def CUDAExtension(sources, *args, **kwargs):
 
 
     Note:
-        It is mainly used in ``setup`` and the nama of built shared library keeps same
+        It is mainly used in ``setup`` and the name of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
 
@@ -327,7 +328,7 @@ def CUDAExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
-    # be replaced as `setup.name` to keep consistant with package. Because we allow
+    # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -374,7 +375,7 @@ class BuildExtension(build_ext):
 
     def __init__(self, *args, **kwargs):
         """
-        Attributes is initialized with following oreder:
+        Attributes is initialized with following order:
 
             1. super().__init__()
             2. initialize_options(self)
@@ -428,9 +429,9 @@ class BuildExtension(build_ext):
             obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
-            Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
+            Monkey patch mechanism to replace inner compiler to custom compile process on Unix platform.
             """
-            # use abspath to ensure no warning and don't remove deecopy because modify params
+            # use abspath to ensure no warning and don't remove deepcopy because modify params
             # with dict type is dangerous.
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
@@ -591,7 +592,7 @@ class BuildExtension(build_ext):
 
         def object_filenames_with_cuda(origina_func, build_directory):
             """
-            Decorated the function to add customized naming machanism.
+            Decorated the function to add customized naming mechanism.
             Originally, both .cc/.cu will have .o object output that will
             bring file override problem. Use .cu.o as CUDA object suffix.
             """
@@ -643,7 +644,7 @@ class BuildExtension(build_ext):
         _reset_so_rpath(so_path)
 
     def get_ext_filename(self, fullname):
-        # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
+        # for example: customized_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super().get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
@@ -656,7 +657,7 @@ class BuildExtension(build_ext):
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
-        # custommed_extension.dylib
+        # customized_extension.dylib
         if OS_NAME.startswith('darwin'):
             name_items[-1] = 'dylib'
             ext_name = split_str.join(name_items)
@@ -726,7 +727,7 @@ class BuildExtension(build_ext):
 
 class EasyInstallCommand(easy_install):
     """
-    Extend easy_intall Command to control the behavior of naming shared library
+    Extend easy_install Command to control the behavior of naming shared library
     file.
 
     NOTE(Aurelius84): This is a hook subclass inherited Command used to rename shared
@@ -803,6 +804,7 @@ def load(
     extra_cuda_cflags=None,
     extra_ldflags=None,
     extra_include_paths=None,
+    extra_library_paths=None,
     build_directory=None,
     verbose=False,
 ):
@@ -836,8 +838,8 @@ def load(
 
     Note:
 
-        1. Currently we support Linux, MacOS and Windows platfrom.
-        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+        1. Currently we support Linux, MacOS and Windows platform.
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
@@ -878,10 +880,13 @@ def load(
         extra_include_paths(list[str], optional): Specify additional include path used to search header files. By default
                                 all basic headers are included implicitly from ``site-package/paddle/include`` .
                                 Default is None.
+        extra_library_paths(list[str], optional): Specify additional library path used to search library files. By default
+                                all basic libraries are included implicitly from ``site-packages/paddle/libs`` .
+                                Default is None.
         build_directory(str, optional): Specify root directory path to put shared library file. If set None,
                             it will use ``PADDLE_EXTENSION_DIR`` from os.environ. Use
                             ``paddle.utils.cpp_extension.get_build_directory()`` to see the location. Default is None.
-        verbose(bool, optional): whether to verbose compiled log information. Default is False
+        verbose(bool, optional): whether to verbose compiled log information. Default is False.
 
     Returns:
         Module: A callable python module contains all CustomOp Layer APIs.
@@ -894,9 +899,9 @@ def load(
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
 
-    log_v("build_directory: {}".format(build_directory), verbose)
+    log_v(f"build_directory: {build_directory}", verbose)
 
-    file_path = os.path.join(build_directory, "{}_setup.py".format(name))
+    file_path = os.path.join(build_directory, f"{name}_setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
     if extra_cxx_cflags is None:
@@ -930,6 +935,7 @@ def load(
         file_path,
         build_base_dir,
         extra_include_paths,
+        extra_library_paths,
         extra_cxx_cflags,
         extra_cuda_cflags,
         extra_ldflags,

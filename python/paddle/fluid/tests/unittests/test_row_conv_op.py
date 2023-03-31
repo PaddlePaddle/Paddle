@@ -13,9 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 from paddle import fluid
+
+paddle.enable_static()
 
 
 def row_conv_forward(x, lod, wt):
@@ -188,11 +193,11 @@ class TestRowConvLayer(unittest.TestCase):
         main = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("x", (-1, -1, self.C), "float32")
-                out = fluid.layers.row_conv(
+                x = paddle.static.data("x", (-1, -1, self.C), "float32")
+                out = paddle.static.nn.row_conv(
                     x,
                     self.context_length,
-                    param_attr=fluid.initializer.NumpyArrayInitializer(self.w),
+                    param_attr=paddle.nn.initializer.Assign(self.w),
                 )
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

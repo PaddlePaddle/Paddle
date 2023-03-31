@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
 
 paddle.enable_static()
@@ -26,12 +28,14 @@ class TestFleetExecutor(unittest.TestCase):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = fluid.layers.data(
-                name='x', shape=x_data.shape, dtype=x_data.dtype
+            x = paddle.static.data(
+                name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
-            y = fluid.layers.data(
-                name='y', shape=y_data.shape, dtype=y_data.dtype
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(
+                name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
             )
+            y.desc.set_need_check_feed(False)
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)
@@ -45,7 +49,7 @@ class TestFleetExecutor(unittest.TestCase):
             )
             opt = paddle.optimizer.AdamW(
                 learning_rate=lr_val,
-                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+                grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
             )
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
@@ -55,7 +59,6 @@ class TestFleetExecutor(unittest.TestCase):
             rank=0,
             node_type="Compute",
             max_run_times=1,
-            max_slot_times=1,
             lazy_initialize=True,
         )
         empty_program._pipeline_opt = {

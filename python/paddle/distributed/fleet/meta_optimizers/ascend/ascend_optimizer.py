@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-import paddle.framework.core as core
-from . import ascend_parser
-from paddle.distributed import fleet
-import hccl.manage.api as hccl
 from collections import namedtuple
+
+import hccl.manage.api as hccl
+
+from paddle.distributed import fleet
+from paddle.framework import core
+from paddle.optimizer import Optimizer
+
+from . import ascend_parser
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
@@ -61,7 +64,7 @@ class AscendIRParser:
         world_endpoints = fleet.worker_endpoints()
         assert (
             endpoint in world_endpoints
-        ), "endpoint (%s) not in worker_endpoints (%s) " % (
+        ), "endpoint ({}) not in worker_endpoints ({}) ".format(
             endpoint,
             fleet.world_device_ids(),
         )
@@ -113,10 +116,9 @@ class AscendIRParser:
             )
             op_parser.apply(op)
         else:
-            assert (
-                False
-            ), "Op[%s] has not been registered, so we have to skip it" % (
-                op.type
+            raise AssertionError(
+                'Op[%s] has not been registered, so we have to skip it'
+                % op.type
             )
 
     def _parse_program(
@@ -194,7 +196,7 @@ class AscendIRParser:
                 HcomGroupConfig(
                     name="hcom_group_0",
                     nranks=fleet.world_size(),
-                    rank_ids=[x for x in range(fleet.world_size())],
+                    rank_ids=list(range(fleet.world_size())),
                 )
             )
 
@@ -233,6 +235,10 @@ class AscendOptimizer(Optimizer):
                 ret_list.append(var)
         return ret_list
 
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self.inner_opt._set_auxiliary_var(key, val)
+
     def minimize(
         self,
         loss,
@@ -254,7 +260,7 @@ class AscendOptimizer(Optimizer):
         from paddle.distributed import fleet
 
         if auto_dp and fleet.world_size() > 1:
-            from paddle.fluid.transpiler import ascend_transpiler
+            from paddle.distributed.transpiler import ascend_transpiler
 
             t = ascend_transpiler.AscendTranspiler(
                 startup_program, loss.block.program

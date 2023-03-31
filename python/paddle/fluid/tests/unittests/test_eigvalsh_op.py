@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-from op_test import OpTest
 
 
 def compare_result(actual, expected):
@@ -71,10 +73,10 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
+        self.check_output(no_check_set=['Eigenvectors'])
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
+        self.check_grad(["X"], ["Eigenvalues"])
 
 
 class TestEigvalshUPLOCase(TestEigvalshOp):

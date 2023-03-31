@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
-from paddle.optimizer.lr import LinearWarmup
-from paddle.optimizer.lr import PolynomialDecay
-import unittest
+from paddle.optimizer.lr import LinearWarmup, PolynomialDecay
 
 
 def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):

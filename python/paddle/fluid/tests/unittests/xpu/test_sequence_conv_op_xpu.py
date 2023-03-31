@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle
 import random
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("../")
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types
-from xpu.get_test_cover_info import XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 paddle.enable_static()
 np.set_printoptions(threshold=np.inf)
@@ -173,7 +178,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
         def test_check_grad_padding_data(self):
             if self.padding_trainable:
                 self.check_grad(
-                    ['PaddingData'], 'Out', no_grad_set=set(['X', 'Filter'])
+                    ['PaddingData'], 'Out', no_grad_set={'X', 'Filter'}
                 )
 
         def test_check_grad_Filter(self):
@@ -184,20 +189,18 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
         def test_check_grad_input_filter(self):
             if self.padding_trainable:
                 self.check_grad(
-                    ['X', 'Filter'], 'Out', no_grad_set=set(['PaddingData'])
+                    ['X', 'Filter'], 'Out', no_grad_set={'PaddingData'}
                 )
 
         def test_check_grad_padding_input(self):
             if self.padding_trainable:
                 self.check_grad(
-                    self.inputs_val_no_f, 'Out', no_grad_set=set(['Filter'])
+                    self.inputs_val_no_f, 'Out', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_padding_filter(self):
             if self.padding_trainable:
-                self.check_grad(
-                    self.inputs_val_no_x, 'Out', no_grad_set=set(['X'])
-                )
+                self.check_grad(self.inputs_val_no_x, 'Out', no_grad_set={'X'})
 
         def init_test_case(self):
             self.input_row = 7
@@ -426,13 +429,12 @@ for stype in support_types:
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
-        x = fluid.layers.data('x', shape=[32], lod_level=1)
-        y = fluid.layers.sequence_conv(
+        x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
+        y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
-
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
             np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place

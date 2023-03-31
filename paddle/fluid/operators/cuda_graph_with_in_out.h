@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -88,7 +89,7 @@ class CUDAGraphWithInOuts {
   int64_t PoolID() const { return graph_->PoolID(); }
 
  private:
-  std::unique_ptr<platform::CUDAGraph> graph_;
+  std::unique_ptr<phi::backends::gpu::CUDAGraph> graph_;
   std::vector<phi::DenseTensor> ins_;
   std::vector<phi::DenseTensor> outs_;
   std::vector<int64_t> in_indices_;

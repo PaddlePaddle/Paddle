@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
-
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
     AutoCheckpointBase,
     get_logger,

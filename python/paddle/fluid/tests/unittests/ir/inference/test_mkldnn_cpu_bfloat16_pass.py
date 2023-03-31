@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
+
+import paddle
+from paddle import fluid
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -23,12 +26,14 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
-            out = fluid.layers.transpose(x, perm=[0, 1, 2, 3])
-            out = fluid.layers.reshape(out, [0, 0, 0, 0])
-            out = fluid.layers.fc(out, size=1)
+
+            out = paddle.transpose(x, perm=[0, 1, 2, 3])
+            out = paddle.reshape(out, [0, 0, 0, 0])
+
+            out = paddle.static.nn.fc(out, size=1)
 
             self.feeds = {
                 "x": np.random.random([self.bs] + self.shape_x).astype(

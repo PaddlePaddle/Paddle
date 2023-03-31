@@ -16,8 +16,9 @@ TestCases for TrainerDesc,
 including config, etc.
 """
 
-import paddle.fluid as fluid
 import unittest
+
+from paddle import fluid
 
 
 class TestTrainerDesc(unittest.TestCase):

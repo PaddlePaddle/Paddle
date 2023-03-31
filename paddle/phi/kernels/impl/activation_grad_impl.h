@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -65,7 +65,7 @@ void ActivationGradImpl(const Context& dev_ctx,
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = paddle::platform::is_gpu_place(dev_ctx.GetPlace());
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     functor(*place,
             To32BitIndex(x),
@@ -177,8 +177,8 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
                           const DenseTensor& ddx,
-                          const DenseTensor& d_dout_new,
-                          const DenseTensor& d_ddout,
+                          const paddle::optional<DenseTensor>& d_dout_new,
+                          const paddle::optional<DenseTensor>& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
@@ -199,8 +199,8 @@ void TanhTripleGradKernel(const Context& dev_ctx,
           &out,
           &ddx,
           &dout,
-          &d_ddout,
-          &d_dout_new,  // input
+          d_ddout.get_ptr(),
+          d_dout_new.get_ptr(),  // input
           d_dout,
           d_out_new,
           d_ddx);  // output
@@ -576,6 +576,30 @@ void CeluDoubleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SoftplusDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& dout,
+                              const DenseTensor& ddx,
+                              float beta,
+                              float threshold,
+                              DenseTensor* dx,
+                              DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SoftplusDoubleGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
 void SquareDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& dout,
@@ -597,49 +621,45 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& dout,
+                         const paddle::optional<DenseTensor>& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout) {
   if (dx) {
-    dx->Resize(x.dims());
     dev_ctx.template Alloc<T>(dx);
   }
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
   phi::funcs::SinDoubleGradFunctor<T> functor;
-  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+  functor(dev_ctx, &x, dout.get_ptr(), &ddx, dx, ddout);
 }
 
 template <typename T, typename Context>
 void SinTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& dout,
-                         const DenseTensor& ddx,
+                         const paddle::optional<DenseTensor>& dout,
+                         const paddle::optional<DenseTensor>& ddx,
                          const DenseTensor& d_dx_new,
-                         const DenseTensor& d_ddout,
+                         const paddle::optional<DenseTensor>& d_ddout,
                          DenseTensor* d_x_new,
                          DenseTensor* d_dout,
                          DenseTensor* d_ddx) {
   if (d_dout) {
-    d_dout->Resize(x.dims());
     dev_ctx.template Alloc<T>(d_dout);
   }
   if (d_x_new) {
-    d_dout->Resize(x.dims());
     dev_ctx.template Alloc<T>(d_x_new);
   }
   if (d_ddx) {
-    d_dout->Resize(ddx.dims());
     dev_ctx.template Alloc<T>(d_ddx);
   }
   funcs::SinTripleGradFunctor<T> functor;
   functor(dev_ctx,
           &x,
-          &ddx,
-          &dout,
-          &d_ddout,
+          ddx.get_ptr(),
+          dout.get_ptr(),
+          d_ddout.get_ptr(),
           &d_dx_new,  // input
           d_dout,
           d_x_new,
@@ -649,49 +669,45 @@ void SinTripleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CosDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& dout,
+                         const paddle::optional<DenseTensor>& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout) {
   if (dx) {
-    dx->Resize(x.dims());
     dev_ctx.template Alloc<T>(dx);
   }
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
   phi::funcs::CosDoubleGradFunctor<T> functor;
-  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+  functor(dev_ctx, &x, dout.get_ptr(), &ddx, dx, ddout);
 }
 
 template <typename T, typename Context>
 void CosTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& dout,
-                         const DenseTensor& ddx,
+                         const paddle::optional<DenseTensor>& dout,
+                         const paddle::optional<DenseTensor>& ddx,
                          const DenseTensor& d_dx_new,
-                         const DenseTensor& d_ddout,
+                         const paddle::optional<DenseTensor>& d_ddout,
                          DenseTensor* d_x_new,
                          DenseTensor* d_dout,
                          DenseTensor* d_ddx) {
   if (d_dout) {
-    d_dout->Resize(x.dims());
     dev_ctx.template Alloc<T>(d_dout);
   }
   if (d_x_new) {
-    d_dout->Resize(x.dims());
     dev_ctx.template Alloc<T>(d_x_new);
   }
   if (d_ddx) {
-    d_dout->Resize(ddx.dims());
     dev_ctx.template Alloc<T>(d_ddx);
   }
   funcs::CosTripleGradFunctor<T> functor;
   functor(dev_ctx,
           &x,
-          &ddx,
-          &dout,
-          &d_ddout,
+          ddx.get_ptr(),
+          dout.get_ptr(),
+          d_ddout.get_ptr(),
           &d_dx_new,  // input
           d_dout,
           d_x_new,

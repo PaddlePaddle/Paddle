@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
+
 import numpy as np
-from test_dist_base import TestDistRunnerBase, runtime_main
 from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+from paddle import fluid, nn
+from paddle.distributed import fleet
 
 
 class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):

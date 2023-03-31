@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import numpy as np
 
 
 class ApiOnesTest(unittest.TestCase):
@@ -48,7 +47,7 @@ class ApiOnesTest(unittest.TestCase):
 
     def test_fluid_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            ones = fluid.layers.ones(shape=[10], dtype="int64")
+            ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[ones])
@@ -72,15 +71,9 @@ class ApiOnesZerosError(unittest.TestCase):
 
         def test_error3():
             with paddle.static.program_guard(paddle.static.Program()):
-                ones = fluid.layers.ones(shape=10, dtype="int64")
+                ones = paddle.ones(shape=10, dtype="int64")
 
         self.assertRaises(TypeError, test_error3)
-
-        def test_error4():
-            with paddle.static.program_guard(paddle.static.Program()):
-                ones = fluid.layers.ones(shape=[10], dtype="int8")
-
-        self.assertRaises(TypeError, test_error4)
 
 
 if __name__ == "__main__":

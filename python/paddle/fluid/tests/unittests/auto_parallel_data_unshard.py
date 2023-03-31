@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 
 import numpy as np
-import random
 
 import paddle
-import paddle.nn as nn
-from paddle.distributed.fleet import auto
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 paddle.distributed.init_parallel_env()

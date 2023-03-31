@@ -19,6 +19,11 @@
 namespace phi {
 using LoD = std::vector<std::vector<std::size_t>>;
 
+/*
+ * Transform an LoD from relative offsets to absolute offsets.
+ */
+LoD ToAbsOffset(const LoD& in);
+
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
 /*

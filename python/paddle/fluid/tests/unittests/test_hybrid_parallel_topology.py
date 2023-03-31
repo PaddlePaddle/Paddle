@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-from paddle.distributed import fleet
+
 import numpy as np
+
+from paddle.distributed import fleet
 
 
 class TestCommunicateTopology(unittest.TestCase):

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.static as static
 import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
+from paddle import static
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
@@ -117,11 +118,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -285,11 +286,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'mul',
                 'elementwise_add',
                 'softmax',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'softmax_grad',
                 'elementwise_add_grad',
                 'mul_grad',
@@ -353,7 +354,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -441,13 +442,13 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -551,7 +552,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
         strategy.fuse_grad_merge = True
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -639,7 +640,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'elementwise_add',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -649,7 +650,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'elementwise_add_grad',
@@ -832,7 +833,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'cast',
                 'softmax',
                 'cast',
-                'cross_entropy2',
+                'softmax_with_cross_entropy',
                 'reduce_mean',
                 'elementwise_mul',
                 'coalesce_tensor',
@@ -844,7 +845,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'fill_constant',
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
-                'cross_entropy_grad2',
+                'softmax_with_cross_entropy_grad',
                 'cast',
                 'softmax_grad',
                 'cast',
@@ -939,7 +940,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -993,7 +994,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             [
                 'recv_v2',
                 'cast',
-                'matmul',
+                'matmul_v2',
                 'cast',
                 'reduce_mean',
                 'elementwise_mul',
@@ -1001,7 +1002,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
                 'cast',
-                'matmul_grad',
+                'matmul_v2_grad',
                 'c_sync_calc_stream',
                 'send_v2',
                 'fill_constant',
@@ -1043,7 +1044,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -1086,7 +1087,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             [
                 'recv_v2',
                 'cast',
-                'matmul',
+                'matmul_v2',
                 'cast',
                 'reduce_mean',
                 'elementwise_mul',
@@ -1094,7 +1095,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
                 'cast',
-                'matmul_grad',
+                'matmul_v2_grad',
                 'c_sync_calc_stream',
                 'send_v2',
                 'fill_constant',

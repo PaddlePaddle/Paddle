@@ -41,8 +41,6 @@ const char kSummarize[] = "summarize";
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
 class AssertOp : public framework::OperatorBase {
  public:
   AssertOp(const std::string &type,
@@ -58,7 +56,7 @@ class AssertOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(cond_var_ptr,
                             platform::errors::NotFound(
                                 "Input(Condition) of AssertOp is not found."));
-    const LoDTensor &cond = cond_var_ptr->Get<LoDTensor>();
+    const phi::DenseTensor &cond = cond_var_ptr->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         cond.dims(),
         phi::make_ddim({1}),
@@ -78,7 +76,7 @@ class AssertOp : public framework::OperatorBase {
     const std::vector<std::string> &x_names = Inputs(kData);
     for (const std::string &name : x_names) {
       const framework::Variable *x_var_ptr = scope.FindVar(name);
-      const phi::DenseTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
+      const phi::DenseTensor &x_tensor = x_var_ptr->Get<phi::DenseTensor>();
       formatter.Print(x_tensor, name);
     }
 

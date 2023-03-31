@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class FusedAttentionOpKernel : public framework::OpKernel<T> {
  public:
@@ -33,86 +31,88 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
     // inputs tensor
-    auto *input_x = ctx.Input<Tensor>("X");
+    auto *input_x = ctx.Input<phi::DenseTensor>("X");
 
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
 
     // shape [3, num_head, dim_head, dim_embed]
-    auto *qkv_weight = ctx.Input<Tensor>("QKVW");
+    auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVW");
     // shape [3 , num_head, dim_head]
-    auto *qkv_bias = ctx.Input<Tensor>("QKVBias");
+    auto *qkv_bias = ctx.Input<phi::DenseTensor>("QKVBias");
 
     // shape [batch_size, 1, 1, seq_len]
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
+    auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
 
     // shape [dim_embed, dim_embed]
-    auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
+    auto *out_linear_weight = ctx.Input<phi::DenseTensor>("OutLinearW");
     // shape [dim_embed]
-    auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
+    auto *out_linear_bias = ctx.Input<phi::DenseTensor>("OutLinearBias");
 
-    const Tensor *ln_scale = nullptr;
-    const Tensor *ln_bias = nullptr;
+    const phi::DenseTensor *ln_scale = nullptr;
+    const phi::DenseTensor *ln_bias = nullptr;
     float epsilon = 0.0f;
 
     if (pre_layer_norm) {
-      ln_scale = ctx.Input<Tensor>("LnScale");
-      ln_bias = ctx.Input<Tensor>("LnBias");
+      ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+      ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
       epsilon = ctx.Attr<float>("epsilon");
     } else {
-      ln_scale = ctx.Input<Tensor>("Ln2Scale");
-      ln_bias = ctx.Input<Tensor>("Ln2Bias");
+      ln_scale = ctx.Input<phi::DenseTensor>("Ln2Scale");
+      ln_bias = ctx.Input<phi::DenseTensor>("Ln2Bias");
       epsilon = ctx.Attr<float>("ln_epsilon");
     }
 
     // outputs tensor
     // qkv 的值，并已经做了transpos后的值
     // shape [3, batch_size, num_head, seq_len, dim_head]
-    auto *TransposeOut2 = ctx.Output<Tensor>("TransposeOut2");
+    auto *TransposeOut2 = ctx.Output<phi::DenseTensor>("TransposeOut2");
 
     // shape [batch_size, num_head, seq_len, seq_len]
-    auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
+    auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
     // shape [batch_size, num_head, seq_len, seq_len]
-    auto *attn_dropout_mask_out = ctx.Output<Tensor>("AttnDropoutMaskOut");
+    auto *attn_dropout_mask_out =
+        ctx.Output<phi::DenseTensor>("AttnDropoutMaskOut");
     // shape [batch_size, num_head, seq_len, seq_len]
-    auto *attn_dropout_out = ctx.Output<Tensor>("AttnDropoutOut");
+    auto *attn_dropout_out = ctx.Output<phi::DenseTensor>("AttnDropoutOut");
 
     // shape [[batch_size, seq_len, num_head, dim_head]]
-    auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
+    auto *fmha_out = ctx.Output<phi::DenseTensor>("FMHAOut");
 
     // shape [batch_size, seq_len, dim_embed]
-    auto *dropout_mask_out = ctx.Output<Tensor>("DropoutMaskOut");
+    auto *dropout_mask_out = ctx.Output<phi::DenseTensor>("DropoutMaskOut");
 
     // final output
     // shape [batch_size, seq_len, dim_embed]
-    auto *out = ctx.Output<Tensor>("Y");
+    auto *out = ctx.Output<phi::DenseTensor>("Y");
 
     // 下面这个tensor是不需要返回, 但是新的动态图需要
-    auto *QKOut = ctx.Output<Tensor>("QKOut");
+    auto *QKOut = ctx.Output<phi::DenseTensor>("QKOut");
     QKOut->mutable_data<T>(ctx.GetPlace());
-    auto *QKTVOut = ctx.Output<Tensor>("QKTVOut");
+    auto *QKTVOut = ctx.Output<phi::DenseTensor>("QKTVOut");
     QKTVOut->mutable_data<T>(ctx.GetPlace());
-    auto *OutLinearOut = ctx.Output<Tensor>("OutLinearOut");
+    auto *OutLinearOut = ctx.Output<phi::DenseTensor>("OutLinearOut");
     OutLinearOut->mutable_data<T>(ctx.GetPlace());
-    auto *QKVBiasOut = ctx.Output<Tensor>("QKVBiasOut");
+    auto *QKVBiasOut = ctx.Output<phi::DenseTensor>("QKVBiasOut");
     QKVBiasOut->mutable_data<T>(ctx.GetPlace());
-    auto *SrcMaskOut = ctx.Output<Tensor>("SrcMaskOut");
+    auto *SrcMaskOut = ctx.Output<phi::DenseTensor>("SrcMaskOut");
     SrcMaskOut->mutable_data<T>(ctx.GetPlace());
-    auto *qkv_out = ctx.Output<Tensor>("QKVOut");
+    auto *qkv_out = ctx.Output<phi::DenseTensor>("QKVOut");
     qkv_out->mutable_data<T>(ctx.GetPlace());
 
-    Tensor *bias_dropout_residual_out = nullptr;
-    Tensor *ln_mean = nullptr;
-    Tensor *ln_var = nullptr;
-    Tensor *ln_out = nullptr;
+    phi::DenseTensor *bias_dropout_residual_out = nullptr;
+    phi::DenseTensor *ln_mean = nullptr;
+    phi::DenseTensor *ln_var = nullptr;
+    phi::DenseTensor *ln_out = nullptr;
 
     if (pre_layer_norm) {
-      ln_mean = ctx.Output<Tensor>("LnMean");
-      ln_var = ctx.Output<Tensor>("LnVariance");
-      ln_out = ctx.Output<Tensor>("LnOut");
+      ln_mean = ctx.Output<phi::DenseTensor>("LnMean");
+      ln_var = ctx.Output<phi::DenseTensor>("LnVariance");
+      ln_out = ctx.Output<phi::DenseTensor>("LnOut");
     } else {
-      ln_mean = ctx.Output<Tensor>("Ln2Mean");
-      ln_var = ctx.Output<Tensor>("Ln2Variance");
-      bias_dropout_residual_out = ctx.Output<Tensor>("BiasDropoutResidualOut");
+      ln_mean = ctx.Output<phi::DenseTensor>("Ln2Mean");
+      ln_var = ctx.Output<phi::DenseTensor>("Ln2Variance");
+      bias_dropout_residual_out =
+          ctx.Output<phi::DenseTensor>("BiasDropoutResidualOut");
     }
 
     // dropout info
@@ -125,7 +125,8 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     bool is_upscale_in_train_1 =
         (dropout_implementation_1 == "upscale_in_train");
-    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
+    auto *seed_1 =
+        ctx.HasInput("Seed1") ? ctx.Input<phi::DenseTensor>("Seed1") : nullptr;
 
     bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
 
@@ -468,7 +469,8 @@ class FusedAttentionGradXPUKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
         (dropout_implementation_1 == "upscale_in_train");
-    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
+    auto *seed_1 =
+        ctx.HasInput("Seed1") ? ctx.Input<phi::DenseTensor>("Seed1") : nullptr;
     bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
     int seed_val_1 = ctx.Attr<int>("attn_dropout_seed");
 
@@ -482,79 +484,81 @@ class FusedAttentionGradXPUKernel : public framework::OpKernel<T> {
 
     XPUDropoutParam dropout_param(ctx, 0);
     // get inputs.
-    auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const XPUTypeT *d_y_ptr =
         reinterpret_cast<const XPUTypeT *>(d_y->data<T>());
     // 前向必要参数
-    auto *input_x = ctx.Input<Tensor>("X");
+    auto *input_x = ctx.Input<phi::DenseTensor>("X");
     const XPUTypeT *input_x_ptr =
         reinterpret_cast<const XPUTypeT *>(input_x->data<T>());
-    auto *qkv_transpose_out = ctx.Input<Tensor>("TransposeOut2");
+    auto *qkv_transpose_out = ctx.Input<phi::DenseTensor>("TransposeOut2");
     const XPUTypeT *qkv_transpose_out_ptr =
         reinterpret_cast<const XPUTypeT *>(qkv_transpose_out->data<T>());
-    auto *qkv_weight = ctx.Input<Tensor>("QKVW");
+    auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVW");
     const XPUTypeT *qkv_weight_ptr =
         reinterpret_cast<const XPUTypeT *>(qkv_weight->data<T>());
 
-    auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
+    auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
     const XPUTypeT *softmax_out_ptr =
         reinterpret_cast<const XPUTypeT *>(softmax_out->data<T>());
-    auto *attn_dropout_out = ctx.Input<Tensor>("AttnDropoutOut");
+    auto *attn_dropout_out = ctx.Input<phi::DenseTensor>("AttnDropoutOut");
     const XPUTypeT *attn_dropout_out_ptr =
         reinterpret_cast<const XPUTypeT *>(attn_dropout_out->data<T>());
 
-    auto *attn_dropout_mask = ctx.Input<Tensor>("AttnDropoutMaskOut");
+    auto *attn_dropout_mask = ctx.Input<phi::DenseTensor>("AttnDropoutMaskOut");
     const XPUTypeT *attn_dropout_mask_ptr =
         reinterpret_cast<const XPUTypeT *>(attn_dropout_mask->data<T>());
-    auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
+    auto *fmha_out = ctx.Input<phi::DenseTensor>("FMHAOut");
     const XPUTypeT *fmha_out_ptr =
         reinterpret_cast<const XPUTypeT *>(fmha_out->data<T>());
 
-    auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
+    auto *out_linear_weight = ctx.Input<phi::DenseTensor>("OutLinearW");
     const XPUTypeT *out_linear_weight_ptr =
         reinterpret_cast<const XPUTypeT *>(out_linear_weight->data<T>());
 
-    auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
+    auto *dropout_mask_out = ctx.Input<phi::DenseTensor>("DropoutMaskOut");
     const XPUTypeT *dropout_mask_out_ptr =
         reinterpret_cast<const XPUTypeT *>(dropout_mask_out->data<T>());
     // 需要计算的梯度
-    auto *d_qkv_weight = ctx.Output<Tensor>(framework::GradVarName("QKVW"));
+    auto *d_qkv_weight =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("QKVW"));
     XPUTypeT *d_qkv_weight_ptr = reinterpret_cast<XPUTypeT *>(
         d_qkv_weight->mutable_data<T>(ctx.GetPlace()));
 
-    auto *d_qkv_bias = ctx.Output<Tensor>(framework::GradVarName("QKVBias"));
+    auto *d_qkv_bias =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("QKVBias"));
     XPUTypeT *d_qkv_bias_ptr = reinterpret_cast<XPUTypeT *>(
         d_qkv_bias->mutable_data<T>(ctx.GetPlace()));
     auto *d_out_linear_weight =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearW"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("OutLinearW"));
 
     XPUTypeT *d_out_linear_weight_ptr = reinterpret_cast<XPUTypeT *>(
         d_out_linear_weight->mutable_data<T>(ctx.GetPlace()));
 
     auto *d_out_linear_bias =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("OutLinearBias"));
     XPUTypeT *d_out_linear_bias_ptr = reinterpret_cast<XPUTypeT *>(
         d_out_linear_bias->mutable_data<T>(ctx.GetPlace()));
     // 有可能需要
     auto *d_src_mask_out =
-        ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("SrcMaskOut"));
     XPUTypeT *d_src_mask_out_ptr =
         (d_src_mask_out == nullptr)
             ? (nullptr)
             : (reinterpret_cast<XPUTypeT *>(
                   d_src_mask_out->mutable_data<T>(ctx.GetPlace())));
     // 输出 dx
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     XPUTypeT *d_x_ptr =
         reinterpret_cast<XPUTypeT *>(d_x->mutable_data<T>(ctx.GetPlace()));
 
-    const Tensor *ln_out = nullptr;
-    const Tensor *bias_dropout_residual_out = nullptr;
-    const Tensor *ln_scale = nullptr;
-    const Tensor *ln_mean = nullptr;
-    const Tensor *ln_var = nullptr;
-    Tensor *d_ln_scale = nullptr;
-    Tensor *d_ln_bias = nullptr;
+    const phi::DenseTensor *ln_out = nullptr;
+    const phi::DenseTensor *bias_dropout_residual_out = nullptr;
+    const phi::DenseTensor *ln_scale = nullptr;
+    const phi::DenseTensor *ln_mean = nullptr;
+    const phi::DenseTensor *ln_var = nullptr;
+    phi::DenseTensor *d_ln_scale = nullptr;
+    phi::DenseTensor *d_ln_bias = nullptr;
 
     const XPUTypeT *ln_out_ptr = NULL;
     const float *ln_scale_ptr = NULL;
@@ -567,23 +571,28 @@ class FusedAttentionGradXPUKernel : public framework::OpKernel<T> {
     float epsilon = 0.0f;
 
     if (pre_layer_norm) {
-      ln_out = ctx.Input<Tensor>("LnOut");
+      ln_out = ctx.Input<phi::DenseTensor>("LnOut");
       ln_out_ptr = reinterpret_cast<const XPUTypeT *>(ln_out->data<T>());
-      ln_scale = ctx.Input<Tensor>("LnScale");
-      ln_mean = ctx.Input<Tensor>("LnMean");
-      ln_var = ctx.Input<Tensor>("LnVariance");
+      ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+      ln_mean = ctx.Input<phi::DenseTensor>("LnMean");
+      ln_var = ctx.Input<phi::DenseTensor>("LnVariance");
       epsilon = ctx.Attr<float>("epsilon");
-      d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
-      d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
+      d_ln_scale =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("LnScale"));
+      d_ln_bias =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("LnBias"));
 
     } else {
-      ln_scale = ctx.Input<Tensor>("Ln2Scale");
-      ln_mean = ctx.Input<Tensor>("Ln2Mean");
-      ln_var = ctx.Input<Tensor>("Ln2Variance");
+      ln_scale = ctx.Input<phi::DenseTensor>("Ln2Scale");
+      ln_mean = ctx.Input<phi::DenseTensor>("Ln2Mean");
+      ln_var = ctx.Input<phi::DenseTensor>("Ln2Variance");
       epsilon = ctx.Attr<float>("ln_epsilon");
-      d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("Ln2Scale"));
-      d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("Ln2Bias"));
-      bias_dropout_residual_out = ctx.Input<Tensor>("BiasDropoutResidualOut");
+      d_ln_scale =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("Ln2Scale"));
+      d_ln_bias =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("Ln2Bias"));
+      bias_dropout_residual_out =
+          ctx.Input<phi::DenseTensor>("BiasDropoutResidualOut");
       bias_dropout_residual_out_ptr = reinterpret_cast<const XPUTypeT *>(
           bias_dropout_residual_out->data<T>());
     }

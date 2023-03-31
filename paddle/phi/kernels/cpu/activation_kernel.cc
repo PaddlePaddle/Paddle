@@ -113,13 +113,13 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      offset)
 
 template <typename T, typename Context>
-void HardSwishRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        float threshold,
-                        float scale,
-                        float offset,
-                        DenseTensor* out) {
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out) {
   funcs::HardSwishFunctor<T> functor;
+  float threshold = 6;
+  float scale = 6;
+  float offset = 3;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
@@ -146,7 +146,7 @@ PD_REGISTER_ACTIVATION_KERNEL(asinh, AsinhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acosh, AcoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_tanh, HardTanhKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
@@ -183,7 +183,7 @@ PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

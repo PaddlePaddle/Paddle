@@ -14,11 +14,10 @@
 
 import unittest
 
-import paddle
-from paddle.distribution import variable
-from paddle.distribution import constraint
-
 import parameterize as param
+
+import paddle
+from paddle.distribution import constraint, variable
 
 paddle.seed(2022)
 

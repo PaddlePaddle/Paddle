@@ -43,7 +43,6 @@ from .common import Dropout  # noqa: F401
 from .common import Dropout2D  # noqa: F401
 from .common import Dropout3D  # noqa: F401
 from .common import AlphaDropout  # noqa: F401
-from .common import Upsample  # noqa: F401
 from .common import UpsamplingBilinear2D  # noqa: F401
 from .common import UpsamplingNearest2D  # noqa: F401
 from .common import Fold
@@ -78,6 +77,7 @@ from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
 from .loss import MultiLabelSoftMarginLoss
 from .loss import CTCLoss  # noqa: F401
+from .loss import RNNTLoss  # noqa: F401
 from .loss import SmoothL1Loss  # noqa: F401
 from .loss import HingeEmbeddingLoss  # noqa: F401
 from .loss import TripletMarginWithDistanceLoss
@@ -98,5 +98,6 @@ from .vision import PixelUnshuffle  # noqa: F401
 from .vision import ChannelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
+from .layers import Layer
 
 __all__ = []

@@ -16,30 +16,29 @@ import unittest
 
 import numpy as np
 from pass_test import PassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class EmbEltwiseLayerNormFusePassTest(PassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            word_id = fluid.layers.data(
+            word_id = paddle.static.data(
                 name="word_id",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
-            pos_id = fluid.layers.data(
+            pos_id = paddle.static.data(
                 name="pos_id",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
-            sent_id = fluid.layers.data(
+            sent_id = paddle.static.data(
                 name="sent_id",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
             word_emb = fluid.layers.embedding(
                 input=word_id, size=(128, 768), dtype='float32'
@@ -50,33 +49,29 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             sent_emb = fluid.layers.embedding(
                 input=sent_id, size=(128, 768), dtype='float32'
             )
-            add1 = fluid.layers.elementwise_add(word_emb, pos_emb)
-            add2 = fluid.layers.elementwise_add(add1, sent_emb)
-            hidden1 = fluid.layers.layer_norm(input=add2, begin_norm_axis=2)
+            add1 = paddle.add(word_emb, pos_emb)
+            add2 = paddle.add(add1, sent_emb)
+            hidden1 = paddle.static.nn.layer_norm(input=add2, begin_norm_axis=2)
 
-            id1 = fluid.layers.data(
+            id1 = paddle.static.data(
                 name="id1",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
-            id2 = fluid.layers.data(
+            id2 = paddle.static.data(
                 name="id2",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
-            id3 = fluid.layers.data(
+            id3 = paddle.static.data(
                 name="id3",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
-            id4 = fluid.layers.data(
+            id4 = paddle.static.data(
                 name="id4",
                 shape=[1, 128, 1],
                 dtype="int64",
-                append_batch_size=False,
             )
             emb1 = fluid.layers.embedding(
                 input=id1, size=(128, 768), dtype='float32'
@@ -90,10 +85,12 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             emb4 = fluid.layers.embedding(
                 input=id4, size=(128, 768), dtype='float32'
             )
-            add_1 = fluid.layers.elementwise_add(emb1, emb2)
-            add_2 = fluid.layers.elementwise_add(add_1, emb3)
-            add_3 = fluid.layers.elementwise_add(add_2, emb4)
-            hidden_1 = fluid.layers.layer_norm(input=add_3, begin_norm_axis=2)
+            add_1 = paddle.add(emb1, emb2)
+            add_2 = paddle.add(add_1, emb3)
+            add_3 = paddle.add(add_2, emb4)
+            hidden_1 = paddle.static.nn.layer_norm(
+                input=add_3, begin_norm_axis=2
+            )
 
         self.feeds = {
             "word_id": np.random.randint(

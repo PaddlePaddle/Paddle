@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-import paddle.fluid as fluid
+import unittest
+
+import paddle
+from paddle import fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-import paddle
 
 paddle.enable_static()
 

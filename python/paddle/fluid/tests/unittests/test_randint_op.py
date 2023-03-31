@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.static import program_guard, Program
-import paddle.fluid as fluid
+from paddle.static import Program, program_guard
 
 paddle.enable_static()
 
@@ -28,7 +29,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-10, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -50,10 +51,6 @@ class TestRandintOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 class TestRandintOpError(unittest.TestCase):
     def test_errors(self):
@@ -69,10 +66,6 @@ class TestRandintOpError(unittest.TestCase):
                 TypeError, paddle.randint, 5, shape=[shape_tensor]
             )
 
-    def test_errors_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
-
 
 class TestRandintOp_attr_tensorlist(OpTest):
     def setUp(self):
@@ -81,7 +74,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -97,10 +90,6 @@ class TestRandintOp_attr_tensorlist(OpTest):
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
-
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
 
 class TestRandint_attr_tensor(OpTest):
@@ -121,10 +110,6 @@ class TestRandint_attr_tensor(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 # Test python API
 class TestRandintAPI(unittest.TestCase):
@@ -141,8 +126,8 @@ class TestRandintAPI(unittest.TestCase):
                 low=-100, high=100, shape=(32, 32, 3), dtype='int64'
             )
             # shape is a tensorlist and dtype is 'float32'
-            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 32)
-            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 32)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 50)
             out4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32'
             )
@@ -165,30 +150,18 @@ class TestRandintAPI(unittest.TestCase):
                 fetch_list=[out1, out2, out3, out4, out5],
             )
 
-    def test_api_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-
 
 class TestRandintImperative(unittest.TestCase):
-    def test_api(self):
+    def test_case(self):
         paddle.disable_static()
-
-        self.run_test_case()
-
-        with _test_eager_guard():
-            self.run_test_case()
-
-        paddle.enable_static()
-
-    def run_test_case(self):
         n = 10
         x1 = paddle.randint(n, shape=[10], dtype="int32")
         x2 = paddle.tensor.randint(n)
         x3 = paddle.tensor.random.randint(n)
         for i in [x1, x2, x3]:
             for j in i.numpy().tolist():
-                self.assertTrue((j >= 0 and j < n))
+                self.assertTrue(j >= 0 and j < n)
+        paddle.enable_static()
 
 
 class TestRandomValue(unittest.TestCase):
@@ -205,9 +178,6 @@ class TestRandomValue(unittest.TestCase):
         paddle.disable_static()
 
         self.run_test_case()
-
-        with _test_eager_guard():
-            self.run_test_case()
 
         paddle.enable_static()
 

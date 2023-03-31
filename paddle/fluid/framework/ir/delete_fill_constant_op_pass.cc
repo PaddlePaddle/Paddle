@@ -29,6 +29,11 @@ void FillConstData(phi::DenseTensor* out_t, T value) {
 }
 
 void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  // Not support
+  if (with_dynamic_shape) {
+    return;
+  }
   FusePassBase::Init("delete_fill_constant_op_pass", graph);
   GraphPatternDetector detector;
   auto fill_constant_op =
@@ -76,18 +81,18 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
         framework::TransToPhiDataType(fill_constant_out_desc->GetDataType());
     fill_constant_out_tensor->Resize(phi::make_ddim(shape));
     switch (dtype) {
-      case paddle::experimental::DataType::BOOL:
+      case phi::DataType::BOOL:
         FillConstData<bool>(fill_constant_out_tensor, static_cast<bool>(value));
         break;
-      case paddle::experimental::DataType::INT32:
+      case phi::DataType::INT32:
         FillConstData<int32_t>(fill_constant_out_tensor,
                                static_cast<int32_t>(value));
         break;
-      case paddle::experimental::DataType::INT64:
+      case phi::DataType::INT64:
         FillConstData<int64_t>(fill_constant_out_tensor,
                                static_cast<int64_t>(value));
         break;
-      case paddle::experimental::DataType::FLOAT32:
+      case phi::DataType::FLOAT32:
         FillConstData<float>(fill_constant_out_tensor,
                              static_cast<float>(value));
         break;

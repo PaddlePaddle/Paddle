@@ -15,15 +15,14 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
@@ -36,8 +35,8 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     int rank = x->dims().size();
     auto label_dims = labels->dims();
-    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d, y_2d;
+    phi::DenseTensor x_2d = phi::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
       labels_2d.Resize({phi::product(label_dims), 1});
@@ -46,12 +45,12 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
       y_2d.Resize({phi::product(y->dims()), 1});
 
     } else {
-      labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
-      y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+      labels_2d = phi::ReshapeToMatrix(*labels, rank - 1);
+      y_2d = phi::ReshapeToMatrix(*y, rank - 1);
     }
 
     int axis_dim = x->dims()[rank - 1];
-    math::CrossEntropyFunctor<DeviceContext, T>()(
+    phi::funcs::CrossEntropyFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(),
         &y_2d,
         &x_2d,
@@ -190,7 +189,7 @@ struct HardLabelCrossEntropyForwardFunctor {
                      label);
 
       auto match_x = x_[idx * feature_size_ + label];
-      y_[idx] = -math::TolerableValue<T>()(phi::funcs::real_log(match_x));
+      y_[idx] = -phi::funcs::TolerableValue<T>()(phi::funcs::real_log(match_x));
       match_x_[idx] = match_x;
     } else {
       y_[idx] = 0;

@@ -22,7 +22,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,

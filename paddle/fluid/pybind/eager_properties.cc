@@ -10,6 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -39,7 +43,8 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
   // NOTE(dev): [why not use egr::Controller::Instance::GernerateUniqueName()?]
   // Beacause Controller must holder a tracer, but 'tensor.name' maybe called
-  // everywhere such as static mode in @to_static, which means tracer is None.
+  // everywhere such as static graph mode in @to_static, which means tracer is
+  // None.
   static egr::UniqueNameGenerator name_generator;
   if (self->tensor.name().empty()) {
     self->tensor.set_name(name_generator.Generate());
@@ -113,8 +118,7 @@ int tensor_properties_set_grad(TensorObject* self,
       egr::egr_utils_api::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
 
-  paddle::experimental::Tensor* grad =
-      egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(grad != nullptr,
                  paddle::platform::errors::Fatal(
                      "Detected NULL grad"
@@ -183,39 +187,41 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
       value[i] = ddim[i];
     }
   }
-
-  auto desired_layout =
-      paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
-  auto default_layout =
-      paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
-  bool change_dim =
-      (desired_layout != default_layout &&
-       self->tensor.layout() == desired_layout && value.size() == 4);
-  VLOG(6) << "eager_properties 'Shape' method, layout autotune "
-          << " desired_layout: " << desired_layout
-          << " default_layout: " << default_layout
-          << " tensor layout: " << self->tensor.layout()
-          << " tensor's shape size is : " << value.size();
-  std::vector<int64_t> dims = value;
-  if (change_dim && phi::DataLayoutToString(desired_layout) == "NCHW") {
-    // NCHW -> NHWC
-    VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0] << " "
-            << value[1] << " " << value[2] << " " << value[3] << " to "
-            << dims[0] << " " << dims[2] << " " << dims[3] << " " << dims[1];
-    value[0] = dims[0];
-    value[1] = dims[2];
-    value[2] = dims[3];
-    value[3] = dims[1];
-  } else if (change_dim && phi::DataLayoutToString(desired_layout) == "NHWC") {
-    // NHWC -> NCHW
-    VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0] << " "
-            << value[1] << " " << value[2] << " " << value[3] << " to "
-            << dims[0] << " " << dims[3] << " " << dims[1] << " " << dims[2]
-            << " " << dims[1];
-    value[0] = dims[0];
-    value[1] = dims[3];
-    value[2] = dims[1];
-    value[3] = dims[2];
+  if (!egr::IsVariableCompatTensor(self->tensor)) {
+    auto desired_layout =
+        paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+    auto default_layout =
+        paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
+    bool change_dim =
+        (desired_layout != default_layout &&
+         self->tensor.layout() == desired_layout && value.size() == 4);
+    VLOG(6) << "eager_properties 'Shape' method, layout autotune "
+            << " desired_layout: " << desired_layout
+            << " default_layout: " << default_layout
+            << " tensor layout: " << self->tensor.layout()
+            << " tensor's shape size is : " << value.size();
+    std::vector<int64_t> dims = value;
+    if (change_dim && phi::DataLayoutToString(desired_layout) == "NCHW") {
+      // NCHW -> NHWC
+      VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0]
+              << " " << value[1] << " " << value[2] << " " << value[3] << " to "
+              << dims[0] << " " << dims[2] << " " << dims[3] << " " << dims[1];
+      value[0] = dims[0];
+      value[1] = dims[2];
+      value[2] = dims[3];
+      value[3] = dims[1];
+    } else if (change_dim &&
+               phi::DataLayoutToString(desired_layout) == "NHWC") {
+      // NHWC -> NCHW
+      VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0]
+              << " " << value[1] << " " << value[2] << " " << value[3] << " to "
+              << dims[0] << " " << dims[3] << " " << dims[1] << " " << dims[2]
+              << " " << dims[1];
+      value[0] = dims[0];
+      value[1] = dims[3];
+      value[2] = dims[1];
+      value[3] = dims[2];
+    }
   }
 
   return ToPyObject(value);

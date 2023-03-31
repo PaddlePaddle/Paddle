@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
+from eager_op_test import OpTest
+
+import paddle
 
 paddle.enable_static()
 
@@ -193,14 +194,13 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             {'Input', 'Offset', 'Mask', 'Filter'},
             'Output',
             max_relative_error=0.05,
-            check_eager=True,
         )
 
     def init_test_case(self):
@@ -440,9 +440,22 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(ValueError, test_invalid_filter)
 
-    def test_error_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_error()
+        def test_invalid_groups():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_groups', shape=[1, 1, 1, 1], dtype='float32'
+            )
+            offset = paddle.static.data(
+                name='offset_groups', shape=[1, 1], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask_groups', shape=[1], dtype='float32'
+            )
+            paddle.static.nn.deform_conv2d(
+                input, offset, mask, 1, 1, padding=1, groups=0
+            )
+
+        self.assertRaises(ValueError, test_invalid_groups)
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
@@ -481,10 +494,6 @@ class TestDeformConv2DAPI(unittest.TestCase):
             assert out.shape == (-1, 4, 32, 32)
 
         test_deform_conv2d_v2()
-
-    def test_api_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_api()
 
 
 if __name__ == '__main__':

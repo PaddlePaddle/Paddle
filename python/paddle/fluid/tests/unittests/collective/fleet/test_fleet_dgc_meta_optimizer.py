@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
 import paddle
 from paddle import fluid
-import os
-import paddle.distributed.fleet as fleet
-from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
-import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 

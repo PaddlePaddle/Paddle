@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
-from test_dist_base import TestDistBase
-import os
 
-import os
+from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -30,7 +30,7 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -49,7 +49,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._mp_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

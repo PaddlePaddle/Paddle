@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from op_test import OpTest
+
 import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 
 
 def output_hist(out):
     hist, _ = np.histogram(out, bins=2)
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.5 * np.ones((2))
+    prob = 0.5 * np.ones(2)
     return hist, prob
 
 

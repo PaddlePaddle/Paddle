@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import contextlib
+
+import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
+from paddle.common_ops_import import Variable
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _non_static_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import LayerHelper
 
 __all__ = []
 
@@ -45,10 +48,10 @@ class RNGStatesTracker:
 
     def add(self, name, seed):
         if seed in self.seeds_:
-            raise ValueError('seed {} already exists'.format(seed))
+            raise ValueError(f'seed {seed} already exists')
         self.seeds_.add(seed)
         if name in self.states_:
-            raise ValueError('state {} already exists'.format(name))
+            raise ValueError(f'state {name} already exists')
         orig_rng_state = paddle.get_cuda_rng_state()
         paddle.seed(seed)
         self.states_[name] = paddle.get_cuda_rng_state()
@@ -66,7 +69,7 @@ class RNGStatesTracker:
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
-            raise ValueError('state {} does not exist'.format(name))
+            raise ValueError(f'state {name} does not exist')
         orig_cuda_rng_state = paddle.get_cuda_rng_state()
         paddle.set_cuda_rng_state(self.states_[name])
         try:
@@ -84,7 +87,7 @@ def get_rng_state_tracker():
 
 
 def model_parallel_random_seed(seed=None):
-    import paddle.distributed.fleet as fleet
+    from paddle.distributed import fleet
 
     hcg = fleet.get_hybrid_communicate_group()
     rank = hcg.get_model_parallel_rank()
@@ -209,7 +212,7 @@ def dropout(
     )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if _non_static_mode():
+    if in_dygraph_mode():
         out, mask = _legacy_C_ops.dropout(
             x,
             'dropout_prob',
@@ -224,34 +227,34 @@ def dropout(
             mode,
         )
         return out
+    else:
+        seed = determinate_seed(rng_name)
 
-    seed = determinate_seed(rng_name)
-
-    if isinstance(p, Variable) and not p.shape != [1]:
-        raise TypeError(
-            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                p.shape
+        if isinstance(p, Variable) and not p.shape != [1]:
+            raise TypeError(
+                "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                    p.shape
+                )
             )
+
+        helper = LayerHelper('dropout', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'dropout'
         )
 
-    helper = LayerHelper('dropout', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'dropout'
-    )
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        mask = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+        )
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    mask = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
-    )
-
-    helper.append_op(
-        type='dropout',
-        inputs={'X': [x], 'Seed': seed},
-        outputs={'Out': [out], 'Mask': [mask]},
-        attrs={
-            'dropout_prob': p,
-            'is_test': not training,
-            'dropout_implementation': mode,
-        },
-    )
-    return out
+        helper.append_op(
+            type='dropout',
+            inputs={'X': [x], 'Seed': seed},
+            outputs={'Out': [out], 'Mask': [mask]},
+            attrs={
+                'dropout_prob': p,
+                'is_test': not training,
+                'dropout_implementation': mode,
+            },
+        )
+        return out

@@ -46,6 +46,9 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
+// Limitation of the setting in one dimension of cuda grid.
+constexpr int kMultiDimslimit = 65536;
+
 template <typename T = int64_t>
 inline T DivUp(T a, T b) {
   return (a + b - 1) / b;
@@ -53,20 +56,25 @@ inline T DivUp(T a, T b) {
 
 // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 //   for round integer value into next highest power of 2.
-inline int64_t RoundToPowerOfTwo(int64_t n) {
+inline int64_t RoundToNextHighPowOfTwo(int64_t n, int64_t min_val = 1) {
   n--;
   n |= (n >> 1);
   n |= (n >> 2);
   n |= (n >> 4);
   n |= (n >> 8);
   n |= (n >> 16);
-  int64_t min_val = 32;
+  return std::max(min_val, (n + 1));
+}
+
+inline int64_t RoundToPowerOfTwo(int64_t n) {
+  constexpr int64_t min_val = 32;
+  int64_t num = RoundToNextHighPowOfTwo(n, min_val);
 #ifdef __HIPCC__
   int64_t max_val = 256;
 #else
   int64_t max_val = 1024;
 #endif
-  return std::min(max_val, std::max(min_val, (n + 1)));
+  return std::min(max_val, num);
 }
 
 #ifdef WITH_NV_JETSON

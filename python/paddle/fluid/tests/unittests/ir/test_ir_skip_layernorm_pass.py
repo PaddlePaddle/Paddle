@@ -15,23 +15,24 @@
 import unittest
 
 from pass_test import PassTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class SkipLayerNormFusePassTest(PassTest):
     def setUp(self):
         paddle.enable_static()
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name="x", shape=[128, 768], dtype="float32", lod_level=0
             )
-            y = fluid.data(
+            y = paddle.static.data(
                 name="y", shape=[128, 768], dtype="float32", lod_level=0
             )
-            elementwise_out = fluid.layers.elementwise_add(x=x, y=y)
-            out = fluid.layers.layer_norm(input=elementwise_out)
+            elementwise_out = paddle.add(x=x, y=y)
+            out = paddle.static.nn.layer_norm(input=elementwise_out)
 
         self.fetch_list = [out]
         self.pass_names = "skip_layernorm_fuse_pass"
