@@ -49,16 +49,18 @@ class TrilTriuOpDefaultTest(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
 
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])
         self.diagonal = None
-        self.X = np.arange(1, 101, dtype="float64").reshape([10, -1])
+        self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
 
 
 class TrilTriuOpDefaultTestFP16(TrilTriuOpDefaultTest):
-    def initTestCase(self):
-        super().initTestCase()
-        self.X = self.X.astype("float16")
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 def case_generator(op_type, Xshape, diagonal, expected):
