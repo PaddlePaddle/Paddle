@@ -109,18 +109,14 @@ class RecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError(
-                "unsupported amp dtype: {}".format(tracer._amp_dtype)
-            )
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -499,6 +495,6 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
             _run_func(begin, end, functions),
             *args,
             preserve_rng_state=preserve_rng_state,
-            **kwargs
+            **kwargs,
         )
     return _run_func(end + 1, len(functions) - 1, functions)(args)

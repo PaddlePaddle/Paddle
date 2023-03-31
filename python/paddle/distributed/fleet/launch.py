@@ -89,7 +89,7 @@ __all__ = []
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print(f"{arg}: {value}")
     print("------------------------------------------------")
 
 
@@ -290,7 +290,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
@@ -308,7 +308,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
-            logger.info("find free ports:{}".format(free_ports))
+            logger.info(f"find free ports:{free_ports}")
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
@@ -416,7 +416,7 @@ def get_cluster_info(args):
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port
         )
-        logger.debug("get cluster from cloud:{}".format(cluster))
+        logger.debug(f"get cluster from cloud:{cluster}")
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
         cluster, pod = ascend_utils.get_cloud_cluster(
@@ -429,7 +429,7 @@ def get_cluster_info(args):
         cluster, pod = get_cluster_from_args(
             args, device_mode, devices_per_proc
         )
-        logger.debug("get cluster from args:{}".format(cluster))
+        logger.debug(f"get cluster from args:{cluster}")
     return cluster, pod
 
 
@@ -458,7 +458,7 @@ def launch_collective(args):
     )
 
     for idx, proc in enumerate(procs):
-        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+        print(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     while True:
         try:
@@ -466,7 +466,7 @@ def launch_collective(args):
 
             if not alive:
                 logger.info("Local processes completed.")
-                logger.debug("POD info:{}".format(pod))
+                logger.debug(f"POD info:{pod}")
                 break
 
             time.sleep(3)

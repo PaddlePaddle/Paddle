@@ -48,7 +48,7 @@ class PRChecker:
         with open(filename) as f:
             for l in f:
                 if l.rstrip('\r\n') == user:
-                    print('{} {}'.format(user, msg))
+                    print(f'{user} {msg}')
 
 
 if __name__ == '__main__':
