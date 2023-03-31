@@ -3898,7 +3898,7 @@ def gaussian_nll_loss(
     reduction='mean',
     name=None,
 ):
-    r"""Create a callable object of 'GaussianNLLLoss' to calculate Gaussian negative log likelihood loss.
+    r"""Gaussian negative log likelihood loss.
 
     The ``label`` is treated as samples from Gaussian distributions with
     expectations ``input`` and ``variance`` predicted by the neural network. For a
