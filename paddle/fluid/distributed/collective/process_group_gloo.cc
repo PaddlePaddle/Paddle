@@ -25,6 +25,7 @@
 #endif
 
 #include <gloo/broadcast.h>
+#include <gloo/gather.h>
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
 
@@ -708,7 +709,7 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
                   std::vector<phi::DenseTensor>& out,  // NOLINT
                   int src) {
     const auto& dtype = in[0].dtype();
-    GatherCommOptions opts(_context);
+    gloo::GatherOptions opts(_context);
     if (rank_ == src) {
       GENERATE_FUNC(dtype, set_output, opts, out[0]);
     }
@@ -716,7 +717,7 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
 
     opts.setRoot(src);
     opts.setTag(_tag);
-    gather(&opts);
+    gloo::gather(opts);
   }
 };
 
