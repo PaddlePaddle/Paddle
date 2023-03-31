@@ -154,7 +154,7 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError("Invalid padding: {}".format(padding))
+            raise ValueError(f"Invalid padding: {padding}")
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"

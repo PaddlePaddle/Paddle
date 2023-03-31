@@ -92,7 +92,7 @@ class WMT14(Dataset):
             'train',
             'test',
             'gen',
-        ], "mode should be 'train', 'test' or 'gen', but got {}".format(mode)
+        ], f"mode should be 'train', 'test' or 'gen', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
@@ -138,7 +138,7 @@ class WMT14(Dataset):
             assert len(names) == 1
             self.trg_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
 
-            file_name = "{}/{}".format(self.mode, self.mode)
+            file_name = f"{self.mode}/{self.mode}"
             names = [
                 each_item.name
                 for each_item in f

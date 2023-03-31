@@ -383,7 +383,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             # insert coalesce tensor
             fused_var = block.create_var(
                 name=unique_name.generate(
-                    'FusedOutput_{}'.format(grad_segment[0].name)
+                    f'FusedOutput_{grad_segment[0].name}'
                 ),
                 dtype=grad_segment[0].dtype,
                 persistable=False,
