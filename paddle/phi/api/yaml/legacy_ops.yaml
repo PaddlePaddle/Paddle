@@ -202,15 +202,6 @@
     data_type : dtype
     backend : place > output
 
-- op : auc
-  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
-  output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
-  infer_meta :
-    func : AucInferMeta
-  kernel :
-    func : auc
-  optional : ins_tag_weight
-
 - op : average_accumulates_
   args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
   output : Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates), Tensor(out_old_num_accumulates), Tensor(out_num_updates)

@@ -2052,6 +2052,12 @@
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
 
+- op: auc
+  inputs :
+    {predict: Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+  outputs :
+    {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
