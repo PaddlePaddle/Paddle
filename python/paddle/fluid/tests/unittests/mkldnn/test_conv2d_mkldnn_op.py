@@ -64,7 +64,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.fuse_activation = ""
         self.fuse_alpha = 0
         self.fuse_beta = 0
-        self.fuse_residual_connection = False
+        self.fuse_residual_connection = ""
         self.input_residual_size = None
 
         TestConv2DOp.setUp(self)
@@ -80,7 +80,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
 
         if (
-            self.fuse_residual_connection
+            self.fuse_residual_connection != ""
             and self.input_residual_size is not None
         ):
             input_residual = np.random.random(self.input_residual_size).astype(
@@ -105,7 +105,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         if (
             self.fuse_activation != ""
             or self.fuse_bias
-            or self.fuse_residual_connection
+            or self.fuse_residual_connection != ""
         ):
             self.op_type = 'fused_conv2d'
 
@@ -140,7 +140,7 @@ class TestWithFuse(TestConv2DMKLDNNOp):
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
-        self.fuse_residual_connection = True
+        self.fuse_residual_connection = "elementwise_add"
         self.input_residual_size = [2, 6, 5, 5]
 
 

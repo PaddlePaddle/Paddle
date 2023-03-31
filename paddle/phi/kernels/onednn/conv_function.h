@@ -27,7 +27,7 @@ static dnnl::memory::data_type GetDstType(
     bool is_bfloat16,
     bool force_fp32_output,
     std::string fuse_activation,
-    bool fuse_residual_conn,
+    const std::string& fuse_residual_conn,
     const phi::DenseTensor* residual_param) {
   auto dst_dt = dnnl::memory::data_type::f32;
   if (is_int8) {
@@ -37,14 +37,14 @@ static dnnl::memory::data_type GetDstType(
     if (force_fp32_output) {
       dst_dt = dnnl::memory::data_type::f32;
     }
-    if (fuse_residual_conn && residual_param) {
+    if (!fuse_residual_conn.empty() && residual_param) {
       auto residual_dt = funcs::ToOneDNNDataType(residual_param->dtype());
       if (dst_dt != residual_dt) dst_dt = residual_dt;
     }
   } else {
     if (!force_fp32_output && is_bfloat16) {
       dst_dt = dnnl::memory::data_type::bf16;
-      if (fuse_residual_conn && residual_param) {
+      if (!fuse_residual_conn.empty() && residual_param) {
         dst_dt = funcs::ToOneDNNDataType(residual_param->dtype());
       }
     }
@@ -82,7 +82,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  bool is_test,
                  bool is_BFLOAT16,
                  const std::string& fuse_activation,
-                 bool fuse_residual_conn,
+                 const std::string& fuse_residual_conn,
                  bool force_fp32_output,
                  DenseTensor* output) {
   const auto& onednn_engine = dev_ctx.GetEngine();
@@ -114,7 +114,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, is_conv3d, is_test);
         std::shared_ptr<dnnl::memory> dst_memory_p;
-        if (fuse_residual_conn) {
+        if (!fuse_residual_conn.empty()) {
           dst_memory_p =
               handler.AcquireDstMemoryWithResidual(output, residual_param);
         } else {
@@ -155,7 +155,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                  bool is_test,
                  bool is_BFLOAT16,
                  const std::string& fuse_activation,
-                 bool fuse_residual_conn,
+                 const std::string& fuse_residual_conn,
                  bool force_fp32_output,
                  DenseTensor* output) {
   const auto& onednn_engine = dev_ctx.GetEngine();
@@ -171,7 +171,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
       phi::errors::Unimplemented(
           "OneDNN int8 convolution does not support 3D inputs currently"));
   PADDLE_ENFORCE_EQ(
-      fuse_residual_conn && force_fp32_output,
+      !fuse_residual_conn.empty() && force_fp32_output,
       false,
       phi::errors::Unimplemented(
           "residual fusion does not support force output with fp32"));
@@ -214,7 +214,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
             filter, groups, false, true, scale_weights_data, mask_reorder);
 
         std::shared_ptr<dnnl::memory> dst_memory_p;
-        if (fuse_residual_conn) {
+        if (!fuse_residual_conn.empty()) {
           PADDLE_ENFORCE_EQ(
               output->dims(),
               residual_param->dims(),
@@ -292,7 +292,7 @@ void ConvOnednn(const Context& dev_ctx,
                 bool is_test,
                 bool is_bfloat16,
                 const std::string& fuse_activation,
-                bool fuse_residual_connection,
+                const std::string& fuse_residual_connection,
                 bool force_fp32_output,
                 DenseTensor* out) {
   PADDLE_ENFORCE_EQ(

@@ -28,10 +28,12 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   GraphWithStats FuseConv(const std::string& name_scope,
                           const GraphWithStats& graph_with_stats,
                           const std::string& conv_type,
+                          const std::string& elementwise_type,
                           bool as_x) const;
   GraphWithStats FuseProjectionConv(const std::string& name_scope,
                                     const GraphWithStats& graph_with_stats,
-                                    const std::string& conv_type) const;
+                                    const std::string& conv_type,
+                                    const std::string& elementwise_type) const;
 
  public:
   ResidualConnectionMKLDNNFusePass();
@@ -45,8 +47,10 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
                  ->GetAttrIfExists<std::string>("fuse_activation")
                  .empty());
   }
-  static bool HasFusedElementwiseAdd(Node* conv_node) {
-    return conv_node->Op()->GetAttrIfExists<bool>("fuse_residual_connection");
+  static bool HasFusedElementwise(Node* conv_node) {
+    return !conv_node->Op()
+                ->GetAttrIfExists<std::string>("fuse_residual_connection")
+                .empty();
   }
 
   const std::string name_scope_{"residual_connection_fuse_pass"};

@@ -31,7 +31,7 @@ void FusedConv2DKernel(const Context& dev_ctx,
                        const std::string& data_format,
                        const std::string& mkldnn_data_type,
                        const std::string& fuse_activation,
-                       bool fuse_residual_conn,
+                       const std::string& fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";
@@ -70,7 +70,7 @@ void FusedDepthwiseConv2DKernel(
     const std::string& data_format,
     const std::string& mkldnn_data_type,
     const std::string& fuse_activation,
-    bool fuse_residual_conn,
+    const std::string& fuse_residual_conn,
     bool force_fp32_output,
     DenseTensor* out) {
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";
@@ -108,7 +108,7 @@ void FusedConv3DKernel(const Context& dev_ctx,
                        const std::string& data_format,
                        const std::string& mkldnn_data_type,
                        const std::string& fuse_activation,
-                       bool fuse_residual_conn,
+                       const std::string& fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";

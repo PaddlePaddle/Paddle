@@ -118,7 +118,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             ).astype(self.srctype)
             output = conv2d_forward_refer_helper(input)
 
-        if self.fuse_residual:
+        if self.fuse_residual != "":
             output, input_residual = residual_helper(
                 init_low, init_high, output
             )
@@ -153,12 +153,12 @@ class TestConv2DInt8Op(TestConv2DOp):
             'Input': OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
-        if self.fuse_residual:
+        if self.fuse_residual != "":
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 input_residual
             )
 
-        if self.fuse_activation != "" or self.fuse_residual:
+        if self.fuse_activation != "" or self.fuse_residual != "":
             self.op_type = "fused_conv2d"
 
         self.attrs = {
@@ -218,7 +218,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.fuse_beta = 0
 
     def init_fuse_residual(self):
-        self.fuse_residual = True
+        self.fuse_residual = "elementwise_add"
 
 
 # --------------------test conv2d u8 in and u8 out with residual fuse--------------------
@@ -358,32 +358,32 @@ def create_test_int8_class(parent):
     # --------------------test conv2d s8 in and u8 out--------------------
     class TestS8U8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, "relu", False)
+            init_data_type_with_fusion(self, np.int8, "relu", "")
 
     # --------------------test conv2d s8 in and s8 out--------------------
     class TestS8S8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, "", False)
+            init_data_type_with_fusion(self, np.int8, "", "")
 
     # --------------------test conv2d u8 in and s8 out--------------------
     class TestU8S8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, "", False)
+            init_data_type_with_fusion(self, np.uint8, "", "")
 
     # --------------------test conv2d u8 in and u8 out without residual fuse--------------------
     class TestU8U8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, "relu", False)
+            init_data_type_with_fusion(self, np.uint8, "relu", "")
 
     # --------------------test conv2d s8 in and s8 out with residual fuse--------------------
     class TestS8S8ResCase(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, "", True)
+            init_data_type_with_fusion(self, np.int8, "", "elementwise_add")
 
     # --------------------test conv2d u8 in and s8 out with residual fuse--------------------
     class TestU8S8ResCase(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, "", True)
+            init_data_type_with_fusion(self, np.uint8, "", "elementwise_add")
 
     cls_name_s8u8 = "{}_relu_{}_residual_0".format(parent.__name__, "1")
     cls_name_s8s8 = "{}_relu_{}_residual_0".format(parent.__name__, "0")
@@ -414,7 +414,7 @@ def create_test_int8_class(parent):
         # --------------------test conv2d s8 in and u8 out with residual fuse--------------------
         class TestS8U8ResCase(parent):
             def init_data_type(self):
-                init_data_type_with_fusion(self, np.int8, "relu", True)
+                init_data_type_with_fusion(self, np.int8, "relu", "")
 
         cls_name_s8u8_re_1 = "{}_relu_{}_residual_{}".format(
             parent.__name__, "1", "1"

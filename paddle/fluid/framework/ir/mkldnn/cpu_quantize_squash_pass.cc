@@ -374,7 +374,9 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           any_op->Op()->Type() == "fc") {
         // do not squash if fuse residual connection is true
         // because residual fusion does not support force output with fp32
-        if (any_op->Op()->GetAttrIfExists<bool>("fuse_residual_connection"))
+        if (!any_op->Op()
+                 ->GetAttrIfExists<std::string>("fuse_residual_connection")
+                 .empty())
           return;
       }
       // Find the name of the output linking any_op to dequant_in

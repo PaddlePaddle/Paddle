@@ -54,7 +54,7 @@ class ConvOneDNNHandlerT
                      bool is_test,
                      bool is_BFLOAT16,
                      const std::string& fuse_activation,
-                     bool fuse_residual_conn,
+                     const std::string& fuse_residual_conn,
                      bool force_fp32_output,
                      phi::DenseTensor* output,
                      const std::string& unique_name)
@@ -446,7 +446,7 @@ class ConvOneDNNHandlerT
       const DenseTensor* filter,
       int groups,
       bool force_fp32_output,
-      bool fuse_residual_conn,
+      const std::string& fuse_residual_conn,
       const std::string& fuse_activation) const {
     const auto& weights_tz = phi::vectorize(filter->dims());
     groups = std::max(groups, 1);
@@ -477,8 +477,9 @@ class ConvOneDNNHandlerT
 
     float scale_out_data =
         (force_fp32_output || has_activation) ? 1.0f : scale_out;
-    float sum_scale =
-        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+    float sum_scale = !fuse_residual_conn.empty()
+                          ? scale_out_data / scale_in_eltwise_data
+                          : 1.0f;
     int count =
         is_multi_channel
             ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
@@ -504,7 +505,7 @@ class ConvOneDNNHandlerT
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,
                                        int groups,
                                        bool force_fp32_output,
-                                       bool fuse_residual_conn,
+                                       const std::string& fuse_residual_conn,
                                        const std::string& fuse_activation) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
@@ -547,9 +548,11 @@ class ConvOneDNNHandlerT
     // true, the output tensor contains the data coming from residual
     // connection. The result of this post_op is:
     // Output = scale * Output + Conv_Out.
-    if (fuse_residual_conn) {
+    if (!fuse_residual_conn.empty()) {
       post_operations.append_sum(sum_scale);
     }
+
+    // post_operations.append_binary(dnnl::algorithm::binary_mul, sum_scale);
 
     funcs::AppendActivation(this->dev_ctx_, post_operations, activation_scale);
 

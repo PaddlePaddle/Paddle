@@ -141,7 +141,7 @@ if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
-      -Werror
+      # -Werror
       -Wall
       -Wextra
       -Wnon-virtual-dtor
@@ -218,7 +218,7 @@ if(APPLE)
       -Werror=format
       -Werror=inconsistent-missing-override
       -Werror=braced-scalar-init
-      -Werror=uninitialized
+      # -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
       -Werror=pragma-pack

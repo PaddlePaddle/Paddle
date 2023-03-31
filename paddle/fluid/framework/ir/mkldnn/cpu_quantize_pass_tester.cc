@@ -53,10 +53,10 @@ void SetOp(ProgramDesc* prog,
       op->SetInput("Bias", {});
     if (inputs.size() > 3) {
       op->SetInput("ResidualData", {inputs[3]});
-      op->SetAttr("fuse_residual_connection", true);
+      op->SetAttr("fuse_residual_connection", "elementwise_add");
     } else {
       op->SetInput("ResidualData", {});
-      op->SetAttr("fuse_residual_connection", false);
+      op->SetAttr("fuse_residual_connection", "");
     }
     op->SetOutput("Output", {outputs[0]});
   } else if (type == "pool2d" || type == "fused_transpose" ||
