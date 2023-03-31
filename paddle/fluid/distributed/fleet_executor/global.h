@@ -48,6 +48,8 @@ class GlobalVal final {
 
  private:
   static std::unique_ptr<T>* GetPPtr() {
+    static std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
     static std::unique_ptr<T> ptr;
     return &ptr;
   }

@@ -55,6 +55,10 @@ class MessageBus final {
   void Barrier();
   bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
 
+  void RegisterMultiCarrier(const std::vector<Carrier*>& carriers) {
+    carriers_ = carriers;
+  }
+
  private:
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 
@@ -89,6 +93,8 @@ class MessageBus final {
   std::mutex mutex_;
   std::condition_variable cv_;
   int count_{0};
+
+  std::vector<Carrier*> carriers_;
 };
 
 }  // namespace distributed

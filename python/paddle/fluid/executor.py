@@ -2572,14 +2572,9 @@ class Executor(object):
         num_of_carrier = (
             fleet_opt["num_of_carrier"] if "num_of_carrier" in fleet_opt else 1
         )
-        program_list = (
-            [program.desc for program in fleet_opt["program_list"]]
-            if "program_list" in fleet_opt
-            else [program.desc]
-        )
         self._fleet_executor.init(
             num_of_carrier,
-            program_list,
+            program.desc,
             scope,
             place,
             num_micro_batches,

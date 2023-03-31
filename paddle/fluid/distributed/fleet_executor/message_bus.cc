@@ -169,9 +169,15 @@ void MessageBus::Barrier() {
 
 bool MessageBus::DispatchMsgToCarrier(
     const InterceptorMessage& interceptor_message) {
-  const std::string& carrier_id = *GlobalVal<std::string>::Get();
-  return GlobalMap<std::string, Carrier>::Get(carrier_id)
-      ->EnqueueInterceptorMessage(interceptor_message);
+  // Get carrier id based on dst interceptor id in interceptor message.
+  int64_t dst_interceptor_id = interceptor_message.dst_id();
+  // Enqueue the message to the carrier.
+  for (auto& carrier : carriers_) {
+    if (carrier->HasInterceptor(dst_interceptor_id)) {
+      return carrier->EnqueueInterceptorMessage(interceptor_message);
+    }
+  }
+  return false;
 }
 
 void MessageBus::ListenPort() {

@@ -441,7 +441,7 @@ bool DistModel::PrepareFleetExe() {
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
   fleet_exe->Init(carrier_id_,
-                  {program_.get()},
+                  *program_,
                   scope_.get(),
                   place_,
                   1,

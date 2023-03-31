@@ -282,7 +282,7 @@ std::shared_ptr<RuntimeGraph> FleetExecutor::CreateRuntimeGraph(
 
 void FleetExecutor::Init(
     int32_t num_of_carriers,
-    const std::vector<framework::ProgramDesc*>& program_desc,
+    const framework::ProgramDesc& program_desc,
     framework::Scope* scope,
     const platform::Place& place,
     int64_t num_micro_batches,
@@ -308,13 +308,13 @@ void FleetExecutor::Init(
   }
 
   for (auto id = 0; id < num_of_carriers; ++id) {
-    auto graph = CreateRuntimeGraph(*program_desc[id],
+    auto graph = CreateRuntimeGraph(program_desc,
                                     task_nodes[id],
                                     task_id_to_rank[id],
                                     inference_root_scope_vars);
     runtime_graph_.emplace_back(graph);
-    CopyParametersFromRoot(*program_desc[id], inference_root_scope_vars);
   }
+  CopyParametersFromRoot(program_desc, inference_root_scope_vars);
 
   // Here we set the thread num to num_of_carriers + 1, because we use one
   // thread for one carrier for now, and one thread for interceptor which not
@@ -347,7 +347,7 @@ void FleetExecutor::Init(
                 scope,
                 minibatch_scope_,
                 place,
-                *program_desc[id],
+                program_desc,
                 sub_micro_scope_list[id],
                 runtime_graph_[id]);
   }
@@ -377,6 +377,7 @@ void FleetExecutor::Init(
     carrier->SetSinkInterceptor(sink_interceptor_.get());
   }
 
+  GlobalVal<MessageBus>::Get()->RegisterMultiCarrier(multi_carriers);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 

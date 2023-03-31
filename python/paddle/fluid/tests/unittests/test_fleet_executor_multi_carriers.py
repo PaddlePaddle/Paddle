@@ -306,7 +306,6 @@ class TestFleetExecutor(unittest.TestCase):
                 'fetch_var': ['x'],
                 "source_program": source_program,
                 "num_of_carrier": 2,
-                "program_list": [main_program, main_program.clone()],
             },
         }
 

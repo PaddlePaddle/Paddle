@@ -42,7 +42,7 @@ class FleetExecutor final {
   ~FleetExecutor();
   void Init(
       int32_t num_of_carriers,
-      const std::vector<framework::ProgramDesc*>& program_desc,
+      const framework::ProgramDesc& program_desc,
       framework::Scope* scope,
       const platform::Place& place,
       int64_t num_micro_batches,
