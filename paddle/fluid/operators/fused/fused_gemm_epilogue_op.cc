@@ -256,7 +256,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             dout_mat_dims[0],
             x_mat_dims[0]));
 
-    auto activation_grad = ctx->Attrs().Get<std::string>("activation");
+    auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
     if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
@@ -320,7 +320,7 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddAttr<std::string>(
-        "activation",
+        "activation_grad",
         R"DOC((string, default none), The backward activation function. It could be
     one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would
     be null operations)DOC")
