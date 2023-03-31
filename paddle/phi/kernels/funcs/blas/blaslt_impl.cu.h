@@ -126,27 +126,28 @@ struct MatmulPlanner {
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.
                 bool use_addto = false,
                 bool no_exchange = true)
-      : bias(bias_data), aux_data(reserve_data), use_addto_(use_addto) {
-    type = impl_type;
-    key = phi::autotune::GenKey(x_dims,
-                                y_dims,
-                                static_cast<int>(trans_x),
-                                static_cast<int>(trans_y),
-                                static_cast<int>(dtype),
-                                static_cast<int>(impl_type),
-                                static_cast<int>(use_addto),
-                                static_cast<int>(no_exchange));
+      : bias(bias_data), aux_data(reserve_data), impl_type_(impl_type) {
+    use_addto_ = use_addto;
+    key_ = phi::autotune::GenKey(x_dims,
+                                 y_dims,
+                                 static_cast<int>(trans_x),
+                                 static_cast<int>(trans_y),
+                                 static_cast<int>(dtype),
+                                 static_cast<int>(no_exchange));
   }
 
-  MatmulFusedType ImplType() const { return type; }
   bool UseAddTo() const { return use_addto_; }
-  size_t GetKey() const { return key; }
-  size_t GenSubKey(int idx) const { return phi::autotune::GenKey(key, idx); }
+  size_t GetKey() const { return key_; }
+  MatmulFusedType ImplType() const { return impl_type_; }
+
+  size_t GenSubKey(int idx) const {
+    return phi::autotune::GenKey(key_, static_cast<int>(use_addto_), idx);
+  }
 
  private:
-  MatmulFusedType type;
+  MatmulFusedType impl_type_;
   bool use_addto_;
-  size_t key;
+  size_t key_;
 };
 
 template <typename T>
@@ -718,21 +719,22 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 struct LinearGradWithCublasLt : public CublasLtBase<T> {
-  static void Run(const phi::GPUContext& ctx,
-                  const phi::DenseTensor* x,
-                  const phi::DenseTensor* y,
-                  phi::DenseTensor* out,
-                  const void* bias_data,
-                  void* reserve_data,
-                  const int64_t M,
-                  const int64_t N,
-                  const int64_t K,
-                  const MatmulFusedType fused_type,
-                  const bool trans_x,
-                  const bool trans_y,
-                  const bool use_addto,
-                  const bool no_exchange,  // exchange x_desc and y_desc.
-                  bool grad_for_dx = true) {
+  static void Run(
+      const phi::GPUContext& ctx,
+      const phi::DenseTensor* x,
+      const phi::DenseTensor* y,
+      phi::DenseTensor* out,
+      const void* bias_data,
+      void* reserve_data,
+      const int64_t M,
+      const int64_t N,
+      const int64_t K,
+      const MatmulFusedType fused_type,
+      const bool trans_x,
+      const bool trans_y,
+      const bool use_addto,
+      const bool no_exchange,  // exchange x_desc and y_desc for grad.
+      bool grad_for_dx = true) {
     auto planner = phi::funcs::MatmulPlanner(vectorize(x->dims()),
                                              vectorize(y->dims()),
                                              trans_x,
@@ -741,7 +743,8 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
                                              fused_type,
                                              bias_data,
                                              reserve_data,
-                                             use_addto);
+                                             use_addto,
+                                             no_exchange);
     auto setter =
         DescriptorSetter<MatmulGradDescriptor, T, DXT, DYT, TransX, TransY>(
             &planner,
@@ -756,6 +759,8 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
             /*stride_out=*/0,
             /*exchange_x_y_desc=*/no_exchange,
             /*grad_for_dx=*/grad_for_dx);
+
+    // To setting data type for different kinda out_data.
     if (grad_for_dx) {
       CublasLtBase<T, DXT, MatmulGradDescriptor>::RunImpl(
           ctx,
