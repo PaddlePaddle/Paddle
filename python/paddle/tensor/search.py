@@ -194,6 +194,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             x,
             'x',
             [
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -283,6 +284,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             x,
             'x',
             [
+                'uint16',
                 'float16',
                 'float32',
                 'float64',

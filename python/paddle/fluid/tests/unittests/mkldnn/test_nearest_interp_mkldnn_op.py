@@ -187,8 +187,8 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.uint8
 
-    TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
-    TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
+    TestInt8Case.__name__ = "{}_{}".format(parent.__name__, "INT8")
+    TestUint8Case.__name__ = "{}_{}".format(parent.__name__, "UINT8")
     globals()[TestInt8Case.__name__] = TestInt8Case
     globals()[TestUint8Case.__name__] = TestUint8Case
 
