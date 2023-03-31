@@ -17,6 +17,27 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
 
+# NOTE: this is added to support creating a Scalar message
+# from a python number
+def make_scalar_proto(value):
+    s = framework_pb2.Scalar()
+    if isinstance(value, bool):
+        s.type = framework_pb2.Scalar.Type.BOOLEAN
+        s.b = value
+    elif isinstance(value, int):
+        s.type = framework_pb2.Scalar.Type.LONG
+        s.i = value
+    elif isinstance(value, float):
+        s.type = framework_pb2.Scalar.Type.FLOAT64
+        s.r = value
+    elif isinstance(value, complex):
+        s.type = framework_pb2.Scalar.Type.COMPLEX128
+        complex_value = framework_pb2.Complex()
+        complex_value.r = value.real
+        complex_value.i = value.imag
+        s.c.CopyFrom(complex_value)
+    return s
+
 
 def get_all_op_protos():
     """
@@ -127,6 +148,18 @@ class OpDescCreationMethod:
                     new_attr.longs.extend(user_defined_attr)
                 elif attr.type == framework_pb2.FLOAT64:
                     new_attr.float64 = user_defined_attr
+                elif attr.type == framework_pb2.FLOAT64S:
+                    new_attr.float64s.extend(user_defined_attr)
+                # the code below manipulates protobuf directly
+                elif attr.type == framework_pb2.SCALAR:
+                    scalar = make_scalar_proto(user_defined_attr)
+                    new_attr.scalar.CopyFrom(scalar)
+                elif attr.type == framework_pb2.SCALARS:
+                    scalars = [
+                        make_scalar_proto(item) for item in user_defined_attr
+                    ]
+                    for item in scalars:
+                        new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." % (str(attr.type))
@@ -162,6 +195,20 @@ class OpDescCreationMethod:
                     new_attr.bools.extend(user_defined_attr)
                 elif attr_type == framework_pb2.LONGS:
                     new_attr.longs.extend(user_defined_attr)
+                elif attr.type == framework_pb2.FLOAT64:
+                    new_attr.float64 = user_defined_attr
+                elif attr.type == framework_pb2.FLOAT64S:
+                    new_attr.float64s.extend(user_defined_attr)
+                # the code below manipulates protobuf directly
+                elif attr.type == framework_pb2.SCALAR:
+                    scalar = make_scalar_proto(user_defined_attr)
+                    new_attr.scalar.CopyFrom(scalar)
+                elif attr.type == framework_pb2.SCALARS:
+                    scalars = [
+                        make_scalar_proto(item) for item in user_defined_attr
+                    ]
+                    for item in scalars:
+                        new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." % (str(attr_type))

@@ -148,6 +148,10 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+#define DEFINE_C_ALLREDUCE_CPU_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>          \
+  class op_name##CPUKernel : public CAllReduceOpCPUKernel<red_type, T> {};
+
 #if defined(PADDLE_WITH_ASCEND_CL)
 // return true if found_nan or return false;
 inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
@@ -526,6 +530,10 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #endif
   }
 };
+
+#define DEFINE_C_ALLREDUCE_CUDA_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>           \
+  class op_name##CUDAKernel : public CAllReduceOpCUDAKernel<red_type, T> {};
 
 template <ReduceType red_type, typename T>
 class CAllReduceOpMLUKernel : public framework::OpKernel<T> {

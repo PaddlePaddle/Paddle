@@ -2444,7 +2444,7 @@ class TestSoftRelu(TestActivation):
         t = np.copy(x)
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
-        out = np.log((np.exp(t) + 1))
+        out = np.log(np.exp(t) + 1)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {'threshold': threshold}
@@ -3850,7 +3850,7 @@ def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
         def init_kernel_type(self):
             self.attrs = {"use_cudnn": True}
 
-    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    cls_name = "{}_{}".format(parent.__name__, "cudnn")
     TestActCudnn.__name__ = cls_name
     globals()[cls_name] = TestActCudnn
 
@@ -3905,7 +3905,7 @@ def create_test_act_fp16_class(
                     max_relative_error=grad_atol,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "fp16")
+    cls_name = "{}_{}".format(parent.__name__, "fp16")
     TestActFp16.__name__ = cls_name
     globals()[cls_name] = TestActFp16
 
@@ -3984,7 +3984,7 @@ def create_test_act_bf16_class(
                 place, ['X'], 'Out', max_relative_error=grad_atol
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
+    cls_name = "{}_{}".format(parent.__name__, "bf16")
     TestActBF16.__name__ = cls_name
     globals()[cls_name] = TestActBF16
 

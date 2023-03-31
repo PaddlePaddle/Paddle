@@ -246,7 +246,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 if iters == skip_batch_num:
                     total_samples = 0
                     infer_start_time = time.time()
-                images = list(map(lambda x: x[0].reshape(dshape), data))
+                images = [x[0].reshape(dshape) for x in data]
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype('int64')
 
@@ -290,15 +290,8 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                    'latency: {3:.4f} ms, fps: {4:.2f}'.format(
-                        iters,
-                        batch_acc1,
-                        batch_acc5,
-                        batch_time / batch_size,
-                        fps,
-                        appx,
-                    )
+                    f'batch {iters}{appx}, acc1: {batch_acc1:.4f}, acc5: {batch_acc5:.4f}, '
+                    f'latency: {batch_time / batch_size:.4f} ms, fps: {fps:.2f}'
                 )
 
             # Postprocess benchmark data
@@ -310,22 +303,20 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             infer_total_time = time.time() - infer_start_time
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time)
-            )
+            _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
     def _print_performance(self, title, fps, lat):
         _logger.info(
-            '{0}: avg fps: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, fps, lat
             )
         )
 
     def _print_accuracy(self, title, acc1, acc5):
         _logger.info(
-            '{0}: avg top1 accuracy: {1:.4f}, avg top5 accuracy: {2:.4f}'.format(
+            '{}: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 title, acc1, acc5
             )
         )
@@ -347,7 +338,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc1, int8_acc1):
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
+            'Accepted top1 accuracy drop threshold: {}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
                 threshold
             )
         )
@@ -399,13 +390,13 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
 
         _logger.info('Quant & INT8 prediction run.')
-        _logger.info('Quant model: {}'.format(quant_model_path))
+        _logger.info(f'Quant model: {quant_model_path}')
         if fp32_model_path:
-            _logger.info('FP32 model: {}'.format(fp32_model_path))
-        _logger.info('Dataset: {}'.format(data_path))
-        _logger.info('Batch size: {}'.format(batch_size))
-        _logger.info('Batch number: {}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+            _logger.info(f'FP32 model: {fp32_model_path}')
+        _logger.info(f'Dataset: {data_path}')
+        _logger.info(f'Batch size: {batch_size}')
+        _logger.info(f'Batch number: {batch_num}')
+        _logger.info(f'Accuracy drop threshold: {acc_diff_threshold}.')
         _logger.info(
             'Quantized ops: {}.'.format(
                 ','.join(self._quantized_ops)
