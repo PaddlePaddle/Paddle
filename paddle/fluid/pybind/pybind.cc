@@ -107,9 +107,6 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
-#ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#endif
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -269,14 +266,6 @@ bool IsCompiledWithMPIAWARE() {
 
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithAscend() {
-#ifndef PADDLE_WITH_ASCEND
   return false;
 #else
   return true;
@@ -2905,11 +2894,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindGenerator(&m);
 #ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
-#endif
-#ifdef PADDLE_WITH_ASCEND
-  BindAscendWrapper(&m);
-  BindAscendGraph(&m);
-  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
