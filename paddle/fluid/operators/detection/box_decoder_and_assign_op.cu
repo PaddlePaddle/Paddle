@@ -95,7 +95,7 @@ __global__ void AssignBoxKernel(const T* prior_box_data,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -150,7 +150,10 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    box_decoder_and_assign,
-    ops::BoxDecoderAndAssignCUDAKernel<phi::GPUContext, float>,
-    ops::BoxDecoderAndAssignCUDAKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(box_decoder_and_assign,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::BoxDecoderAndAssignCUDAKernel,
+                          float,
+                          double) {}
