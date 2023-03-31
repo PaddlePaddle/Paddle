@@ -11,26 +11,26 @@ if(WITH_NV_JETSON)
 elseif(NEW_RELEASE_ALL)
   message("Using New Release Strategy - All Arches Packge")
   add_definitions(-DNEW_RELEASE_ALL)
-  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86")
+  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86 90")
   set(paddle_known_gpu_archs10 "50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "50 60 61 70 75 80")
   set(paddle_known_gpu_archs12 "50 60 61 70 75 80 90")
 elseif(NEW_RELEASE_PYPI)
   message("Using New Release Strategy - Cubin Packge")
   add_definitions(-DNEW_RELEASE_PYPI)
-  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86")
+  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86 90")
   set(paddle_known_gpu_archs10 "")
   set(paddle_known_gpu_archs11 "61 70 75 80")
   set(paddle_known_gpu_archs12 "61 70 75 80 90")
 elseif(NEW_RELEASE_JIT)
   message("Using New Release Strategy - JIT Packge")
   add_definitions(-DNEW_RELEASE_JIT)
-  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86")
+  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 86 90")
   set(paddle_known_gpu_archs10 "50 60 70 75")
   set(paddle_known_gpu_archs11 "50 60 70 75 80")
   set(paddle_known_gpu_archs12 "50 60 70 75 80 90")
 else()
-  set(paddle_known_gpu_archs "50 52 60 61 70 75 80")
+  set(paddle_known_gpu_archs "50 52 60 61 70 75 80 90")
   set(paddle_known_gpu_archs10 "50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
   set(paddle_known_gpu_archs12 "52 60 61 70 75 80 90")
@@ -109,9 +109,9 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       "Volta"
       "Turing"
       "Ampere"
+      "Hopper"
       "All"
-      "Manual"
-      "Hopper")
+      "Manual")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
@@ -174,9 +174,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     else()
       if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
         set(cuda_arch_bin "80")
-      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
-        set(cuda_arch_bin "80 86")
-      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0) # CUDA 12.0+
+      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0) # CUDA 11.1+
         set(cuda_arch_bin "80 86")
       endif()
     endif()
