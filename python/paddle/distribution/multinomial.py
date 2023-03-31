@@ -166,7 +166,7 @@ class Multinomial(distribution.Distribution):
             Tensor: entropy value
         """
         n = paddle.full(
-            shape=[1], fill_value=self.total_count, dtype=self.probs.dtype
+            shape=[], fill_value=self.total_count, dtype=self.probs.dtype
         )
         support = paddle.arange(
             self.total_count + 1, dtype=self.probs.dtype

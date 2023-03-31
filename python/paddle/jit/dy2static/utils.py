@@ -392,7 +392,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
 
     if method_name == "__init__" or eval(
-        "issubclass({}, paddle.nn.Layer)".format(class_src)
+        f"issubclass({class_src}, paddle.nn.Layer)"
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -437,7 +437,7 @@ def create_api_shape_node(tensor_shape_node):
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
     return gast.parse(
-        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+        f'{name} = paddle.full({str(shape)}, "{str(value)}", {dtype})'
     )
 
 
@@ -516,7 +516,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:
@@ -1477,7 +1477,12 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
         min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
-        if op.type() == 'fill_any_like':
+        # If prim forward op, fill_any_like will be decomposite as fill_constant.
+        if core._is_fwd_prim_enabled():
+            target = ('fill_any_like', 'fill_constant')
+        else:
+            target = 'fill_any_like'
+        if op.type() in target:
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names

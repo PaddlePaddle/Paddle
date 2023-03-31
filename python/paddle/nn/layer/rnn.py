@@ -1720,7 +1720,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,

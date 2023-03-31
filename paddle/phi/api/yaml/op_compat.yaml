@@ -1447,6 +1447,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    { x : X, alpha : Alpha}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1788,6 +1792,13 @@
 - op : solve
   inputs :
     {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
   outputs :
     out : Out
 

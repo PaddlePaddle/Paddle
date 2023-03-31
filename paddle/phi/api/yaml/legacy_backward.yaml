@@ -866,16 +866,6 @@
     func : pool3d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
 
-- backward_op : prelu_grad
-  forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
-  args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
-  output : Tensor(x_grad), Tensor(alpha_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param: [x, alpha]
-  kernel :
-    func : prelu_grad
-
 - backward_op : prod_grad
   forward : prod (Tensor x, IntArray dims, bool keep_dim, bool reduce_all) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims,  bool keep_dim, bool reduce_all)
@@ -1053,16 +1043,6 @@
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
-
-- backward_op : spectral_norm_grad
-  forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
-  args : (Tensor weight, Tensor u, Tensor v, Tensor out_grad, int dim, int power_iters, float eps)
-  output : Tensor(weight_grad)
-  infer_meta :
-    func : SpectralNormGradInferMeta
-  kernel :
-    func : spectral_norm_grad
-    data_type : out_grad
 
 - backward_op : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
