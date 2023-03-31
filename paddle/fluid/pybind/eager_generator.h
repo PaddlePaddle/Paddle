@@ -27,7 +27,12 @@
 // functions. While, for very few OPs, the dispensable inputs are used, we
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
+    {"fc", {"Input", "W", "Bias"}},
+    {"precision_recall",
+     {"MaxProbs", "Indices", "Labels", "Weights", "StatesInfo"}},
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"conv2d_fusion_cutlass", {"Input", "Filter", "Bias", "ResidualData"}},
+    {"conv2d_fusion", {"Input", "Filter", "Bias", "ResidualData"}},
     {"bincount", {"X", "Weights"}},
     {"fused_attention",
      {"X",
@@ -193,6 +198,14 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Beta1Pow",
       "Beta2Pow",
       "MasterParam"}},
+    {"adamax",
+     {"Param",
+      "Grad",
+      "LearningRate",
+      "Moment",
+      "InfNorm",
+      "Beta1Pow",
+      "MasterParam"}},
     {"lamb",
      {"Param",
       "Grad",
@@ -268,6 +281,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
 // functions. While, for very few OPs, the dispensable outputs are used, we
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_outs_map = {
+    {"rank_attention", {"InputHelp", "Out", "InsRank"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"batch_norm",
@@ -368,6 +382,8 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
+    {"adamax",
+     {"ParamOut", "MomentOut", "InfNormOut", "Beta1Pow", "MasterParamOut"}},
     {"sgd", {"ParamOut", "MasterParamOut"}},
     {"adagrad", {"ParamOut", "MomentOut", "MasterParamOut"}},
     {"lamb",
@@ -413,7 +429,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
       "AvgSquaredUpdateOut",
       "MasterParamOut"}},
     {"adagrad", {"ParamOut", "MomentOut", "MasterParamOut"}},
-    {"adamax", {"ParamOut", "MomentOut", "InfNormOut"}},
+    {"adamax", {"ParamOut", "MomentOut", "InfNormOut", "MasterParamOut"}},
     {"dpsgd", {"ParamOut"}},
     {"decayed_adagrad", {"ParamOut", "MomentOut"}},
     {"lars_momentum", {"ParamOut", "VelocityOut"}},

@@ -234,38 +234,19 @@ class NPUPinnedDeviceContext
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// Currently, CUDAPinnedDeviceContext is only used to data copying.
-class CUDAPinnedDeviceContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, CUDAPinnedDeviceContext> {
- public:
-  CUDAPinnedDeviceContext();
-  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
-
-  const Place& GetPlace() const override;
-
-  Eigen::DefaultDevice* eigen_device() const;
-
-  static const char* name() { return "CUDAPinnedDeviceContext"; }
-
- private:
-  CUDAPinnedPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-};
+using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 using CustomDeviceContext = phi::CustomContext;
 #endif
 
-void EmplaceExternalContext(
+void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const platform::Place& place,
+    const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
-
-using phi::EmplaceDeviceContexts;
 
 using DeviceContextPool = phi::DeviceContextPool;
 

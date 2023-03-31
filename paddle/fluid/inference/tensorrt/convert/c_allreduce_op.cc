@@ -30,7 +30,7 @@ class CAllReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid callreduce op to tensorrt layer";
+    VLOG(4) << "convert callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported static graph mode. Please set "

@@ -17,7 +17,7 @@ sys.path.append("..")
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -52,7 +52,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
         def test_check_grad_normal(self):
             if paddle.is_compiled_with_xpu():
@@ -61,7 +61,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     place,
                     ['X', 'Y'],
                     'Out',
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def test_check_grad_ingore_x(self):
@@ -72,7 +72,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def test_check_grad_ingore_y(self):
@@ -83,7 +83,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['X'],
                     'Out',
                     no_grad_set=set('Y'),
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=False,
                 )
 
         def init_input_output(self):

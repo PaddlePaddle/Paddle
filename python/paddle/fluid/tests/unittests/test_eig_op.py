@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 # cast output to complex for numpy.linalg.eig
@@ -63,6 +63,7 @@ class TestEigOp(OpTest):
         paddle.enable_static()
         paddle.device.set_device("cpu")
         self.op_type = "eig"
+        self.python_api = paddle.linalg.eig
         self.__class__.op_type = self.op_type
         self.init_input()
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
@@ -243,7 +244,9 @@ class TestEigStatic(TestEigOp):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 3], dtype='complex')
+            input = paddle.static.data(
+                name="input", shape=[3, 3], dtype='complex'
+            )
             act_val, act_vec = paddle.linalg.eig(input)
 
             exe = fluid.Executor(place)
@@ -345,7 +348,7 @@ class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
-        a = np.random.random((3)).astype('float32')
+        a = np.random.random(3).astype('float32')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
 

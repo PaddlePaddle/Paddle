@@ -224,9 +224,9 @@ def get_cudnn_version():
 def _convert_to_place(device):
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
-        selected_devices = os.getenv(
-            "FLAGS_selected_{}s".format(device), "0"
-        ).split(",")
+        selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
+            ","
+        )
         device_id = int(selected_devices[0])
         place = core.CustomPlace(device, device_id)
     elif lower_device == 'cpu':
@@ -343,7 +343,7 @@ def _convert_to_place(device):
                 raise ValueError(
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
-                            "'{}', '{}:x'".format(x, x)
+                            f"'{x}', '{x}:x'"
                             for x in ['gpu', 'xpu', 'npu', 'mlu']
                             + core.get_all_custom_device_type()
                         )
@@ -409,7 +409,7 @@ def get_device():
         device = 'npu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
-        device = "ipus:{{0-{}}}".format(num_devices - 1)
+        device = f"ipus:{{0-{num_devices - 1}}}"
     elif isinstance(place, core.MLUPlace):
         device_id = place.get_device_id()
         device = 'mlu:' + str(device_id)
@@ -418,7 +418,7 @@ def get_device():
         device_type = place.get_device_type()
         device = device_type + ':' + str(device_id)
     else:
-        raise ValueError("The device specification {} is invalid".format(place))
+        raise ValueError(f"The device specification {place} is invalid")
 
     return device
 
@@ -523,7 +523,7 @@ def get_available_custom_device():
     return core.get_available_custom_device()
 
 
-class Event(object):
+class Event:
     '''
     A device event wrapper around StreamBase.
     Parameters:
@@ -668,7 +668,7 @@ class Event(object):
         return self.event_base
 
 
-class Stream(object):
+class Stream:
     '''
     A device stream wrapper around StreamBase.
     Parameters:
@@ -840,14 +840,14 @@ class Stream(object):
 
     def __eq__(self, o):
         if isinstance(o, Stream):
-            return super(Stream, self).__eq__(o)
+            return super().__eq__(o)
         return False
 
     def __hash__(self):
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={0} stream={1:#x}>'.format(
+        return '<paddle.device.Stream device={} stream={:#x}>'.format(
             self.device, self._as_parameter_.value
         )
 
@@ -936,7 +936,7 @@ def set_stream(stream):
     return prev_stream
 
 
-class stream_guard(object):
+class stream_guard:
     '''
     Notes:
         This API only supports dynamic graph mode currently.

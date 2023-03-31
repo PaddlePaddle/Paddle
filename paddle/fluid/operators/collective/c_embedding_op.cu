@@ -198,8 +198,14 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_embedding,
                         ops::CEmbeddingCUDAKernel<float>,
                         ops::CEmbeddingCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CEmbeddingCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CEmbeddingCUDAKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(c_embedding_grad,
                         ops::CEmbeddingGradCUDAKernel<float>,
                         ops::CEmbeddingGradCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CEmbeddingGradCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CEmbeddingGradCUDAKernel<plat::float16>);

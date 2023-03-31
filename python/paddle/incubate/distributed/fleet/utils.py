@@ -21,10 +21,11 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core, debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
+from paddle.framework import io_utils
 
 __all__ = [
     "load_program",
@@ -92,13 +93,11 @@ def check_pruned_program_vars(train_prog, pruned_prog):
     pruned_vars = [
         (v.name, v)
         for v in pruned_prog.list_vars()
-        if fluid.io.is_persistable(v)
+        if io_utils.is_persistable(v)
     ]
     pruned_vars = OrderedDict(pruned_vars)
-    pruned_vars_name = [name for name in pruned_vars]
-    logger.info(
-        "persistable vars in pruned program: {}".format(pruned_vars_name)
-    )
+    pruned_vars_name = list(pruned_vars)
+    logger.info(f"persistable vars in pruned program: {pruned_vars_name}")
 
     for var_name in pruned_vars:
         var = pruned_vars[var_name]
@@ -191,7 +190,7 @@ def load_var(var_name, shape_list, dtype, save_path):
 
 def reader(batch_size, fn, dim):
     data = []
-    if isinstance(dim, list) or isinstance(dim, tuple):
+    if isinstance(dim, (list, tuple)):
         shape = list(dim)
         _temp = 1
         for x in dim:
@@ -422,7 +421,7 @@ def try_load_model_vars(
             )
         for i, v in enumerate(fetch_list):
             logger.info("fetch_targets name: %s" % v.name)
-            logger.info("fetch_targets: {}".format(results[i]))
+            logger.info(f"fetch_targets: {results[i]}")
         return results
 
 
@@ -451,7 +450,7 @@ def check_saved_vars_try_dump(
         os.path.join(dump_dir, dump_prog_fn), is_text_dump_program
     )
     saved_params = [
-        v for v in dump_prog.list_vars() if fluid.io.is_persistable(v)
+        v for v in dump_prog.list_vars() if io_utils.is_persistable(v)
     ]
     logger.info(
         "persistable vars in dump program: {}".format(
@@ -477,7 +476,7 @@ def parse_program(program, output_dir):
     # persistable vars
     output = {}
     persistable_vars = [
-        v for v in program.list_vars() if fluid.io.is_persistable(v)
+        v for v in program.list_vars() if io_utils.is_persistable(v)
     ]
     output["persistable_vars"] = [
         {
@@ -496,7 +495,7 @@ def parse_program(program, output_dir):
             f.write("\n")
 
     # all vars
-    all_vars = [v for v in program.list_vars()]
+    all_vars = list(program.list_vars())
     output["all_vars"] = [
         {
             'name': str(v.name),

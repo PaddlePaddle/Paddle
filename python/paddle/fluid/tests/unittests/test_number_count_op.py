@@ -14,12 +14,12 @@
 
 import unittest
 
+import eager_op_test
 import numpy as np
-import op_test
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
+from paddle.fluid import core
 
 
 def count(x, upper_num):
@@ -33,7 +33,7 @@ def count(x, upper_num):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestNumberCountOpInt64(op_test.OpTest):
+class TestNumberCountOpInt64(eager_op_test.OpTest):
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
@@ -61,7 +61,7 @@ class TestNumberCountAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('x', self.x.shape, dtype="int64")
+            x = paddle.static.data('x', self.x.shape, dtype="int64")
             out = utils._number_count(x, self.upper_num)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x}, fetch_list=[out])

@@ -20,7 +20,7 @@ cc_library(
   graph_helper
   SRCS graph_helper.cc
   DEPS graph program_utils scale_loss_grad_op_handle
-       grad_merge_all_reduce_op_handle)
+       grad_merge_all_reduce_op_handle collective_helper)
 cc_library(
   pass
   SRCS pass.cc
@@ -102,6 +102,7 @@ pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
+pass_library(delete_concat_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
@@ -151,6 +152,7 @@ if(WITH_TENSORRT)
   pass_library(trans_layernorm_fuse_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
+  pass_library(split_layernorm_to_math_ops_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -173,7 +175,7 @@ if(WITH_MKLDNN)
   pass_library(cpu_bfloat16_pass inference DIR mkldnn)
   pass_library(fc_mkldnn_pass inference DIR mkldnn)
   pass_library(interpolate_mkldnn_pass inference DIR mkldnn)
-  pass_library(softplus_activation_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(softplus_activation_onednn_fuse_pass inference DIR mkldnn)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
@@ -221,7 +223,7 @@ if(WITH_XPU)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
-    DEPS pass)
+    DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
@@ -233,6 +235,13 @@ if(WITH_XPU)
   pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(link_xpu_op_max_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(one_beam_size_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(delete_isolated_node_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -258,6 +267,14 @@ cc_library(
 cc_library(
   fuse_relu_depthwise_conv_pass
   SRCS fuse_relu_depthwise_conv_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fuse_adamw_op_pass
+  SRCS fuse_adamw_op_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fused_feedforward_pass
+  SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
 
 set(GLOB_PASS_LIB
@@ -484,12 +501,27 @@ if(WITH_MKLDNN)
     test_cpu_bfloat16_pass
     SRCS mkldnn/cpu_bfloat16_pass_tester.cc
     DEPS cpu_bfloat16_pass)
+endif()
+
+if(WITH_XPU)
   cc_test(
-    test_multi_gru_fuse_pass
-    SRCS mkldnn/multi_gru_fuse_pass_tester.cc
-    DEPS multi_gru_fuse_pass)
+    test_delete_isolated_node_pass
+    SRCS xpu/delete_isolated_node_pass_test.cc
+    DEPS delete_isolated_node_pass)
   cc_test(
-    test_multi_gru_seq_fuse_pass
-    SRCS mkldnn/multi_gru_seq_fuse_pass_tester.cc
-    DEPS multi_gru_seq_fuse_pass)
+    test_fused_multi_transformer_xpu_quant_pass
+    SRCS xpu/fused_multi_transformer_xpu_quant_pass_tester.cc
+    DEPS fused_multi_transformer_xpu_quant_pass)
+  cc_test(
+    test_one_beam_size_fuse_pass
+    SRCS xpu/one_beam_size_fuse_pass_test.cc
+    DEPS one_beam_size_fuse_pass)
+  cc_test(
+    test_stack_fuse_pass
+    SRCS xpu/stack_fuse_pass_test.cc
+    DEPS stack_fuse_pass)
+  cc_test(
+    test_delete_cast_op_pass
+    SRCS xpu/delete_cast_op_pass_test.cc
+    DEPS delete_cast_op_pass)
 endif()

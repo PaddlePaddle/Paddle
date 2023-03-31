@@ -81,11 +81,7 @@ class ProgressBar:
 
         for i, (k, val) in enumerate(values):
             if k == "loss":
-                val = (
-                    val
-                    if isinstance(val, list) or isinstance(val, np.ndarray)
-                    else [val]
-                )
+                val = val if isinstance(val, (list, np.ndarray)) else [val]
                 if isinstance(val[0], np.uint16):
                     values[i] = ("loss", list(convert_uint16_to_float(val)))
 
@@ -95,11 +91,11 @@ class ProgressBar:
             time_per_unit = 0
 
         if time_per_unit >= 1 or time_per_unit == 0:
-            fps = ' - %.0fs/%s' % (time_per_unit, self.name)
+            fps = f' - {time_per_unit:.0f}s/{self.name}'
         elif time_per_unit >= 1e-3:
-            fps = ' - %.0fms/%s' % (time_per_unit * 1e3, self.name)
+            fps = ' - {:.0f}ms/{}'.format(time_per_unit * 1e3, self.name)
         else:
-            fps = ' - %.0fus/%s' % (time_per_unit * 1e6, self.name)
+            fps = ' - {:.0f}us/{}'.format(time_per_unit * 1e6, self.name)
 
         info = ''
         if self._verbose == 1:
@@ -201,10 +197,10 @@ class ProgressBar:
                         and v.size == 1
                         and v.dtype in [np.float32, np.float64]
                     ):
-                        if abs(v[0]) > 1e-3:
-                            info += ' %.4f' % v[0]
+                        if abs(v.item()) > 1e-3:
+                            info += ' %.4f' % v.item()
                         else:
-                            info += ' %.4e' % v[0]
+                            info += ' %.4e' % v.item()
                     else:
                         info += ' %s' % v
 

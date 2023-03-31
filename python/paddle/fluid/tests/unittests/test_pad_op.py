@@ -16,13 +16,15 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
+
+
+def pad_wrapper(x, paddings, pad_value):
+    return paddle._C_ops.pad(x, paddings, float(pad_value))
 
 
 class TestPadOp(OpTest):
@@ -30,6 +32,7 @@ class TestPadOp(OpTest):
         self.initTestCase()
         self.dtype = self.get_dtype()
         self.op_type = "pad"
+        self.python_api = pad_wrapper
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
         }
@@ -95,7 +98,7 @@ def create_test_fp16(parent):
         def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=0.3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
     globals()[cls_name] = TestPadFp16
 
@@ -116,7 +119,7 @@ class TestPadOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            data = fluid.data(name='data', shape=[4], dtype='float16')
+            data = paddle.static.data(name='data', shape=[4], dtype='float16')
             paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 

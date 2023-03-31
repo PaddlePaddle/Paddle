@@ -71,6 +71,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
@@ -86,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -195,6 +198,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -214,6 +218,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
+DECLARE_FILE_SYMBOLS(init_phi);
 namespace paddle {
 namespace pybind {
 
@@ -450,6 +455,73 @@ struct iinfo {
   }
 };
 
+struct finfo {
+  int64_t bits;
+  double eps;
+  double min;  // lowest()
+  double max;
+  double tiny;
+  double smallest_normal;  // min()
+  double resolution;
+  std::string dtype;
+
+  explicit finfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::FP16:
+        eps = std::numeric_limits<paddle::platform::float16>::epsilon();
+        min = std::numeric_limits<paddle::platform::float16>::lowest();
+        max = std::numeric_limits<paddle::platform::float16>::max();
+        smallest_normal = std::numeric_limits<paddle::platform::float16>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<paddle::platform::float16>::digits10);
+        bits = 16;
+        dtype = "float16";
+        break;
+      case framework::proto::VarType::FP32:
+      case framework::proto::VarType::COMPLEX64:
+        eps = std::numeric_limits<float>::epsilon();
+        min = std::numeric_limits<float>::lowest();
+        max = std::numeric_limits<float>::max();
+        smallest_normal = std::numeric_limits<float>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(10, -std::numeric_limits<float>::digits10);
+        bits = 32;
+        dtype = "float32";
+        break;
+      case framework::proto::VarType::FP64:
+      case framework::proto::VarType::COMPLEX128:
+        eps = std::numeric_limits<double>::epsilon();
+        min = std::numeric_limits<double>::lowest();
+        max = std::numeric_limits<double>::max();
+        smallest_normal = std::numeric_limits<double>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(10, -std::numeric_limits<double>::digits10);
+        bits = 64;
+        dtype = "float64";
+        break;
+      case framework::proto::VarType::BF16:
+        eps = std::numeric_limits<paddle::platform::bfloat16>::epsilon();
+        min = std::numeric_limits<paddle::platform::bfloat16>::lowest();
+        max = std::numeric_limits<paddle::platform::bfloat16>::max();
+        smallest_normal =
+            std::numeric_limits<paddle::platform::bfloat16>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<paddle::platform::bfloat16>::digits10);
+        bits = 16;
+        dtype = "bfloat16";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.float32, "
+            "paddle.float64, paddle.float16, paddle.bfloat16"
+            "paddle.complex64, or paddle.complex128"));
+        break;
+    }
+  }
+};
+
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
   // is not inside obj, but it would also set the error flag of Python.
@@ -666,6 +738,29 @@ PYBIND11_MODULE(libpaddle, m) {
         std::ostringstream oss;
         oss << "paddle.iinfo(min=" << a.min;
         oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        return oss.str();
+      });
+
+  py::class_<finfo>(m, "finfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &finfo::min)
+      .def_readonly("max", &finfo::max)
+      .def_readonly("bits", &finfo::bits)
+      .def_readonly("eps", &finfo::eps)
+      .def_readonly("resolution", &finfo::resolution)
+      .def_readonly("smallest_normal", &finfo::smallest_normal)
+      .def_readonly("tiny", &finfo::tiny)
+      .def_readonly("dtype", &finfo::dtype)
+      .def("__repr__", [](const finfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.finfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", eps=" << a.eps;
+        oss << ", resolution=" << a.resolution;
+        oss << ", smallest_normal=" << a.smallest_normal;
+        oss << ", tiny=" << a.tiny;
         oss << ", bits=" << a.bits;
         oss << ", dtype=" << a.dtype << ")";
         return oss.str();
@@ -966,6 +1061,10 @@ PYBIND11_MODULE(libpaddle, m) {
              if (PyList_Check(obj) || PyTuple_Check(obj)) {
                self.EmplaceBackInputs(
                    std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else if (obj == Py_None) {
+               // Check optional Tensor, use one un-initialized tensor to
+               // indicate both Tensor and vector<Tensor> inputs
+               self.EmplaceBackInput(std::move(paddle::Tensor()));
              } else {
                self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
              }
@@ -1380,6 +1479,9 @@ All parameter, weight, gradient are variables in Paddle.
               [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return std::make_pair(grad_op_desc_ptrs, grad_to_var);
         });
+  m.def("has_comp_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasCompGradOpMaker();
+  });
   m.def("has_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });
@@ -2706,6 +2808,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
+  m.def("get_low_precision_op_list", [] {
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
+  });
+
+  m.def("clear_low_precision_op_list",
+        [] { phi::KernelFactory::Instance().ClearLowPrecisionKernelList(); });
+
   m.def("enable_autotune", [] {
     return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
   });
@@ -2721,20 +2840,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
-
-  m.def("get_low_precision_op_list", [] {
-    py::dict op_list;
-    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
-      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
-                         std::to_string(counts.bf16_called_) + "," +
-                         std::to_string(counts.fp32_called_) + "," +
-                         std::to_string(counts.other_called_);
-    }
-    return op_list;
-  });
 
   m.def("autotune_status", [] {
     py::dict res;
@@ -2757,6 +2862,12 @@ All parameter, weight, gradient are variables in Paddle.
   // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  m.def("check_numerics",
+        [](const std::string &op_name, const paddle::Tensor &tensor) {
+          VLOG(4) << "Check tensor whether has nan or inf.";
+          egr::CheckTensorHasNanOrInf(op_name, tensor);
+        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

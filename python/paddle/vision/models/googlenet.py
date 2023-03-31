@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,

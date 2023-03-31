@@ -24,13 +24,10 @@
 namespace paddle {
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = paddle::experimental::DataType;
-
-template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
+using DataType = phi::DataType;
 
 template <typename T>
 Tensor full(const IntArray& shape,
@@ -39,12 +36,10 @@ Tensor full(const IntArray& shape,
             const Place& place = CPUPlace());
 
 template <typename T>
-std::vector<Tensor> split(const Tensor& x,
-                          const IntArray& sections,
-                          const Scalar& axis);
+Tensor cast(const Tensor& x, DataType dtype);
 
 template <typename T>
-Tensor cast(const Tensor& x, DataType dtype);
+Tensor reshape(const Tensor& x, const IntArray& shape);
 
 }  // namespace prim
 }  // namespace paddle

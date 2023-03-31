@@ -85,6 +85,9 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
                                bool always_copy = false);
 void* GetDataFromTensor(const DenseTensor& tensor, OneDNNDataType type);
 
+dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
+                                    phi::DataLayout target_layout);
+
 #endif
 
 }  // namespace funcs

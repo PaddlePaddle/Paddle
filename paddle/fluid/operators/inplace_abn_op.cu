@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "paddle/fluid/operators/sync_batch_norm_utils.h"
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
-#include "paddle/phi/kernels/gpu/sync_batch_norm_utils.h"
 #include "paddle/phi/kernels/sync_batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
