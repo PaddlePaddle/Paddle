@@ -51,7 +51,7 @@ TEST(Benchmark, FluidScaleCPU) {
   platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
