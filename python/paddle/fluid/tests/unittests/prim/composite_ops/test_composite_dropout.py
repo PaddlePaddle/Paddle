@@ -226,5 +226,20 @@ class TestCompositeDropout(unittest.TestCase):
         )
 
 
+# This test case for checking dy2st + eval + AMP(O1) under prim
+class TestCompositeDropout_AMP_O1(unittest.TestCase):
+    paddle.fluid.core._set_prim_all_enabled(True)
+
+    def f(x):
+        return paddle.nn.functional.dropout(x)
+
+    f = paddle.jit.to_static(f)
+    f.eval()
+
+    with paddle.amp.auto_cast(level='O1'):
+        x = paddle.rand((1,))
+        y = f(x)
+
+
 if __name__ == '__main__':
     unittest.main()
