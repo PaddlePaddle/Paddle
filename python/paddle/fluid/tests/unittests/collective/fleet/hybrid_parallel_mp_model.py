@@ -192,10 +192,22 @@ class TestDistMPSyncTraning(unittest.TestCase):
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
             "pp_degree": 1,
+            "mp_configs": {
+                "sync_param": False,
+                "sync_grad": False,
+                "sync_moment": False,
+            },
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-    def build_model_optimizer_train(self, batchs, fp16=False, mp_sync=False):
+    def build_model_optimizer_train(
+        self,
+        batchs,
+        fp16=False,
+        mp_sync_param=False,
+        mp_sync_grad=False,
+        mp_sync_moment=False,
+    ):
         os.environ["FLAGS_mp_sync"] = "0"
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
@@ -222,8 +234,11 @@ class TestDistMPSyncTraning(unittest.TestCase):
         optimizer = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=model.parameters()
         )
-        if mp_sync:
-            os.environ["FLAGS_mp_sync"] = "1"
+
+        strategy = fleet.fleet._user_defined_strategy
+        strategy.hybrid_configs.mp_configs.sync_param = mp_sync_param
+        strategy.hybrid_configs.mp_configs.sync_grad = mp_sync_grad
+        strategy.hybrid_configs.mp_configs.sync_moment = mp_sync_moment
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
@@ -250,7 +265,9 @@ class TestDistMPSyncTraning(unittest.TestCase):
                 optimizer.clear_grad()
         return losses
 
-    def test_mp_sync(self):
+    def mp_sync_base(
+        self, mp_sync_param=False, mp_sync_grad=False, mp_sync_moment=False
+    ):
         batchs = []
         for _ in range(5):
             np_data = np.random.randint(
@@ -264,7 +281,12 @@ class TestDistMPSyncTraning(unittest.TestCase):
             batchs.append(paddle.to_tensor(np_data))
 
         losses = self.build_model_optimizer_train(batchs)
-        losses_sync = self.build_model_optimizer_train(batchs, mp_sync=True)
+        losses_sync = self.build_model_optimizer_train(
+            batchs,
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
+        )
 
         for i in range(len(losses)):
             np.testing.assert_allclose(losses[i], losses_sync[i], rtol=1e-6)
@@ -272,13 +294,31 @@ class TestDistMPSyncTraning(unittest.TestCase):
         # test fp16
         losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
         losses_sync_fp16 = self.build_model_optimizer_train(
-            batchs, fp16=True, mp_sync=True
+            batchs,
+            fp16=True,
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
         )
 
         for i in range(len(losses_fp16)):
             np.testing.assert_allclose(
                 losses_fp16[i], losses_sync_fp16[i], rtol=1e-6
             )
+
+    def test_mp_sync_param(self):
+        self.mp_sync_base(mp_sync_param=True)
+
+    def test_mp_sync_grad(self):
+        self.mp_sync_base(mp_sync_grad=True)
+
+    def test_mp_sync_moment(self):
+        self.mp_sync_base(mp_sync_moment=True)
+
+    def test_mp_sync_all(self):
+        self.mp_sync_base(
+            mp_sync_param=True, mp_sync_grad=True, mp_sync_moment=True
+        )
 
 
 class TestDistMPTraning(unittest.TestCase):

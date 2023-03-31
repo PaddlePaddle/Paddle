@@ -1655,6 +1655,31 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.tensor_parallel_configs, configs)
 
     @property
+    def mp_configs(self):
+        """
+
+        set sync model in tensor parallel. we can sync param, grad and moment in tensor parallel.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                strategy.hybrid_configs = {
+                    "dp_degree": 1,
+                    "mp_degree": 2,
+                    "pp_degree": 1,
+                    "mp_configs": {
+                        "sync_param": True,
+                        "sync_grad": True,
+                        "sync_moment": True
+                    }
+                    }
+
+        """
+        return get_msg_dict(self.strategy.mp_configs)
+
+    @property
     def hybrid_configs(self):
         """
 

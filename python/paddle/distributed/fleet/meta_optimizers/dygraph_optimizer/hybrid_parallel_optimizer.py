@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm, clip
 
@@ -244,9 +244,12 @@ class HybridParallelOptimizer:
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
         sync_param = None
-        mp_sync = int(os.getenv("FLAGS_mp_sync", 0))
 
-        if mp_group.nranks > 1 and mp_sync:
+        mp_configs = (
+            fleet.fleet._user_defined_strategy.hybrid_configs.mp_configs
+        )
+
+        if mp_group.nranks > 1 and mp_configs.sync_grad:
             sync_param = sorted(
                 [p for p in parameters_list if self._filter_fn(p)],
                 key=lambda p: p.name,
@@ -260,40 +263,41 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-        if mp_group.nranks > 1 and mp_sync:
+        if mp_group.nranks > 1 and mp_configs.sync_param:
             for p in sync_param:
                 paddle.distributed.broadcast(
                     p, src=src_rank, group=mp_group, sync_op=True
                 )
 
-                # support opt state of adam and adamw to broadcast now.
-                if isinstance(
-                    self._inner_opt,
-                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
+        if mp_group.nranks > 1 and mp_configs.sync_moment:
+            # support opt state of adam and adamw to broadcast now.
+            if isinstance(
+                self._inner_opt,
+                (paddle.optimizer.Adam, paddle.optimizer.AdamW),
+            ):
+                if (
+                    self._inner_opt._multi_precision
+                    and p.name in self._master_weights
                 ):
-                    if (
-                        self._inner_opt._multi_precision
-                        and p.name in self._master_weights
-                    ):
-                        paddle.distributed.broadcast(
-                            self._inner_opt._master_weights[p.name],
-                            src=src_rank,
-                            group=mp_group,
-                            sync_op=True,
-                        )
+                    paddle.distributed.broadcast(
+                        self._inner_opt._master_weights[p.name],
+                        src=src_rank,
+                        group=mp_group,
+                        sync_op=True,
+                    )
 
-                    moment1 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment1_acc_str, p
-                    )
-                    moment2 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment2_acc_str, p
-                    )
-                    paddle.distributed.broadcast(
-                        moment1, src=src_rank, group=mp_group, sync_op=True
-                    )
-                    paddle.distributed.broadcast(
-                        moment2, src=src_rank, group=mp_group, sync_op=True
-                    )
+                moment1 = self._inner_opt._get_accumulator(
+                    self._inner_opt._moment1_acc_str, p
+                )
+                moment2 = self._inner_opt._get_accumulator(
+                    self._inner_opt._moment2_acc_str, p
+                )
+                paddle.distributed.broadcast(
+                    moment1, src=src_rank, group=mp_group, sync_op=True
+                )
+                paddle.distributed.broadcast(
+                    moment2, src=src_rank, group=mp_group, sync_op=True
+                )
 
     @no_grad()
     @framework.dygraph_only
