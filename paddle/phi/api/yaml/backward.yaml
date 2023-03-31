@@ -1677,6 +1677,7 @@
     param : [out_grad]
   kernel :
     func : temporal_shift_grad
+    data_type : out_grad
 
 - backward_op : tan_grad
   forward : tan (Tensor x) -> Tensor(out)

@@ -1929,6 +1929,8 @@
     x : X
   outputs :
     out : Out
+  attrs :
+    data_format_str : data_format
 
 - op : thresholded_relu
   inputs :

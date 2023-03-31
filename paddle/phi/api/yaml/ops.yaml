@@ -1607,6 +1607,7 @@
     func : TemporalShiftInferMeta
   kernel :
     func : temporal_shift
+    data_type : x
   backward : temporal_shift_grad
 
 - op : thresholded_relu
