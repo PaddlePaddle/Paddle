@@ -99,7 +99,7 @@ class TestNestLayerHook(unittest.TestCase):
             st_out,
             load_out,
             rtol=1e-05,
-            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out),
+            err_msg=f'load_out is {load_out}\nstatic_res is {st_out}',
         )
 
 

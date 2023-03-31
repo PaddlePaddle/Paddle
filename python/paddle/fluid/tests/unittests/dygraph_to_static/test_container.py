@@ -99,7 +99,7 @@ class TestSequential(unittest.TestCase):
                 load_out,
                 out,
                 rtol=1e-05,
-                err_msg='load_out is {}\\st_out is {}'.format(load_out, out),
+                err_msg=f'load_out is {load_out}\\st_out is {out}',
             )
 
         return out
