@@ -1,7 +1,7 @@
 # This file is designed for fusion C++ farward operators, which manages the
 # generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
 # "support_dygraph_mode" is and extra configuration item in this file,
-# If one operator have "support_dygraph_mode : true", it supports dygraph mode,
+# if one operator have "support_dygraph_mode : true", it supports dygraph mode,
 # otherwise the operator only could be used in static mode.
 
 - op : embedding_with_eltwise_add_xpu
