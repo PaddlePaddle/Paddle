@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,24 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 
 import paddle
 
 
 class TestAMPList(unittest.TestCase):
-    def test_main(self):
-        conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        data = paddle.rand([10, 3, 32, 32])
-        paddle.set_flags({'FLAGS_low_precision_op_list': 1})
-        a = paddle.rand([2, 3])
-        b = paddle.rand([2, 3])
-
-        # amp list conv2d, cast
-        with paddle.amp.auto_cast(enable=True, level='O2'):
-            conv = conv2d(data)
-            c = a + b
-        paddle.amp.low_precision_op_list()
+    def _check_result(self, dtype):
+        # Returned the dict.
         op_list = paddle.fluid.core.get_low_precision_op_list()
 
         self.assertTrue('elementwise_add' in op_list)
@@ -45,9 +36,33 @@ class TestAMPList(unittest.TestCase):
         self.assertTrue(conv_num == 1)
         self.assertTrue(add_num == 1)
 
-        if conv.dtype == "float16":
+        if dtype == "float16":
             self.assertTrue(int(conv2d_called[0]) == 1)
             self.assertTrue(int(add_called[0]) == 1)
+
+    def test_enable_disable(self):
+        conv = paddle.nn.Conv2D(3, 2, 3)
+        x = paddle.rand([10, 3, 32, 32])
+
+        paddle.amp.debugging.enable_operator_stats_collection()
+        # amp list conv2d, elementwise_add, cast (transfer_dtype)
+        with paddle.amp.auto_cast(enable=True, level='O2'):
+            out = conv(x)
+        # Print to the standard output.
+        paddle.amp.debugging.disable_operator_stats_collection()
+
+        self._check_result(dtype=out.dtype)
+
+    def test_context(self):
+        conv = paddle.nn.Conv2D(3, 2, 3)
+        x = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.debugging.collect_operator_stats():
+            # amp list conv2d, elementwise_add, cast (transfer_dtype)
+            with paddle.amp.auto_cast(enable=True, level='O2'):
+                out = conv(x)
+
+        self._check_result(dtype=out.dtype)
 
 
 if __name__ == "__main__":

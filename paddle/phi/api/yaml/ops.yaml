@@ -1499,6 +1499,16 @@
     data_type : x
   backward : solve_grad
 
+- op : spectral_norm
+  args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
+  output : Tensor
+  infer_meta :
+    func : SpectralNormInferMeta
+  kernel :
+    func : spectral_norm
+    data_type : weight
+  backward : spectral_norm_grad
+
 - op : sqrt
   args : (Tensor x)
   output : Tensor(out)

@@ -332,7 +332,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -342,7 +342,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -350,7 +350,10 @@ def linspace(start, stop, num, dtype=None, name=None):
         if isinstance(num, Variable):
             check_dtype(num.dtype, 'num', ['int32'], 'linspace')
         check_dtype(
-            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
+            dtype,
+            'dtype',
+            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            'linspace',
         )
         if (
             (stop_dtype == "float64" or start_dtype == "float64")
