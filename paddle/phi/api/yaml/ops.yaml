@@ -556,6 +556,20 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flatten
+  args : (Tensor x, int start_axis = 1, int stop_axis = 1)
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : FlattenWithXShapeInferMeta
+  kernel :
+    func : flatten
+    backend : x
+    data_type : x
+  inplace : (x -> out)
+  view : (x -> out)
+  intermediate : xshape
+  backward : flatten_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
