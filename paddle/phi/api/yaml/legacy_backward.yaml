@@ -219,7 +219,7 @@
   infer_meta :
     func : Conv2dTransposeDoubleGradInferMeta
   kernel :
-    func : conv2d_transpose_grad_grad
+    func : conv2d_transpose_double_grad
 
 - backward_op : conv2d_transpose_grad
   forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)

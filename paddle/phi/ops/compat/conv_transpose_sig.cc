@@ -48,7 +48,7 @@ KernelSignature Conv2dTransposeGradOpArgumentMapping(
 
 KernelSignature Conv2dTransposeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_transpose_grad_grad",
+  return KernelSignature("conv2d_transpose_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",

@@ -136,7 +136,7 @@ PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    phi::Conv2dTransposeGradKernel,
                    float,
                    double) {}
-PD_REGISTER_KERNEL(conv2d_transpose_grad_grad,
+PD_REGISTER_KERNEL(conv2d_transpose_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeDoubleGradKernel,
