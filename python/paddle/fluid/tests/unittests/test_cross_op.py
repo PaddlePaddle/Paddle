@@ -34,7 +34,7 @@ class TestCrossOp(OpTest):
         self.init_output()
 
     def initTestCase(self):
-        self.attrs = {'dim': -2}
+        self.attrs = {'dim': -2, 'op_type': "cross"}
         self.dtype = np.float64
         self.shape = (1024, 3, 1)
 
@@ -89,7 +89,7 @@ class TestCrossBF16Op(OpTest):
         self.init_output()
 
     def initTestCase(self):
-        self.attrs = {'dim': -2}
+        self.attrs = {'dim': -2, 'op_type': "cross"}
         self.dtype = np.uint16
         self.shape = (1024, 3, 1)
 
