@@ -1234,3 +1234,38 @@ set_tests_properties(
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+
+# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
+set(STATIC_BUILD_TESTS
+    test_adamw_op
+    test_arg_min_max_op
+    test_bincount_op
+    test_decoupled_py_reader
+    test_dequantize_mkldnn_op
+    test_dist_mnist_fp16_allreduce
+    test_dist_mnist_pg
+    test_fake_quantize_op
+    test_fetch_lod_tensor_array
+    test_imperative_optimizer
+    test_lamb_op
+    test_layer_norm_op
+    test_momentum_op
+    test_reduce_op
+    test_segment_op
+    test_sgd_op_bf16
+    test_softmax_mask_fuse_upper_triangle_op
+    test_sparse_norm_op
+    test_tensor_array_to_tensor
+    test_while_op
+    test_one_hot_v2_op)
+
+foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
+  py_test_modules(
+    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
+    $FLAGS_new_executor_static_build=true)
+endforeach()
+
+set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
+                                                                      120)
+set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)

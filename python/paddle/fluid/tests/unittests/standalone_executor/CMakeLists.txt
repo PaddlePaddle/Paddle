@@ -6,6 +6,10 @@ string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
+
+  # NODE(Ruibiao): Remove it after static build is enabled by default
+  py_test_modules(${target}_static_build MODULES ${target} ENVS
+                  FLAGS_new_executor_static_build=true)
 endforeach()
 
 py_test_modules(
