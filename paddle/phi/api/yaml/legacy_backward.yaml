@@ -82,7 +82,7 @@
 
 - backward_op : amin_grad
   forward: amin (Tensor x,  int64_t[] axis={},  bool keepdim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis={},  bool keepdim=false, bool reduce_all=false)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis={},  bool keepdim=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

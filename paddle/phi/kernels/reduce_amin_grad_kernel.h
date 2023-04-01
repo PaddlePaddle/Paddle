@@ -26,7 +26,6 @@ void ReduceAMinGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
-                          bool reduce_all,
                           DenseTensor* x_grad);
 
 }  // namespace phi
