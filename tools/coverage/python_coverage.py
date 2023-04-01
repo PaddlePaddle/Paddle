@@ -40,7 +40,7 @@ for clazz in root.findall('packages/package/classes/class'):
         continue
 
     print('TN:')
-    print('SF:{}'.format(clazz_filename))
+    print(f'SF:{clazz_filename}')
 
     branch_index = 0
 
@@ -77,6 +77,6 @@ for clazz in root.findall('packages/package/classes/class'):
                     )
                     branch_index += 1
 
-        print('DA:{},{}'.format(line_number, line_hits))
+        print(f'DA:{line_number},{line_hits}')
 
     print('end_of_record')

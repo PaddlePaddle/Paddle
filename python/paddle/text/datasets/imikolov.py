@@ -83,13 +83,13 @@ class Imikolov(Dataset):
         assert data_type.upper() in [
             'NGRAM',
             'SEQ',
-        ], "data type should be 'NGRAM', 'SEQ', but got {}".format(data_type)
+        ], f"data type should be 'NGRAM', 'SEQ', but got {data_type}"
         self.data_type = data_type.upper()
 
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.window_size = window_size
@@ -147,7 +147,7 @@ class Imikolov(Dataset):
     def _load_anno(self):
         self.data = []
         with tarfile.open(self.data_file) as tf:
-            filename = './simple-examples/data/ptb.{}.txt'.format(self.mode)
+            filename = f'./simple-examples/data/ptb.{self.mode}.txt'
             f = tf.extractfile(filename)
 
             UNK = self.word_idx['<unk>']

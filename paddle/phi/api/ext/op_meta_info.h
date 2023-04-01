@@ -119,6 +119,7 @@ class PADDLE_API CustomOpKernelContext {
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
   Tensor& MutableInputAt(size_t idx);
+  paddle::optional<Tensor> OptionalInputAt(size_t idx);
   const std::vector<paddle::any>& Attrs() const { return attrs_; }
   const std::vector<std::pair<size_t, size_t>>& InputRange() {
     return input_range_;
@@ -230,6 +231,34 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Handle args for inplace Tensor case
+  template <typename... Tail>
+  struct ComputeCallHelper<Tensor&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto& arg = ctx->MutableInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for optional inplace Tensor input case
+  template <typename... Tail>
+  struct ComputeCallHelper<paddle::optional<paddle::Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->OptionalInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
   // Handle args for general vector<Tensor> input case
   template <typename... Tail>
   struct ComputeCallHelper<const std::vector<Tensor>&, Tail...> {
@@ -324,20 +353,6 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
       auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
-                                                                    pargs...,
-                                                                    arg);
-    }
-  };
-
-  // Handle args for inplace Tensor case
-  template <typename... Tail>
-  struct ComputeCallHelper<Tensor&, Tail...> {
-    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
-      auto& range = ctx->InputRangeAt(in_idx);
-      auto& arg = ctx->MutableInputAt(range.first);
-      ComputeCallHelper<
-          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
                                                                     arg);
     }

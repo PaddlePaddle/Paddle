@@ -78,7 +78,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         )
 
     if fill not in [None, False, True]:
-        raise Exception("fill={} must be None or boolean".format(fill))
+        raise Exception(f"fill={fill} must be None or boolean")
 
     if not np.all(np.isfinite(S)):
         raise Exception("Input must be finite")
@@ -113,7 +113,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         return S
 
     else:
-        raise Exception("Unsupported norm: {}".format(repr(norm)))
+        raise Exception(f"Unsupported norm: {repr(norm)}")
 
     # indices where norm is below the threshold
     small_idx = length < threshold
@@ -224,7 +224,7 @@ def frame(x, frame_length, hop_length, axis=-1):
         )
 
     if hop_length < 1:
-        raise Exception("Invalid hop_length: {:d}".format(hop_length))
+        raise Exception(f"Invalid hop_length: {hop_length:d}")
 
     if axis == -1 and not x.flags["F_CONTIGUOUS"]:
         print(
@@ -257,7 +257,7 @@ def frame(x, frame_length, hop_length, axis=-1):
         strides = [hop_length * new_stride] + list(strides)
 
     else:
-        raise Exception("Frame axis={} must be either 0 or -1".format(axis))
+        raise Exception(f"Frame axis={axis} must be either 0 or -1")
 
     return as_strided(x, shape=shape, strides=strides)
 
@@ -299,7 +299,7 @@ def get_window(window, Nx, fftbins=True):
             "Window size mismatch: " "{:d} != {:d}".format(len(window), Nx)
         )
     else:
-        raise Exception("Invalid window specification: {}".format(window))
+        raise Exception(f"Invalid window specification: {window}")
 
 
 def __overlap_add(y, ytmp, hop_length):
@@ -512,7 +512,7 @@ def frame_for_api_test(x, frame_length, hop_length, axis=-1):
         strides = [hop_length * x.itemsize] + list(strides)
 
     else:
-        raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
+        raise ValueError(f"Frame axis={axis} must be either 0 or -1")
 
     return as_strided(x, shape=shape, strides=strides)
 
