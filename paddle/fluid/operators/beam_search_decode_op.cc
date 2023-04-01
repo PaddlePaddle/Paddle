@@ -108,10 +108,12 @@ REGISTER_OPERATOR(beam_search_decode,
                   paddle::operators::BeamSearchDecodeOpProtoMaker,
                   paddle::operators::BeamSearchDecodeInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    beam_search_decode,
-    ops::BeamSearchDecodeOpKernel<phi::CPUContext, float>,
-    ops::BeamSearchDecodeOpKernel<phi::CPUContext, double>,
-    ops::BeamSearchDecodeOpKernel<phi::CPUContext, paddle::platform::float16>,
-    ops::BeamSearchDecodeOpKernel<phi::CPUContext, int>,
-    ops::BeamSearchDecodeOpKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BeamSearchDecodeOpKernel,
+                          float,
+                          double,
+                          paddle::platform::float16,
+                          int,
+                          int64_t) {}
