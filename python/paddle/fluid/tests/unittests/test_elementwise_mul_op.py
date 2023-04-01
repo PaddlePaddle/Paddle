@@ -156,10 +156,20 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_prim=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_prim=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_prim=True,
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_prim=True,
+        )
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -356,6 +366,39 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
 
     def if_enable_cinn(self):
         pass
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(not self.use_mkldnn))
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
+
+    def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
+
+    def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
 
 
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):

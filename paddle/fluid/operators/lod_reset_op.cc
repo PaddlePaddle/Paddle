@@ -249,6 +249,7 @@ REGISTER_OPERATOR(lod_reset_grad,
 
 REGISTER_OP_CPU_KERNEL(
     lod_reset,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, paddle::platform::float16>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
@@ -257,6 +258,8 @@ REGISTER_OP_CPU_KERNEL(
 #ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(
     lod_reset,
+    ops::LoDResetKernel<paddle::platform::XPUDeviceContext,
+                        paddle::platform::float16>,
     ops::LoDResetKernel<paddle::platform::XPUDeviceContext, float>,
     ops::LoDResetKernel<paddle::platform::XPUDeviceContext, double>,
     ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int>,
@@ -265,6 +268,8 @@ REGISTER_OP_XPU_KERNEL(
 
 REGISTER_OP_CPU_KERNEL(
     lod_reset_grad,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace,
+                            paddle::platform::float16>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,

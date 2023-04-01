@@ -101,7 +101,7 @@ def create_test_class(parent, dtype, mode, training, p, seed):
             self.mode = mode
             self.seed = seed
 
-    cls_name = "{0}_{1}_{2}_{3}_{4}_{5}".format(
+    cls_name = "{}_{}_{}_{}_{}_{}".format(
         parent.__name__, dtype, mode, str(training), str(p), str(seed)
     )
     TestFusedDropoutAddCase.__name__ = cls_name

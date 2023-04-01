@@ -2510,10 +2510,22 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 
 void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  if (scpoe_feed_vec_.count(&scope) > 0) {
+    return;
+  }
+  auto& feed_vec = scpoe_feed_vec_[&scope];
+  feed_vec.resize(used_slots_info_.size());
+  for (int i = 0; i < use_slot_size_; ++i) {
+    feed_vec[i] =
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
+  }
+#else
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec_[i] =
         scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
   }
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
@@ -2982,6 +2994,29 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }
+  }
+}
+
+MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
+    MiniBatchGpuPack* last_pack) {
+  if (last_pack != nullptr) {
+    free_pack_queue_.Push(last_pack);
+    return nullptr;
+  }
+
+  std::unique_lock<std::mutex> lock(pack_mutex_);
+  while (true) {
+    if (using_pack_queue_.Size() != 0) {
+      auto* pack = using_pack_queue_.Pop();
+      return pack;
+    }
+    bool is_end = pack_is_end_.load();
+    if (is_end) {
+      if (using_pack_queue_.Size() == 0) {
+        return nullptr;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::microseconds(200));
   }
 }
 
