@@ -25,7 +25,6 @@ void LogsumexpGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int64_t>& axis,
                          bool keepdim,
-                         bool reduce_all,
                          DenseTensor* in_grad);
 
 }  // namespace phi

@@ -20,7 +20,7 @@ KernelSignature LogsumexpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("logsumexp_grad",
                          {"X", "Out", "Out@GRAD"},
-                         {"axis", "keepdim", "reduce_all"},
+                         {"axis", "keepdim"},
                          {"X@GRAD"});
 }
 

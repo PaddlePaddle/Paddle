@@ -602,8 +602,8 @@
     func : logcumsumexp_grad
 
 - backward_op : logsumexp_grad
-  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -645,14 +645,14 @@
 
 - backward_op : max_grad
   forward: max (Tensor x,  IntArray axis={},  bool keepdim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : max_grad
-  composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
+  composite : max_grad(x, out, out_grad, axis, keepdim, x_grad)
 
 - backward_op : max_pool2d_with_index_grad
   forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive) -> Tensor(out), Tensor(mask)

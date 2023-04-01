@@ -65,11 +65,10 @@ void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keepdim,
-                     bool reduce_all,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  reduce_all = recompute_reduce_all(x, axis, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, axis);
 
   auto x_dim = x.dims();
   for (int i = 0; i < x_dim.size(); i++) {

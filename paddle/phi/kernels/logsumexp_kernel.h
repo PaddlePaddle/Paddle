@@ -23,7 +23,6 @@ void LogsumexpKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keepdim,
-                     bool reduce_all,
                      DenseTensor* out);
 
 }  // namespace phi

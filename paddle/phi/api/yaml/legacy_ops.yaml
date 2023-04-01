@@ -918,7 +918,7 @@
     backend : place
 
 - op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  args : (Tensor x, int64_t[] axis,  bool keepdim)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta

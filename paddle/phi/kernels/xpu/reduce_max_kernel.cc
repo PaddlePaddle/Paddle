@@ -26,9 +26,8 @@ void MaxRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const T* x,

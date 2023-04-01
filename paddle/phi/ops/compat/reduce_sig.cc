@@ -76,7 +76,7 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "max_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "max_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("max", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
@@ -179,7 +179,7 @@ KernelSignature ReduceMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("max_grad",
                          {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
+                         {"dim", "keep_dim"},
                          {"X@GRAD"});
 }
 

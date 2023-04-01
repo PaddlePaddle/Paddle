@@ -56,11 +56,10 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int64_t>& axis,
                          bool keepdim,
-                         bool reduce_all,
                          DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
 
-  reduce_all = recompute_reduce_all(in, axis, reduce_all);
+  bool reduce_all = recompute_reduce_all(in, axis);
 
   if (reduce_all) {
     auto x = phi::EigenVector<T>::Flatten(in);

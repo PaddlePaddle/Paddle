@@ -1127,7 +1127,6 @@ void max_grad(const Tensor& x,
               const Tensor& out_grad,
               const IntArray& axis,
               bool keepdim,
-              bool reduce_all,
               Tensor* x_grad) {
   if (!x_grad) {
     return;
@@ -1136,7 +1135,7 @@ void max_grad(const Tensor& x,
   std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
-  reduce_all = false;
+  bool reduce_all = false;
   if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
     reduce_all = true;
   } else {
