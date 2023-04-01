@@ -27,6 +27,13 @@
           comment : The attribute 'atol' is deleted. The reason why it is deleted is that
                     attributes do not support a float64 value and it is changed to a tensor.
 
+- op : auc
+  version :
+    - checkpoint :  Upgrade auc, add a new input [InsTagWeight].
+      action :
+        - add_input : ValueTensor
+          comment : In order to support multi-tag task.
+
 - op : clip
   version :
     - checkpoint :  Upgrade clip add a new input [Min]
