@@ -351,7 +351,7 @@ def get_device():
         device = 'npu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
-        device = "ipus:{{0-{}}}".format(num_devices - 1)
+        device = f"ipus:{{0-{num_devices - 1}}}"
         device = f"ipus:{{0-{num_devices - 1}}}"
     elif isinstance(place, core.CustomPlace):
         device_id = place.get_device_id()
