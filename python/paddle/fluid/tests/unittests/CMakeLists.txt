@@ -1259,7 +1259,7 @@ set(STATIC_BUILD_TESTS
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    $FLAGS_new_executor_static_build=true)
+    FLAGS_new_executor_static_build=true)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
