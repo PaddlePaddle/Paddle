@@ -1236,7 +1236,6 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
-    test_dequantize_mkldnn_op
     test_dist_mnist_fp16_allreduce
     test_dist_mnist_pg
     test_fake_quantize_op
