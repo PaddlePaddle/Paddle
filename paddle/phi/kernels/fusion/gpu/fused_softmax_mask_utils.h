@@ -258,9 +258,8 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
   }
 }
 
-#endif
-
 }  // namespace fusion
 }  // namespace phi
 
+#endif
 #endif
