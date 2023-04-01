@@ -40,13 +40,12 @@ class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
     bool keep_dim = this->Attr<bool>("keep_dim");
-    bool reduce_all = this->Attr<bool>("reduce_all");
     paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
     paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
     std::string x_grad_name = this->GetOutputName(x_grad_t);
     VLOG(6) << "Runing max_grad composite func";
     prim::max_grad<prim::DescTensor>(
-        x, out, out_grad, axis, keep_dim, reduce_all, x_grad);
+        x, out, out_grad, axis, keep_dim, x_grad);
     this->RecoverOutputName(x_grad_t, x_grad_name);
   }
 };
