@@ -33,8 +33,6 @@
 #define WARP_SIZE 32
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
-
 #define MASK 0xffffffff
 
 namespace phi {
@@ -92,6 +90,8 @@ __device__ __forceinline__ void warp_reduce(T* sum) {
     }
   }
 }
+
+#if defined(PADDLE_WITH_CUDA)
 
 #define FINAL_MASK 0xffffffff
 #define DIV_UP(x, y) (((x) + (y)-1) / (y))
@@ -257,9 +257,9 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
           seq_len));
   }
 }
+#endif
 
 }  // namespace fusion
 }  // namespace phi
 
-#endif
 #endif
