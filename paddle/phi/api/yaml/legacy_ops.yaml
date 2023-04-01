@@ -647,7 +647,7 @@
   backward : fmin_grad
 
 - op : frobenius_norm
-  args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  args : (Tensor x, int64_t[] axis,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMetaBase

@@ -81,13 +81,13 @@
     data_type : dtype
 
 - op : frobenius_norm
-  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMetaBase
   kernel :
     func : frobenius_norm
-    param : [x, axis, keepdim, reduce_all]
+    param : [x, axis, keepdim]
   backward : frobenius_norm_grad
 
 - op : greater_equal

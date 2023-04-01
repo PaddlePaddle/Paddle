@@ -140,7 +140,7 @@ KernelSignature ReduceAnyOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "any_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "any_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "any_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("any", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
