@@ -42,6 +42,13 @@ class EigenMatrix<double> {
   using MatrixType = Eigen::MatrixXd;
 };
 
+template <>
+class EigenMatrix<phi::dtype::float16> {
+ public:
+  using MatrixType =
+      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+};
+
 inline int64_t GetBatchCount(const DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
@@ -82,10 +89,10 @@ struct DeterminantFunctor {
       typename detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int64_t i = 0; i < rank; ++i) {
         for (int64_t j = 0; j < rank; ++j) {
-          matrix(i, j) = static_cast<MPType>(sub_vec[rank * i + j]);
+          matrix(i, j) = sub_vec[rank * i + j];
         }
       }
-      output_vec.push_back(static_cast<T>(matrix).determinant());
+      output_vec.push_back(matrix.template cast<MPType>().determinant());
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }

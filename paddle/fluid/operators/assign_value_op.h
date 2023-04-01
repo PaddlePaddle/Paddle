@@ -76,6 +76,9 @@ class AssignValueKernel : public framework::OpKernel<T> {
       case framework::proto::VarType::INT64:
         value_name = "int64_values";
         break;
+      case framework::proto::VarType::FP16:
+        value_name = "fp16_values";
+        break;
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported data type(code %d) for AssignValue operator, only "

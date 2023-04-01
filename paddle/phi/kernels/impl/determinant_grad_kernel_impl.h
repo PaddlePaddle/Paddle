@@ -33,12 +33,11 @@ struct FoundZeroFunctor {
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
       : x_(x), numel_(numel), res_(res) {}
   HOSTDEVICE void operator()(size_t idx) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     if (*res_ || idx >= static_cast<size_t>(numel_)) {
       // founded zero number
       return;
     }
-    *res_ = (x_[idx] == static_cast<T>(static_cast<MPType>(0));
+    *res_ = (x_[idx] == static_cast<T>(0));
   }
   const T* x_;
   int64_t numel_;
