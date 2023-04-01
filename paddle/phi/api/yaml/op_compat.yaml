@@ -2086,3 +2086,9 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: yolo_box
+  inputs :
+    {x : X, img_size : ImgSize}
+  outputs :
+    {boxes : Boxes, scores : Scores}

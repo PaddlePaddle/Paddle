@@ -1634,15 +1634,6 @@
   intermediate: warpctcgrad
   backward : warpctc_grad
 
-- op : yolo_box
-  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
-  output : Tensor(boxes), Tensor(scores)
-  infer_meta :
-    func : YoloBoxInferMeta
-  kernel :
-    func : yolo_box
-    data_type : x
-
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
