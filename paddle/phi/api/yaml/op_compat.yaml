@@ -192,7 +192,6 @@
     {input : X, label : Label}
   outputs :
     out : Out
-  inplace : (x -> out)
 
 - op : bernoulli
   inputs :
