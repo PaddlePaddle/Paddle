@@ -80,7 +80,7 @@
   backward : frobenius_norm_grad
 
 - op : full
-  args : (IntArray shape={}, Scalar value, DataType dtype=DataType::FLOAT32, str str_value="", Place place_type=-1, bool force_cpu=false)
+  args : (IntArray shape={}, Scalar value=0.0f, DataType dtype=DataType::FLOAT32, str str_value="", Place place_type=-1, bool force_cpu=false)
   output: Tensor(out)
   infer_meta :
     func : FullInferMeta
