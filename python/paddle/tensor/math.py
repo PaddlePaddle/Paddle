@@ -2563,7 +2563,7 @@ def amax(x, axis=None, keepdim=False, name=None):
             type='reduce_amax',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': keepdim},
         )
         return out
 
@@ -2673,7 +2673,7 @@ def amin(x, axis=None, keepdim=False, name=None):
             type='reduce_amin',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': keepdim},
         )
         return out
 
