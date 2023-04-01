@@ -131,7 +131,7 @@
     func : AucInferMeta
   kernel :
     func : auc
-    data_type : predict
+    data_type : x
   optional : ins_tag_weight
 
 - op : bernoulli
