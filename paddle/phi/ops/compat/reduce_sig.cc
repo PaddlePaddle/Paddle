@@ -92,7 +92,7 @@ KernelSignature ReduceAMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "amax_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "amax_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("amax", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
@@ -124,7 +124,7 @@ KernelSignature ReduceAMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "min_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "amin_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "amin_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("amin", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
