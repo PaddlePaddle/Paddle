@@ -1251,7 +1251,7 @@ set(STATIC_BUILD_TESTS
     test_layer_norm_op
     test_momentum_op
     test_reduce_op
-    test_segment_op
+    test_segment_ops
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_norm_op
@@ -1267,5 +1267,7 @@ endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
+                                                                       250)
 set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
