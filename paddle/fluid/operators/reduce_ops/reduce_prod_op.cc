@@ -44,7 +44,6 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     // get attr
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
     bool keep_dim = this->Attr<bool>("keep_dim");
-    bool reduce_all = this->Attr<bool>("reduce_all");
 
     // get output
     paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
@@ -57,7 +56,7 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     VLOG(6) << "Runing prod_grad composite func";
     // call composite backward func
     prim::prod_grad<prim::DescTensor>(
-        x, out, out_grad, axis, keep_dim, reduce_all, x_grad);
+        x, out, out_grad, axis, keep_dim, x_grad);
     // recover output name
     this->RecoverOutputName(x_grad_t, x_grad_name);
   }
