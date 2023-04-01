@@ -1536,10 +1536,6 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
-        elif p.is_npu_place():
-            p = paddle.fluid.core.Place()
-            p.set_place(t._place())
-            place = paddle.fluid.NPUPlace(p.npu_device_id())
         elif p.is_mlu_place():
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -1680,10 +1676,6 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
-            elif ten_place.is_npu_place():
-                p = paddle.fluid.core.Place()
-                p.set_place(ten_place)
-                py_place = paddle.fluid.NPUPlace(p.npu_device_id())
             elif ten_place.is_mlu_place():
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
