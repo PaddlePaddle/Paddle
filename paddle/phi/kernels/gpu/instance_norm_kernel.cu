@@ -131,45 +131,45 @@ void InstanceNormKernel(const Context &dev_ctx,
   const int max_blocks = std::max(max_threads / block, 1);
   const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-  phi::funcs::SetConstant<GPUContext, T> set_constant;
+  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
   if (scale_ptr) {
     repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
         scale_ptr->data<AccT>(), scale_tmp.data<AccT>(), N, C);
   } else {
-    set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    set_constant(dev_ctx, &scale_tmp, static_cast<AccT>(1));
   }
   if (bias_ptr) {
     repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
         bias_ptr->data<AccT>(), bias_tmp.data<AccT>(), N, C);
   } else {
-    set_constant(dev_ctx, &bias_tmp, static_cast<T>(0));
+    set_constant(dev_ctx, &bias_tmp, static_cast<AccT>(0));
   }
 
   auto handle = dev_ctx.cudnn_handle();
 
   DenseTensor saved_mean_tmp, saved_variance_tmp;
-  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+  phi::funcs::SetConstant<GPUContext, BatchNormParamType<AccT>> functor;
+
   if (saved_mean) {
-    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
-    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+    dev_ctx.template Alloc<BatchNormParamType<AccT>>(saved_mean);
+    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<AccT>>(0));
   } else {
-    saved_mean_tmp = phi::Full<BatchNormParamType<T>>(
-        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
+    saved_mean_tmp = phi::Full<BatchNormParamType<AccT>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<AccT>>(0));
   }
   if (saved_variance) {
-    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
-    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+    dev_ctx.template Alloc<BatchNormParamType<AccT>>(saved_variance);
+    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<AccT>>(0));
   } else {
-    saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
-        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
+    saved_variance_tmp = phi::Full<BatchNormParamType<AccT>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<AccT>>(0));
   }
-
   auto *saved_mean_data = saved_mean
-                              ? saved_mean->data<BatchNormParamType<T>>()
-                              : saved_mean_tmp.data<BatchNormParamType<T>>();
+                              ? saved_mean->data<BatchNormParamType<AccT>>()
+                              : saved_mean_tmp.data<BatchNormParamType<AccT>>();
   auto *saved_variance_data =
-      saved_variance ? saved_variance->data<BatchNormParamType<T>>()
-                     : saved_variance_tmp.data<BatchNormParamType<T>>();
+      saved_variance ? saved_variance->data<BatchNormParamType<AccT>>()
+                     : saved_variance_tmp.data<BatchNormParamType<AccT>>();
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -186,9 +186,9 @@ void InstanceNormKernel(const Context &dev_ctx,
           static_cast<void *>(y->template data<T>()),
           in_param_desc_,
           const_cast<void *>(static_cast<const void *>(
-              scale_tmp.template data<BatchNormParamType<T>>())),
+              scale_tmp.template data<BatchNormParamType<AccT>>())),
           const_cast<void *>(static_cast<const void *>(
-              bias_tmp.template data<BatchNormParamType<T>>())),
+              bias_tmp.template data<BatchNormParamType<AccT>>())),
           0,
           nullptr,
           nullptr,
@@ -232,8 +232,13 @@ void InstanceNormKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(instance_norm,
                    GPU,

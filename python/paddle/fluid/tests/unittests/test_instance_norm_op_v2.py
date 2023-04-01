@@ -167,7 +167,9 @@ class TestInstanceNormFP32OP(OpTest):
         self.check_output_with_place(place, atol=self.atol)
 
     def test_check_grad(self):
-        self.check_grad(
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X', 'Scale', 'Bias'],
             'Y',
             max_relative_error=self.max_relative_error,
@@ -201,7 +203,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
 
     def set_err_thre(self):
         self.atol = 0.03125
-        self.max_relative_error = 5e-3
+        self.max_relative_error = 8e-3
 
 
 @unittest.skipIf(

@@ -30,10 +30,10 @@
 namespace phi {
 template <typename T, typename AccT, int BlockDim>
 static __global__ void GradComputeDX(const T *dy,
-                                     const BatchNormParamType<T> *scale,
-                                     const BatchNormParamType<T> *mean,
+                                     const BatchNormParamType<AccT> *scale,
+                                     const BatchNormParamType<AccT> *mean,
                                      const T *x,
-                                     const BatchNormParamType<T> *variance,
+                                     const BatchNormParamType<AccT> *variance,
                                      const int C,
                                      const int sample_size,
                                      T *dx) {
@@ -41,10 +41,8 @@ static __global__ void GradComputeDX(const T *dy,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  BatchNormParamType<AccT> mean_val =
-      static_cast<BatchNormParamType<AccT>>(mean[ncid]);
-  BatchNormParamType<AccT> inv_var_val =
-      static_cast<BatchNormParamType<AccT>>(variance[ncid]);
+  BatchNormParamType<AccT> mean_val = mean[ncid];
+  BatchNormParamType<AccT> inv_var_val = variance[ncid];
   typedef cub::BlockReduce<BatchNormParamType<AccT>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage dy_storage;
   __shared__ typename BlockReduce::TempStorage dy_x_sub_mean_storage;
@@ -323,8 +321,8 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   dev_ctx.template Alloc<T>(d_x);
   if (d_scale && d_bias) {
-    dev_ctx.template Alloc<T>(d_scale);
-    dev_ctx.template Alloc<T>(d_bias);
+    dev_ctx.template Alloc<AccT>(d_scale);
+    dev_ctx.template Alloc<AccT>(d_bias);
   }
   if (scale_ptr) {
     PADDLE_ENFORCE_EQ(
@@ -349,7 +347,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                           scale_ptr->dims()));
   }
 
-  phi::funcs::SetConstant<GPUContext, T> set_constant;
+  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
 
   const int n = x.numel();
   const int block = 512;
@@ -360,23 +358,23 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   DenseTensor scale_tmp;
   scale_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&scale_tmp);
+  dev_ctx.template Alloc<AccT>(&scale_tmp);
 
   DenseTensor d_scale_tmp;
   d_scale_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&d_scale_tmp);
+  dev_ctx.template Alloc<AccT>(&d_scale_tmp);
 
   DenseTensor d_bias_tmp;
   d_bias_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&d_bias_tmp);
-
+  dev_ctx.template Alloc<AccT>(&d_bias_tmp);
+  VLOG(0) << "break";
   if (scale_ptr) {
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale_ptr->data<T>(), scale_tmp.data<T>(), N, C);
+    repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+        scale_ptr->data<AccT>(), scale_tmp.data<AccT>(), N, C);
   } else {
-    set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    set_constant(dev_ctx, &scale_tmp, static_cast<AccT>(1));
   }
-
+  VLOG(0) << "break";
   std::vector<int> dims;
   std::vector<int> strides;
   dims = {1, NxC, H, W, D};
@@ -384,11 +382,12 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   if ((H * W * D) == 1) {
     phi::Copy(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
-    phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
-    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+    phi::funcs::SetConstant<GPUContext, BatchNormParamType<AccT>> functor;
+    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<AccT>>(0));
+    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<AccT>>(0));
     return;
   }
+  VLOG(0) << "break";
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t data_desc_;
@@ -414,6 +413,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                << "CUDNN_BN_MIN_EPSILON instead.";
   }
   epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
+  VLOG(0) << "break";
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
@@ -434,11 +434,13 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 #endif
-
+  VLOG(0) << "break";
   const auto *saved_mean_data =
-      saved_mean.template data<BatchNormParamType<T>>();
+      saved_mean.template data<BatchNormParamType<AccT>>();
   const auto *saved_var_data =
-      saved_variance.template data<BatchNormParamType<T>>();
+      saved_variance.template data<BatchNormParamType<AccT>>();
+  VLOG(0) << "break";
+
   if (d_scale && d_bias) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenBatchNormalizationBackward(
@@ -455,9 +457,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         data_desc_,
         d_x->template data<T>(),
         in_param_desc_,
-        scale_tmp.template data<BatchNormParamType<T>>(),
-        d_scale_tmp.template data<BatchNormParamType<T>>(),
-        d_bias_tmp.template data<BatchNormParamType<T>>(),
+        scale_tmp.template data<BatchNormParamType<AccT>>(),
+        d_scale_tmp.template data<BatchNormParamType<AccT>>(),
+        d_bias_tmp.template data<BatchNormParamType<AccT>>(),
         epsilon,
         saved_mean_data,
         saved_var_data));
@@ -476,18 +478,19 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         data_desc_,
         d_x->template data<T>(),
         in_param_desc_,
-        scale_tmp.template data<BatchNormParamType<T>>(),
-        d_scale_tmp.template data<BatchNormParamType<T>>(),
-        d_bias_tmp.template data<BatchNormParamType<T>>(),
+        scale_tmp.template data<BatchNormParamType<AccT>>(),
+        d_scale_tmp.template data<BatchNormParamType<AccT>>(),
+        d_bias_tmp.template data<BatchNormParamType<AccT>>(),
         epsilon,
         saved_mean_data,
         saved_var_data));
 #endif
   } else {
     if (d_x) {
+      VLOG(0) << "gradComputeDx";
       GradComputeDX<T, AccT, block><<<NxC, block, 0, dev_ctx.stream()>>>(
           d_y.data<T>(),
-          scale_tmp.data<BatchNormParamType<T>>(),
+          scale_tmp.data<BatchNormParamType<AccT>>(),
           saved_mean_data,
           x.data<T>(),
           saved_var_data,
@@ -496,13 +499,14 @@ void InstanceNormGradKernel(const Context &dev_ctx,
           d_x->data<T>());
     }
   }
-
+  VLOG(0) << "add d_scale and d_bias";
   if (d_scale && d_bias) {
-    add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
-        d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
-    add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
-        d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
+    add_param<AccT, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
+        d_scale_tmp.data<AccT>(), d_scale->data<AccT>(), N, C);
+    add_param<AccT, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
+        d_bias_tmp.data<AccT>(), d_bias->data<AccT>(), N, C);
   }
+  VLOG(0) << "after add";
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -580,6 +584,7 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
                                                epsilon,
                                                dx_data);
   }
+  VLOG(0) << "double kernel";
   if (dscale) {
     DenseTensor dscale_tmp;
     dscale_tmp.Resize({NxC});
@@ -618,13 +623,19 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
                                                epsilon,
                                                ddy_data);
   }
+  VLOG(0) << "double finished";
 }
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(
-    instance_norm_grad, GPU, ALL_LAYOUT, phi::InstanceNormGradKernel, float) {}
+PD_REGISTER_KERNEL(instance_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
