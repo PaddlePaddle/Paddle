@@ -2332,7 +2332,34 @@ class MLUOP {
                          void* output,
                          const mluOpTensorDescriptor_t var_desc,
                          void* var);
+
+  static void GenerateProposalsV2(
+      const ExecutionContext& ctx,
+      const int pre_nms_top_n,
+      const int post_nms_top_n,
+      const float nms_thresh,
+      const float min_size,
+      const float eta,
+      bool pixel_offset,
+      const mluOpTensorDescriptor_t scores_desc,
+      const void* scores,
+      const mluOpTensorDescriptor_t bbox_deltas_desc,
+      const void* bbox_deltas,
+      const mluOpTensorDescriptor_t im_shape_desc,
+      const void* im_shape,
+      const mluOpTensorDescriptor_t anchors_desc,
+      const void* anchors,
+      const mluOpTensorDescriptor_t variances_desc,
+      const void* variances,
+      const mluOpTensorDescriptor_t rpn_rois_desc,
+      void* rpn_rois,
+      const mluOpTensorDescriptor_t rpn_roi_probs_desc,
+      void* rpn_roi_probs,
+      const mluOpTensorDescriptor_t rpn_rois_num_desc,
+      void* rpn_rois_num,
+      void* rpn_rois_batch_size);
 };
+
 const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
     TransPermMap = {
         // trans_mode, (forward_perm, backward_perm)

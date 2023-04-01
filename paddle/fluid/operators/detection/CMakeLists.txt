@@ -49,6 +49,8 @@ elseif(WITH_MLU)
                     iou_similarity_op_mlu.cc)
   detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_mlu.cc)
   detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op_mlu.cc)
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
+                    generate_proposals_v2_op_mlu.cc)
 elseif(WITH_ASCEND_CL)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_npu.cc)
@@ -101,7 +103,7 @@ if(WITH_GPU OR WITH_ROCM)
                     collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
-  if(NOT WITH_XPU)
+  if(NOT WITH_XPU AND NOT WITH_MLU)
     detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
   endif()
   detection_library(distribute_fpn_proposals_op SRCS
