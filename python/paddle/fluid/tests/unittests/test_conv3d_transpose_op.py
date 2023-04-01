@@ -164,7 +164,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
                     place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFP16OP")
     TestConv3DCUDNNFP16.__name__ = cls_name
     globals()[cls_name] = TestConv3DCUDNNFP16
 
@@ -225,7 +225,7 @@ def create_test_cudnn_bf16_class(parent):
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
     TestConv3DCUDNNBF16.__name__ = cls_name
     globals()[cls_name] = TestConv3DCUDNNBF16
 
