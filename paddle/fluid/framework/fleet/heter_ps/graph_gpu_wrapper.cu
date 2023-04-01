@@ -752,6 +752,12 @@ void GraphGpuWrapper::finalize() {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)->show_table_collisions();
 }
 
+void GraphGpuWrapper::show_mem(const char* msg)
+{
+  show_cpu_mem(msg);
+  show_gpu_mem(msg);
+}
+
 // edge table
 void GraphGpuWrapper::upload_batch(int table_type,
                                    int slice_num,

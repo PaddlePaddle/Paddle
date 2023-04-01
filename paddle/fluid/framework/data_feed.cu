@@ -1540,40 +1540,6 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
   return 0;
 }
 
-int GraphDataGenerator::FillFeatureBuf(uint64_t *d_walk,
-                                       uint64_t *d_feature,
-                                       size_t key_num) {
-  platform::CUDADeviceGuard guard(gpuid_);
-
-  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  int ret = gpu_graph_ptr->get_feature_of_nodes(
-      gpuid_,
-      d_walk,
-      d_feature,
-      key_num,
-      slot_num_,
-      reinterpret_cast<int *>(d_slot_feature_num_map_->ptr()),
-      fea_num_per_node_);
-  return ret;
-}
-
-int GraphDataGenerator::FillFeatureBuf(
-    std::shared_ptr<phi::Allocation> d_walk,
-    std::shared_ptr<phi::Allocation> d_feature) {
-  platform::CUDADeviceGuard guard(gpuid_);
-
-  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  int ret = gpu_graph_ptr->get_feature_of_nodes(
-      gpuid_,
-      reinterpret_cast<uint64_t *>(d_walk->ptr()),
-      reinterpret_cast<uint64_t *>(d_feature->ptr()),
-      buf_size_,
-      slot_num_,
-      reinterpret_cast<int *>(d_slot_feature_num_map_->ptr()),
-      fea_num_per_node_);
-  return ret;
-}
-
 // 对于deepwalk模式，尝试插入table，0表示插入成功，1表示插入失败；
 // 对于sage模式，尝试插入table，table数量不够则清空table重新插入，返回值无影响。
 int GraphDataGenerator::InsertTable(

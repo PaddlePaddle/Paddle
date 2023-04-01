@@ -943,9 +943,6 @@ class GraphDataGenerator {
   int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
-  int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
-  int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
-                     std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids,
                    int etype_id,
                    uint64_t* walk,
