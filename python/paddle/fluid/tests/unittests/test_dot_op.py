@@ -314,6 +314,9 @@ class TestComplexDotOp2D(OpTest):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestDotFP16Op(OpTest):
     def setUp(self):
         self.op_type = "dot"
@@ -365,6 +368,9 @@ class TestDotFP16Op(OpTest):
         self.out = np.dot(self.x, self.y)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class DotFP16OpBatch(TestDotFP16Op):
     def init_input_output(self):
         self.x = (
@@ -378,6 +384,11 @@ class DotFP16OpBatch(TestDotFP16Op):
         self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestDotBF16Op(OpTest):
     def setUp(self):
         self.op_type = "dot"
@@ -429,6 +440,11 @@ class TestDotBF16Op(OpTest):
         self.out = np.dot(self.x, self.y).astype(np.float32)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class DotBF16OpBatch(TestDotBF16Op):
     def init_input_output(self):
         self.x = (

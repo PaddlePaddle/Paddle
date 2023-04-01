@@ -34,7 +34,7 @@ class TestCrossOp(OpTest):
         self.init_output()
 
     def initTestCase(self):
-        self.attrs = {'dim': -2, 'op_type': "cross"}
+        self.attrs = {'dim': -2}
         self.dtype = np.float64
         self.shape = (1024, 3, 1)
 
@@ -65,6 +65,9 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
@@ -77,6 +80,11 @@ class TestCrossFP16Op(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestCrossBF16Op(OpTest):
     def setUp(self):
         self.op_type = "cross"
@@ -89,7 +97,7 @@ class TestCrossBF16Op(OpTest):
         self.init_output()
 
     def initTestCase(self):
-        self.attrs = {'dim': -2, 'op_type': "cross"}
+        self.attrs = {'dim': -2}
         self.dtype = np.uint16
         self.shape = (1024, 3, 1)
 
