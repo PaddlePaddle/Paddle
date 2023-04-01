@@ -48,10 +48,6 @@
 #include "xpu/bkcl.h"
 #endif
 
-#if defined(PADDLE_WITH_CNCL)
-#include <cncl.h>
-#endif
-
 namespace phi {
 class DenseTensor;
 class SelectedRows;
@@ -211,9 +207,6 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,
     platform::BKCLCommunicator,
-#endif
-#if defined(PADDLE_WITH_CNCL)
-    cnclCliqueId,
 #endif
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,

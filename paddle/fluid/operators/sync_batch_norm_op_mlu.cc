@@ -14,16 +14,12 @@ limitations under the Licnse. */
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#if defined(PADDLE_WITH_CNCL)
-#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
-#endif
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 namespace paddle {
 namespace operators {
 
-#define NO_USE_CNCL 0
 #define GET_LAYOUT_OFFSET 2
 
 static std::vector<cnnlTensorLayout_t> supported_input_layout = {
@@ -166,63 +162,11 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
       phi::DenseTensor mean_all(mean->dtype());
       phi::DenseTensor invstd_all(variance->dtype());
 
-#ifdef PADDLE_WITH_CNCL
-      auto &dev_ctx =
-          ctx.template device_context<paddle::platform::MLUDeviceContext>();
-      auto *comm = dev_ctx.cncl_comm();
-      if (comm) {
-        auto cncl_comm = paddle::platform::CNCLCommContext::Instance().Get(
-            0, ctx.GetPlace());
-        auto *comm = cncl_comm->comm();
-        auto comm_stream = cncl_comm->stream();
-        int count;
-        PADDLE_ENFORCE_MLU_SUCCESS(cnclGetCommCount(&count, comm));
-        count_all.mutable_data<MPDType>(phi::make_ddim({count}),
-                                        ctx.GetPlace());
-        mean_all.mutable_data<MPDType>(phi::make_ddim({count, mean->numel()}),
-                                       ctx.GetPlace());
-        invstd_all.mutable_data<MPDType>(
-            phi::make_ddim({count, variance->numel()}), ctx.GetPlace());
-        // before comm_stream exec, need sync compute_stream.
-        dev_ctx.Wait();
-
-        cnclDataType_t dtype = platform::ToCNCLDataType(
-            framework::TransToProtoVarType(count_all.dtype()));
-        PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(GetBasePtr(&input_count),
-                                                 GetBasePtr(&count_all),
-                                                 1,
-                                                 dtype,
-                                                 comm,
-                                                 comm_stream));
-
-        auto cncl_dtype = platform::ToCNCLDataType(
-            framework::TransToProtoVarType(mean_all.dtype()));
-        PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(GetBasePtr(&local_mean),
-                                                 GetBasePtr(&mean_all),
-                                                 local_mean.numel(),
-                                                 cncl_dtype,
-                                                 comm,
-                                                 comm_stream));
-
-        PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(GetBasePtr(&local_var),
-                                                 GetBasePtr(&invstd_all),
-                                                 local_var.numel(),
-                                                 cncl_dtype,
-                                                 comm,
-                                                 comm_stream));
-        // after comm_stream exec, need sync queue for using compute_stream
-        // correctly.
-        PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(comm_stream));
-#else
-      if (NO_USE_CNCL) {
-#endif
-      } else {
-        count_all = input_count;
-        mean_all.ShareDataWith(local_mean);
-        invstd_all.ShareDataWith(local_var);
-        mean_all.Resize(phi::make_ddim({1, local_mean.numel()}));
-        invstd_all.Resize(phi::make_ddim({1, local_var.numel()}));
-      }
+      count_all = input_count;
+      mean_all.ShareDataWith(local_mean);
+      invstd_all.ShareDataWith(local_var);
+      mean_all.Resize(phi::make_ddim({1, local_mean.numel()}));
+      invstd_all.Resize(phi::make_ddim({1, local_var.numel()}));
 
       MLUCnnlTensorDesc desc_all_mean_invstd(
           invstd_all, CNNL_LAYOUT_NC, ToCnnlDataType<MPDType>());
@@ -414,51 +358,6 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
     numel_count.mutable_data<int32_t>(phi::make_ddim({1}), ctx.GetPlace());
     FillMLUTensorWithHostValue<int32_t>(
         ctx, static_cast<int32_t>(x->numel() / C), &numel_count);
-
-#ifdef PADDLE_WITH_CNCL
-    auto &dev_ctx =
-        ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto *comm = dev_ctx.cncl_comm();
-    if (comm) {
-      auto cncl_comm =
-          paddle::platform::CNCLCommContext::Instance().Get(0, ctx.GetPlace());
-      auto *comm = cncl_comm->comm();
-      auto comm_stream = cncl_comm->stream();
-      // before comm_stream exec, need sync compute_stream.
-      dev_ctx.Wait();
-      cnclDataType_t dtype = platform::ToCNCLDataType(
-          framework::TransToProtoVarType(numel_count.dtype()));
-      PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(GetBasePtr(&numel_count),
-                                               GetBasePtr(&numel_count),
-                                               1,
-                                               dtype,
-                                               cnclSum,
-                                               comm,
-                                               comm_stream));
-
-      auto cncl_dtype = platform::ToCNCLDataType(
-          framework::TransToProtoVarType(sum_dy.dtype()));
-      PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(GetBasePtr(&sum_dy),
-                                               GetBasePtr(&sum_dy),
-                                               sum_dy.numel(),
-                                               cncl_dtype,
-                                               cnclSum,
-                                               comm,
-                                               comm_stream));
-
-      PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(GetBasePtr(&sum_dy_xmu),
-                                               GetBasePtr(&sum_dy_xmu),
-                                               sum_dy_xmu.numel(),
-                                               cncl_dtype,
-                                               cnclSum,
-                                               comm,
-                                               comm_stream));
-      // after comm_stream exec, need sync queue for using compute_stream
-      // correctly.
-      PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(comm_stream));
-    }
-#endif
-
     if (d_x) {
       MLUCnnlTensorDesc desc_count(numel_count);
       MLUCnnl::SyncBatchNormBackwardElemt(ctx,

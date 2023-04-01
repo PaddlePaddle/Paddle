@@ -78,8 +78,7 @@ void GroupConcatSplit(Place place, size_t size) {
 
     if (std::is_same<Place, platform::CUDAPlace>::value ||
         std::is_same<Place, platform::MLUPlace>::value) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       paddle::memory::Copy(
           place, data, cpu_place, value.data(), sizeof(T) * value.size(), 0);
 #endif
@@ -183,21 +182,6 @@ TEST(TestGroup, TestXPUConcatSplit) {
   size = 15;
   GroupConcatSplit<float>(cpu_place, size);
   GroupConcatSplit<float>(xpu_place, size);
-}
-#endif
-
-#if defined(PADDLE_WITH_CNCL)
-TEST(TestGroup, TestMLUConcatSplit) {
-  platform::MLUPlace mlu_place(0);
-  platform::CPUPlace cpu_place;
-
-  int size = 3;
-  GroupConcatSplit<float>(cpu_place, size);
-  GroupConcatSplit<float>(mlu_place, size);
-
-  size = 15;
-  GroupConcatSplit<float>(cpu_place, size);
-  GroupConcatSplit<float>(mlu_place, size);
 }
 #endif
 }  // namespace imperative

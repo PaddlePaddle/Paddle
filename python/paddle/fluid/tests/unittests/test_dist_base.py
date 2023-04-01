@@ -687,9 +687,6 @@ class TestParallelDyGraphRunnerBase:
         elif fluid.core.is_compiled_with_npu():
             device_id = int(os.getenv("FLAGS_selected_npus", "0"))
             place = fluid.NPUPlace(device_id)
-        elif fluid.core.is_compiled_with_mlu():
-            device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
-            place = fluid.MLUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
@@ -708,7 +705,6 @@ class TestParallelDyGraphRunnerBase:
                 args.update_method == "nccl2"
                 or args.update_method == "bkcl"
                 or args.update_method == "hccl"
-                or args.update_method == "cncl"
             ):
                 strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
@@ -866,7 +862,6 @@ def runtime_main(test_class):
             "nccl2_reduce_layer",
             "gloo",
             "hccl",
-            "cncl",
         ],
     )
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
@@ -999,7 +994,6 @@ class TestDistBase(unittest.TestCase):
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
         self._hccl_mode = False
-        self._cncl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -1833,14 +1827,6 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='hccl',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._cncl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='cncl',
                 check_error_log=check_error_log,
                 log_name=log_name,
             )

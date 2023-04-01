@@ -24,11 +24,4 @@ generate_dummy_static_lib(LIB_NAME "neuware_lib" GENERATOR "neuware.cmake")
 set(NEUWARE_LIB_DEPS ${CNNL_LIB} ${MLUOP_LIB} ${CNRT_LIB} ${CNDRV_LIB}
                      ${CNPAPI_LIB})
 
-if(WITH_CNCL)
-  message(STATUS "Compile with CNCL!")
-  add_definitions(-DPADDLE_WITH_CNCL)
-  set(CNCL_LIB ${NEUWARE_LIB_DIR}/libcncl.so)
-  list(APPEND NEUWARE_LIB_DEPS ${CNCL_LIB})
-endif()
-
 target_link_libraries(neuware_lib ${NEUWARE_LIB_DEPS})

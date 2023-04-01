@@ -2908,7 +2908,6 @@ class Operator:
         'c_gen_hccl_id',
         'c_comm_init_hccl',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(

@@ -1167,10 +1167,6 @@ def init_parallel_env():
         parallel_helper._set_parallel_ctx(
             core.HCCLParallelContext(strategy, place)
         )
-    elif core.is_compiled_with_mlu():
-        parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place)
-        )
 
     if backend != "heter":
         other_endpoints = strategy.trainer_endpoints[:]
