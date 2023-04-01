@@ -913,6 +913,11 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
+
+  # NODE(Ruibiao): Remove it after static build is enabled by default.
+  set_tests_properties(
+    test_dist_mnist_fp16_allreduce test_dist_mnist_pg
+    PROPERTIES ENVIRONMENT FLAGS_new_executor_static_build=true)
 endif()
 
 # setting timeout value as 15S
@@ -1236,8 +1241,6 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
-    test_dist_mnist_fp16_allreduce
-    test_dist_mnist_pg
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_imperative_optimizer

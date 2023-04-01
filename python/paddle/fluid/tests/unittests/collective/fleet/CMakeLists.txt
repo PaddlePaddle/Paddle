@@ -740,15 +740,9 @@ if(WITH_NCCL OR WITH_RCCL)
       )
 
       # NODE(Ruibiao): Remove it after static build is enabled by default.
-      bash_test_modules(
-        test_dist_mnist_dgc_nccl_static_build
-        START_BASH
-        ../../dist_test.sh
-        LABELS
-        "RUN_TYPE=DIST"
-        ENVS
-        "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;FLAGS_new_executor_static_build=true"
-      )
+      set_tests_properties(
+        test_dist_mnist_dgc_nccl
+        PROPERTIES ENVIRONMENT FLAGS_new_executor_static_build=true)
     endif()
   endif()
 endif()
