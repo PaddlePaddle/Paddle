@@ -83,7 +83,7 @@
   args : (IntArray shape={}, Scalar value=0.0f, DataType dtype=DataType::FLOAT32, str str_value="", Place place_type=-1, bool force_cpu=false)
   output: Tensor(out)
   infer_meta :
-    func : FullInferMeta
+    func : CreateInferMetaWithValue
     param : [shape, value, dtype]
   kernel :
     func : full

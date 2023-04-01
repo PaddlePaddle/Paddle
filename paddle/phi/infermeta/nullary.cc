@@ -73,10 +73,10 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
-void FullInferMeta(const IntArray& shape,
-                   const Scalar& value,
-                   DataType dtype,
-                   MetaTensor* out) {
+void CreateInferMetaWithValue(const IntArray& shape,
+                              const Scalar& value,
+                              DataType dtype,
+                              MetaTensor* out) {
   (void)value;
   if (!shape.FromTensor()) {
     const auto& data = shape.GetData();

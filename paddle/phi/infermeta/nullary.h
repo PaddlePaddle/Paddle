@@ -48,10 +48,10 @@ void EyeInferMeta(const Scalar& num_rows,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
-void FullInferMeta(const IntArray& shape,
-                   const Scalar& value,
-                   DataType dtype,
-                   MetaTensor* out);
+void CreateInferMetaWithValue(const IntArray& shape,
+                              const Scalar& value,
+                              DataType dtype,
+                              MetaTensor* out);
 
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
