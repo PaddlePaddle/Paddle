@@ -434,6 +434,18 @@
     func : eigh_grad
     data_type : out_v
 
+- backward_op : eigvalsh_grad
+  forward : eigvalsh (Tensor x, str uplo = "L", bool is_test = false) -> Tensor(eigenvalues), Tensor(eigenvectors)
+  args : (Tensor eigenvectors, Tensor eigenvalues_grad, str uplo, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : EigvalshGradInferMeta
+  kernel :
+    func : eigvalsh_grad
+    data_type : eigenvectors
+  data_transform :
+    skip_transform : eigenvalues_grad
+
 - backward_op : elu_double_grad
   forward : elu_grad (Tensor x, Tensor out, Tensor grad_out, float alpha)-> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float alpha)

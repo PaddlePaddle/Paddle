@@ -556,6 +556,15 @@
   outputs :
     out : Out
 
+- op : eigvalsh
+  backward : eigvalsh_grad
+  inputs :
+    x : X
+  outputs :
+    {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
+  attrs : 
+    uplo : UPLO
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :

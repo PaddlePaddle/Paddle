@@ -426,6 +426,15 @@
   kernel :
     func : eigvals
 
+- op : eigvalsh
+  args : (Tensor x, str uplo = "L", bool is_test = false)
+  output : Tensor(eigenvalues), Tensor(eigenvectors)
+  infer_meta :
+    func : EigvalshInferMeta
+  kernel :
+    func : eigvalsh
+  backward : eigvalsh_grad
+
 - op : elu
   args : (Tensor x, float alpha = 1.0f)
   output : Tensor(out)
