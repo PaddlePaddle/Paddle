@@ -824,7 +824,7 @@ class OpTest(unittest.TestCase):
             if (name not in np_list) and var_proto.dispensable:
                 continue
             if name not in np_list:
-                assert var_proto.intermediate, "{} not found".format(name)
+                assert var_proto.intermediate, f"{name} not found"
                 v = block.create_var(
                     dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR
                 )
@@ -835,7 +835,7 @@ class OpTest(unittest.TestCase):
             if var_proto.duplicable:
                 assert isinstance(
                     np_list[name], list
-                ), "Duplicable {} should be set as list".format(name)
+                ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
                 for (name, np_value) in np_list[slot_name]:
@@ -1512,6 +1512,7 @@ class OpTest(unittest.TestCase):
         self,
         place,
         atol=0,
+        rtol=0,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -1541,7 +1542,7 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                f"Found failed {dygraph_outs.keys()} {target_name}",
             )
 
         def find_imperative_expect(target_name, dygraph_outs, place):
@@ -1554,7 +1555,7 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                f"Found failed {dygraph_outs.keys()} {target_name}",
             )
 
         def find_actual(target_name, fetch_list):
@@ -1564,7 +1565,7 @@ class OpTest(unittest.TestCase):
                 if var_name == target_name
             ]
             self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name)
+                len(found) == 1, f"Found {len(found)} {target_name}"
             )
             return found[0]
 
@@ -1575,7 +1576,7 @@ class OpTest(unittest.TestCase):
                 if var_name == target_name
             ]
             self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name)
+                len(found) == 1, f"Found {len(found)} {target_name}"
             )
             return found[0]
 
@@ -1626,7 +1627,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
                             "Output ("
@@ -1643,7 +1644,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
                     "Output ("
@@ -1815,7 +1816,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
                                 "Output ("
@@ -1832,7 +1833,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
                         "Output ("
@@ -1990,7 +1991,7 @@ class OpTest(unittest.TestCase):
             else:
                 self.assertTrue(
                     len(found) == 1,
-                    "Found {} {}".format(len(found), target_name),
+                    f"Found {len(found)} {target_name}",
                 )
                 return found[0]
 
@@ -2053,6 +2054,7 @@ class OpTest(unittest.TestCase):
     def check_output(
         self,
         atol=1e-5,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -2075,6 +2077,7 @@ class OpTest(unittest.TestCase):
             res = self.check_output_with_place(
                 place,
                 atol,
+                rtol,
                 no_check_set,
                 equal_nan,
                 check_dygraph=check_dygraph,

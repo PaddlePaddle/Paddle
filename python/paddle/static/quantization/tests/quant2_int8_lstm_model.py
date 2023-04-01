@@ -253,19 +253,19 @@ class TestLstmModelPTQ(unittest.TestCase):
         )
 
         print(
-            "FP32: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            "FP32: fps {}, hx_acc {}, ctc_acc {}".format(
                 fp32_fps, fp32_hx_acc, fp32_ctc_acc
             )
         )
 
         print(
-            "PTQ_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            "PTQ_INT8: fps {}, hx_acc {}, ctc_acc {}".format(
                 int8_fps, int8_hx_acc, int8_ctc_acc
             )
         )
 
         print(
-            "QAT: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            "QAT: fps {}, hx_acc {}, ctc_acc {}".format(
                 quant_fps, quant_hx_acc, quant_ctc_acc
             )
         )

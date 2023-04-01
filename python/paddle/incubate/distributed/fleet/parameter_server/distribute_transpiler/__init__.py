@@ -634,9 +634,7 @@ class FleetTranspiler(Fleet):
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append(
-                        "{}.block{}".format(reshaped_varname, i)
-                    )
+                    slice_varnames.append(f"{reshaped_varname}.block{i}")
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
