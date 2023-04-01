@@ -16,7 +16,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"
 

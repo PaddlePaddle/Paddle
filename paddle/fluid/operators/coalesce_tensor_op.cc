@@ -22,7 +22,6 @@
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
 #ifdef PADDLE_WITH_MLU
