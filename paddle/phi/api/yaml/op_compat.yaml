@@ -780,7 +780,7 @@
       data_type : float
       tensor_name : ValueTensor
   get_expected_kernel_type :
-    full : GetFillConstantExpectedKernelType
+    full : GetFullExpectedKernelType
   manual_signature : [full]
   extra :
     attrs : [bool use_mkldnn = false]

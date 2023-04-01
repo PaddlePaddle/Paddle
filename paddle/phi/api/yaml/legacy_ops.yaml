@@ -659,8 +659,8 @@
   args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
-    func : CreateInferMeta
-    param : [shape, dtype]
+    func : FullInferMeta
+    param : [shape, value, dtype]
   kernel :
     func : full
     param : [shape, value, dtype]

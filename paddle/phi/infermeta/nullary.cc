@@ -73,6 +73,28 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
+void FullInferMeta(const IntArray& shape,
+                   const Scalar& value,
+                   DataType dtype,
+                   MetaTensor* out) {
+  (void)value;
+  if (!shape.FromTensor()) {
+    const auto& data = shape.GetData();
+    for (size_t i = 0; i < data.size(); ++i) {
+      PADDLE_ENFORCE_GE(
+          data[i],
+          0,
+          phi::errors::InvalidArgument(
+              "Each value of attribute 'shape' is expected to be no less "
+              "than 0. But received: shape[%u] = %d; shape = [%s].",
+              i,
+              data[i],
+              phi::make_ddim(data)));
+    }
+  }
+  CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
+}
+
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,

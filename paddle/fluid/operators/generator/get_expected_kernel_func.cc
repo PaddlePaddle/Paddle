@@ -151,7 +151,7 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
-phi::KernelKey GetFillConstantExpectedKernelType(
+phi::KernelKey GetFullExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   (void)op_ptr;
