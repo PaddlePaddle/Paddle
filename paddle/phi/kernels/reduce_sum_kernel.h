@@ -24,7 +24,6 @@ void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out);
 

@@ -25,12 +25,12 @@ void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
+  bool reduce_all = recompute_reduce_all(x, dims);
   XPUReduce<Context, T, phi::SumFunctor>(
       dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out_dtype, out);
 }

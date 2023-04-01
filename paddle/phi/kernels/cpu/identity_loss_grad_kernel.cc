@@ -32,7 +32,7 @@ void IdentityLossGradKernel(const Context& dev_ctx,
     case 0:
       // sum
       phi::ReduceSumGradKernel<T>(
-          dev_ctx, x, out_grad, std::vector<int64_t>{0}, false, true, x_grad);
+          dev_ctx, x, out_grad, std::vector<int64_t>{0}, false, x_grad);
       break;
     case 1:
       // mean

@@ -26,7 +26,6 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& dims,
                          bool keep_dim,
-                         bool reduce_all,
                          DenseTensor* x_grad);
 
 }  // namespace phi

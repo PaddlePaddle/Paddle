@@ -1197,7 +1197,7 @@
     func : prior_box
 
 - op : prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray dims, bool keep_dim)
   output : Tensor
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase

@@ -27,9 +27,8 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& dims,
                          bool keep_dim,
-                         bool reduce_all,
                          DenseTensor* x_grad) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor>(
       dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
 }

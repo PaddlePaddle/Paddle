@@ -77,10 +77,9 @@ void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }

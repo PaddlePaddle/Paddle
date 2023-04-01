@@ -22,9 +22,8 @@ void MinRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,

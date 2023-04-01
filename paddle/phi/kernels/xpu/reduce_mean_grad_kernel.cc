@@ -28,10 +28,9 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           const IntArray& dims_arr,
                           bool keep_dim,
-                          bool reduce_all,
                           DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims_arr);
   dev_ctx.template Alloc<T>(x_grad);
   const XPUType* dy_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
 

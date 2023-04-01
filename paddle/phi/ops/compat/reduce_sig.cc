@@ -26,7 +26,7 @@ KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature("sum_raw",
                              {"X"},
-                             {"dim", "keep_dim", "reduce_all", "out_dtype"},
+                             {"dim", "keep_dim", "out_dtype"},
                              {"Out"});
     }
     return KernelSignature(
@@ -44,7 +44,7 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "mean_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "mean_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("mean", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
@@ -60,7 +60,7 @@ KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "prod", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "prod", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("prod_infer", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
@@ -108,7 +108,7 @@ KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "min_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "min_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "min_raw", {"X"}, {"dim", "keep_dim"}, {"Out"});
     }
     return KernelSignature("min", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
@@ -163,7 +163,7 @@ KernelSignature ReduceSumGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sum_grad",
                          {"X", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
+                         {"dim", "keep_dim"},
                          {"X@GRAD"});
 }
 
@@ -171,7 +171,7 @@ KernelSignature ReduceMeanGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("mean_grad",
                          {"X", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
+                         {"dim", "keep_dim"},
                          {"X@GRAD"});
 }
 
@@ -195,7 +195,7 @@ KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("min_grad",
                          {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
+                         {"dim", "keep_dim"},
                          {"X@GRAD"});
 }
 
@@ -211,7 +211,7 @@ KernelSignature ReduceProdGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("prod_grad",
                          {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
+                         {"dim", "keep_dim"},
                          {"X@GRAD"});
 }
 

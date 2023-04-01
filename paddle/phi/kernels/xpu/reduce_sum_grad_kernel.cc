@@ -25,10 +25,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& dims_arr,
                          bool keep_dim,
-                         bool reduce_all,
                          DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims_arr);
   auto dims = dims_arr.GetData();
   dev_ctx.template Alloc<XPUType>(x_grad);
   const auto* out_data = out_grad.data<XPUType>();

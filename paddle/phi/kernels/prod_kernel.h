@@ -23,7 +23,6 @@ void ProdKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& dims,
                 bool keep_dim,
-                bool reduce_all,
                 DenseTensor* out);
 
 template <typename T, typename Context>
