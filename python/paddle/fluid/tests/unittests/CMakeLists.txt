@@ -1238,7 +1238,6 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
-    test_adam_op
     test_adamw_op
     test_arg_min_max_op
     test_bincount_op
