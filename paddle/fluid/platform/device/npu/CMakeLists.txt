@@ -2,13 +2,6 @@
 
 add_subdirectory(dynload)
 
-if(WITH_ASCEND)
-  cc_library(
-    ascend_npu_info
-    SRCS ascend_npu_info.cc
-    DEPS gflags glog enforce atlas_acl)
-endif()
-
 if(WITH_ASCEND_CL)
   cc_library(
     npu_info

@@ -6,7 +6,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_adam_pass")
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_all_reduce_pass")
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_bn_act_pass")

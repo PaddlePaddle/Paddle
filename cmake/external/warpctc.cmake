@@ -64,7 +64,7 @@ else()
   set(USE_OMP ON)
 endif()
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND_CL)
   ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}

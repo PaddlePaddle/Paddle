@@ -26,7 +26,7 @@ if(EXISTS
   add_definitions(-DPADDLE_WITH_ASCEND_STRING)
 endif()
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND_CL)
   set(ASCEND_DRIVER_DIR ${ASCEND_DIR}/driver/lib64)
   set(ASCEND_DRIVER_COMMON_DIR ${ASCEND_DIR}/driver/lib64/common)
   set(ASCEND_DRIVER_SHARE_DIR ${ASCEND_DIR}/driver/lib64/share)

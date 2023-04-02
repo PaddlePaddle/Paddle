@@ -61,7 +61,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 endif()
 include_directories(${GLOO_INCLUDE_DIR})
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND_CL)
   ExternalProject_Add(
     ${GLOO_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}

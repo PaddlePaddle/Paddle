@@ -17,7 +17,7 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND_CL))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -517,7 +517,7 @@ endforeach()
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -529,7 +529,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
    OR WITH_XPU
-   OR WITH_ASCEND
    OR WITH_ASCEND_CL
    OR APPLE)
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
@@ -668,7 +667,6 @@ if(WITH_DISTRIBUTE)
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
        OR WITH_XPU
-       OR WITH_ASCEND
        OR WITH_ASCEND_CL)
       bash_test_modules(
         test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
@@ -683,7 +681,7 @@ if(WITH_DISTRIBUTE)
         test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-    if(WITH_ASCEND OR WITH_ASCEND_CL)
+    if(WITH_ASCEND_CL)
       bash_test_modules(
         test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})

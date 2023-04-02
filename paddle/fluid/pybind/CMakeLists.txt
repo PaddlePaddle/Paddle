@@ -178,11 +178,6 @@ if(WITH_PYTHON)
 endif()
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
-if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif()
-
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)

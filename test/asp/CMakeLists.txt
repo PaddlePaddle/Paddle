@@ -15,7 +15,6 @@ endforeach()
 if(WITH_DISTRIBUTE)
   if(WITH_GPU
      OR WITH_XPU
-     OR WITH_ASCEND
      OR WITH_ASCEND_CL)
     py_test_modules(test_fleet_with_asp_dynamic MODULES
                     test_fleet_with_asp_dynamic ENVS ${dist_ENVS})
@@ -29,7 +28,6 @@ if((WITH_DISTRIBUTE)
    AND (NOT APPLE))
   if(WITH_GPU
      OR WITH_XPU
-     OR WITH_ASCEND
      OR WITH_ASCEND_CL)
     py_test_modules(test_fleet_with_asp_sharding MODULES
                     test_fleet_with_asp_sharding ENVS ${dist_ENVS})

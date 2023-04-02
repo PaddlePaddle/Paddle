@@ -1212,7 +1212,7 @@ inference_analysis_test(
 
 if(WITH_DISTRIBUTE
    AND WITH_PSCORE
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT WITH_ASCEND_CL)
   inference_analysis_test(
     test_analyzer_dist_model
     SRCS

@@ -125,7 +125,7 @@ cc_test(
   SRCS test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper fs shell)
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND_CL)
   cc_library(
     ascend_wrapper
     SRCS ascend_wrapper.cc
