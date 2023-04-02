@@ -16,8 +16,7 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if((NOT WITH_GPU)
-   AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND))
+   AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -494,8 +493,7 @@ foreach(TEST_OP ${TEST_EAGER_OPS})
 endforeach()
 
 if((NOT WITH_GPU)
-   AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND))
+   AND (NOT WITH_XPU))
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -507,7 +505,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
    OR WITH_XPU
-   OR WITH_ASCEND
    OR APPLE)
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
@@ -644,8 +641,7 @@ if(WITH_DISTRIBUTE)
     bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
-       OR WITH_XPU
-       OR WITH_ASCEND)
+       OR WITH_XPU)
       bash_test_modules(
         test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -659,14 +655,6 @@ if(WITH_DISTRIBUTE)
         test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-    if(WITH_ASCEND)
-      bash_test_modules(
-        test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
-                        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    endif()
-
     # port range (20000, 21200) is reserved for dist-ops
     set(dist_ut_port 20001)
     foreach(TEST_OP ${DIST_TEST_OPS})

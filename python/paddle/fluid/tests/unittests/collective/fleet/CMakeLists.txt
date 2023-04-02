@@ -6,7 +6,7 @@ set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_sharding_meta_optimizer MODULES
@@ -83,7 +83,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_rnn_dp
@@ -176,7 +176,7 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND (LINUX))
   py_test_modules(
     test_fleet_localsgd_meta_optimizer MODULES
@@ -270,7 +270,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_lars_meta_optimizer
@@ -323,7 +323,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer
@@ -337,7 +337,7 @@ if((WITH_GPU
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer MODULES
@@ -356,7 +356,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_raw_program_meta_optimizer
@@ -435,7 +435,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND (LINUX))
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
@@ -463,7 +463,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer_with_recompute
@@ -477,7 +477,7 @@ if((WITH_GPU
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
@@ -528,7 +528,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
@@ -583,7 +583,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer MODULES
@@ -597,7 +597,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_new_group
@@ -610,7 +610,7 @@ if((WITH_GPU
 endif()
 if((WITH_GPU
     OR WITH_XPU
-    OR WITH_ASCEND)
+   )
    AND (LINUX))
   bash_test_modules(
     test_c_comm_init_op

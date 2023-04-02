@@ -370,7 +370,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU
     OR WITH_ROCM
-    OR WITH_ASCEND)
+   )
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
