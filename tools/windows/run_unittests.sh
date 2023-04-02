@@ -225,6 +225,7 @@ long_time_test="^test_gru_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
+^test_layer_norm_op_static_build$|\
 ^test_multiclass_nms_op$|\
 ^test_nearest_interp_v2_op$|\
 ^test_nn_grad$|\
