@@ -1668,17 +1668,6 @@
   kernel :
     func : take_along_axis_grad
 
-- backward_op : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format_str = "NCHW") -> Tensor(out)
-  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : temporal_shift_grad
-    data_type : out_grad
-
 - backward_op : tan_grad
   forward : tan (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1738,6 +1727,17 @@
     func : tanh_triple_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
   optional : grad_out_new_grad, grad_out_grad_grad
+
+- backward_op : temporal_shift_grad
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format_str = "NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : temporal_shift_grad
+    data_type : out_grad
 
 - backward_op : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
