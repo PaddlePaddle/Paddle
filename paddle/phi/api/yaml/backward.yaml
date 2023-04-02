@@ -1246,12 +1246,6 @@
   composite: relu_grad(out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
-- backward_op : reverse_grad
-  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
-  args : (Tensor out_grad, IntArray axis)
-  output : Tensor(x_grad)
-  invoke : reverse(out_grad, axis)
-
 - backward_op : renorm_grad
   forward : renorm (Tensor x, float p, int axis, float max_norm) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float p, int axis, float max_norm)
@@ -1261,6 +1255,12 @@
     param : [out_grad]
   kernel :
     func : renorm_grad
+
+- backward_op : reverse_grad
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  invoke : reverse(out_grad, axis)
 
 - backward_op : roll_grad
   forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)

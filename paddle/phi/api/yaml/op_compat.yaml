@@ -1565,17 +1565,6 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
-- op: reverse
-  int_array :
-    axis :
-      data_type : int
-      support_tensor : true
-  backward: reverse_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op : roll
   backward : roll_grad
   inputs :
@@ -2062,6 +2051,17 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: reverse
+  int_array :
+    axis :
+      data_type : int
+      support_tensor : true
+  backward: reverse_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
