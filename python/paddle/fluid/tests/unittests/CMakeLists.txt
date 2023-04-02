@@ -1248,7 +1248,7 @@ set(STATIC_BUILD_TESTS
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
-    test_lookup_table_fp16_op
+    test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
     test_matmul_v2_op
