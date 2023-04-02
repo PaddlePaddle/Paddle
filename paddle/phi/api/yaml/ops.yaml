@@ -131,7 +131,7 @@
     func : BCELossInferMeta
   kernel :
     func : bce_loss
-    data_type : x
+    data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
 
