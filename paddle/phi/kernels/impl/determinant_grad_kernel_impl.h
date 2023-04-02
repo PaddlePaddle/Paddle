@@ -124,7 +124,14 @@ void DeterminantGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&inverse_A);
 
   phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  mat_inv(dev_ctx, x, &inverse_A);
+  if (std::is_same<T, dtype::float16>::value) {
+    auto casted_x = x.template cast<float>();
+    auto casted_dev_ctx = dev_ctx.template cast<float>();
+    auto casted_inverseA = inverse_A.template cast<float>();
+    mat_inv(casted_dev_ctx, casted_x, &casted_inverseA);
+  } else {
+    mat_inv(dev_ctx, x, &inverse_A);
+  }
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
@@ -145,7 +152,17 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  DenseTensor res;
+  if (std::is_same<T, dtype::float16>::value) {
+    auto casted_dev_ctx = dev_ctx.template cast<float>();
+    auto casted_unsqueeze2 = unsqueeze2.template cast<float>();
+    auto casted_transpose_inverse_A =
+        transpose_inverse_A.template cast<float>();
+    res = phi::Multiply<T>(
+        casted_dev_ctx, casted_unsqueeze2, casted_transpose_inverse_A);
+  } else {
+    res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  }
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
