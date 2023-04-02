@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace phi {
+namespace funcs {
 namespace math {
 
 template <typename T>
@@ -498,4 +499,5 @@ template class SequencePoolGradFunctor<phi::GPUContext, float>;
 template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
 }  // namespace math
+}  // namespace funcs
 }  // namespace phi

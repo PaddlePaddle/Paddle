@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
+namespace funcs {
 namespace math {
 
 template <typename DeviceContext, typename T>
@@ -47,4 +48,5 @@ class SequencePoolGradFunctor {
 };
 
 }  // namespace math
+}  // namespace funcs
 }  // namespace phi

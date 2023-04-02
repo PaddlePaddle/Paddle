@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
+namespace funcs {
 namespace math {
 
 template <typename T,
@@ -499,4 +500,5 @@ template class SequencePoolGradFunctor<phi::CPUContext, float>;
 template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
 }  // namespace math
+}  // namespace funcs
 }  // namespace phi

@@ -12,10 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/impl/sequence_pool_kernel_impl.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-PD_REGISTER_KERNEL(
-    sequence_pool, GPU, ALL_LAYOUT, phi::SequencePoolKernel, float, double) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+namespace phi {
+
+KernelSignature SequencePoolOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("sequence_pool",
+                         {"X"},
+                         {"is_test", "pooltype", "pad_value"},
+                         {"Out", "MaxIndex"});
 }
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(sequence_pool, phi::SequencePoolOpArgumentMapping);
