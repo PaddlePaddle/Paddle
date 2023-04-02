@@ -44,7 +44,7 @@ def _get_image_size(img):
                 )
             )
     else:
-        raise TypeError("Unexpected type {}".format(type(img)))
+        raise TypeError(f"Unexpected type {type(img)}")
 
 
 def _check_input(
@@ -62,9 +62,7 @@ def _check_input(
             value[0] = max(value[0], 0)
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         if not bound[0] <= value[0] <= value[1] <= bound[1]:
-            raise ValueError(
-                "{} values should be between {}".format(name, bound)
-            )
+            raise ValueError(f"{name} values should be between {bound}")
     else:
         raise TypeError(
             "{} should be a single number or a list/tuple with lenght 2.".format(
@@ -125,7 +123,7 @@ class Compose:
         format_string = self.__class__.__name__ + '('
         for t in self.transforms:
             format_string += '\n'
-            format_string += '    {0}'.format(t)
+            format_string += f'    {t}'
         format_string += '\n)'
         return format_string
 
@@ -241,14 +239,10 @@ class BaseTransform:
         if keys is None:
             keys = ("image",)
         elif not isinstance(keys, Sequence):
-            raise ValueError(
-                "keys should be a sequence, but got keys={}".format(keys)
-            )
+            raise ValueError(f"keys should be a sequence, but got keys={keys}")
         for k in keys:
             if self._get_apply(k) is None:
-                raise NotImplementedError(
-                    "{} is unsupported data structure".format(k)
-                )
+                raise NotImplementedError(f"{k} is unsupported data structure")
         self.keys = keys
 
         # storage some params get from function get_params()
@@ -281,7 +275,7 @@ class BaseTransform:
         return outputs
 
     def _get_apply(self, key):
-        return getattr(self, "_apply_{}".format(key), None)
+        return getattr(self, f"_apply_{key}", None)
 
     def _apply_image(self, image):
         raise NotImplementedError
@@ -1345,7 +1339,7 @@ class Pad(BaseTransform):
         if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
             raise ValueError(
                 "Padding must be an int or a 2, or 4 element tuple, not a "
-                + "{} element tuple".format(len(padding))
+                + f"{len(padding)} element tuple"
             )
 
         super().__init__(keys)

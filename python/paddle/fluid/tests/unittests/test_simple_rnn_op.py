@@ -68,10 +68,10 @@ class TestSimpleRNNOp(OpTest):
         weight_names = []
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.weight_{}".format(i, j))
+                weight_names.append(f"{i}.weight_{j}")
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.bias_{}".format(i, j))
+                weight_names.append(f"{i}.bias_{j}")
         return weight_names
 
     def setUp(self):

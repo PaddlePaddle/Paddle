@@ -26,8 +26,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU

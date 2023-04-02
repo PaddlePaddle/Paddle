@@ -139,7 +139,7 @@ class TestQuantizationPassExport(unittest.TestCase):
 
         path_prefix = os.path.join(
             self.temp_dir.name,
-            'inf_dist{}'.format(paddle.distributed.get_rank()),
+            f'inf_dist{paddle.distributed.get_rank()}',
         )
         [
             inference_program,
