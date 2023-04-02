@@ -79,6 +79,11 @@ class TestMeshgridFP16Op(TestMeshgridOp):
     def get_dtype(self):
         return np.float16
 
+    def test_check_grad(self):
+        self.check_grad(
+            ['x0'], ['out0', 'out1'], max_relative_error=0.01, check_prim=True
+        )
+
 
 class TestMeshgridOp3(unittest.TestCase):
     def test_api(self):
