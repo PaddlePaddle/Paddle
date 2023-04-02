@@ -92,7 +92,8 @@ struct DeterminantFunctor {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
-      output_vec.push_back(matrix.template cast<MPType>().determinant());
+      output_vec.push_back(
+          static_cast<T>(matrix.template cast<MPType>().determinant()));
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }

@@ -85,6 +85,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
                            const DenseTensor& out,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto input_dims_size = x.dims().size();
   if (input_dims_size > 2) {
     PADDLE_ENFORCE_EQ(
@@ -128,29 +129,22 @@ void DeterminantGradKernel(const Context& dev_ctx,
   DenseTensor inverse_A;
   // A must be square matrices!
   inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<T>(&inverse_A);
+  dev_ctx.template Alloc<MPType>(&inverse_A);
 
-  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  if (std::is_same<T, dtype::float16>::value) {
-    auto casted_x = x.template cast<float>();
-    auto casted_dev_ctx = dev_ctx.template cast<float>();
-    auto casted_inverseA = inverse_A.template cast<float>();
-    mat_inv(casted_dev_ctx, casted_x, &casted_inverseA);
-  } else {
-    mat_inv(dev_ctx, x, &inverse_A);
-  }
+  phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
+  mat_inv(dev_ctx, x, &inverse_A);
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
+      phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
   // Third: dA * |A|
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, out);
+  auto mul_dA_detA = phi::Multiply<MPType>(dev_ctx, out_grad, out);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
@@ -159,17 +153,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  DenseTensor res;
-  if (std::is_same<T, dtype::float16>::value) {
-    auto casted_dev_ctx = dev_ctx.template cast<float>();
-    auto casted_unsqueeze2 = unsqueeze2.template cast<float>();
-    auto casted_transpose_inverse_A =
-        transpose_inverse_A.template cast<float>();
-    res = phi::Multiply<T>(
-        casted_dev_ctx, casted_unsqueeze2, casted_transpose_inverse_A);
-  } else {
-    res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-  }
+  auto res = phi::Multiply<MPType>(dev_ctx, unsqueeze2, transpose_inverse_A);
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
