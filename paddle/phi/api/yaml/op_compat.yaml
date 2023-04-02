@@ -25,7 +25,7 @@
 
 - op : accuracy
   inputs :
-    {out : Out , indices : Indices, label: Label}
+    {x : Out , indices : Indices, label: Label}
   outputs :
     {accuracy : Accuracy, correct : Correct, total : Total}
 
