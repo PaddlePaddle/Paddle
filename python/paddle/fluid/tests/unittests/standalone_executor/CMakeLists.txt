@@ -29,5 +29,9 @@ py_test_modules(
   FLAGS_host_trace_level=10 FLAGS_static_executor_perfstat_filepath=./perfstat)
 
 set_tests_properties(test_standalone_cross_step_overlap PROPERTIES TIMEOUT 30)
+set_tests_properties(test_standalone_cross_step_overlap_static_build
+                     PROPERTIES TIMEOUT 30)
 set_tests_properties(test_standalone_executor_aot_choose_kernel
+                     PROPERTIES TIMEOUT 60)
+set_tests_properties(test_standalone_executor_aot_choose_kernel_static_build
                      PROPERTIES TIMEOUT 60)
