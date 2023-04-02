@@ -1237,6 +1237,8 @@ set_tests_properties(
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
+    test_adagrad_op
+    test_adam_op
     test_adamw_op
     test_arg_min_max_op
     test_bincount_op
@@ -1246,9 +1248,17 @@ set(STATIC_BUILD_TESTS
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
+    test_lookup_table_fp16_op
+    test_lookup_table_v2_op
+    test_matmul_op
+    test_matmul_v2_op
+    test_merged_adam_op
     test_momentum_op
+    test_nce
+    test_paddle_save_load_binary
     test_reduce_op
     test_segment_ops
+    test_sparse_momentum_op
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_norm_op
@@ -1266,5 +1276,9 @@ set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
+set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_paddle_save_load_binary_static_build
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
