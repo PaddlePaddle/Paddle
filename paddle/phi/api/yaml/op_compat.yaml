@@ -2086,3 +2086,10 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: deformable_conv
+  backward: deformable_conv_grad
+  inputs :
+    {x : X, offset : Offset, mask : Mask, filter : Filter}
+  outputs :
+    out : Output
