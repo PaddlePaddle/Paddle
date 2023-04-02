@@ -147,7 +147,7 @@ elseif(WITH_ROCM)
   hip_library(
     nan_inf_utils
     SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place)
+    DEPS framework_proto scope place phi_gpu phi_cpu)
   hip_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
@@ -209,12 +209,12 @@ else()
     cc_library(
       nan_inf_utils
       SRCS nan_inf_utils_detail.cc
-      DEPS npu_op_runner framework_proto scope place)
+      DEPS npu_op_runner framework_proto scope place phi_cpu)
   else()
     cc_library(
       nan_inf_utils
       SRCS nan_inf_utils_detail.cc
-      DEPS framework_proto scope place)
+      DEPS framework_proto scope place phi_cpu)
   endif()
   cc_library(
     all_reduce_op_handle
