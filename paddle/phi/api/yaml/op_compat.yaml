@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out, indices : Indices, label : Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total: Total}
+
 - op : acos
   inputs :
     x : X
@@ -37,12 +43,6 @@
   backward : acosh_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : accuracy
-  inputs :
-    {x : Out, indices : Indices, label : Label}
-  outputs :
-    {accuracy : Accuracy, correct : Correct, total: Total}
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
