@@ -933,6 +933,38 @@
     data_type : x
   backward : log_softmax_grad
 
+- op : logical_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_and
+
+- op : logical_not
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : logical_not
+
+- op : logical_or
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_or
+
+- op : logical_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_xor
+
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor

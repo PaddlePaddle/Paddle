@@ -873,38 +873,6 @@
     func : logcumsumexp
   backward : logcumsumexp_grad
 
-- op : logical_and
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_and
-
-- op : logical_not
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : logical_not
-
-- op : logical_or
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_or
-
-- op : logical_xor
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_xor
-
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
   output : Tensor(out)

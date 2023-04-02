@@ -1154,6 +1154,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : logical_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_not
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : logit
   inputs :
     x : X
