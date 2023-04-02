@@ -1764,7 +1764,7 @@
   backward : where_grad
 
 - op : yolo_box
-  args : (Tensor x, Tensor img_size, std::vector<int> anchors = std::vector<int>{}, int class_num, float conf_thresh = 0.01f, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0f, bool iou_aware=false, float iou_aware_factor=0.5f)
+  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh = 0.01f, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0f, bool iou_aware=false, float iou_aware_factor=0.5f)
   output : Tensor(boxes), Tensor(scores)
   infer_meta :
     func : YoloBoxInferMeta
