@@ -562,7 +562,7 @@
     x : X
   outputs :
     {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
-  attrs : 
+  attrs :
     uplo : UPLO
 
 - op : elementwise_pow

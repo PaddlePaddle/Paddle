@@ -443,8 +443,6 @@
   kernel :
     func : eigvalsh_grad
     data_type : eigenvectors
-  data_transform :
-    skip_transform : eigenvalues_grad
 
 - backward_op : elu_double_grad
   forward : elu_grad (Tensor x, Tensor out, Tensor grad_out, float alpha)-> Tensor(grad_x)
