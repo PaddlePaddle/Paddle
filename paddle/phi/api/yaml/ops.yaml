@@ -132,7 +132,7 @@
   kernel :
     func : bce_loss
     data_type : x
-  inplace : (x -> out)
+  inplace : (input -> out)
   backward : bce_loss_grad
 
 - op : bernoulli
