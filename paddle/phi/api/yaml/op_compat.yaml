@@ -2054,7 +2054,7 @@
 
 - op: auc
   inputs :
-    {predict: Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+    {x: Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
