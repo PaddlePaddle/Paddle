@@ -340,7 +340,7 @@ static T ClipByBound(T x, T low_value, T high_value) {
 }
 
 template <typename T>
-class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
+class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
