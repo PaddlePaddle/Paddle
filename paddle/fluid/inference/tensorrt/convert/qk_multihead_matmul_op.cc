@@ -18,7 +18,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class QKMultiheadMatMulOpConverter : public OpConverter {
+class QkMultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
@@ -120,38 +120,41 @@ class QKMultiheadMatMulOpConverter : public OpConverter {
                               static_cast<void*>(bias_qk_data),
                               static_cast<int32_t>(bias_qk_t->numel())};
 
-    // add shuffle for FullyConnected layer
-    std::vector<nvinfer1::ITensor*> reshape_before_fc_qk_shape_tensor;
+    auto weight_qk_shape = nvinfer1::Dims3{1, n_qk, hidden_in_qk};
+    auto* weight_qk_tensor =
+        AddConstantLayer(weight_qk_data, weight_qk_shape, " ");
+    auto bias_qk_shape = nvinfer1::Dims3{1, 1, n_qk};
+    auto* bias_qk_tensor = AddConstantLayer(bias_qk_data, bias_qk_shape, " ");
     nvinfer1::ITensor* input_qk_shape_tensor = Shape(input_qk);
-    for (int i = 0; i < 5; i++) {
-      reshape_before_fc_qk_shape_tensor.push_back(Add1DConstantLayer(1));
-    }
-    for (int i = 0; i < 3; i++) {
-      reshape_before_fc_qk_shape_tensor[i] =
-          GetEleTensorOfShape(input_qk_shape_tensor, i);
-    }
-    auto* reshape_before_fc_qk_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_qk);
-    reshape_before_fc_qk_layer->setInput(
-        1, *Concat(reshape_before_fc_qk_shape_tensor));
-    reshape_before_fc_qk_layer->setName(
-        ("shuffle_before_fc_qk_multihead_matmul(Output: " + output_name + ")")
-            .c_str());
 
     nvinfer1::ILayer* fc_qk_layer = nullptr;
-    fc_qk_layer =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             FullyConnected,
-                             *reshape_before_fc_qk_layer->getOutput(0),
-                             n_qk,
-                             weight_qk,
-                             bias_qk);
+    nvinfer1::ILayer* merge_qk_element_layer = nullptr;
+    nvinfer1::MatrixOperation matrix_operation_X =
+        nvinfer1::MatrixOperation::kNONE;
+    nvinfer1::MatrixOperation matrix_operation_Y =
+        nvinfer1::MatrixOperation::kTRANSPOSE;
+    fc_qk_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       MatrixMultiply,
+                                       *input_qk,
+                                       matrix_operation_X,
+                                       *weight_qk_tensor,
+                                       matrix_operation_Y);
     fc_qk_layer->setName(
+        ("qk_attention_matrix_multiply(Output: " + output_name + ")").c_str());
+
+    // add qk ElementWiseLayer layer
+    nvinfer1::ElementWiseOperation elementwise_operation =
+        nvinfer1::ElementWiseOperation::kSUM;
+    merge_qk_element_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                  ElementWise,
+                                                  *fc_qk_layer->getOutput(0),
+                                                  *bias_qk_tensor,
+                                                  elementwise_operation);
+    merge_qk_element_layer->setName(
         ("multihead_mamul_fc_qk(Output: " + output_name + ")").c_str());
 
-    // add shuffle for fc layer
-    auto* reshape_after_fc_qk_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_qk_layer->getOutput(0));
+    auto* reshape_after_fc_qk_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Shuffle, *merge_qk_element_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> mha_input_qk_tensor_shape;
     for (int i = 0; i < 5; i++) {
       mha_input_qk_tensor_shape.push_back(Add1DConstantLayer(1));
@@ -223,36 +226,36 @@ class QKMultiheadMatMulOpConverter : public OpConverter {
                              static_cast<void*>(bias_v_data),
                              static_cast<int32_t>(bias_v_t->numel())};
 
-    std::vector<nvinfer1::ITensor*> reshape_before_fc_v_shape_tensor;
+    auto weight_v_shape = nvinfer1::Dims3{1, n_v, hidden_in_qk};
+    auto* weight_v_tensor =
+        AddConstantLayer(weight_v_data, weight_v_shape, " ");
+    auto bias_v_shape = nvinfer1::Dims3{1, 1, n_v};
+    auto* bias_v_tensor = AddConstantLayer(bias_v_data, bias_v_shape, " ");
     nvinfer1::ITensor* input_v_shape_tensor = Shape(input_v);
-    for (int i = 0; i < 5; i++) {
-      reshape_before_fc_v_shape_tensor.push_back(Add1DConstantLayer(1));
-    }
-    for (int i = 0; i < 3; i++) {
-      reshape_before_fc_v_shape_tensor[i] =
-          GetEleTensorOfShape(input_v_shape_tensor, i);
-    }
-    auto* reshape_before_fc_v_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_v);
-    reshape_before_fc_v_layer->setInput(
-        1, *Concat(reshape_before_fc_v_shape_tensor));
-    reshape_before_fc_v_layer->setName(
-        ("shuffle_before_fc_v_multihead_matmul(Output: " + output_name + ")")
-            .c_str());
 
     nvinfer1::ILayer* fc_v_layer = nullptr;
+    nvinfer1::ILayer* merge_v_element_layer = nullptr;
     fc_v_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                      FullyConnected,
-                                      *reshape_before_fc_v_layer->getOutput(0),
-                                      n_v,
-                                      weight_v,
-                                      bias_v);
+                                      MatrixMultiply,
+                                      *input_v,
+                                      matrix_operation_X,
+                                      *weight_v_tensor,
+                                      matrix_operation_Y);
     fc_v_layer->setName(
+        ("v_attention_matrix_multiply(Output: " + output_name + ")").c_str());
+
+    // add v ElementWiseLayer layer
+    merge_v_element_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                 ElementWise,
+                                                 *fc_v_layer->getOutput(0),
+                                                 *bias_v_tensor,
+                                                 elementwise_operation);
+    merge_v_element_layer->setName(
         ("multihead_mamul_fc_v(Output: " + output_name + ")").c_str());
 
     // add shuffle for fc layer
-    auto* reshape_after_fc_v_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_v_layer->getOutput(0));
+    auto* reshape_after_fc_v_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Shuffle, *merge_v_element_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> mha_input_v_tensor_shape;
     for (int i = 0; i < 5; i++) {
       mha_input_v_tensor_shape.push_back(Add1DConstantLayer(1));
@@ -305,7 +308,6 @@ class QKMultiheadMatMulOpConverter : public OpConverter {
     reshape_after_mha_layer->setInput(1, *Concat(reshape_tensor));
     reshape_after_mha_layer->setName(
         ("shuffle_last_multihead_matmul(Output: " + output_name + ")").c_str());
-    // return
     nvinfer1::ILayer* layer = nullptr;
     layer = reshape_after_mha_layer;
     RreplenishLayerAndOutput(
@@ -317,4 +319,4 @@ class QKMultiheadMatMulOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(qk_multihead_matmul, QKMultiheadMatMulOpConverter);
+REGISTER_TRT_OP_CONVERTER(qk_multihead_matmul, QkMultiheadMatMulOpConverter);
