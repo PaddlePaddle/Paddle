@@ -154,10 +154,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -289,13 +285,7 @@ bool IsCompiledWithXPU() {
 #endif
 }
 
-bool IsCompiledWithNPU() {
-#ifndef PADDLE_WITH_ASCEND_CL
-  return false;
-#else
-  return true;
-#endif
-}
+bool IsCompiledWithNPU() { return false; }
 
 bool IsCompiledWithCustomDevice(std::string device_type) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -1630,13 +1620,9 @@ All parameter, weight, gradient are variables in Paddle.
           "create",
           [](paddle::platform::NPUPlace &place)
               -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_ASCEND_CL
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use NPUPlace in CPU/GPU/XPU version, "
                 "Please recompile or reinstall Paddle with NPU support."));
-#else
-                return new paddle::platform::NPUDeviceContext(place);
-#endif
           })
       .def_static("create",
                   [](paddle::platform::CustomPlace &place)
@@ -2368,39 +2354,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() {
-    platform::HCCLCommContext::Instance().ReleaseHCCLComms();
-
-    auto &pool = platform::DeviceContextPool::Instance();
-    auto devices = platform::GetSelectedNPUDevices();
-    for (size_t i = 0; i < devices.size(); ++i) {
-      platform::NPUDeviceGuard guard(devices[i]);
-      pool.Get(platform::NPUPlace(devices[i]))->Wait();
-    }
-    platform::AclInstance::Instance().Finalize();
-  });
-
-  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
-
-  m.def("npu_prof_init", platform::NPUProfilerInit);
-  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStart(c.ptr());
-  });
-  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStop(c.ptr());
-  });
-  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
-  m.def("npu_prof_create_config", []() {
-    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
-  });
-
-  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerDestroyConfig(c.ptr());
-  });
 #endif
 
 #ifdef PADDLE_WITH_IPU
