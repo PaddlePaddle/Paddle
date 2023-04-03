@@ -503,168 +503,186 @@ class TestCustomOptionalJit(unittest.TestCase):
             ),
         )
 
-    # def test_optional_static_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_y]:
-    #                 (pd_x, pd_out, pd_x_grad,) = optional_static_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (custom_x, custom_out, custom_x_grad,) = optional_static_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_static_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    (pd_x, pd_out, pd_x_grad,) = optional_static_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (
+                        custom_x,
+                        custom_out,
+                        custom_x_grad,
+                    ) = optional_static_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
 
-    # def test_optional_dynamic_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_y]:
-    #                 (pd_x, pd_out, pd_x_grad,) = optional_dynamic_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (custom_x, custom_out, custom_x_grad,) = optional_dynamic_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_dynamic_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    (pd_x, pd_out, pd_x_grad,) = optional_dynamic_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (
+                        custom_x,
+                        custom_out,
+                        custom_x_grad,
+                    ) = optional_dynamic_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
 
-    # def test_optional_inplace_static_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_y]:
-    #                 pd_tuple = optional_inplace_static_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 custom_tuple = optional_inplace_static_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_inplace_static_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    pd_tuple = optional_inplace_static_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    custom_tuple = optional_inplace_static_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(custom_tuple[0], pd_tuple[0], "x")
-    #                 self.check_output(custom_tuple[1], pd_tuple[1], "out")
-    #                 self.check_output(custom_tuple[2], pd_tuple[2], "x_grad")
-    #                 if len(custom_tuple) > 3:
-    #                     self.check_output(custom_tuple[3], pd_tuple[3], "y_grad")
+                    self.check_output(custom_tuple[0], pd_tuple[0], "x")
+                    self.check_output(custom_tuple[1], pd_tuple[1], "out")
+                    self.check_output(custom_tuple[2], pd_tuple[2], "x_grad")
+                    if len(custom_tuple) > 3:
+                        self.check_output(
+                            custom_tuple[3], pd_tuple[3], "y_grad"
+                        )
 
-    # def test_optional_inplace_dynamic_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_y]:
-    #                 (
-    #                     pd_x,
-    #                     pd_outx,
-    #                     pd_y,
-    #                     pd_outy,
-    #                     pd_out,
-    #                     pd_x_grad,
-    #                     pd_y_grad,
-    #                 ) = optional_inplace_dynamic_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (
-    #                     custom_x,
-    #                     custom_outx,
-    #                     custom_y,
-    #                     custom_outy,
-    #                     custom_out,
-    #                     custom_x_grad,
-    #                     custom_y_grad,
-    #                 ) = optional_inplace_dynamic_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_inplace_dynamic_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    (
+                        pd_x,
+                        pd_outx,
+                        pd_y,
+                        pd_outy,
+                        pd_out,
+                        pd_x_grad,
+                        pd_y_grad,
+                    ) = optional_inplace_dynamic_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (
+                        custom_x,
+                        custom_outx,
+                        custom_y,
+                        custom_outy,
+                        custom_out,
+                        custom_x_grad,
+                        custom_y_grad,
+                    ) = optional_inplace_dynamic_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(pd_y, pd_outy, "inplace_pd_y")
-    #                 self.check_output(custom_y, custom_outy, "inplace_custom_y")
+                    self.check_output(pd_y, pd_outy, "inplace_pd_y")
+                    self.check_output(custom_y, custom_outy, "inplace_custom_y")
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_outx, pd_outx, "outx")
-    #                 self.check_output(custom_y, pd_y, "y")
-    #                 self.check_output(custom_outy, pd_outy, "outy")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-    #                 self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_outx, pd_outx, "outx")
+                    self.check_output(custom_y, pd_y, "y")
+                    self.check_output(custom_outy, pd_outy, "outy")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_y_grad, pd_y_grad, "y_grad")
 
-    # def test_optional_vector_static_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_inputs]:
-    #                 (custom_x, custom_out, custom_x_grad,) = optional_vector_static_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (pd_x, pd_out, pd_x_grad,) = optional_vector_static_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_vector_static_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_inputs]:
+                    (
+                        custom_x,
+                        custom_out,
+                        custom_x_grad,
+                    ) = optional_vector_static_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (pd_x, pd_out, pd_x_grad,) = optional_vector_static_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
 
-    # def test_optional_vector_dynamic_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_inputs]:
-    #                 (custom_x, custom_out, custom_x_grad,) = optional_vector_dynamic_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (pd_x, pd_out, pd_x_grad,) = optional_vector_dynamic_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_vector_dynamic_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_inputs]:
+                    (
+                        custom_x,
+                        custom_out,
+                        custom_x_grad,
+                    ) = optional_vector_dynamic_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (pd_x, pd_out, pd_x_grad,) = optional_vector_dynamic_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
 
     def test_optional_inplace_vector_static_add(self):
         for device in self.devices:
@@ -696,47 +714,51 @@ class TestCustomOptionalJit(unittest.TestCase):
                             custom_tuple[4], pd_tuple[4], "y2_grad"
                         )
 
-    # def test_optional_inplace_vector_dynamic_add(self):
-    #     for device in self.devices:
-    #         for dtype in self.dtypes:
-    #             for np_y in [None, self.np_inputs]:
-    #                 (custom_x,
-    #                 custom_outx,
-    #                 custom_y,
-    #                 custom_outy,
-    #                 custom_out,
-    #                 custom_x_grad,
-    #                 custom_y_grad,) = optional_inplace_vector_dynamic_add(
-    #                     True,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
-    #                 (pd_x,
-    #                 pd_outx,
-    #                 pd_y,
-    #                 pd_outy,
-    #                 pd_out,
-    #                 pd_x_grad,
-    #                 pd_y_grad) = optional_inplace_vector_dynamic_add(
-    #                     False,
-    #                     device,
-    #                     dtype,
-    #                     self.np_x,
-    #                     np_y,
-    #                 )
+    def test_optional_inplace_vector_dynamic_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_inputs]:
+                    (
+                        custom_x,
+                        custom_outx,
+                        custom_y,
+                        custom_outy,
+                        custom_out,
+                        custom_x_grad,
+                        custom_y_grad,
+                    ) = optional_inplace_vector_dynamic_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (
+                        pd_x,
+                        pd_outx,
+                        pd_y,
+                        pd_outy,
+                        pd_out,
+                        pd_x_grad,
+                        pd_y_grad,
+                    ) = optional_inplace_vector_dynamic_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
 
-    #                 self.check_output(pd_y, pd_outy, "inplace_pd_y")
-    #                 self.check_output(custom_y, custom_outy, "inplace_custom_y")
+                    self.check_output(pd_y, pd_outy, "inplace_pd_y")
+                    self.check_output(custom_y, custom_outy, "inplace_custom_y")
 
-    #                 self.check_output(custom_x, pd_x, "x")
-    #                 self.check_output(custom_outx, pd_outx, "outx")
-    #                 self.check_output(custom_y, pd_y, "y")
-    #                 self.check_output(custom_outy, pd_outy, "outy")
-    #                 self.check_output(custom_out, pd_out, "out")
-    #                 self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-    #                 self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                    self.check_output(custom_x, pd_x, "x")
+                    self.check_output(custom_outx, pd_outx, "outx")
+                    self.check_output(custom_y, pd_y, "y")
+                    self.check_output(custom_outy, pd_outy, "outy")
+                    self.check_output(custom_out, pd_out, "out")
+                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(custom_y_grad, pd_y_grad, "y_grad")
 
 
 if __name__ == "__main__":
