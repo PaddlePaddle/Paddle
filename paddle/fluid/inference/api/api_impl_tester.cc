@@ -20,7 +20,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/inference/tests/test_helper.h"
+#include "test/cpp/inference/api/test_helper.h"
 
 #ifdef __clang__
 #define ACC_DIFF 4e-3
