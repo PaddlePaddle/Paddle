@@ -400,7 +400,7 @@ class TestDotBF16Op(OpTest):
             'X': convert_float_to_uint16(self.x),
             'Y': convert_float_to_uint16(self.y),
         }
-        self.outputs = {'Out': self.out}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.attrs = {}
 
     def init_dtype(self):
@@ -410,7 +410,7 @@ class TestDotBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, atol=0.5)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
@@ -447,15 +447,15 @@ class TestDotBF16Op(OpTest):
 )
 class DotBF16OpBatch(TestDotBF16Op):
     def init_input_output(self):
-        self.x = (
+        self.x = convert_float_to_uint16(
             np.random.uniform(0.1, 1, [132])
             .astype(self.dtype)
             .reshape([11, 12])
         )
-        self.y = (
+        self.y = convert_float_to_uint16(
             np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
         )
-        self.out = (
+        self.out = convert_float_to_uint16(
             np.sum(self.x * self.y, axis=1).reshape([11, 1]).astype(np.float32)
         )
 

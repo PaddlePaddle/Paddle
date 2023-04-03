@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -91,8 +91,12 @@ class TestCrossBF16Op(OpTest):
         self.python_api = paddle.cross
         self.initTestCase()
         self.inputs = {
-            'X': np.random.random(self.shape).astype(self.dtype),
-            'Y': np.random.random(self.shape).astype(self.dtype),
+            'X': convert_float_to_uint16(
+                np.random.random(self.shape).astype(self.dtype)
+            ),
+            'Y': convert_float_to_uint16(
+                np.random.random(self.shape).astype(self.dtype)
+            ),
         }
         self.init_output()
 
@@ -107,9 +111,8 @@ class TestCrossBF16Op(OpTest):
         z_list = []
         for i in range(1024):
             z_list.append(np.cross(x[i], y[i]))
-        self.outputs = {
-            'Out': np.array(z_list).astype(np.float32).reshape(self.shape)
-        }
+        out = np.array(z_list).astype(np.float32).reshape(self.shape)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
