@@ -363,12 +363,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuDeviceId(int device_id = 0);
   ///
-  /// \brief Turn on NPU.
-  ///
-  /// \param device_id device_id the NPU card to use (default is 0).
-  ///
-  void EnableNpu(int device_id = 0);
-  ///
   /// \brief Turn on CustomDevice.
   ///
   /// \param device_type device_type the custom device to use.

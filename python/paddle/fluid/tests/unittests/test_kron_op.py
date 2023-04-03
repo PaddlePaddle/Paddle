@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.dygraph as dg
 from paddle import fluid
+from paddle.fluid import core
 
 
 class TestKronOp(OpTest):
@@ -71,6 +72,50 @@ class TestKronOp3(TestKronOp):
         out_ref = np.kron(x, y)
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out_ref}
+
+
+class TestKronFP16Op(TestKronOp):
+    def _init_dtype(self):
+        return "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestKronBF16Op(TestKronOp):
+    def setUp(self):
+        self.op_type = "kron"
+        self.python_api = paddle.kron
+        self.dtype = np.uint16
+        self.np_dtype = "float32"
+        x = np.random.uniform(size=(10, 10)).astype(self.np_dtype)
+        y = np.random.uniform(size=(10, 10)).astype(self.np_dtype)
+        out_ref = np.kron(x, y)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+        # bfloat16 requires using place
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'], 'Out', no_grad_set=set('X')
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set('Y')
+        )
 
 
 class TestKronLayer(unittest.TestCase):

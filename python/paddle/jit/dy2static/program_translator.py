@@ -22,7 +22,11 @@ import weakref
 from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.fluid.dygraph.base import (
+    _switch_declarative_mode_guard_,
+    param_guard,
+    switch_to_static_graph,
+)
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -989,8 +993,6 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
-
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
@@ -1264,8 +1266,12 @@ class PrimHooker(PartialProgramLayerHook):
     def after_append_backward(self, whole_program, backward_start_idx):
         backward_length = len(whole_program.block(0).ops) - backward_start_idx
         if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
-            _to_prim(whole_program.blocks, whitelist=self.custom_vjps)
+            # only process backward part of block
+            _to_prim(whole_program.blocks, backward_length=backward_length)
         new_start_index = len(whole_program.block(0).ops) - backward_length
+        if backward_length > 0:
+            # only process forward part of block
+            _to_prim(whole_program.blocks, start_idx=new_start_index)
         return whole_program, new_start_index
 
     def after_infer(self, infer_program):
@@ -1691,9 +1697,21 @@ def enable_to_static(enable_to_static_bool):
 
 
 @switch_to_static_graph
-def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
+def _to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=-1,
+    backward_length=-1,
+):
     """Swith to static graph and call to_prim."""
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 
-    primapi.to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
+    primapi.to_prim(
+        blocks,
+        blacklist=blacklist,
+        whitelist=whitelist,
+        start_idx=start_idx,
+        backward_length=backward_length,
+    )
