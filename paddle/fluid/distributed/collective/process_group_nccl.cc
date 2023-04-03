@@ -479,6 +479,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
     const GatherOptions& opts,
+    bool sync_op) {
+  return Gather(out_tensor, in_tensor, opts, sync_op, false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> partial_tensors;

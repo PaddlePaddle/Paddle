@@ -40,9 +40,14 @@ def _gather_in_dygraph(
         len(gather_list), nranks
     )
 
-    task = group.process_group.gather(
-        tensor, gather_list, dst_rank_in_group, sync_op, use_calc_stream
-    )
+    if use_calc_stream:
+        task = group.process_group.gather_on_calc_stream(
+            tensor, gather_list, dst_rank_in_group, sync_op, use_calc_stream
+        )
+    else:
+        task = group.process_group.gather(
+            tensor, gather_list, dst_rank_in_group, sync_op
+        )
 
     if sync_op:
         task.wait()

@@ -206,23 +206,22 @@ class TestProcessGroupFp32(unittest.TestCase):
 
         # test Gather
         def test_gather(root):
-            in_shape = list(self.shape)
-            in_shape[0] *= pg.size()
-            x = np.random.random(in_shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
+            tensor_x = [
+                paddle.zeros(self.shape).astype(self.dtype)
+                for _ in range(pg.size())
+            ]
             tensor_y = [
                 paddle.to_tensor(
                     np.random.random(self.shape).astype(self.dtype)
                 )
                 for _ in range(pg.size())
             ]
-            gather_result = paddle.concat(tensor_y)
             if pg.rank() == root:
-                task = pg.gather(tensor_x, tensor_y[root], root, True)
+                task = pg.gather(tensor_y[root], tensor_x, root, True)
                 task.wait()
-                assert np.array_equal(tensor_x, gather_result)
+                assert np.array_equal(tensor_x, tensor_y)
             else:
-                task = pg.gather(tensor_x, tensor_y[pg.rank()], root, True)
+                task = pg.gather(tensor_y[pg.rank()], tensor_x, root, True)
                 task.wait()
 
         test_gather(0)
