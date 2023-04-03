@@ -26,15 +26,15 @@ class CheckpointerSaverTest(unittest.TestCase):
 
         s = CheckpointSaver(fs)
 
-        fs.mkdirs("{}/exe.exe".format(dir_path))
-        fs.mkdirs("{}/exe.1".format(dir_path))
-        fs.mkdirs("{}/exe".format(dir_path))
+        fs.mkdirs(f"{dir_path}/exe.exe")
+        fs.mkdirs(f"{dir_path}/exe.1")
+        fs.mkdirs(f"{dir_path}/exe")
 
         a = s.get_checkpoint_no(dir_path)
         self.assertEqual(len(a), 0)
 
-        fs.mkdirs("{}/__paddle_checkpoint__.0".format(dir_path))
-        fs.mkdirs("{}/__paddle_checkpoint__.exe".format(dir_path))
+        fs.mkdirs(f"{dir_path}/__paddle_checkpoint__.0")
+        fs.mkdirs(f"{dir_path}/__paddle_checkpoint__.exe")
 
         a = s.get_checkpoint_no(dir_path)
         self.assertEqual(len(a), 1)
