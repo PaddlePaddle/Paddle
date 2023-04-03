@@ -152,10 +152,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
-    const int64_t* tensor_strides =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
-            ->strides()
-            .Get();
+    auto tensor_strides = self->tensor.strides();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -2278,7 +2275,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"strides",
+    {"get_strides",
      (PyCFunction)(void (*)(void))tensor_method_get_strides,
      METH_VARARGS | METH_KEYWORDS,
      NULL},

@@ -59,8 +59,10 @@ DataLayout MetaTensor::layout() const {
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
-        dims;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->dims = dims;
+    meta->strides = meta->calc_strides(dims, meta->layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
@@ -105,8 +107,10 @@ void MetaTensor::set_dtype(DataType dtype) {
 void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
-        ->layout = layout;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->layout = layout;
+    meta->strides = meta->calc_strides(meta->dims, layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {

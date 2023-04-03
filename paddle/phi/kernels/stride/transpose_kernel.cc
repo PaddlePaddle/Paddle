@@ -24,11 +24,10 @@ void TransposeStrideKernel(const Context& ctx,
                            const std::vector<int>& axis,
                            DenseTensor* out) {
   auto meta = x.meta();
-  int64_t* out_strides = meta.strides.GetMutable();
-  const int64_t* in_strides = x.strides().Get();
-  DDim in_dims = x.dims();
+  auto in_strides = x.strides();
+  auto in_dims = x.dims();
   for (size_t i = 0; i < axis.size(); i++) {
-    out_strides[i] = in_strides[axis[i]];
+    meta.strides[i] = in_strides[axis[i]];
     meta.dims[i] = in_dims[axis[i]];
   }
 

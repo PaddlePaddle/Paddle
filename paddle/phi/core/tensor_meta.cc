@@ -17,7 +17,12 @@ limitations under the License. */
 namespace phi {
 
 DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
+  if (dims.size() == 1 && dims[0] == 0) {
+    return dims;
+  }
+
   DDim strides(dims);
+
   if (layout == DataLayout::NCHW) {
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; --i) {
@@ -32,6 +37,11 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
     // TODO(wanghuancoder)
   } else if (layout == DataLayout::NDHWC) {
     // TODO(wanghuancoder)
+  } else {
+    strides[dims.size() - 1] = 1;
+    for (int i = dims.size() - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * dims[i + 1];
+    }
   }
   return strides;
 }
