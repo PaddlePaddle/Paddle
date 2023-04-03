@@ -335,7 +335,7 @@ class StaticRNN:
 
             vocab_size, hidden_size=10000, 200
             paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -426,7 +426,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -455,7 +455,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -558,7 +558,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -611,7 +611,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -673,7 +673,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -955,7 +955,7 @@ class While:
             i = paddle.full(shape=[1], dtype='int64', fill_value=0)
             loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
             one = paddle.full(shape=[1], dtype='float32', fill_value=1)
-            data = fluid.data(name='data', shape=[1], dtype='float32')
+            data = paddle.static.data(name='data', shape=[1], dtype='float32')
             sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
             cond = paddle.less_than(x=i, y=loop_len)
@@ -1053,7 +1053,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -1150,7 +1150,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_dygraph_mode():
-        now_cond = pre_cond.numpy().item()
+        now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -1160,7 +1160,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy().item()
+            now_cond = cond(*output_vars).item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:

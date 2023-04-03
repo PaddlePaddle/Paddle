@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 
 class TestComplexGetitemLayer(unittest.TestCase):

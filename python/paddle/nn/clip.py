@@ -290,7 +290,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def __str__(self):
-        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+        return f"ByValue, min={self.min:f}, max={self.max:f}"
 
     def _append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()
@@ -403,7 +403,7 @@ class ClipGradByValue(ClipGradBase):
         self.min = float(min)
 
     def __str__(self):
-        return "Clip Gradient By Value, min = %f, max=%f" % (self.min, self.max)
+        return f"Clip Gradient By Value, min = {self.min:f}, max={self.max:f}"
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
@@ -420,7 +420,7 @@ class ClipGradByValue(ClipGradBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
-        param_new_grad_name_dict = dict()
+        param_new_grad_name_dict = {}
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -523,7 +523,7 @@ class ClipGradByNorm(ClipGradBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -835,7 +835,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -969,7 +969,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             paddle.enable_static()
 
             def network():
-                image = fluid.data(name='image', shape=[
+                image = paddle.static.data(name='image', shape=[
                                    None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
@@ -1062,7 +1062,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    context = dict()
+    context = {}
     for p, g in param_grads:
         if g is None:
             continue
@@ -1080,7 +1080,7 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    param_new_grad_name_dict = dict()
+    param_new_grad_name_dict = {}
     for p, g in param_grads:
         if g is None:
             continue

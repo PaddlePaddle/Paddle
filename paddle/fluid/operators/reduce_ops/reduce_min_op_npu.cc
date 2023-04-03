@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -74,7 +73,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    if (x->dtype() == experimental::DataType::INT64) {
+    if (x->dtype() == phi::DataType::INT64) {
       auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
                         const std::vector<phi::DenseTensor>& outputs,
                         const NPUAttributeMap& attrs,
