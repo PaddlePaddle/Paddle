@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
 from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import (
