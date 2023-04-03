@@ -3922,8 +3922,8 @@ function main() {
         pip3.10 install -r "${work_dir}/python/requirements.txt"
         pip3.10 install -r "${work_dir}/python/unittest_py/requirements.txt"
         pip3.10 install bce-python-sdk==0.8.74
+        sleep 10h
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-        sleep 10h;
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
