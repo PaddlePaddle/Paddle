@@ -780,7 +780,7 @@
 
 - backward_op : nextafter_grad
   forward : nextafter (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
