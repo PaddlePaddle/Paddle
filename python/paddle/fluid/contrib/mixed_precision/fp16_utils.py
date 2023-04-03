@@ -40,13 +40,6 @@ _valid_types = [
 
 _fp16_guard_pattern = "__use_fp16__"
 
-def convert_float_to_uint16(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
-        otypes=[np.uint16])(in_list.flat)
-    return np.reshape(out, in_list.shape)
-
 def _rename_arg(op, old_name, new_name):
     """
     If an op has old_name input and output, rename these input
@@ -606,15 +599,20 @@ def cast_model_to_fp16(
     _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
     return to_fp16_var_names
 
+def convert_float_to_bfloat16_by_dygraph(data):
+    import paddle
+    from paddle.fluid.framework import _enable_legacy_dygraph
+    paddle.disable_static()
+    _enable_legacy_dygraph()
+    paddle.set_device(
+        'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
+    )
+    pd_data = paddle.to_tensor(data)
+    data_array = np.array(pd_data.astype(paddle.bfloat16))
 
-def convert_float_to_uint16(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
-        otypes=[np.uint16],
-    )(in_list.flat)
-    return np.reshape(out, in_list.shape)
+    paddle.enable_static()
 
+    return data_array
 
 def cast_parameters_to_fp16(
     place,
@@ -649,7 +647,9 @@ def cast_parameters_to_fp16(
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)
                 if dst_type == core.VarDesc.VarType.BF16:
-                    param_t.set(convert_float_to_uint16(data), place)
+                    data_array = convert_float_to_bfloat16_by_dygraph(data)
+                    
+                    param_t.set(data_array, place)
                 else:
                     param_t.set(np.float16(data), place)
 
