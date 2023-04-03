@@ -82,8 +82,6 @@ class OpResult : public Value {
 
   uint32_t GetResultIndex() const { return impl()->GetResultIndex(); }
 
-  detail::ValueImpl *value_impl() const { return impl_; }
-
   friend Operation;
 
  private:

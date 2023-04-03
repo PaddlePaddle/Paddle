@@ -25,17 +25,4 @@ void *aligned_malloc(size_t size, size_t alignment);
 
 void aligned_free(void *mem_ptr);
 
-inline void *offset_address(void *ptr, uint32_t offset) {
-  return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(ptr) + offset);
-}
-
-inline uint32_t solve_offset(void *ptr) {
-  return reinterpret_cast<uintptr_t>(ptr) & 0x07;
-}
-
-inline void *reset_offset_address(void *ptr_offset) {
-  return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(ptr_offset) &
-                                  (~0x07));
-}
-
 }  // namespace ir

@@ -20,21 +20,11 @@ namespace ir {
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              ir::DictionaryAttribute attibute) {
-  VLOG(1) << "Operation create: ---------------->";
   // Get num of Results.
   uint32_t num_results = output_types.size();
   uint32_t num_operands = inputs.size();
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
-  VLOG(1) << "num_results is: " << num_results
-          << "; num_operands is: " << num_operands
-          << "; max_inline_result_num: " << max_inline_result_num;
-  VLOG(1) << "sizeof(OpOutlineResultImpl) = "
-          << sizeof(detail::OpOutlineResultImpl);
-  VLOG(1) << "sizeof(OpInlineResultImpl) = "
-          << sizeof(detail::OpInlineResultImpl);
-  VLOG(1) << "sizeof(OpOperandImpl) = " << sizeof(detail::OpOperandImpl);
-  VLOG(1) << "sizeof(Operation) = " << sizeof(Operation);
   // Calculate the memory space required for OpResults + Operation + OpOperands
   size_t result_mem_size =
       num_results > max_inline_result_num
@@ -42,20 +32,13 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                     (num_results - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results;
-  VLOG(1) << "result_mem_size is: " << result_mem_size;
   size_t operand_mem_size = sizeof(detail::OpOperandImpl) * num_operands;
-  VLOG(1) << "operand_mem_size is: " << operand_mem_size;
   size_t op_mem_size = sizeof(Operation);
-  VLOG(1) << "op_mem_size is: " << op_mem_size;
   size_t base_size = result_mem_size + op_mem_size + operand_mem_size;
-  VLOG(1) << "base_size is: " << base_size;
   // Malloc memory and construct OpResults, Operation, OpOperands.
   char *malloc_memory = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
-  VLOG(1) << "malloc_memory is: " << reinterpret_cast<void *>(malloc_memory);
   char *base_ptr = malloc_memory;
   for (size_t idx = num_results; idx > 0; idx--) {
-    VLOG(1) << "result " << idx - 1
-            << " ptr is: " << reinterpret_cast<void *>(base_ptr);
     if (idx > 6) {
       new (base_ptr)
           detail::OpOutlineResultImpl(output_types[idx - 1], idx - 1);
@@ -65,23 +48,21 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
       base_ptr += sizeof(detail::OpInlineResultImpl);
     }
   }
-  VLOG(1) << "Operation ptr is: " << reinterpret_cast<void *>(base_ptr);
   Operation *op = new (base_ptr) Operation(num_results, num_operands, attibute);
   base_ptr += sizeof(Operation);
   assert((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) == 0 &&
          "The address of OpOperandImpl must be divisible by 8.");
   for (size_t idx = 0; idx < num_operands; idx++) {
-    VLOG(1) << "operand " << idx
-            << " ptr is: " << reinterpret_cast<void *>(base_ptr);
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  VLOG(1) << "----------------------------------->";
+  VLOG(4) << "Construct an Operation ----------------->";
+  VLOG(4) << op->print();
+  VLOG(4) << "---------------------------------------->";
   return op;
 }
 
 void Operation::destroy() {
-  VLOG(1) << "Operation destroy: ---------------->";
   this->~Operation();
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
@@ -91,18 +72,17 @@ void Operation::destroy() {
                     (num_results_ - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
-  VLOG(1) << "result_mem_size: " << result_mem_size;
   void *aligned_ptr = reinterpret_cast<void *>(reinterpret_cast<char *>(this) -
                                                result_mem_size);
-  VLOG(1) << "aligned ptr is: " << aligned_ptr;
+  VLOG(4) << "Destroy an Operation --------------------->";
+  VLOG(4) << "aligned_ptr = " << aligned_ptr << ", size = " << result_mem_size;
   aligned_free(aligned_ptr);
-  VLOG(1) << "----------------------------------->";
+  VLOG(4) << "------------------------------------------>";
 }
 
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
                      ir::DictionaryAttribute attibute) {
-  VLOG(1) << "Operation constructor";
   assert(attibute && "unexpected null attribute dictionary");
   num_results_ = num_results;
   num_operands_ = num_operands;
@@ -112,6 +92,7 @@ Operation::Operation(uint32_t num_results,
 Operation::~Operation() {}
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) {
+  assert((index < num_results_) && "index exceeds OP output range.");
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
   char *ptr = nullptr;
   if (index > max_inline_idx) {
@@ -122,7 +103,6 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) {
     ptr = reinterpret_cast<char *>(this) -
           (index + 1) * sizeof(detail::OpInlineResultImpl);
   }
-  VLOG(1) << "result " << index << " ptr is: " << reinterpret_cast<void *>(ptr);
   if (index > max_inline_idx) {
     detail::OpOutlineResultImpl *result_impl_ptr =
         reinterpret_cast<detail::OpOutlineResultImpl *>(ptr);
@@ -136,9 +116,11 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) {
 
 std::string Operation::print() {
   std::stringstream result;
+  result << "{ " << num_results_ << " outputs, " << num_operands_
+         << " inputs } : ";
   result << "[ ";
   for (size_t idx = num_results_; idx > 0; idx--) {
-    result << GetResultByIndex(num_results_ - 1).impl_ << ", ";
+    result << GetResultByIndex(idx - 1).impl_ << ", ";
   }
   result << "] = ";
   result << this << "( ";

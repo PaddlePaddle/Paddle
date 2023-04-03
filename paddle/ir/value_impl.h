@@ -58,7 +58,7 @@ class alignas(8) ValueImpl {
     uint32_t offset = index();
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(first_user) + offset);
-    VLOG(1) << "The index of this value is " << offset
+    VLOG(4) << "The index of this value is " << offset
             << ". Offset and set first user: " << first_user << " -> "
             << offset_first_user_ << ".";
   }
@@ -75,7 +75,7 @@ class alignas(8) ValueImpl {
     type_ = type;
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(nullptr) + index);
-    VLOG(1) << "Construct a ValueImpl whose's index is " << index
+    VLOG(4) << "Construct a ValueImpl whose's index is " << index
             << ". The offset first_user address is: " << offset_first_user_;
   }
 
@@ -181,14 +181,6 @@ class OpOperandImpl {
       next_user_->back_user_addr_ = &next_user_;
     }
     source->SetFirstUser(this);
-    VLOG(1) << "construct a OpOperandImpl: ======>";
-    VLOG(1) << "source_: " << source_;
-    VLOG(1) << "owner: " << owner;
-    VLOG(1) << "back_user_addr_: " << back_user_addr_;
-    VLOG(1) << "next_user_: " << next_user_;
-    if (next_user_) {
-      VLOG(1) << "next_user_->back_user_addr_: " << next_user_->back_user_addr_;
-    }
   }
 
   ir::detail::ValueImpl *source_ = nullptr;
