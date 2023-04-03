@@ -21,13 +21,13 @@ import commands
 
 
 def analysisPyXml(rootPath, ut):
-    xml_path = '%s/build/pytest/%s/python-coverage.xml' % (rootPath, ut)
-    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (
+    xml_path = f'{rootPath}/build/pytest/{ut}/python-coverage.xml'
+    related_ut_map_file = '{}/build/ut_map/{}/related_{}.txt'.format(
         rootPath,
         ut,
         ut,
     )
-    notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (
+    notrelated_ut_map_file = '{}/build/ut_map/{}/notrelated_{}.txt'.format(
         rootPath,
         ut,
         ut,
@@ -44,7 +44,7 @@ def analysisPyXml(rootPath, ut):
             line_hits = int(line.attrib.get('hits'))
             if line_hits != 0:
                 line_number = int(line.attrib.get('number'))
-                command = 'sed -n %sp %s' % (line_number, clazz_filename)
+                command = f'sed -n {line_number}p {clazz_filename}'
                 _code, output = commands.getstatusoutput(command)
                 if _code == 0:
                     if not output.strip().startswith(
@@ -83,11 +83,9 @@ def analysisPyXml(rootPath, ut):
             else:
                 coverageMessage = 'NOT_RELATED'
         if coverageMessage in ['NOT_RELATED', 'ERROR', 'FILTER']:
-            os.system(
-                'echo %s >> %s' % (clazz_filename, notrelated_ut_map_file)
-            )
+            os.system(f'echo {clazz_filename} >> {notrelated_ut_map_file}')
         elif coverageMessage == 'RELATED':
-            os.system('echo %s >> %s' % (clazz_filename, related_ut_map_file))
+            os.system(f'echo {clazz_filename} >> {related_ut_map_file}')
 
     print("============len(pyCov_file)")
     print(len(pyCov_file))

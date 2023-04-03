@@ -59,9 +59,7 @@ class NestSequence:
     def _get_var_ids(self):
         var_ids = []
         for idx, var in enumerate(self.__input_list):
-            if isinstance(
-                var, (framework.Variable, core.VarBase, core.eager.Tensor)
-            ):
+            if isinstance(var, (framework.Variable, core.eager.Tensor)):
                 var_ids.append(idx)
 
         return var_ids
@@ -73,9 +71,7 @@ class NestSequence:
         if need_check:
             warning_types = set()
             for var in self.__input_list:
-                if not isinstance(
-                    var, (framework.Variable, core.VarBase, core.eager.Tensor)
-                ):
+                if not isinstance(var, (framework.Variable, core.eager.Tensor)):
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
@@ -161,7 +157,7 @@ class PartialProgramLayer:
         main_program(Program): The main program that contains ops need to be executed.
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
-        parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
+        parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
 
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
@@ -669,22 +665,13 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not framework.global_var._in_eager_mode_:
-                        var_base = core.VarBase(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
-                    else:
-                        var_base = core.eager.Tensor(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
+                    var_base = core.eager.Tensor(
+                        var_desc.dtype(),
+                        var_desc.shape(),
+                        var_desc.name(),
+                        var_desc.type(),
+                        False,
+                    )
                     double_grads.append(var_base)
         return self._valid_vars(double_grads)
 
@@ -866,29 +853,20 @@ class PartialProgramLayer:
         assert isinstance(inputs, (tuple, list))
         # Flatten inputs with nested structure into single list.
         flatten_inputs = paddle.utils.flatten(inputs)
-        # Convert variable into VarBase and feed in training data.
+        # Convert variable into Tensor and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework.global_var._in_eager_mode_:
-                    var = core.VarBase(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True,
-                    )
-                else:
-                    var = core.eager.Tensor(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True,
-                    )
-            elif isinstance(value, (core.VarBase, core.eager.Tensor)):
+                var = core.eager.Tensor(
+                    value=value,
+                    name=self._inputs[i].desc.name(),
+                    persistable=False,
+                    place=expected_place,
+                    zero_copy=True,
+                )
+            elif isinstance(value, core.eager.Tensor):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance
                 # to avoid this problem.
@@ -904,7 +882,7 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
-        # mapping from name(string) -> VarBase
+        # mapping from name(string) -> Tensor
         out_varbase_map = {}
 
         def create_out(var_id):
@@ -916,27 +894,18 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework.global_var._in_eager_mode_:
-                var_base = core.VarBase(
-                    var_desc.dtype(),
-                    var_desc.shape(),
-                    var_desc.name(),
-                    var_desc.type(),
-                    False,
-                )
-            else:
-                var_base = core.eager.Tensor(
-                    var_desc.dtype(),
-                    var_desc.shape(),
-                    var_desc.name(),
-                    var_desc.type(),
-                    False,
-                )
+            var_base = core.eager.Tensor(
+                var_desc.dtype(),
+                var_desc.shape(),
+                var_desc.name(),
+                var_desc.type(),
+                False,
+            )
             var_base.stop_gradient = var.stop_gradient
             out_varbase_map[var_desc.name()] = var_base
             return var_base
 
-        # Create VarBase to receive output data.
+        # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
 
         return input_vars, out_vars
@@ -947,21 +916,11 @@ class PartialProgramLayer:
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        if not framework.global_var._in_eager_mode_:
-            tmp_scope_vec = core.VarBase(
-                core.VarDesc.VarType.FP32,
-                [],
-                "program_out_scope",
-                core.VarDesc.VarType.STEP_SCOPES,
-                True,
-            )
-            tmp_scope_vec.value().set_scope(inner_scope)
-        else:
-            tmp_scope_vec = [inner_scope]
+        tmp_scope_vec = [inner_scope]
         return tmp_scope_vec
 
     def _create_cuda_graph_vec(self):
-        var = core.VarBase(
+        var = core.eager.Tensor(
             core.VarDesc.VarType.FP32,
             [],
             "cuda_graph",
@@ -973,7 +932,7 @@ class PartialProgramLayer:
 
     def _restore_out(self, out_vars):
         """
-        Restores same nested outputs by only replacing the Variable with VarBase.
+        Restores same nested outputs by only replacing the Variable with Tensor.
         """
 
         flatten_outputs = self._outputs.tolist()
@@ -990,9 +949,7 @@ class PartialProgramLayer:
         return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
-        if isinstance(var, (core.VarBase, core.eager.Tensor)) and var.shape == [
-            1
-        ]:
+        if isinstance(var, core.eager.Tensor) and var.shape == [1]:
             # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
             if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
                 return True
@@ -1002,7 +959,7 @@ class PartialProgramLayer:
         """
         Removes invalid value for various-length return statement
         """
-        if isinstance(out_vars, (core.VarBase, core.eager.Tensor)):
+        if isinstance(out_vars, core.eager.Tensor):
             if self._is_no_value(out_vars):
                 return None
             return out_vars
@@ -1029,7 +986,7 @@ class PartialProgramLayer:
     def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
+        # set param grad Tensor by forward Tensor(LoDTensor)
         # If we don't change grad_var type here, RunProgramOp need
         # transform SelectedRows to LoDTensor forcibly, it may not
         # be user wanted result.
@@ -1057,9 +1014,9 @@ class PartialProgramLayer:
     def _check_params_all_inited(self, main_program):
         """
         Check all params from main program are already initialized, see details as follows:
-            1. all parameters in self._params should be type `framework.ParamBase` which are created in dygraph.
+            1. all parameters in self._params should be type `framework.EagerParamBase` which are created in dygraph.
             2. all parameters from transformed program can be found in self._params.
-               Because they share same data with ParamBase of original dygraph.
+               Because they share same data with EagerParamBase of original dygraph.
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
@@ -1070,7 +1027,7 @@ class PartialProgramLayer:
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
             # self._params constains parameters and buffers with persistable=True.
-            if not isinstance(var, (core.VarBase, core.eager.Tensor)):
+            if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
                         i, type(var)

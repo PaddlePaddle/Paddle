@@ -1068,6 +1068,15 @@
   kernel :
     func : mv_grad
 
+- backward_op : nanmedian_grad
+  forward : nanmedian (Tensor x, IntArray axis, bool keepdim) -> Tensor(out), Tensor(medians)
+  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : NanmedianGradInferMeta
+  kernel :
+    func : nanmedian_grad
+
 - backward_op : nearest_interp_grad
   forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
@@ -1168,6 +1177,17 @@
     param: [x, grad_out, grad_grad_x]
   kernel :
     func : pow_triple_grad
+    data_type : x
+
+- backward_op : prelu_grad
+  forward : prelu(Tensor x, Tensor alpha, str data_format="NCHW", str mode="all") -> Tensor(out)
+  args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
+  output : Tensor(x_grad), Tensor(alpha_grad)
+  infer_meta :
+    func : PreluGradInferMeta
+    param: [x, alpha]
+  kernel :
+    func : prelu_grad
     data_type : x
 
 - backward_op : put_along_axis_grad
@@ -1307,6 +1327,7 @@
   kernel :
     func : scatter_grad
   no_need_buffer : updates
+  composite: scatter_grad(index, updates, out_grad, overwrite, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad
   forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
@@ -1364,6 +1385,17 @@
   kernel :
     func : send_uv_grad
     data_type : x
+
+- backward_op : sigmoid_cross_entropy_with_logits_grad
+  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ignore_index)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sigmoid_cross_entropy_with_logits_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)
@@ -1534,6 +1566,16 @@
   kernel :
     func : solve_grad
 
+- backward_op : spectral_norm_grad
+  forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps=1e-12f) -> Tensor(out)
+  args : (Tensor weight, Tensor u, Tensor v, Tensor out_grad, int dim, int power_iters, float eps)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : SpectralNormGradInferMeta
+  kernel :
+    func : spectral_norm_grad
+    data_type : weight
+
 - backward_op : sqrt_double_grad
   forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)
@@ -1613,6 +1655,16 @@
     param : [out_grad, axis]
     data_type : out_grad
   no_need_buffer : x
+
+- backward_op : stanh_grad
+  forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float scale_a, float scale_b)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : stanh_grad
 
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)

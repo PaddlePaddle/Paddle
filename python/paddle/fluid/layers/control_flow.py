@@ -1053,7 +1053,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
