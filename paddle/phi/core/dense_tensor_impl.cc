@@ -65,8 +65,7 @@ const Place& DenseTensor::place() const {
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) {
-  if ((meta_.strides.size() == 1 && meta_.strides[0] == 0) ||
-      meta_.layout != layout) {
+  if (product(meta_.strides) <= 0 || meta_.layout != layout) {
     meta_.strides = meta_.calc_strides(meta_.dims, layout);
   }
   meta_.layout = layout;
@@ -162,15 +161,20 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  if (!(meta_.dims.size() == 1 && meta_.dims[0] == 0) && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(
-        meta_.is_contiguous(meta_.layout),
-        true,
-        phi::errors::InvalidArgument(
-            "Right now Reshape is only supported for contiguous Tensor."));
+  if (product(meta_.dims) >= 0 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor strides is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
   }
   meta_.dims = dims;
-  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+  if (product(meta_.strides) <= 0) {
     meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   }
   return mutable_data<T>(place, requested_size);
@@ -266,7 +270,7 @@ size_t DenseTensor::NumElements(size_t level) const {
 }
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
-  if (!(meta_.dims.size() == 1 && meta_.dims[0] == 0) && meta_.dims != dims) {
+  if (product(meta_.dims) > 0 && meta_.dims != dims) {
     PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
                       true,
                       phi::errors::InvalidArgument(
@@ -279,7 +283,7 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
                           dims));
   }
   meta_.dims = dims;
-  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+  if (product(meta_.strides) <= 0) {
     meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   }
   return *this;
