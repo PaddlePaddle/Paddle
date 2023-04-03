@@ -69,6 +69,7 @@ class TestScatterNdAddSimpleOp(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self.prim_op_type = "prim"
         self._set_dtype()
         if self.dtype == np.float64:
             target_dtype = "float64"
@@ -94,7 +95,7 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
 
 
 class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):

@@ -1337,6 +1337,7 @@
     func : ScatterNdAddGradInferMeta
     param : [index, updates, out_grad]
   kernel :
+  composite: scatter_nd_add_grad(index, updates, out_grad, x_grad, updates_grad)
     func : scatter_nd_add_grad
   no_need_buffer : updates
 
