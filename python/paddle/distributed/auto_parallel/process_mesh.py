@@ -106,7 +106,7 @@ class ProcessMesh(core.ProcessMesh):
         unique_dim_names = set(self._dim_names)
         assert len(unique_dim_names) == len(
             self._dim_names
-        ), 'All dim_names {} must be unique.'.format(dim_names)
+        ), f'All dim_names {dim_names} must be unique.'
 
         # Follow the requirement for using pybind11
         core.ProcessMesh.__init__(

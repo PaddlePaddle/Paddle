@@ -31,14 +31,12 @@ __all__ = [  # noqa
     'get_device',
     'XPUPlace',
     'IPUPlace',
-    'MLUPlace',
     'is_compiled_with_xpu',
     'is_compiled_with_ipu',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
-    'is_compiled_with_mlu',
     'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',
@@ -154,41 +152,6 @@ def XPUPlace(dev_id):
     return core.XPUPlace(dev_id)
 
 
-def is_compiled_with_mlu():
-    """
-    Whether paddle was built with WITH_MLU=ON to support Cambricon MLU
-
-    Returns (bool): whether paddle was built with WITH_MLU=ON
-
-    Examples:
-        .. code-block:: python
-
-            # required: mlu
-
-            import paddle
-            support_mlu = paddle.device.is_compiled_with_mlu()
-    """
-    return core.is_compiled_with_mlu()
-
-
-def MLUPlace(dev_id):
-    """
-    Return a Cambricon MLU Place
-
-    Parameters:
-        dev_id(int): MLU device id
-
-    Examples:
-        .. code-block:: python
-
-            # required: mlu
-
-            import paddle
-            place = paddle.device.MLUPlace(0)
-    """
-    return core.MLUPlace(dev_id)
-
-
 def get_cudnn_version():
     """
     This funciton return the version of cudnn. the retuen value is int which represents the
@@ -224,9 +187,9 @@ def get_cudnn_version():
 def _convert_to_place(device):
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
-        selected_devices = os.getenv(
-            "FLAGS_selected_{}s".format(device), "0"
-        ).split(",")
+        selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
+            ","
+        )
         device_id = int(selected_devices[0])
         place = core.CustomPlace(device, device_id)
     elif lower_device == 'cpu':
@@ -263,20 +226,10 @@ def _convert_to_place(device):
                 "since PaddlePaddle is not compiled with IPU"
             )
         place = core.IPUPlace()
-    elif lower_device == 'mlu':
-        if not core.is_compiled_with_mlu():
-            raise ValueError(
-                "The device should not be 'mlu', "
-                "since PaddlePaddle is not compiled with MLU"
-            )
-        selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-        device_id = int(selected_mlus[0])
-        place = core.MLUPlace(device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         avaliable_npu_device = re.match(r'npu:\d+', lower_device)
-        avaliable_mlu_device = re.match(r'mlu:\d+', lower_device)
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
@@ -317,21 +270,10 @@ def _convert_to_place(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.NPUPlace(device_id)
-        if avaliable_mlu_device:
-            if not core.is_compiled_with_mlu():
-                raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with mlu".format(avaliable_mlu_device)
-                )
-            device_info_list = device.split(':', 1)
-            device_id = device_info_list[1]
-            device_id = int(device_id)
-            place = core.MLUPlace(device_id)
         if (
             not avaliable_gpu_device
             and not avaliable_xpu_device
             and not avaliable_npu_device
-            and not avaliable_mlu_device
         ):
             device_info_list = device.split(':', 1)
             device_type = device_info_list[0]
@@ -343,8 +285,8 @@ def _convert_to_place(device):
                 raise ValueError(
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
-                            "'{}', '{}:x'".format(x, x)
-                            for x in ['gpu', 'xpu', 'npu', 'mlu']
+                            f"'{x}', '{x}:x'"
+                            for x in ['gpu', 'xpu', 'npu']
                             + core.get_all_custom_device_type()
                         )
                     )
@@ -354,14 +296,14 @@ def _convert_to_place(device):
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU, MLU and IPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
+            where ``x`` is the index of the GPUs, XPUs or NPUs.
 
     Examples:
 
@@ -382,7 +324,7 @@ def set_device(device):
 def get_device():
     """
     This funciton can get the current global device of the program is running.
-    It's a string which is like 'cpu', 'gpu:x', 'xpu:x', 'mlu:x' and 'npu:x'. if the global device is not
+    It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it
     will return a string which is 'cpu' when cuda is not avaliable.
 
@@ -409,16 +351,14 @@ def get_device():
         device = 'npu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
-        device = "ipus:{{0-{}}}".format(num_devices - 1)
-    elif isinstance(place, core.MLUPlace):
-        device_id = place.get_device_id()
-        device = 'mlu:' + str(device_id)
+        device = f"ipus:{{0-{num_devices - 1}}}"
+        device = f"ipus:{{0-{num_devices - 1}}}"
     elif isinstance(place, core.CustomPlace):
         device_id = place.get_device_id()
         device_type = place.get_device_type()
         device = device_type + ':' + str(device_id)
     else:
-        raise ValueError("The device specification {} is invalid".format(place))
+        raise ValueError(f"The device specification {place} is invalid")
 
     return device
 
@@ -529,7 +469,7 @@ class Event:
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
         interprocess (bool): if True, the event can be shared between processes, default is False
@@ -674,7 +614,7 @@ class Stream:
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
             1 (high priority) or 2 (low priority). By default, streams have
             priority 2.
@@ -847,7 +787,7 @@ class Stream:
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={0} stream={1:#x}>'.format(
+        return '<paddle.device.Stream device={} stream={:#x}>'.format(
             self.device, self._as_parameter_.value
         )
 
@@ -996,7 +936,7 @@ def synchronize(device=None):
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
     Examples:
         .. code-block:: python
             # required: custom_device

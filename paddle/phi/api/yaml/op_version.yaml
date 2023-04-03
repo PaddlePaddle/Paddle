@@ -27,6 +27,13 @@
           comment : The attribute 'atol' is deleted. The reason why it is deleted is that
                     attributes do not support a float64 value and it is changed to a tensor.
 
+- op : auc
+  version :
+    - checkpoint :  Upgrade auc, add a new input [InsTagWeight].
+      action :
+        - add_input : ValueTensor
+          comment : In order to support multi-tag task.
+
 - op : clip
   version :
     - checkpoint :  Upgrade clip add a new input [Min]
@@ -53,6 +60,19 @@
           default : paddle::none
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
+
+- op : gaussian_random
+  version :
+    - checkpoint : Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
+               and modify the attribute of [shape]
+      action :
+        - add_input : ShapeTensor
+          comment : The output shape supports Tensor type. ShapeTensor is dispensable.
+        - add_input : ShapeTensorList
+          comment : The output shape supports list filled with Tensor. ShapeTensorList is dispensable.
+        - modify_attr : shape
+          comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
+          default : std::vector<int64_t>{}
 
 - op : greater_equal
   version :
@@ -102,6 +122,14 @@
         - modify_attr : force_cpu
           comment : In order to force fill output variable to gpu memory.
           default : "false"
+
+- op : linspace
+  version :
+    - checkpoint : Upgrade linspace to add a new attribute [dtype]
+      action :
+        - add_attr : dtype
+          comment : In order to change output data type
+          default : 5
 
 - op : not_equal
   version :

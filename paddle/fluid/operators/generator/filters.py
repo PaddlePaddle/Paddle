@@ -30,8 +30,34 @@ from type_mapping import (
 )
 
 
+def get_infer_var_type_func(op_name):
+    if op_name == "assign":
+        return f"""
+ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SyncTypeAndDataType("X", "Out");
+  }}
+}};
+"""
+    elif op_name == "merge_selected_rows":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType
+        : public framework::PassInDtypeAndVarTypeToOutput {{
+    protected:
+    std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+        const override {{
+        static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
+        return m;
+    }}
+    }};
+    """
+    else:
+        return None
+
+
 def quote(s):
-    return '"{}"'.format(s)
+    return f'"{s}"'
 
 
 # ------------------------------ attr -------------------------------------
@@ -106,16 +132,16 @@ def filter_intermediate(items: Sequence):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(s[:-5])
+        return f'GradVarName("{s[:-5]}")'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(s[:-5])
+        return f'"{s[:-5]}@GRAD"'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_pascal_case(s):

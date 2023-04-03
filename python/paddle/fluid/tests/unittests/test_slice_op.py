@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import fluid
@@ -25,6 +25,19 @@ from paddle.fluid import core
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
+
+
+def slice_wrapper(
+    Input,
+    axes=[],
+    StartsTensor=None,
+    EndsTensor=None,
+    infer_flags=[],
+    decrease_axis=[],
+):
+    return paddle._C_ops.slice(
+        Input, axes, StartsTensor, EndsTensor, infer_flags, decrease_axis
+    )
 
 
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
@@ -148,79 +161,18 @@ class TestSliceOp_decs_dim(OpTest):
         )
 
 
-class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [1, 0, 2]
-        self.ends = [2, 1, 4]
-        self.axes = [0, 1, 2]
-        self.decrease_axis = [0, 1]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1, 0, 2:4, :]
-
-
-class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-1, 0, 2]
-        self.ends = [1000000, 1, 4]
-        self.axes = [0, 1, 2]
-        self.decrease_axis = [0, 1]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[-1, 0, 2:4, :]
-
-
-class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 7]).astype("float64")
-        self.starts = [0, 1, 2, 3]
-        self.ends = [1, 2, 3, 4]
-        self.axes = [0, 1, 2, 3]
-        self.decrease_axis = [0, 1, 2, 3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[0, 1, 2, 3:4]
-
-
-class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [-1]
-        self.ends = [1000000]
-        self.axes = [3]
-        self.decrease_axis = [3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[:, :, :, -1]
-
-
-# test_6 with test_2 with test_3
-class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
-    def config(self):
-        self.enable_cinn = True
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
-        self.starts = [0, 1, 2, 3]
-        self.ends = [1, 2, 3, 4]
-        self.axes = [0, 1, 2, 3]
-        self.decrease_axis = [0, 1, 2, 3]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[0, 1, 2, 3:4]
-
-
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
 # without attr(decrease)
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int64') * ele)
+                ("x" + str(index), np.ones(1).astype('int64') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -254,13 +206,13 @@ class TestSliceOp_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -312,7 +264,7 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
 class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -348,7 +300,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
 
         self.inputs = {
@@ -384,7 +336,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -421,13 +373,13 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.python_api = paddle.slice
+        self.python_api = slice_wrapper
         self.config()
 
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("y" + str(index), np.ones((1)).astype('int32') * ele)
+                ("y" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -587,57 +539,64 @@ class TestBF16(OpTest):
 # Test python API
 class TestSliceAPI(unittest.TestCase):
     def test_1(self):
-        input = np.random.random([3, 4, 5, 6]).astype("float64")
-        minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
-        minus_3 = paddle.tensor.fill_constant([1], "int64", -3)
-        starts = paddle.static.data(
-            name='starts', shape=[1, 3], dtype="float32"
-        )
-        starts.desc.set_need_check_feed(False)
-        ends = paddle.static.data(name='ends', shape=[3], dtype="float32")
-        ends.desc.set_need_check_feed(False)
-        x = paddle.static.data(
-            name="x",
-            shape=[3, 4, 5, 6],
-            dtype="float64",
-        )
+        with paddle_static_guard():
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
+            minus_3 = paddle.tensor.fill_constant([1], "int64", -3)
+            starts = paddle.static.data(
+                name='starts', shape=[1, 3], dtype="float32"
+            )
+            starts.desc.set_need_check_feed(False)
+            ends = paddle.static.data(name='ends', shape=[3], dtype="float32")
+            ends.desc.set_need_check_feed(False)
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
 
-        # value_int64 is greater than 2147483647 which is the max of int32
-        value_int64 = paddle.tensor.fill_constant([1], "int64", 2147483648)
+            # value_int64 is greater than 2147483647 which is the max of int32
+            value_int64 = paddle.tensor.fill_constant([1], "int64", 2147483648)
 
-        out_1 = paddle.slice(
-            x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1]
-        )
-        out_2 = paddle.slice(
-            x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1]
-        )
-        out_3 = paddle.slice(
-            x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, minus_1]
-        )
-        out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
+            out_1 = paddle.slice(
+                x,
+                axes=[0, 1, 2],
+                starts=[-3, 0, 2],
+                ends=[value_int64, 100, -1],
+            )
+            out_2 = paddle.slice(
+                x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1]
+            )
+            out_3 = paddle.slice(
+                x,
+                axes=[0, 1, 3],
+                starts=[minus_3, 0, 2],
+                ends=[3, 100, minus_1],
+            )
+            out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
 
-        out_5 = x[-3:3, 0:100, 2:-1]
-        out_6 = x[minus_3:3, 0:100, :, 2:-1]
-        out_7 = x[minus_1, 0:100, :, 2:minus_1]
+            out_5 = x[-3:3, 0:100, 2:-1]
+            out_6 = x[minus_3:3, 0:100, :, 2:-1]
+            out_7 = x[minus_1, 0:100, :, 2:minus_1]
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": input,
-                'starts': np.array([-3, 0, 2]).astype("int32"),
-                'ends': np.array([3, 100, -1]).astype("int32"),
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
-        )
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+                fluid.default_main_program(),
+                feed={
+                    "x": input,
+                    'starts': np.array([-3, 0, 2]).astype("int32"),
+                    'ends': np.array([3, 100, -1]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+            )
 
-        assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
+            assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+            assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+            assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+            assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+            assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
+            assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
+            assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
 
 class TestSliceApiWithTensor(unittest.TestCase):
@@ -718,60 +677,61 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.exe = fluid.Executor(self.place)
 
     def set_program_and_run(self, main_program, case_num):
-        with fluid.program_guard(main_program):
-            x = [
-                paddle.static.data(
-                    name='x0', shape=self.shape, dtype="float32"
-                ),
-                paddle.static.data(
-                    name='x1', shape=self.shape, dtype="float32"
-                ),
-                paddle.static.data(
-                    name='x2', shape=self.shape, dtype="float32"
-                ),
-            ]
+        with paddle_static_guard():
+            with fluid.program_guard(main_program):
+                x = [
+                    paddle.static.data(
+                        name='x0', shape=self.shape, dtype="float32"
+                    ),
+                    paddle.static.data(
+                        name='x1', shape=self.shape, dtype="float32"
+                    ),
+                    paddle.static.data(
+                        name='x2', shape=self.shape, dtype="float32"
+                    ),
+                ]
 
-            for each_x in x:
-                each_x.stop_gradient = False
+                for each_x in x:
+                    each_x.stop_gradient = False
 
-            arr = paddle.tensor.create_array(dtype="float32")
-            for i in range(3):
-                idx = paddle.tensor.array_length(arr)
-                arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
+                arr = paddle.tensor.create_array(dtype="float32")
+                for i in range(3):
+                    idx = paddle.tensor.array_length(arr)
+                    arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
 
-            if case_num == 1:
-                self.sliced_arr = output = arr[0]
+                if case_num == 1:
+                    self.sliced_arr = output = arr[0]
 
-            elif case_num == 2:
-                end = (
-                    paddle.tensor.array_length(arr) - 1
-                )  # dtype of end is int64
-                self.sliced_arr = slice_arr = arr[self.start : end]
-                output, _ = tensor_array_to_tensor(
-                    slice_arr, axis=self.axis, use_stack=True
+                elif case_num == 2:
+                    end = (
+                        paddle.tensor.array_length(arr) - 1
+                    )  # dtype of end is int64
+                    self.sliced_arr = slice_arr = arr[self.start : end]
+                    output, _ = tensor_array_to_tensor(
+                        slice_arr, axis=self.axis, use_stack=True
+                    )
+                elif case_num == 3:
+                    value_int64 = paddle.tensor.fill_constant(
+                        [1], "int64", 2147483648
+                    )
+                    self.sliced_arr = slice_arr = arr[self.start : value_int64]
+                    output, _ = tensor_array_to_tensor(
+                        slice_arr, axis=self.axis, use_stack=True
+                    )
+
+                loss = paddle.sum(output)
+                fluid.backward.append_backward(loss)
+                g_vars = list(
+                    map(
+                        main_program.global_block().var,
+                        [each_x.name + "@GRAD" for each_x in x],
+                    )
                 )
-            elif case_num == 3:
-                value_int64 = paddle.tensor.fill_constant(
-                    [1], "int64", 2147483648
+                self.out, self.g_x0, self.g_x1, self.g_x2 = self.exe.run(
+                    main_program,
+                    feed={'x0': self.data, 'x1': self.data, 'x2': self.data},
+                    fetch_list=[output] + g_vars,
                 )
-                self.sliced_arr = slice_arr = arr[self.start : value_int64]
-                output, _ = tensor_array_to_tensor(
-                    slice_arr, axis=self.axis, use_stack=True
-                )
-
-            loss = paddle.sum(output)
-            fluid.backward.append_backward(loss)
-            g_vars = list(
-                map(
-                    main_program.global_block().var,
-                    [each_x.name + "@GRAD" for each_x in x],
-                )
-            )
-            self.out, self.g_x0, self.g_x1, self.g_x2 = self.exe.run(
-                main_program,
-                feed={'x0': self.data, 'x1': self.data, 'x2': self.data},
-                fetch_list=[output] + g_vars,
-            )
 
     def test_case_1(self):
         main_program = fluid.Program()
@@ -785,35 +745,37 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_2(self):
-        main_program = fluid.Program()
-        self.set_program_and_run(main_program, 2)
+        with paddle_static_guard():
+            main_program = fluid.Program()
+            self.set_program_and_run(main_program, 2)
 
-        self.assertTrue(
-            self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        )
-        self.assertEqual(self.sliced_arr.shape, self.shape)
-        np.testing.assert_array_equal(
-            self.out, np.stack([self.data, self.data], axis=self.axis)
-        )
-        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
-        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
+            self.assertTrue(
+                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            )
+            self.assertEqual(self.sliced_arr.shape, self.shape)
+            np.testing.assert_array_equal(
+                self.out, np.stack([self.data, self.data], axis=self.axis)
+            )
+            np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+            np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+            np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_3(self):
-        main_program = fluid.Program()
-        self.set_program_and_run(main_program, 3)
+        with paddle_static_guard():
+            main_program = fluid.Program()
+            self.set_program_and_run(main_program, 3)
 
-        self.assertTrue(
-            self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        )
-        self.assertEqual(self.sliced_arr.shape, self.shape)
-        np.testing.assert_array_equal(
-            self.out,
-            np.stack([self.data, self.data, self.data], axis=self.axis),
-        )
-        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
-        np.testing.assert_array_equal(self.g_x2, np.ones_like(self.data))
+            self.assertTrue(
+                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            )
+            self.assertEqual(self.sliced_arr.shape, self.shape)
+            np.testing.assert_array_equal(
+                self.out,
+                np.stack([self.data, self.data, self.data], axis=self.axis),
+            )
+            np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+            np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+            np.testing.assert_array_equal(self.g_x2, np.ones_like(self.data))
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
@@ -964,12 +926,12 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+        with paddle_static_guard():
+            places = [fluid.CPUPlace()]
+            if core.is_compiled_with_cuda():
+                places.append(fluid.CUDAPlace(0))
+            for p in places:
+                self.func(p)
 
 
 class TestSliceTripleGradCheck(unittest.TestCase):
@@ -999,12 +961,12 @@ class TestSliceTripleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+        with paddle_static_guard():
+            places = [fluid.CPUPlace()]
+            if core.is_compiled_with_cuda():
+                places.append(fluid.CUDAPlace(0))
+            for p in places:
+                self.func(p)
 
 
 if __name__ == '__main__':

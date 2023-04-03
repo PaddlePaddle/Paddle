@@ -31,6 +31,7 @@ import astor
 import numpy as np
 
 import paddle
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -309,7 +310,6 @@ def is_paddle_func(func, ignore_white_list=True):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    from paddle import fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -390,10 +390,9 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    from paddle import fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, paddle.nn.Layer)".format(class_src)
+        f"issubclass({class_src}, paddle.nn.Layer)"
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -438,7 +437,7 @@ def create_api_shape_node(tensor_shape_node):
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
     return gast.parse(
-        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+        f'{name} = paddle.full({str(shape)}, "{str(value)}", {dtype})'
     )
 
 
@@ -517,7 +516,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:
@@ -1280,7 +1279,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         assert isinstance(
             node, gast.FunctionDef
         ), "Input node is not function define node"
-        names = [a for a in node.args.args]
+        names = list(node.args.args)
         names.append(node.args.vararg)
         names.append(node.args.kwarg)
         names = [i.id for i in names if i is not None]
@@ -1388,8 +1387,8 @@ class GetterSetterHelper:
     """
 
     def __init__(self, getter_func, setter_func, *name_lists):
-        name_lists = map(lambda x: [] if x is None else x, name_lists)
-        name_sets = map(lambda x: set(x), name_lists)
+        name_lists = ([] if x is None else x for x in name_lists)
+        name_sets = (set(x) for x in name_lists)
         self._union = list(
             functools.reduce(lambda x, y: x | y, name_sets, set())
         )
@@ -1413,7 +1412,7 @@ class GetterSetterHelper:
             ), "the name `{}` not in name union set`{}`.".format(
                 n, self.name2id.keys()
             )
-        return tuple(map(lambda n: vars[self.name2id[n]], names))
+        return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
         if names is None:
@@ -1430,7 +1429,7 @@ class GetterSetterHelper:
                 n, self.name2id.keys()
             )
         vars = list(vars)
-        indices = list(map(lambda n: self.name2id[n], names))
+        indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
             vars[i] = v
         self.setter(vars)
@@ -1478,7 +1477,12 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
         min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
-        if op.type() == 'fill_any_like':
+        # If prim forward op, fill_any_like will be decomposite as fill_constant.
+        if core._is_fwd_prim_enabled():
+            target = ('fill_any_like', 'fill_constant')
+        else:
+            target = 'fill_any_like'
+        if op.type() in target:
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names

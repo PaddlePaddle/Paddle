@@ -16,7 +16,13 @@
 import inspect
 
 import astor
+import numpy as np  # noqa: F401
 
+import paddle  # noqa: F401
+from paddle import fluid  # noqa: F401
+from paddle.fluid import dygraph  # noqa: F401
+from paddle.fluid import layers  # noqa: F401
+from paddle.fluid.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -60,17 +66,10 @@ def is_api_in_module(node, module_prefix):
 
     func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
-        import paddle  # noqa: F401
         import paddle.jit.dy2static as _jst  # noqa: F401
-        from paddle import fluid  # noqa: F401
         from paddle import to_tensor  # noqa: F401
-        from paddle.fluid import dygraph  # noqa: F401
-        from paddle.fluid import layers  # noqa: F401
-        from paddle.fluid.dygraph import to_variable  # noqa: F401
 
-        return eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
-        )
+        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
     except Exception:
         return False
 
@@ -85,8 +84,6 @@ def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
-        import numpy as np  # noqa: F401
-
         module_result = eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
         )

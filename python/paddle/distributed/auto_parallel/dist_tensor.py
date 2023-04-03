@@ -39,7 +39,7 @@ class DistributedTensor:
     ):
         if not (
             isinstance(sizes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, sizes))
+            and all(isinstance(x, int) and x >= 0 for x in sizes)
         ):
             raise ValueError(
                 "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".format(
@@ -48,7 +48,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(dims_mapping, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))
+            and all(isinstance(x, int) and x >= -1 for x in dims_mapping)
         ):
             raise ValueError(
                 "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".format(
@@ -57,7 +57,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(processes, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x >= 0, processes))
+            and all(isinstance(x, int) and x >= 0 for x in processes)
         ):
             raise ValueError(
                 "The processes must be list or tuple and item in processes must be integer, but got {}".format(
@@ -66,7 +66,7 @@ class DistributedTensor:
             )
         if not (
             isinstance(topology, (list, tuple))
-            and all(map(lambda x: isinstance(x, int) and x > 0, topology))
+            and all(isinstance(x, int) and x > 0 for x in topology)
         ):
             raise ValueError(
                 "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".format(
@@ -74,7 +74,7 @@ class DistributedTensor:
                 )
             )
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
 
         # # NOTE: Only support even sharding now
         # if shard_sizes is not None:
@@ -162,9 +162,9 @@ class DistributedTensor:
             len(local_sizes), len(local_offsets)
         )
 
-        local_end_offsets = list(
-            map(lambda x: x[0] + x[1], zip(local_offsets, local_sizes))
-        )
+        local_end_offsets = [
+            x[0] + x[1] for x in zip(local_offsets, local_sizes)
+        ]
         local_shard = list(zip(local_offsets, local_end_offsets))
         return local_shard
 
@@ -177,7 +177,7 @@ class DistributedTensor:
             # TODO: Do we really need to write dist_attr back to serial_tensor？
             self._serial_tensor.dist_attr = dist_attr
         else:
-            assert dist_attr is None, "{}".format(dist_attr)
+            assert dist_attr is None, f"{dist_attr}"
             # Use the dist attr of serial_tensor to do the initialization
             self._dist_attr = self._serial_tensor.dist_attr
 
@@ -342,11 +342,9 @@ class DistributedTensor:
             return kwargs
 
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
         if block is not None and not isinstance(block, Block):
-            raise TypeError(
-                "The block must be Block, but got {}.".format(type(block))
-            )
+            raise TypeError(f"The block must be Block, but got {type(block)}.")
         rank = paddle.distributed.get_rank() if rank is None else rank
 
         if block is None:
@@ -373,7 +371,7 @@ class DistributedTensor:
         rank = paddle.distributed.get_rank() if rank is None else rank
         assert (
             rank in self._local_tensor_map
-        ), "The rank {} local tensor has not been created.".format(rank)
+        ), f"The rank {rank} local tensor has not been created."
         return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):
@@ -405,7 +403,7 @@ class DistributedTensor:
             annotated_str, self.dist_attr.process_mesh
         )
 
-        str += ", is_parameter: {}".format(self.serial_tensor.is_parameter)
+        str += f", is_parameter: {self.serial_tensor.is_parameter}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"

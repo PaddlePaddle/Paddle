@@ -15,6 +15,7 @@
 import argparse
 import os
 import re
+import sys
 
 # port range (21200, 23000) is reserved for dist-ops
 
@@ -556,7 +557,7 @@ class CMakeGenerator:
                     print(e)
                     print(f"[ERROR FILE]: {current_work_dir}/testslist.csv")
                     print(f"[ERROR LINE {i+1}]: {line.strip()}")
-                    exit(1)
+                    sys.exit(1)
 
         for sub in sub_dirs:
             cmds += f"add_subdirectory({sub})\n"
@@ -623,7 +624,7 @@ if __name__ == "__main__":
             os.path.dirname(file) for file in args.files
         ]
     if len(args.dirpaths) >= 1:
-        current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
+        current_work_dirs = current_work_dirs + list(args.dirpaths)
 
     cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
     cmake_generator.prepare_dist_ut_port()
