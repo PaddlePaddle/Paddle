@@ -104,6 +104,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv3d_transpose_part2_op$|\
 ^test_deform_conv2d$|\
 ^test_matmul_op$|\
+^test_matmul_op_static_build$|\
 ^test_basic_api_transformation$|\
 ^test_deformable_conv_op$|\
 ^test_variable$|\
