@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -122,12 +122,22 @@ class TestInstanceNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
+def instance_norm_warpper(
+    input, weight, bias, epsilon=1e-5, momentum=0.9, data_format='NCHW'
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.instance_norm(
+        input, weight, bias, epsilon, momentum, data_format
+    )
+
+
 class TestInstanceNormFP32OP(OpTest):
     def setUp(self):
         '''Test instance_norm op with default value'''
         self.op_type = "instance_norm"
         self.__class__.op_type = self.op_type
-        self.python_api = paddle.nn.functional.instance_norm
+        self.python_api = instance_norm_warpper
         self.data_format = "NCHW"
         self.eps = 1e-5
         self.init_dtype()
@@ -143,6 +153,7 @@ class TestInstanceNormFP32OP(OpTest):
         y, mean, variance = self.compute_output(
             self.value, self.scale, self.bias, self.eps, self.data_format
         )
+        self.python_out_sig = ['Y']
         self.outputs = {
             'Y': y,
             'SavedMean': mean,
@@ -160,7 +171,7 @@ class TestInstanceNormFP32OP(OpTest):
         scale = scale.reshape([1, C, 1, 1])
         bias = bias.reshape([1, C, 1, 1])
         x_norm = scale * x_norm + bias
-        return x_norm, mean.reshape((N * C)), std.reshape((N * C))
+        return x_norm, mean.reshape(N * C), std.reshape(N * C)
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -215,7 +226,7 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
     def setUp(self):
         self.op_type = "instance_norm"
         self.__class__.op_type = self.op_type
-        self.python_api = paddle.nn.functional.instance_norm
+        self.python_api = instance_norm_warpper
         self.eps = 1e-5
         self.data_format = "NCHW"
         self.init_dtype()
