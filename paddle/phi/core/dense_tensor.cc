@@ -217,7 +217,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
-  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+  if (product(meta.strides) <= 0) {
     meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   } else {
     meta_.strides = meta.strides;
@@ -235,15 +235,20 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
-  if (!(meta_.dims.size() == 1 && meta_.dims[0] == 0) && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(
-        meta_.is_contiguous(meta_.layout),
-        true,
-        phi::errors::InvalidArgument(
-            "Right now Reshape is only supported for contiguous Tensor."));
+  if (product(meta_.dims) >= 0 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor strides is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
   }
   meta_.dims = dims;
-  if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
+  if (product(meta_.strides) <= 0) {
     meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   }
 
