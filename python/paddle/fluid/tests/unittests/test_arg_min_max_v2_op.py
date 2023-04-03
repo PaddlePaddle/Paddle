@@ -290,7 +290,7 @@ def create_test_case(op_type):
                 self.run_static(place)
                 self.run_dygraph(place)
 
-    cls_name = "ArgMaxMinTestCase_{}".format(op_type)
+    cls_name = f"ArgMaxMinTestCase_{op_type}"
     ArgMaxMinTestCase.__name__ = cls_name
     globals()[cls_name] = ArgMaxMinTestCase
 

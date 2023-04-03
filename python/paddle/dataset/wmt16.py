@@ -61,7 +61,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                 word_dict[w] += 1
 
     with open(save_path, "wb") as fout:
-        fout.write(("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
+        fout.write((f"{START_MARK}\n{END_MARK}\n{UNK_MARK}\n").encode())
         for idx, word in enumerate(
             sorted(word_dict.items(), key=lambda x: x[1], reverse=True)
         ):

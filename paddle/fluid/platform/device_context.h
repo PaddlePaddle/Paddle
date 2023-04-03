@@ -69,8 +69,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 
 #include "paddle/phi/backends/device_ext.h"
@@ -93,7 +91,6 @@ struct GpuDevice;
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 namespace paddle {

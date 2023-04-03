@@ -64,7 +64,7 @@ class PRChecker:
             try:
                 commits = self.pr.get_commits().get_page(ix)
                 if len(commits) == 0:
-                    raise ValueError("no commit found in {} page".format(ix))
+                    raise ValueError(f"no commit found in {ix} page")
                 last_commit = commits[-1].commit
             except Exception as e:
                 break
@@ -87,7 +87,7 @@ class PRChecker:
                 else:
                     proxy = '--no-proxy'
             code = subprocess.call(
-                'wget -q {} --no-check-certificate {}'.format(proxy, url),
+                f'wget -q {proxy} --no-check-certificate {url}',
                 shell=True,
             )
             if code == 0:
@@ -162,7 +162,7 @@ class PRChecker:
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith((not_white_files)):
+        elif filename.startswith(not_white_files):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -265,12 +265,12 @@ class PRChecker:
         for l in diff_lines:
             if l not in comment_lines:
                 return False
-        print('PREC {} is only comment'.format(f))
+        print(f'PREC {f} is only comment')
         return True
 
     def get_all_count(self):
         p = subprocess.Popen(
-            "cd {}build && ctest -N".format(PADDLE_ROOT),
+            f"cd {PADDLE_ROOT}build && ctest -N",
             shell=True,
             stdout=subprocess.PIPE,
         )
@@ -330,7 +330,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
+                if filename.startswith(PADDLE_ROOT + 'paddle/infrt'):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(

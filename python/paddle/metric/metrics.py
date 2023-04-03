@@ -292,7 +292,7 @@ class Accuracy(Metric):
             Tensor: the accuracy of current step.
         """
         if isinstance(correct, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            correct = correct.numpy()
+            correct = np.array(correct)
         num_samples = np.prod(np.array(correct.shape[:-1]))
         accs = []
         for i, k in enumerate(self.topk):
@@ -324,7 +324,7 @@ class Accuracy(Metric):
     def _init_name(self, name):
         name = name or 'acc'
         if self.maxk != 1:
-            self._name = ['{}_top{}'.format(name, k) for k in self.topk]
+            self._name = [f'{name}_top{k}' for k in self.topk]
         else:
             self._name = [name]
 
@@ -420,12 +420,12 @@ class Precision(Metric):
                 The data type is 'int32' or 'int64'.
         """
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
@@ -553,12 +553,12 @@ class Recall(Metric):
                 Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
@@ -705,12 +705,12 @@ class Auc(Metric):
                 representing the label of the instance i.
         """
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 

@@ -807,7 +807,7 @@ class LinearWarmup(LRScheduler):
         self.end_lr = end_lr
         assert (
             end_lr > start_lr
-        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
+        ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
         super().__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):

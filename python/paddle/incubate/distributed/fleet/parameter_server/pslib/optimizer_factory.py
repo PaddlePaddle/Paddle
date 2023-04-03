@@ -286,7 +286,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             pname = params[i].name
             gname = grads[i].name
             if pname != gname[:-5]:
-                raise ValueError(" params != grads , %s vs %s" % (pname, gname))
+                raise ValueError(f" params != grads , {pname} vs {gname}")
             pname2grad[pname] = grads[i]
 
         return pname2grad
@@ -623,8 +623,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
             emb_to_size = FLEET_GLOBAL_DICT["emb_to_size"]
             if len(sparse_table_to_index) != len(emb_to_table):
                 raise ValueError(
-                    "sparse tables from  program != sparse tables from op: %s "
-                    "vs %s" % (len(sparse_table_to_index), len(emb_to_table))
+                    "sparse tables from  program != sparse tables from op: {} "
+                    "vs {}".format(
+                        len(sparse_table_to_index), len(emb_to_table)
+                    )
                 )
             for key in sparse_table_to_index:
                 if (
@@ -744,8 +746,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 ]
 
                 program_configs[program_id] = {
-                    "pull_sparse": [t_index for t_index in sparse_table_index],
-                    "push_sparse": [t_index for t_index in sparse_table_index],
+                    "pull_sparse": list(sparse_table_index),
+                    "push_sparse": list(sparse_table_index),
                 }
 
                 params_grads = prog_id_to_param_grads[program_id]
