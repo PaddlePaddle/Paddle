@@ -1585,7 +1585,6 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
