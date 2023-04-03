@@ -1494,8 +1494,8 @@ def poisson_nll_loss(
             It's data type should be float32, float64.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
-            If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{label} * \text{input}`.
-            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})`.
+            If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
+            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})` .
             Default: ``True``.
          full (bool, optional):
             Whether to compute full loss.
