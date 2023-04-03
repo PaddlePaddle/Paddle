@@ -2573,6 +2573,7 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+USE_TRT_CONVERTER(qk_multihead_matmul)
 #endif
 #if IS_TRT_VERSION_GE(8510)
 USE_TRT_CONVERTER(grid_sampler)
