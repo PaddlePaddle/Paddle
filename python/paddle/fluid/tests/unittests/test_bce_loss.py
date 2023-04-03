@@ -280,10 +280,8 @@ class TestBceLossOpCase2(OpTest):
         self.shape = [2, 3, 20]
 
 
-class TestBceLossOpFloat16(OpTest):
+class TestBceLossOpFloat16(TestBceLossOp):
     def setUp(self):
-        self.init_test_case()
-        self.python_api = bce_wrapper
         input_np = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
             "float16"
         )
@@ -299,7 +297,7 @@ class TestBceLossOpFloat16(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, ['X'], 'Out', atol=1e-3)
+                self.check_output_with_place(place, ['X'], 'Out')
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -327,7 +325,9 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
             y = paddle.static.data(shape=[10, 10], name='y', dtype='float16')
-            out = bce_loss(x, y)
+            out = paddle.nn.functional.binary_cross_entropy(
+                x, y, reduction="none"
+            )
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
