@@ -96,6 +96,8 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           GPU,
                           ALL_LAYOUT,
                           ops::CBroadcastOpCUDAKernel,
+                          int,
+                          int64_t,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000

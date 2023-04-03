@@ -144,7 +144,8 @@ PD_REGISTER_STRUCT_KERNEL(collect_fpn_proposals,
                           CPU,
                           ALL_LAYOUT,
                           ops::CollectFpnProposalsOpKernel,
-                          float) {}
+                          float,
+                          double) {}
 REGISTER_OP_VERSION(collect_fpn_proposals)
     .AddCheckpoint(
         R"ROC(
