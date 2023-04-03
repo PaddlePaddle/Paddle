@@ -11,7 +11,7 @@ cc_library(
 if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo
-    SRCS process_group_gloo.cc
+    SRCS process_group_gloo.cc send_recv.cc
     DEPS phi_api eager_api gloo_wrapper tcp_store)
 endif()
 
@@ -65,3 +65,15 @@ if(WITH_CUSTOM_DEVICE)
          comm_static_check
          dense_tensor)
 endif()
+
+set(COMM_UTILS_DEPS process_group)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS processgroup_comm_utils.cc
+  DEPS ${COMM_UTILS_DEPS})

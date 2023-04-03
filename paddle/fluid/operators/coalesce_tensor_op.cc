@@ -22,7 +22,6 @@
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
 #ifdef PADDLE_WITH_MLU
@@ -365,9 +364,6 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->IsRuntime()) {
-      return;
-    }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
     auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
@@ -377,30 +373,50 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
-
-    auto alignment = [](size_t size, size_t align_size) {
-      size_t remaining = size % align_size;
-      auto aligned_size =
-          remaining == 0 ? size : size + (align_size - remaining);
-      VLOG(4) << remaining << " " << size << " " << align_size << " "
-              << aligned_size;
-      return aligned_size;
-    };
-    VLOG(4) << "align_size: " << align_size;
-    if (use_align && align_size > 0) {
+    if (ctx->IsRuntime()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       int64_t numel = 0;
       auto dims = ctx->GetInputsDim("Input");
       for (const auto &dim : dims) {
         auto size = phi::product(dim);
-        auto len = use_align
-                       ? alignment(static_cast<size_t>(size) * size_of_dtype,
+        auto len = use_align ? phi::Alignment(
+                                   static_cast<size_t>(size) * size_of_dtype,
+                                   phi::GPUPlace(),
                                    align_size) /
-                             size_of_dtype
-                       : static_cast<size_t>(size);
+                                   size_of_dtype
+                             : static_cast<size_t>(size);
         numel += len;
       }
       ctx->SetOutputDim("FusedOutput", phi::make_ddim({numel}));
       VLOG(4) << "FusedOutput size:" << phi::make_ddim({numel});
+#else
+      return;
+#endif
+    } else {
+      auto alignment = [](size_t size, size_t align_size) {
+        size_t remaining = size % align_size;
+        auto aligned_size =
+            remaining == 0 ? size : size + (align_size - remaining);
+        VLOG(4) << remaining << " " << size << " " << align_size << " "
+                << aligned_size;
+        return aligned_size;
+      };
+      VLOG(4) << "align_size: " << align_size;
+      if (use_align && align_size > 0) {
+        int64_t numel = 0;
+        auto dims = ctx->GetInputsDim("Input");
+        for (const auto &dim : dims) {
+          auto size = phi::product(dim);
+          auto len = use_align
+                         ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                     align_size) /
+                               size_of_dtype
+                         : static_cast<size_t>(size);
+          numel += len;
+        }
+        ctx->SetOutputDim("FusedOutput", phi::make_ddim({numel}));
+        VLOG(4) << "FusedOutput size:" << phi::make_ddim({numel});
+      }
     }
   }
 

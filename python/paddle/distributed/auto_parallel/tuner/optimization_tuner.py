@@ -89,7 +89,7 @@ def parse_process_groups():
 def get_metric(results):
     assert isinstance(
         results, dict
-    ), "results should be type of dictionary, but got {}.".format(type(results))
+    ), f"results should be type of dictionary, but got {type(results)}."
     if 'Throughtput' in results and isinstance(results['Throughtput'], float):
         return float(results['Throughtput'])
     else:
@@ -529,7 +529,7 @@ class OptimizationTuner:
 
     def _evaluate_trial(self, trial):
 
-        self._logger.info("Trial {} evaluation start.".format(trial.name))
+        self._logger.info(f"Trial {trial.name} evaluation start.")
         self._apply_optimization(trial)
 
         if self._config.mode == "PROFILE":
@@ -541,7 +541,7 @@ class OptimizationTuner:
             )
         else:
             raise NotImplementedError(
-                "invalid evaluation mode: {}".format(self._config.mode)
+                f"invalid evaluation mode: {self._config.mode}"
             )
 
         self._logger.info(

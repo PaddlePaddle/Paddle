@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
 
 from paddle.fluid import core
@@ -27,7 +27,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSAMECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSAMECase
 
@@ -38,7 +38,7 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -60,9 +60,11 @@ def create_test_cudnn_channel_last_class(parent):
             print(self.attrs)
             if self.has_cuda():
                 place = core.CUDAPlace(0)
-                self.check_output_with_place(place, atol=1e-5)
+                self.check_output_with_place(
+                    place, atol=1e-5, check_dygraph=False
+                )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
 
@@ -161,7 +163,7 @@ class TestConv2DFusionOp(OpTest):
     def test_check_output(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def init_test_case(self):
         self.pad = [0, 0]

@@ -96,7 +96,7 @@ class TestDropoutOpInput1d(OpTest):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((2000)).astype('uint8'),
+            'Mask': np.ones(2000).astype('uint8'),
         }
 
     def test_check_output(self):
@@ -303,6 +303,9 @@ class TestFP16DropoutOp(OpTest):
         self.check_output_with_place(
             core.CUDAPlace(0), atol=1e-3, check_prim=True
         )
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
 
 
 @unittest.skipIf(

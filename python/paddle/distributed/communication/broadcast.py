@@ -115,7 +115,7 @@ def broadcast_object_list(object_list, src, group=None):
             obj_tensor, obj_size = convert_object_to_tensor(obj)
             obj_tensors.append(obj_tensor)
             obj_sizes.append(obj_size)
-        obj_size_tensor = paddle.concat(obj_sizes)
+        obj_size_tensor = paddle.stack(obj_sizes)
     else:
         obj_size_tensor = paddle.empty([obj_nums], dtype="int64")
     broadcast(obj_size_tensor, src, group)
