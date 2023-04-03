@@ -154,8 +154,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
         "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
-        "
-        Place/CustomPlace"));
+        "CustomPlace"));
   }
 }
 
