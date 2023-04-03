@@ -39,7 +39,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
       dev_ctx, post_operations, 1.0f, fuse_activation, fuse_alpha, fuse_beta);
   if (fused_output_scale != 1.0) {
     post_operations.append_eltwise(
-        1.0, dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
+        dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
   }
 
   auto* non_const_x = &x;
@@ -107,7 +107,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
   auto out_md = dst_memory->get_desc();
 
   if (handler.use_broadcasting_hack) {
-    auto dims = out_md.dims();
+    auto dims = out_md.get_dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
     out_md = out_md.reshape(dims);
