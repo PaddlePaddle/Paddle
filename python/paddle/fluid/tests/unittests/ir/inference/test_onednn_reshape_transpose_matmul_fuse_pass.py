@@ -47,7 +47,7 @@ class TestOneDNNReshapeTransposeMatmulFusePass(PassAutoScanTest):
         def generate_input2(attrs):
             shape_x = [attrs[3]['batch_size'], attrs[3]['channel'], self.num]
             input_volume = reduce(lambda x, y: x * y, shape_x)
-            matmul_shape = [i for i in attrs[0]['shape']]
+            matmul_shape = list(attrs[0]['shape'])
             if 0 in matmul_shape:
                 for i in range(len(matmul_shape)):
                     if matmul_shape[i] == 0:

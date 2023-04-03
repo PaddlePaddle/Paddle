@@ -19,7 +19,7 @@ from copy import deepcopy
 import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestSequenceTopkAvgPoolingOp(OpTest):
@@ -95,7 +95,7 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
             x_len = x_lod[0][idx]
             self.assertTrue(
                 x_len == channel_num * row_lod[0][idx] * col_lod[0][idx],
-                "x_len: %s can't mod channel_num: %s" % (x_len, channel_num),
+                f"x_len: {x_len} can't mod channel_num: {channel_num}",
             )
             out_tmp = np.zeros((0,), dtype=x_data.dtype)
             pos_tmp = np.zeros((0,), dtype='int32')

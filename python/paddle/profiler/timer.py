@@ -385,10 +385,10 @@ class Benchmark:
                 self.current_event.speed_unit = 'steps/s'
             else:
                 self.current_event.speed_unit = unit + '/s'
-            message += ' %s: %.5f s' % ('batch_cost', batch_average)
+            message += ' {}: {:.5f} s'.format('batch_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' ips: %.3f %s' % (
+            message += ' ips: {:.3f} {}'.format(
                 speed_average,
                 self.current_event.speed_unit,
             )

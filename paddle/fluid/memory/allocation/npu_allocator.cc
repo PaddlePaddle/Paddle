@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -29,7 +29,6 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #ifdef PADDLE_WITH_MLU

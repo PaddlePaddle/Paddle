@@ -45,11 +45,9 @@ if core.is_compiled_with_npu():
 
 # include path
 site_packages_path = site.getsitepackages()
-paddle_custom_kernel_include = list(
-    map(
-        lambda path: os.path.join(path, 'paddle', 'include'), site_packages_path
-    )
-)
+paddle_custom_kernel_include = [
+    os.path.join(path, 'paddle', 'include') for path in site_packages_path
+]
 
 # include path third_party
 compile_third_party_path = os.path.join(
@@ -61,9 +59,9 @@ paddle_custom_kernel_include += [
 ]
 
 # libs path
-paddle_custom_kernel_library_dir = list(
-    map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path)
-)
+paddle_custom_kernel_library_dir = [
+    os.path.join(path, 'paddle', 'fluid') for path in site_packages_path
+]
 
 # libs
 libs = [':libpaddle.so']

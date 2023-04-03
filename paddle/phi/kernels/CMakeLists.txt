@@ -88,13 +88,11 @@ if(WITH_FLASHATTN)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
-                         nccl_comm_context)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} nccl_comm_context)
 endif()
 if(WITH_GLOO)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} gloo_comm_context)
 endif()
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
 endif()
@@ -129,7 +127,16 @@ if(WITH_CUTLASS)
     COMMAND
       ${PYTHON_EXECUTABLE}
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
-      --cuda_arch "${NVCC_ARCH_BIN}")
+      --cuda_arch "${NVCC_ARCH_BIN}"
+    RESULT_VARIABLE memory_efficient_attention_gen_res)
+
+  if(NOT memory_efficient_attention_gen_res EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The memory efficient attention kernel generation errors with NVCC_ARCH_BIN=${NVCC_ARCH_BIN}"
+    )
+  endif()
+
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
        "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu"
        "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
@@ -171,32 +178,24 @@ endif()
 
 file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
-add_library(phi_cpu ${kernel_cc})
-kernel_declare("${kernel_cc}")
 if(WITH_MKLDNN)
-  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS}
-                        get_kerneltype_forvar_utils)
-else()
-  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)
 endif()
-
-set(ADD_PHI_KERNELS phi_cpu)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
-    add_library(phi_gpu ${kernel_cu})
+    add_library(phi_gpu ${kernel_cu} ${kernel_cc})
     if(WITH_CUTLASS)
       add_dependencies(phi_gpu cutlass_codegen)
     endif()
   elseif(WITH_ROCM)
-    hip_add_library(phi_gpu STATIC ${kernel_cu})
+    hip_add_library(phi_gpu STATIC ${kernel_cu} ${kernel_cc})
   endif()
   kernel_declare("${kernel_cu}")
+  kernel_declare("${kernel_cc}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_gpu)
-endif()
-
-if(WITH_XPU)
+elseif(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
@@ -206,15 +205,27 @@ if(WITH_XPU)
       file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
     endforeach()
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
-    xpu_add_library(phi_xpu STATIC ${kernel_xpu} ${kernel_xpu_kps} DEPENDS
-                    ${COMMON_KERNEL_DEPS})
+    xpu_add_library(
+      phi_xpu
+      STATIC
+      ${kernel_xpu}
+      ${kernel_xpu_kps}
+      ${kernel_cc}
+      DEPENDS
+      ${COMMON_KERNEL_DEPS})
   else()
-    add_library(phi_xpu ${kernel_xpu})
+    add_library(phi_xpu ${kernel_xpu} ${kernel_cc})
   endif()
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")
+  kernel_declare("${kernel_cc}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
+else()
+  add_library(phi_cpu ${kernel_cc})
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+  kernel_declare("${kernel_cc}")
+  set(ADD_PHI_KERNELS phi_cpu)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})

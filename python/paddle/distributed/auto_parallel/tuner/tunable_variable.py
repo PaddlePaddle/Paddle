@@ -59,7 +59,7 @@ class Fixed(TunableVariable):
         return self._default
 
     def __repr__(self):
-        return "Fixed(name: {}, value: {})".format(self.name, self.default)
+        return f"Fixed(name: {self.name}, value: {self.default})"
 
 
 class Boolean(TunableVariable):
@@ -71,7 +71,7 @@ class Boolean(TunableVariable):
         super().__init__(name=name, default=default)
         if default not in {True, False}:
             raise ValueError(
-                "default must be a Python boolean, but got {}".format(default)
+                f"default must be a Python boolean, but got {default}"
             )
 
     def random(self, seed=None):
@@ -115,7 +115,7 @@ class Choice(TunableVariable):
                 default = bool(default)
         else:
             self._is_unknown_type = True
-            self._indices = [i for i in range(len(values))]
+            self._indices = list(range(len(values)))
         self.values = values
 
         if default is not None and default not in values:
@@ -195,9 +195,7 @@ class IntRange(TunableVariable):
     def _check_int(self, val):
         int_val = int(val)
         if int_val != val:
-            raise ValueError(
-                "Expects val is an int, but found: {}.".format(str(val))
-            )
+            raise ValueError(f"Expects val is an int, but found: {str(val)}.")
         return int_val
 
     def __repr__(self):
