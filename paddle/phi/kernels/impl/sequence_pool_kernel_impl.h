@@ -75,8 +75,8 @@ void SequencePoolKernel(const Context& ctx,
     //    index->mutable_data<int>(ctx.GetPlace());
     ctx.template Alloc<T>(index);
   }
-  funcs::math::SequencePoolFunctor<Context, T> pool;
-  pool(ctx, pooltype, pad_value_, &x, out, is_test, index);
+  phi::funcs::math::SequencePoolFunctor<Context, T> pool;
+  pool(ctx, pooltype, pad_value_, x, out, is_test, index);
 }
 
 }  // namespace phi
