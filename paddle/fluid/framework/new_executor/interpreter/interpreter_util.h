@@ -44,16 +44,6 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 namespace paddle {
 namespace framework {
 namespace interpreter {
-
-using VariableIdMap = std::map<std::string, std::vector<int>>;
-
-std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
-    const VariableNameMap& var_name_map,
-    VariableScope* var_scope,
-    Scope* local_scope,
-    bool find_var_recursively,
-    bool allow_var_not_in_scope);
-
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,

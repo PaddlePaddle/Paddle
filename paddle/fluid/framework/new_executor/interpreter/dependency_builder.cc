@@ -98,10 +98,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(0) << "dependency map start:";
-  VLOG(0) << "downstream_map: " << std::endl
+  VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
-  VLOG(0) << "dependency map end.";
 
   is_build_ = true;
 
