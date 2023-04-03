@@ -18,7 +18,10 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fusion_group,
-                        ops::FusionGroupKernel<phi::GPUContext, float>,
-                        ops::FusionGroupKernel<phi::GPUContext, double>,
-                        ops::FusionGroupKernel<phi::GPUContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(fusion_group,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusionGroupKernel,
+                          float,
+                          double,
+                          plat::float16) {}

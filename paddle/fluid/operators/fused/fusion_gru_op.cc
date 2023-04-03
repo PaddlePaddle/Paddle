@@ -249,7 +249,7 @@ more details can refer to GRU op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionGRUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -551,9 +551,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_gru,
-                       ops::FusionGRUKernel<float>,
-                       ops::FusionGRUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_gru, CPU, ALL_LAYOUT, ops::FusionGRUKernel, float, double) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(fusion_gru)

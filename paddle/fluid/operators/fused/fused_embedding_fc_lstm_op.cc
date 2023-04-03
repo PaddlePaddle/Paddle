@@ -270,7 +270,7 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_VEC_FUNC                                                        \
@@ -682,6 +682,9 @@ REGISTER_OPERATOR(fused_embedding_fc_lstm,
                   ops::FusedEmbeddingFCLSTMOp,
                   ops::FusedEmbeddingFCLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
-                       ops::FusedEmbeddingFCLSTMKernel<float>,
-                       ops::FusedEmbeddingFCLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_fc_lstm,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedEmbeddingFCLSTMKernel,
+                          float,
+                          double) {}
