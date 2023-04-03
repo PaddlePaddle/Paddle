@@ -1533,5 +1533,21 @@ void gelu_grad(const Tensor& x,
     }
   }
 }
+
+template <typename T>
+void scatter_nd_add_grad(const Tensor& index,
+                         const Tensor& updates,
+                         const Tensor& out_grad,
+                         Tensor* x_grad,
+                         Tensor* updates_grad) {
+  if (x_grad) {
+    set_output<T>(out_grad, x_grad);
+  }
+  if (updates_grad) {
+    // Gradient by Gather: dUpdates = dO[Ids]
+    auto updates_grad_out = gather<T>(out_grad, index, updates_grad);
+    set_output<T>(updates_grad_out, updates_grad);
+  }
+}
 }  // namespace prim
 }  // namespace paddle
