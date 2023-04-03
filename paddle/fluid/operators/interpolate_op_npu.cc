@@ -16,7 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

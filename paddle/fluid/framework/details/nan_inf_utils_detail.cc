@@ -20,7 +20,6 @@
 #include "paddle/phi/common/amp_type_traits.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"

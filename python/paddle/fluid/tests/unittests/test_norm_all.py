@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, fluid
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 
@@ -311,7 +310,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     max_relative_error=max_relative_error,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPnormFP16Op.__name__ = cls_name
     globals()[cls_name] = TestPnormFP16Op
 

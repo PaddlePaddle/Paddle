@@ -17,10 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from paddle.fluid.tests.unittests.op_test import (
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
@@ -160,7 +159,7 @@ def create_test_cudnn_class(parent):
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -184,17 +183,17 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNFp16
 
@@ -232,7 +231,7 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Input'],
                 'Output',
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -243,11 +242,11 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Filter'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16")
     TestConv2DCUDNNBF16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNBF16
 
@@ -261,7 +260,7 @@ def create_test_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLast")
     TestChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestChannelLastCase
 
@@ -284,7 +283,7 @@ def create_test_cudnn_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
 
@@ -308,14 +307,14 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_data_format(self):
@@ -325,7 +324,7 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLastFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLastFp16")
     TestCudnnChannelLastFp16.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastFp16
 
@@ -336,7 +335,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -347,7 +346,7 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -367,7 +366,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -387,14 +386,41 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
+
+
+def conv2d_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    padding_algorithm="EXPLICIT",
+    dilation=1,
+    groups=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv2d(
+        x,
+        weight,
+        stride,
+        padding,
+        padding_algorithm,
+        dilation,
+        groups,
+        data_format,
+    )
 
 
 class TestConv2DOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
@@ -507,7 +533,7 @@ class TestConv2DOp(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -522,7 +548,7 @@ class TestConv2DOp(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -673,12 +699,12 @@ create_test_cudnn_class(TestWithInput1x1Filter1x1)
 
 # ----------------Conv2DCUDNN fp16----------------
 
-create_test_cudnn_fp16_class(TestConv2DOp, grad_check=False)
-create_test_cudnn_fp16_class(TestWithPad, grad_check=False)
-create_test_cudnn_fp16_class(TestWithStride, grad_check=False)
-create_test_cudnn_fp16_class(TestWithGroup, grad_check=False)
-create_test_cudnn_fp16_class(TestWith1x1, grad_check=False)
-create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1, grad_check=False)
+create_test_cudnn_fp16_class(TestConv2DOp)
+create_test_cudnn_fp16_class(TestWithPad)
+create_test_cudnn_fp16_class(TestWithStride)
+create_test_cudnn_fp16_class(TestWithGroup)
+create_test_cudnn_fp16_class(TestWith1x1)
+create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1)
 
 # ----------------Conv2DCUDNN bf16----------------
 
@@ -733,6 +759,7 @@ class TestConv2DOpError(unittest.TestCase):
 class TestConv2DOp_v2(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
@@ -827,7 +854,7 @@ class TestConv2DOp_v2(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -840,7 +867,7 @@ class TestConv2DOp_v2(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -1062,21 +1089,11 @@ create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithDilation_AsyPadding)
 
-create_test_cudnn_channel_last_fp16_class(
-    TestConv2DOp_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithPad_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithStride_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithGroup_AsyPadding, grad_check=False
-)
-create_test_cudnn_channel_last_fp16_class(
-    TestWithDilation_AsyPadding, grad_check=False
-)
+create_test_cudnn_channel_last_fp16_class(TestConv2DOp_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithPad_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithStride_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithGroup_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(TestWithDilation_AsyPadding)
 
 if __name__ == '__main__':
     paddle.enable_static()

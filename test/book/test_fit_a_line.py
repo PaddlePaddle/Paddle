@@ -23,8 +23,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static.amp as amp
+from paddle import fluid
+from paddle.static import amp
 
 paddle.enable_static()
 
@@ -128,7 +128,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
         raise AssertionError(
-            "Fit a line cost is too large, {0:2.2}".format(avg_loss_value[0])
+            f"Fit a line cost is too large, {avg_loss_value[0]:2.2}"
         )
 
     if is_local:

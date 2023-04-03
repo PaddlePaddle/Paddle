@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,
@@ -70,7 +70,7 @@ class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()

@@ -267,7 +267,7 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
@@ -412,9 +412,7 @@ class Fleet:
             "mp": ['model', self.mp_degree],
         }
 
-        order = self.hybrid_configs["order"]
-        if not order:
-            order = ['dp', 'pp', 'sharding', 'mp']
+        order = self._user_defined_strategy.hybrid_parallel_order
         if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
             raise AssertionError(
                 'The order of hybrid_config setting is incorrect.'
@@ -1557,7 +1555,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1651,7 +1649,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 

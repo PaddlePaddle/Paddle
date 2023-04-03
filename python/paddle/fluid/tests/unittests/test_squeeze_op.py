@@ -20,9 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 paddle.enable_static()
 
@@ -33,6 +32,31 @@ class TestSqueezeOp(OpTest):
         self.op_type = "squeeze"
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
+        self.init_attrs()
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (1, 3, 1, 40)
+        self.axes = (0, 2)
+        self.new_shape = (3, 40)
+
+    def init_attrs(self):
+        self.attrs = {"axes": self.axes}
+
+
+class TestSqueezeFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "squeeze"
+        self.init_test_case()
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),

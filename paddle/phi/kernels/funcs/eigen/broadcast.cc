@@ -37,6 +37,7 @@ struct EigenBroadcast<Eigen::DefaultDevice, T, Rank> {
                    OutType out,
                    InType in,
                    const Array& bcast) {
+    // Eigen::TensorMap.broadcast not support 0D
     out.device(dev) = in.broadcast(bcast);
   }
 
