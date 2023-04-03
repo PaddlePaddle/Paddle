@@ -131,6 +131,13 @@
           comment : In order to change output data type
           default : 5
 
+- op : matrix_nms
+  version :
+    - checkpoint : Upgrade matrix_nms, add a new output [RoisNum].
+      action :
+        - add_output : RoisNum
+          comment : The number of RoIs in each image.
+
 - op : not_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]

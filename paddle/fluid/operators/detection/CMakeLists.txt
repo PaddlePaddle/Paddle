@@ -63,7 +63,6 @@ detection_library(generate_proposal_labels_op SRCS
                   generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS gpc)
 detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
-detection_library(matrix_nms_op SRCS matrix_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
