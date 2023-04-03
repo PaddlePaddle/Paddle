@@ -228,17 +228,37 @@ class TestCompositeDropout(unittest.TestCase):
 
 # This test case for checking dy2st + eval + AMP(O1) under prim
 class TestCompositeDropout_AMP_O1(unittest.TestCase):
-    paddle.fluid.core._set_prim_all_enabled(True)
+    x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype(paddle.float32)
 
-    def f(x):
-        return paddle.nn.functional.dropout(x)
+    paddle.fluid.core._set_prim_all_enabled(False)
 
-    f = paddle.jit.to_static(f)
-    f.eval()
+    def f1(x):
+        return paddle.nn.functional.dropout(x, 0.5)
+
+    f1 = paddle.jit.to_static(f1)
+    f1.eval()
 
     with paddle.amp.auto_cast(level='O1'):
-        x = paddle.rand((1,))
-        y = f(x)
+        y1 = f1(x)
+
+    # set prim all enabled
+    paddle.fluid.core._set_prim_all_enabled(True)
+
+    def f2(x):
+        return paddle.nn.functional.dropout(x, 0.5)
+
+    f2 = paddle.jit.to_static(f2)
+    f2.eval()
+
+    with paddle.amp.auto_cast(level='O1'):
+        y2 = f2(x)
+
+    np.testing.assert_allclose(
+        y1,
+        y2,
+        rtol=0,
+        atol=0,
+    )
 
 
 if __name__ == '__main__':
