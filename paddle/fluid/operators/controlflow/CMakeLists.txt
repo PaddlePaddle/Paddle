@@ -38,10 +38,8 @@ else()
   target_link_libraries(conditional_block_infer_op conditional_block_op)
 endif()
 
-file(
-  APPEND ${pybind_file}
-  "USE_OP_ITSELF(less_than);\nUSE_NO_KERNEL_OP(read_from_array);\n"
-)
+file(APPEND ${pybind_file}
+     "USE_OP_ITSELF(less_than);\nUSE_NO_KERNEL_OP(read_from_array);\n")
 file(
   APPEND ${pybind_file}
   "USE_OP_ITSELF(logical_and);\nUSE_OP_ITSELF(logical_or);\nUSE_OP_ITSELF(logical_xor);\nUSE_OP_ITSELF(logical_not);\n"
