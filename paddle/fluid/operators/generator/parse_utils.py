@@ -226,15 +226,17 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
         tmp_in_out_list = in_out_str[1:-1].split('->')
         inputs = [item.strip() for item in tmp_in_out_list[0].split(',')]
         outputs = [item.strip() for item in tmp_in_out_list[1].split(',')]
-
+        # some inpus is null, such as 'full'
+        inputs = [] if inputs == [''] else inputs
         # check the tensor type
-        for item in inputs:
-            assert item in [
-                'dense',
-                'selected_rows',
-                'sparse_coo',
-                'sparse_csr',
-            ], f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+        if inputs is not []:
+            for item in inputs:
+                assert item in [
+                    'dense',
+                    'selected_rows',
+                    'sparse_coo',
+                    'sparse_csr',
+                ], f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
         for item in outputs:
             assert item in [
                 'dense',

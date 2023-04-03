@@ -90,6 +90,18 @@
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
 
+- op : full
+  args : (IntArray shape={}, Scalar value=0.0f, DataType dtype=DataType::FLOAT32, str str_value="", Place place_type=-1, bool force_cpu=false)
+  output: Tensor(out)
+  infer_meta :
+    func : CreateInferMetaWithValue
+    param : [shape, value, dtype]
+  kernel :
+    func : full
+    param : [shape, value, dtype]
+    data_type : dtype
+    backend : place
+
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

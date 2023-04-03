@@ -111,7 +111,7 @@ static_cast<int>(framework::TransToProtoVarType(phi::{{default_value}}))
     {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
 static_cast<int>(phi::{{default_value}})
-  {%- elif typename == "Place" %}{# construct a Place to get the type #}
+  {%- elif typename == "Place" and default_value != "-1"%}{# construct a Place to get the type #}
 static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
   {%- else %}{# pass through as-is #}
 {{default_value}}

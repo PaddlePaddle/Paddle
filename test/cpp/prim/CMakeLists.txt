@@ -31,7 +31,6 @@ cc_test_old(
   elementwise_mul_op
   elementwise_sub_op
   elementwise_pow_op
-  fill_constant_op
   activation_op
   phi_api
   phi_dygraph_api
