@@ -1260,7 +1260,9 @@ set(STATIC_BUILD_TESTS
     test_sparse_momentum_op
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
+    test_sparse_conv_op
     test_sparse_norm_op
+    test_sparse_pooling_op
     test_tensor_array_to_tensor
     test_while_op
     test_one_hot_v2_op)
