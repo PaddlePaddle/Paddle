@@ -62,12 +62,13 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dy);
 
 #ifdef PADDLE_WITH_HIP
+    SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dy, static_cast<T>(0.0f));
 #endif
 
     sparse_blas.SPMM(
-        true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
+        true, false, static_cast<T>(1), x_csr, dout, static_cast<T>(0), dy);
   }
 #else
 #ifdef PADDLE_WITH_CUDA
