@@ -940,6 +940,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_and
+    data_type : x
 
 - op : logical_not
   args : (Tensor x)
@@ -948,6 +949,7 @@
     func : UnchangedInferMeta
   kernel :
     func : logical_not
+    data_type : x
 
 - op : logical_or
   args : (Tensor x, Tensor y)
@@ -956,6 +958,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_or
+    data_type : x
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
@@ -964,6 +967,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_xor
+    data_type : x
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
