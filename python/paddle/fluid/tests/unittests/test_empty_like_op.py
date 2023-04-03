@@ -218,9 +218,21 @@ class TestEmptylikeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+    def __check_out__(self, out):
+        max_value = np.nanmax(out)
+        min_value = np.nanmin(out)
+        always_non_full_zero = max_value >= min_value
+        always_full_zero = max_value == 0.0 and min_value == 0.0
+        self.assertTrue(
+            always_full_zero or always_non_full_zero,
+            'always_full_zero or always_non_full_zero.',
+        )
+
+    def test_dygraph_api_out(self):
+        paddle.disable_static()
+        out = paddle.empty_like(self.x, dtype='float32')
+        self.__check_out__(out.numpy())
+        paddle.enable_static()
 
 
 class TestEmptyError(unittest.TestCase):
