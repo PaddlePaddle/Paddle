@@ -5,6 +5,68 @@ set(PYTHON_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test
     CACHE INTERNAL "python tests directory")
 
+function(py_test_modules TARGET_NAME)
+  if(WITH_TESTING)
+    set(options SERIAL)
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ENVS)
+    cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+
+    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
+                              AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
+      if(WITH_ASCEND_CL)
+        add_test(
+          NAME ${TARGET_NAME}
+          COMMAND
+            ${CMAKE_COMMAND} -E env
+            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
+            ${py_test_modules_ENVS}
+            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      else()
+        add_test(
+          NAME ${TARGET_NAME}
+          COMMAND
+            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+            ${py_test_modules_ENVS}
+            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      endif()
+    else()
+      if(WITH_ASCEND_CL)
+        add_test(
+          NAME ${TARGET_NAME}
+          COMMAND
+            ${CMAKE_COMMAND} -E env
+            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
+            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      else()
+        add_test(
+          NAME ${TARGET_NAME}
+          COMMAND
+            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      endif()
+    endif()
+
+    if(py_test_modules_SERIAL)
+      set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+    if(WIN32)
+      set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
+    endif()
+  endif()
+endfunction()
+
 function(bash_test_modules TARGET_NAME)
   if(NOT WITH_TESTING)
     return()
@@ -53,7 +115,8 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
-  # add_subdirectory(asp)
+  add_subdirectory(amp)
+  add_subdirectory(asp)
   # add_subdirectory(auto_parallel)
   add_subdirectory(autograd)
   add_subdirectory(book)
@@ -63,18 +126,22 @@ if(WITH_TESTING)
   add_subdirectory(cpp)
   add_subdirectory(custom_kernel)
   add_subdirectory(custom_op)
-  # add_subdirectory(custom_runtime)
+  add_subdirectory(custom_runtime)
   add_subdirectory(dataset)
   # add_subdirectory(distributed_passes)
   # add_subdirectory(distribution)
-  # add_subdirectory(dygraph_to_static)
+  add_subdirectory(dygraph_to_static)
   # add_subdirectory(fft)
   # add_subdirectory(fleet)
-  # add_subdirectory(ipu)
+  if(WITH_IPU)
+    add_subdirectory(ipu)
+  endif()
   # add_subdirectory(ir)
   add_subdirectory(legacy_test)
-  # add_subdirectory(mkldnn)
-  # add_subdirectory(prim)
+  if(WITH_MKLDNN)
+    add_subdirectory(mkldnn)
+  endif()
+  add_subdirectory(prim)
   # add_subdirectory(ps)
   add_subdirectory(quantization)
   # add_subdirectory(rnn)
@@ -83,7 +150,7 @@ if(WITH_TESTING)
   # add_subdirectory(standalone_executor)
   # add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
-  # add_subdirectory(xpu)
+  add_subdirectory(xpu)
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)

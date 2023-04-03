@@ -285,7 +285,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
 
     if in_dygraph_mode():
-        return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+        return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'stanh'
@@ -492,8 +492,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     bf16_and_complex_supported_ops = [
         "elementwise_add",
         "elementwise_sub",
@@ -2885,7 +2885,7 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     min.dtype,
                     'min',
-                    ['float16', 'float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
@@ -2895,13 +2895,16 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     max.dtype,
                     'max',
-                    ['float16', 'float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'clip',
         )
 
         inputs = {'X': x}
@@ -5189,7 +5192,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
             dx = 1.0
         dx = paddle.to_tensor(dx)
         if dx.dim() > 1:
-            raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
+            raise ValueError(f'Expected dx to be a scalar, got dx={dx}')
     else:
         if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
             raise TypeError(
@@ -5330,3 +5333,79 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             #         [3.50000000, 8.        ]])
     """
     return _trapezoid(y, x, dx, axis, mode='cumsum')
+
+
+def vander(x, n=None, increasing=False, name=None):
+    """
+    Generate a Vandermonde matrix.
+
+    The columns of the output matrix are powers of the input vector. Order of the powers is
+    determined by the increasing Boolean parameter. Specifically, when the increment is
+    "false", the ith output column is a step-up in the order of the elements of the input
+    vector to the N - i - 1 power. Such a matrix with a geometric progression in each row
+    is named after Alexandre-Theophile Vandermonde.
+
+    Args:
+        x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
+        n (int): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
+        increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns:
+        Tensor, A vandermonde matrix with shape (len(x), N). If increasing is False, the first column is :math:`x^{(N-1)}`, the second :math:`x^{(N-2)}` and so forth.
+        If increasing is True, the columns are :math:`x^0`, :math:`x^1`, ..., :math:`x^{(N-1)}`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([1., 2., 3.], dtype="float32")
+            out = paddle.vander(x)
+            print(out.numpy())
+            # [[1., 1., 1.],
+            #  [4., 2., 1.],
+            #  [9., 3., 1.]]
+            out1 = paddle.vander(x,2)
+            print(out1.numpy())
+            # [[1., 1.],
+            #  [2., 1.],
+            #  [3., 1.]]
+            out2 = paddle.vander(x, increasing = True)
+            print(out2.numpy())
+            # [[1., 1., 1.],
+            #  [1., 2., 4.],
+            #  [1., 3., 9.]]
+            real = paddle.to_tensor([2., 4.])
+            imag = paddle.to_tensor([1., 3.])
+            complex = paddle.complex(real, imag)
+            out3 = paddle.vander(complex)
+            print(out3.numpy())
+            # [[2.+1.j, 1.+0.j],
+            #  [4.+3.j, 1.+0.j]]
+    """
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+        'vander',
+    )
+    if x.dim() != 1:
+        raise ValueError(
+            "The input of x is expected to be a 1-D Tensor."
+            "But now the dims of Input(X) is %d." % x.dim()
+        )
+
+    if n is None:
+        n = x.shape[0]
+
+    if n < 0:
+        raise ValueError("N must be non-negative.")
+
+    res = paddle.empty([x.shape[0], n], dtype=x.dtype)
+
+    if n > 0:
+        res[:, 0] = paddle.to_tensor([1], dtype=x.dtype)
+    if n > 1:
+        res[:, 1:] = x[:, None]
+        res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
+    res = res[:, ::-1] if not increasing else res
+    return res

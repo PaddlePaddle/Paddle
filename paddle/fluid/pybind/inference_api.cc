@@ -1097,8 +1097,9 @@ void BindZeroCopyTensor(py::module *m) {
       .def("copy_from_cpu", &ZeroCopyTensorCreate<uint8_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
-      .def("copy_from_cpu", &ZeroCopyTensorCreate<double>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
+      // NOTE(liuyuanle): double must be bound after float.
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<double>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<bool>)
       .def("copy_from_cpu", &ZeroCopyStringTensorCreate)
@@ -1121,8 +1122,9 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
-      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      // NOTE(liuyuanle): double must be bound after float.
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
       .def("_copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)

@@ -5,6 +5,15 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : accuracy
+  args : (Tensor x, Tensor indices, Tensor label)
+  output : Tensor(accuracy), Tensor(correct), Tensor(total)
+  infer_meta :
+    func : AccuracyInferMeta
+  kernel :
+    func : accuracy
+    data_type : x
+
 - op : acos
   args : (Tensor x)
   output : Tensor
@@ -123,6 +132,16 @@
   kernel :
     func : atanh
   backward : atanh_grad
+
+- op : auc
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve = "ROC", int num_thresholds = (2 << 12) - 1, int slide_steps = 1)
+  output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
+  infer_meta :
+    func : AucInferMeta
+  kernel :
+    func : auc
+    data_type : x
+  optional : ins_tag_weight
 
 - op : bernoulli
   args : (Tensor x)
@@ -319,6 +338,15 @@
     func : cross
     data_type : x
   backward : cross_grad
+
+- op : cumprod
+  args : (Tensor x,  int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMetaCheckAxis
+  kernel :
+    func : cumprod
+  backward : cumprod_grad
 
 - op : det
   args : (Tensor x)
@@ -775,6 +803,16 @@
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
 
+- op : kldiv_loss
+  args : (Tensor x, Tensor label, str reduction = "mean")
+  output : Tensor(out)
+  infer_meta :
+    func : KLDivInferMeta
+  kernel :
+    func : kldiv_loss
+    data_type : x
+  backward : kldiv_loss_grad
+
 - op : kron
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -992,6 +1030,14 @@
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
 
+- op : merge_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : merge_selected_rows {selected_rows -> selected_rows}
+
 - op : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
@@ -1047,6 +1093,16 @@
   kernel :
     func : mv
   backward : mv_grad
+
+- op : nanmedian
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true)
+  output : Tensor(out), Tensor(medians)
+  infer_meta :
+    func : NanmedianInferMeta
+  kernel :
+    func : nanmedian
+  intermediate : medians
+  backward : nanmedian_grad
 
 - op : nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -1158,6 +1214,16 @@
     func : pow
     data_type : x
   backward : pow_grad
+
+- op : prelu
+  args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
+  output : Tensor(out)
+  infer_meta :
+    func : PReluInferMeta
+  kernel :
+    func : prelu
+    data_type : x
+  backward : prelu_grad
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
@@ -1367,6 +1433,16 @@
   inplace : (x -> out)
   backward : sigmoid_grad
 
+- op : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithLogitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+  inplace : (x -> out)
+  backward : sigmoid_cross_entropy_with_logits_grad
+
 - op : sign
   args : (Tensor x)
   output : Tensor(out)
@@ -1452,6 +1528,16 @@
     data_type : x
   backward : solve_grad
 
+- op : spectral_norm
+  args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
+  output : Tensor
+  infer_meta :
+    func : SpectralNormInferMeta
+  kernel :
+    func : spectral_norm
+    data_type : weight
+  backward : spectral_norm_grad
+
 - op : sqrt
   args : (Tensor x)
   output : Tensor(out)
@@ -1494,6 +1580,16 @@
   kernel :
     func : stack
   backward : stack_grad
+
+- op : stanh
+  args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : stanh
+  backward : stanh_grad
 
 - op : svd
   args : (Tensor x, bool full_matrices = false)
@@ -1643,6 +1739,19 @@
   kernel :
     func : unstack
   backward : unstack_grad
+
+- op : update_loss_scaling_
+  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update=false)
+  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta :
+    func : UpdateLossScalingInferMeta
+    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
+    data_type : x
+  data_transform :
+    skip_transform : found_infinite
+  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
