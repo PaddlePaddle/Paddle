@@ -62,7 +62,6 @@ _complex_dtypes = [
     core.VarDesc.VarType.COMPLEX128,
 ]
 
-_already_patch_varbase = False
 _already_patch_eager_tensor = False
 
 
@@ -140,21 +139,21 @@ def monkey_patch_math_varbase():
         ), "only one element variable can be converted to float."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return float(var.numpy().flatten()[0])
+        return float(var.item())
 
     def _long_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(var.item())
 
     def _int_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(var.item())
 
     def _len_(var):
         assert var.ndim > 0, "len() of a 0D tensor is wrong"
@@ -172,7 +171,7 @@ def monkey_patch_math_varbase():
         ), "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(var.item())
 
     @property
     def _ndim_(var):
@@ -251,10 +250,7 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if framework.global_var._in_eager_mode_:
-                other_var_should_be = core.eager.Tensor
-            else:
-                other_var_should_be = core.VarBase
+            other_var_should_be = core.eager.Tensor
             if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
@@ -483,17 +479,11 @@ def monkey_patch_math_varbase():
         '__ne__',
     ]
 
-    global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework.global_var._in_eager_mode_:
-        local_already_patch = _already_patch_eager_tensor
-        _already_patch_eager_tensor = True
-        local_tensor = core.eager.Tensor
-    else:
-        local_already_patch = _already_patch_varbase
-        _already_patch_varbase = True
-        local_tensor = core.VarBase
+    local_already_patch = _already_patch_eager_tensor
+    _already_patch_eager_tensor = True
+    local_tensor = core.eager.Tensor
 
     if not local_already_patch:
         if framework.global_var._in_eager_mode_:

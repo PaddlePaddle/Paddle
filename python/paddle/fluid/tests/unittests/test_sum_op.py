@@ -274,16 +274,14 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
         w_tensor = var.get_tensor()
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         w_tensor.set(w_array, place)
         return var
 
@@ -299,14 +297,14 @@ class TestFP16SumOp(TestSumOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-2)
+            self.check_output_with_place(place)
 
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+            self.check_grad(['x0'], 'Out')
 
 
 def create_test_sum_fp16_class(parent):
@@ -323,7 +321,7 @@ def create_test_sum_fp16_class(parent):
                 for inplace in [True, False]:
                     self.check_with_place(place, inplace)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "SumFp16Test")
+    cls_name = "{}_{}".format(parent.__name__, "SumFp16Test")
     TestSumFp16Case.__name__ = cls_name
     globals()[cls_name] = TestSumFp16Case
 

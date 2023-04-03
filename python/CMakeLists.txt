@@ -4,8 +4,6 @@ set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 
 if(WITH_GPU)
   set(PACKAGE_NAME "paddlepaddle-gpu")
-elseif(WITH_MLU)
-  set(PACKAGE_NAME "paddlepaddle-mlu")
 elseif(WITH_ROCM)
   set(PACKAGE_NAME "paddlepaddle-rocm")
 elseif(WITH_ASCEND_CL)
@@ -149,9 +147,7 @@ add_custom_target(paddle_python ALL
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if(WITH_TESTING)
-  add_subdirectory(paddle/dataset/tests)
   add_subdirectory(paddle/fluid/tests)
-  add_subdirectory(paddle/static/quantization/tests)
 endif()
 
 if(NOT WITH_SETUP_INSTALL)
