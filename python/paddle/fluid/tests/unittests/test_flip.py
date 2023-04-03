@@ -76,16 +76,17 @@ class TestFlipOp(OpTest):
         self.init_test_case()
         self.input = np.random.random(self.in_shape).astype(self.dtype)
         self.init_attrs()
+        self.init_dtype()
         output = self.calc_ref_res()
 
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
             self.inputs = {'X': convert_float_to_uint16(self.input)}
+            self.outputs = {'Out': convert_float_to_uint16(output)}
         else:
             self.inputs = {'X': self.input.astype(self.dtype)}
             output = output.astype(self.dtype)
-
-        self.outputs = {'Out': output}
+            self.outputs = {'Out': output}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -168,7 +169,7 @@ def create_test_fp16_class(parent):
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, ["X"], "Out")
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestFlipFP16.__name__ = cls_name
     globals()[cls_name] = TestFlipFP16
 
@@ -203,7 +204,7 @@ def create_test_bf16_class(parent):
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(place, ["X"], "Out")
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestFlipBF16.__name__ = cls_name
     globals()[cls_name] = TestFlipBF16
 
