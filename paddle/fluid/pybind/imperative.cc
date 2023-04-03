@@ -144,21 +144,18 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
-  } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
-    return place_obj.cast<platform::NPUPlace>();
   } else if (py::isinstance<platform::IPUPlace>(place_obj)) {
     return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
-  } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
-    return place_obj.cast<platform::MLUPlace>();
   } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
     return place_obj.cast<platform::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace/CustomPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
+        "
+        Place/CustomPlace"));
   }
 }
 
@@ -202,20 +199,15 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, place, zero_copy);
-  } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_ipu_place(place)) {
     SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
     SetTensorFromPyArray<platform::CustomPlace>(
         tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlacIPUPlace"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -719,22 +711,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::NPUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::MLUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
            &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
            py::arg("value"),
            py::arg("place"),
@@ -764,16 +740,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "")
       .def("__init__",
            &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::MLUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("name") = "")
@@ -1856,31 +1822,7 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::NPUPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::IPUPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::MLUPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
             if (!blocking) {
@@ -2206,18 +2148,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::NPUPlace>(obj)) {
-              auto p = obj.cast<platform::NPUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
             } else if (py::isinstance<platform::IPUPlace>(obj)) {
               auto p = obj.cast<platform::IPUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
-            } else if (py::isinstance<platform::MLUPlace>(obj)) {
-              auto p = obj.cast<platform::MLUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -2234,8 +2166,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, IPUPlace, MLUPlace"
-                  "and CUDAPinnedPlace, "
+                  "CPUPlace, IPUPlace and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
           })
@@ -2366,29 +2297,6 @@ void BindImperative(py::module *m_ptr) {
                                                  trace_backward,
                                                  inplace_map);
              }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
-              const platform::NPUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
       .def("trace",
            [](imperative::Tracer &self,
               const std::string &type,
@@ -2396,28 +2304,6 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
               const platform::IPUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
-              const platform::MLUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2502,9 +2388,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -2547,8 +2431,7 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
-    defined(PADDLE_WITH_GLOO)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2615,21 +2498,8 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<imperative::HCCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::HCCLParallelContext>>(
-      m, "HCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::NPUPlace &>())
-      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::HCCLParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::HeterParallelContext,
              imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(

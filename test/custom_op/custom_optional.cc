@@ -300,3 +300,116 @@ PD_BUILD_GRAD_OP(custom_optional_inplace_add)
                      paddle::Grad(paddle::Optional("Y"))}})
     .SetKernelFn(PD_KERNEL(AddOptionalInplaceBackward))
     .SetInferShapeFn(PD_INFER_SHAPE(AddOptionalInplaceBackwardInferShape));
+
+/*
+if (y) {
+  outX = 2 * x + y[1...n];
+  outY[i] = x + y[i];
+} else {
+  outX = 2 * x;
+  outY = None;
+}
+*/
+std::vector<paddle::Tensor> AddOptionalInplaceVectorForward(
+    const paddle::Tensor& x,
+    paddle::optional<std::vector<paddle::Tensor>>& y) {  // NOLINT
+  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  paddle::Tensor outX = paddle::zeros(x.shape(), x.dtype(), x.place());
+
+  PD_DISPATCH_FLOATING_TYPES(
+      x.type(), "AddOptionalInplaceVectorForward", ([&] {
+        add_two_pointers<data_t>(
+            x.data<data_t>(), x.data<data_t>(), outX.data<data_t>(), x.size());
+        if (y) {
+          for (size_t i = 0; i < y->size(); ++i) {
+            add_one_pointer<data_t>(
+                y->at(i).data<data_t>(), outX.data<data_t>(), outX.size());
+            add_one_pointer<data_t>(
+                x.data<data_t>(), y->at(i).data<data_t>(), x.size());
+          }
+        }
+      }));
+  // No need to return y, because we set it as inplace input.
+  return {outX};
+}
+
+std::vector<paddle::DataType> AddOptionalInplaceVectorInferDtype(
+    const paddle::DataType& x_dtype,
+    const paddle::optional<std::vector<paddle::DataType>>& y_dtype) {
+  return {x_dtype};
+}
+
+std::vector<std::vector<int64_t>> AddOptionalInplaceVectorInferShape(
+    const std::vector<int64_t>& x_shape,
+    const paddle::optional<std::vector<std::vector<int64_t>>>& y_shape) {
+  return {x_shape};
+}
+
+/*
+if (outy_grad) {
+  x_grad = outX_grad * 2 + outY_grad[1...n];
+  y_grad[i] = outX_grad + outY_grad[i];
+} else {
+  x_grad = outX_grad * 2;
+  y_grad = None;
+}
+*/
+std::vector<paddle::Tensor> AddOptionalInplaceVectorBackward(
+    const paddle::Tensor& x,
+    const paddle::optional<std::vector<paddle::Tensor>>& y,
+    const paddle::Tensor& outx_grad,
+    paddle::optional<std::vector<paddle::Tensor>>& outy_grad) {  // NOLINT
+  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+
+  paddle::Tensor x_grad = paddle::zeros(x.shape(), x.dtype(), x.place());
+
+  PD_DISPATCH_FLOATING_TYPES(
+      outx_grad.type(), "AddOptionalInplaceVectorBackward", ([&] {
+        add_two_pointers<data_t>(outx_grad.data<data_t>(),
+                                 outx_grad.data<data_t>(),
+                                 x_grad.data<data_t>(),
+                                 x_grad.size());
+        if (outy_grad) {
+          for (size_t i = 0; i < outy_grad->size(); ++i) {
+            add_one_pointer<data_t>(outy_grad->at(i).data<data_t>(),
+                                    x_grad.data<data_t>(),
+                                    x_grad.size());
+            add_one_pointer<data_t>(outx_grad.data<data_t>(),
+                                    outy_grad->at(i).data<data_t>(),
+                                    outx_grad.size());
+          }
+        }
+      }));
+
+  return {x_grad};
+}
+
+std::vector<std::vector<int64_t>> AddOptionalInplaceVectorBackwardInferShape(
+    const std::vector<int64_t>& x_shape,
+    const paddle::optional<std::vector<std::vector<int64_t>>>& y_shape,
+    const std::vector<int64_t>& x_grad_shape,
+    const paddle::optional<std::vector<std::vector<int64_t>>>& y_grad_shape) {
+  return {x_shape};
+}
+
+PD_BUILD_OP(custom_optional_inplace_add_vec)
+    .Inputs({"X", paddle::Optional(paddle::Vec("Y"))})
+    .Outputs({"OutX", paddle::Optional(paddle::Vec("OutY"))})
+    .SetInplaceMap({{paddle::Optional(paddle::Vec("Y")),
+                     paddle::Optional(paddle::Vec("OutY"))}})
+    .SetKernelFn(PD_KERNEL(AddOptionalInplaceVectorForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(AddOptionalInplaceVectorInferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(AddOptionalInplaceVectorInferDtype));
+
+PD_BUILD_GRAD_OP(custom_optional_inplace_add_vec)
+    .Inputs({"X",
+             paddle::Optional(paddle::Vec("Y")),
+             paddle::Grad("OutX"),
+             paddle::Grad(paddle::Optional(paddle::Vec("OutY")))})
+    .Outputs({paddle::Grad("X"),
+              paddle::Grad(paddle::Optional(paddle::Vec("Y")))})
+    .SetInplaceMap({{paddle::Grad(paddle::Optional(paddle::Vec("OutY"))),
+                     paddle::Grad(paddle::Optional(paddle::Vec("Y")))}})
+    .SetKernelFn(PD_KERNEL(AddOptionalInplaceVectorBackward))
+    .SetInferShapeFn(
+        PD_INFER_SHAPE(AddOptionalInplaceVectorBackwardInferShape));

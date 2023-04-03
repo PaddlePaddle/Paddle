@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -32,10 +32,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #endif
 
 DECLARE_int32(get_host_by_name_time);
@@ -330,11 +326,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 }
 
 // TODO(WANGXI): maybe need to unify this hard code
-#ifdef PADDLE_WITH_ASCEND_CL
-#define MAX_COMMUNIQUEID_LEN 4108
-#else
 #define MAX_COMMUNIQUEID_LEN 1024
-#endif
 
 template <typename CommUniqueId>
 static void RecvCommID(int conn, CommUniqueId* nccl_id) {
@@ -451,9 +443,6 @@ INSTANT_TEMPLATE(ncclUniqueId)
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
 INSTANT_TEMPLATE(BKCLUniqueId)
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-INSTANT_TEMPLATE(HcclRootInfo)
 #endif
 }  // namespace platform
 }  // namespace paddle
