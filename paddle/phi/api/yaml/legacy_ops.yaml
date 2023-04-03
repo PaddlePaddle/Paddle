@@ -1102,6 +1102,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : nextafter
+  backward : nextafter_grad
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
