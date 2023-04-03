@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -167,6 +173,12 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : auc
+  inputs :
+    {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+  outputs :
+    {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
   backward : batch_norm_grad
