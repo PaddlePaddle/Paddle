@@ -561,7 +561,7 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("dst"),
               py::arg("sync_op"),
-              py::arg("use_calc_stream"),
+              py::arg("use_calc_stream") = false,
               py::call_guard<py::gil_scoped_release>())
           .def(
               "barrier",

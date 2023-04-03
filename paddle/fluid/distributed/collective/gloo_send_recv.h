@@ -61,6 +61,8 @@ class SendRecvOptions {
 
   friend void send_recv(SendRecvOptions*);
 };
+
 void send_recv(SendRecvOptions* opts);
+
 }  // namespace distributed
 }  // namespace paddle
