@@ -23,20 +23,17 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
 
   DDim strides(dims);
 
-  if (layout == DataLayout::NCHW) {
-    strides[dims.size() - 1] = 1;
-    for (int i = dims.size() - 2; i >= 0; --i) {
-      strides[i] = strides[i + 1] * dims[i + 1];
-    }
-  } else if (layout == DataLayout::NHWC) {
+  if (dims.size() == 4 && layout == DataLayout::NHWC) {
     strides[1] = 1;
     strides[3] = dims[1];
     strides[2] = strides[3] * dims[3];
     strides[0] = strides[2] * dims[2];
-  } else if (layout == DataLayout::NCDHW) {
-    // TODO(wanghuancoder)
-  } else if (layout == DataLayout::NDHWC) {
-    // TODO(wanghuancoder)
+  } else if (dims.size() == 5 && layout == DataLayout::NDHWC) {
+    strides[1] = 1;
+    strides[4] = dims[1];
+    strides[3] = strides[4] * dims[4];
+    strides[2] = strides[3] * dims[3];
+    strides[0] = strides[2] * dims[2];
   } else {
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; --i) {
