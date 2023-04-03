@@ -631,16 +631,6 @@ void BuildOpFuncList(const platform::Place& place,
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-#endif
-
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";

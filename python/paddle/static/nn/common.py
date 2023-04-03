@@ -909,8 +909,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -1231,8 +1231,8 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
     if groups is None:
@@ -3376,7 +3376,6 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     return helper.append_activation(out)
 
 
-@templatedoc()
 def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     r"""
     :api_attr: Static Graph
@@ -3417,10 +3416,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
-        weight(Tensor): ${weight_comment}
-        dim(int): ${dim_comment}
-        power_iters(int): ${power_iters_comment}
-        eps(float): ${eps_comment}
+        weight(Tensor): The input weight tensor of spectral_norm operator,
+                        This can be a 2-D, 3-D, 4-D, 5-D tensor which is the
+                        weights of fc, conv1d, conv2d, conv3d layer.
+                        The data type is float32 or float64.
+        dim(int): The index of dimension which should be permuted
+                  to the first before reshaping Input(Weight) to
+                  matrix, it should be set as 0 if Input(Weight) is
+                  the weight of fc layer, and should be set as 1 if
+                  Input(Weight) is the weight of conv layer, default 0.
+        power_iters(int): number of power iterations to calculate spectral norm, default 1.
+        eps(float): epsilon for numerical stability in calculating norms, it will be added to
+                    the denominator to aviod divide zero. Default 1e-12.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
