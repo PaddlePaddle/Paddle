@@ -784,17 +784,6 @@
     func : heaviside
   backward : heaviside_grad
 
-- op : hsigmoid_loss
-  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
-  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
-  infer_meta :
-    func : HSigmoidLossInferMeta
-  optional: path, code, bias
-  kernel :
-    func : hsigmoid_loss
-    data_type : x
-  backward : hsigmoid_loss_grad
-
 - op : increment
   args : (Tensor x, float value = 1.0)
   output : Tensor(out)

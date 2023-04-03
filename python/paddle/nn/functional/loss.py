@@ -984,7 +984,7 @@ def hsigmoid_loss(
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
     if in_dygraph_mode():
-        out, _, _ = _C_ops.hsigmoid_loss(
+        out = _C_ops.hsigmoid_loss(
             input,
             label,
             weight,

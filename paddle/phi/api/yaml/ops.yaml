@@ -690,6 +690,18 @@
   kernel :
     func : histogram
 
+- op : hsigmoid_loss
+  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes=2, bool remote_prefetch=false, bool is_sparse=false)
+  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
+  infer_meta :
+    func : HSigmoidLossInferMeta
+  optional: path, code, bias
+  intermediate : pre_out, w_out
+  kernel :
+    func : hsigmoid_loss
+    data_type : x
+  backward : hsigmoid_loss_grad
+
 - op : huber_loss
   args : (Tensor input, Tensor label, float delta)
   output : Tensor(out), Tensor(residual)

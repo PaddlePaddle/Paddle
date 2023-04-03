@@ -493,6 +493,25 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void HSigmoidLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& w,
+                               const MetaTensor& label,
+                               const MetaTensor& path,
+                               const MetaTensor& code,
+                               const MetaTensor& bias,
+                               MetaTensor* x_grad,
+                               MetaTensor* w_grad,
+                               MetaTensor* bias_grad) {
+  (void)label;
+  (void)path;
+  (void)code;
+  x_grad->share_meta(x);
+  w_grad->share_meta(w);
+  if (bias) {
+    bias_grad->share_meta(bias);
+  }
+}
+
 void InstanceNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const MetaTensor& saved_mean,
