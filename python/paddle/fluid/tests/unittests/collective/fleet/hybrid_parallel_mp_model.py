@@ -233,9 +233,9 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
         strategy = fleet.fleet._user_defined_strategy
-        strategy.mp_configs.sync_param = mp_sync_param
-        strategy.mp_configs.sync_grad = mp_sync_grad
-        strategy.mp_configs.sync_moment = mp_sync_moment
+        strategy.mp_configs["sync_param"] = mp_sync_param
+        strategy.mp_configs["sync_grad"] = mp_sync_grad
+        strategy.mp_configs["sync_moment"] = mp_sync_moment
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
