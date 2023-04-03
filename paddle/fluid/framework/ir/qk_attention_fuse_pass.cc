@@ -302,14 +302,10 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
         scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
         scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wv_tensor =
-        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
     auto* bq_tensor =
         scope->FindVar(elementwise0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* bk_tensor =
         scope->FindVar(elementwise1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* bv_tensor =
-        scope->FindVar(elementwise2_w->Name())->GetMutable<phi::DenseTensor>();
 
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
@@ -319,8 +315,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
       return;
     }
     VLOG(3) << "trt qk attention get wq_tensor name = " << mul0_w->Name()
-            << "trt qk attention wk_tensor name = " << mul1_w->Name()
-            << "trt qk attention wv_tensor name = " << mul2_w->Name();
+            << "trt qk attention wk_tensor name = " << mul1_w->Name();
 
     auto* wq_data = wq_tensor->data<float>();
     auto* wk_data = wk_tensor->data<float>();
@@ -347,7 +342,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     int dims_h = combined_w_qk_dims[0], dims_w = combined_w_qk_dims[2];
     // dims_h=in_feature, dims_w=out_feature
     // Combine the two fc weights together.
-    // weight [Hidden_in * 3 * N * H]
+    // weight [Hidden_in * 2 * N * H]
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 2; j++) {
         for (int k = 0; k < dims_w; k++) {
