@@ -610,6 +610,34 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
+    const std::string& out) const {
+  auto out_it = ctx_.outputs.find(out);
+  auto& out_var_list = out_it->second;
+
+  std::vector<LoD> ret;
+  for (size_t i = 0; i < out_var_list.size(); ++i) {
+    Variable* out_var = out_var_list[i];
+    if (out_var != nullptr) {
+      auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      ret.push_back(out_tensor->lod());
+    }
+  }
+  return ret;
+}
+
+std::vector<DDim> RuntimeInferShapeContext::GetOutputsDim(
+    const std::string& name) const {
+  const std::vector<Variable*>& vars = OutputVars(name);
+  std::vector<Variable*> vars_res;
+  for (auto var : vars) {
+    if (var != nullptr) {
+      vars_res.push_back(var);
+    }
+  }
+  return GetDims(vars_res);
+}
+
 DDim RuntimeInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
@@ -742,16 +770,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
-#endif
-    } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with NPU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetNPUDeviceId(dev_id);
 #endif
     } else if (platform::is_mlu_place(place)) {
 #ifndef PADDLE_WITH_MLU
@@ -965,6 +983,11 @@ OperatorBase::OperatorBase(const std::string& type,
   if (inputs_.size() > 0 || outputs_.size() > 0) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
+  }
+
+  // canonicalize attrs
+  if (info_ && info_->proto_) {
+    CanonicalizeScalarAttrs(*info_->proto_, &attrs_);
   }
   // In OperatorBase level, all attributes with VarDesc type will be considered
   // as Input.
@@ -1659,17 +1682,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
   auto* dev_ctx = pool.Get(place);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-  // values, but only through special `float_status` to checks whether
-  // the operation is overflow. More about `float_status`, see:
-  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-  if (FLAGS_check_nan_inf) {
-    framework::details::NPUAllocAndClearFloatStatus(*this, scope, place);
-  }
-#endif
-
   // using cache
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
@@ -3251,6 +3263,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
+            case proto::AttrType::SCALAR:
+              phi_kernel_context->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(
+                      paddle::experimental::Scalar, attr_iter->second))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -3358,6 +3375,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
             for (const auto& val : vec) {
               scalar_list.emplace_back(val);
             }
+            phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::SCALARS: {
+            const auto& vec = PADDLE_GET_CONST(
+                std::vector<paddle::experimental::Scalar>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
             phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
           } break;
           default:

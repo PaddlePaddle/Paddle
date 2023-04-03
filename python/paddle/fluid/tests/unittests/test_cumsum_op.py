@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.inference as paddle_infer
@@ -112,11 +112,15 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue('out' in y.name)
 
 
+def cumsum_wrapper(x, axis=-1, flatten=False, exclusive=False, reverse=False):
+    return paddle._C_ops.cumsum(x, axis, flatten, exclusive, reverse)
+
+
 class TestSumOp1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
-        self.python_api = paddle.cumsum
+        self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
@@ -182,7 +186,7 @@ class TestSumOp6(TestSumOp1):
 
 class TestSumOp7(TestSumOp1):
     def set_attrs_input_output(self):
-        self.x = np.random.random((100)).astype(self.dtype_)
+        self.x = np.random.random(100).astype(self.dtype_)
         self.out = self.x.cumsum(axis=0)
 
 
@@ -215,7 +219,7 @@ class TestSumOpExclusive1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
-        self.python_api = paddle.cumsum
+        self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
@@ -307,7 +311,7 @@ class TestSumOpExclusiveFP16(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
-        self.python_api = paddle.cumsum
+        self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.init_dtype()
         self.enable_cinn = False
@@ -341,7 +345,7 @@ class TestSumOpReverseExclusive(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
-        self.python_api = paddle.cumsum
+        self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.set_enable_cinn()
         self.init_dtype()
@@ -397,7 +401,7 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
                 check_prim=True,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
     globals()[cls_name] = TestCumsumFP16Op
 
@@ -438,7 +442,7 @@ def create_test_bf16_class(parent):
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(place, ["X"], "Out", check_prim=True)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestCumsumBF16Op.__name__ = cls_name
     globals()[cls_name] = TestCumsumBF16Op
 

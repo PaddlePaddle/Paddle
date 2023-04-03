@@ -97,7 +97,7 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                     self.hidden_size,
                 )
             ).astype(self.dtype)
-            state_out = np.ndarray((300)).astype("uint8")
+            state_out = np.ndarray(300).astype("uint8")
 
             self.inputs = {
                 'Input': input,
@@ -126,7 +126,7 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                     ('last_hidden', last_hidden),
                     ('last_cell', last_cell),
                 ],
-                'Reserve': np.ndarray((400)).astype("uint8"),
+                'Reserve': np.ndarray(400).astype("uint8"),
                 'DropoutState': state_out,
             }
 
@@ -164,10 +164,10 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             weight_names = []
             for i in range(self.num_layers):
                 for j in range(0, 2 * self.direction_num):
-                    weight_names.append("{}.weight_{}".format(i, j))
+                    weight_names.append(f"{i}.weight_{j}")
             for i in range(self.num_layers):
                 for j in range(0, 2 * self.direction_num):
-                    weight_names.append("{}.bias_{}".format(i, j))
+                    weight_names.append(f"{i}.bias_{j}")
             return weight_names
 
         def set_attrs(self):

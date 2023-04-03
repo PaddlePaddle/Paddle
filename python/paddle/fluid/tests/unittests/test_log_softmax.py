@@ -19,7 +19,10 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
 
 np.random.seed(10)
 
@@ -96,6 +99,29 @@ class TestLogSoftmaxShape(TestLogSoftmaxOp):
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
     def set_attrs(self):
+        self.axis = 1
+
+
+class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
+    def set_attrs(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'], max_relative_error=1e-2)
+
+
+class TestLogSoftmaxShapeFP16OP(TestLogSoftmaxFP16OP):
+    def set_attrs(self):
+        self.dtype = np.float16
+        self.shape = [12, 10]
+
+
+class TestLogSoftmaxAxisFP16OP(TestLogSoftmaxFP16OP):
+    def set_attrs(self):
+        self.dtype = np.float16
         self.axis = 1
 
 
