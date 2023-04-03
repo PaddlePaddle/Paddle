@@ -267,11 +267,16 @@ size_t DenseTensor::NumElements(size_t level) const {
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   if (!(meta_.dims.size() == 1 && meta_.dims[0] == 0) && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(
-        meta_.is_contiguous(meta_.layout),
-        true,
-        phi::errors::InvalidArgument(
-            "Right now Reshape is only supported for contiguous Tensor."));
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor strides is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
   }
   meta_.dims = dims;
   if (meta_.strides.size() == 1 && meta_.strides[0] == 0) {
