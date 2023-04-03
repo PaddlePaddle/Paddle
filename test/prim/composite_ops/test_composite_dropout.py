@@ -228,7 +228,8 @@ class TestCompositeDropout(unittest.TestCase):
 
 # This test case for checking dy2st + eval + AMP(O1) under prim
 class TestCompositeDropout_AMP_O1(unittest.TestCase):
-    x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype(paddle.float32)
+    np_x = np.array(np.random.random((2, 3)), dtype="float32")
+    x = paddle.to_tensor(np_x)
 
     paddle.fluid.core._set_prim_all_enabled(False)
 
