@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -56,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
@@ -274,7 +274,7 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places, platform::EmplaceExternalContext);
+  platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -472,6 +472,8 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+    memory_method->emplace_device_contexts =
+        paddle::platform::EmplaceDeviceContexts;
     memory_method->init_devices = InitDevices;
     memory_utils.Init(std::move(memory_method));
   });

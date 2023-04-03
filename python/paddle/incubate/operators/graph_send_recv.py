@@ -15,7 +15,6 @@
 import numpy as np
 
 import paddle
-import paddle.utils.deprecated as deprecated
 from paddle import _C_ops
 from paddle.fluid.data_feeder import (
     check_dtype,
@@ -25,6 +24,7 @@ from paddle.fluid.data_feeder import (
 )
 from paddle.fluid.framework import Variable, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.utils import deprecated
 
 
 @deprecated(

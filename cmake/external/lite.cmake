@@ -183,6 +183,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                  -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                  ${EXTERNAL_OPTIONAL_ARGS}
                  ${LITE_OPTIONAL_ARGS}
+      CMAKE_GENERATOR "Unix Makefiles"
       BUILD_BYPRODUCTS ${LITE_SHARED_LIB})
   endif()
 endif()

@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -154,7 +154,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         sections_tensor = []
         for index, ele in enumerate(self.sections):
             sections_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs['SectionsTensorList'] = sections_tensor
@@ -248,7 +248,7 @@ def create_test_fp16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestSplitFp16.__name__ = cls_name
     globals()[cls_name] = TestSplitFp16
 
@@ -273,7 +273,7 @@ def create_test_bf16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestSplitBf16.__name__ = cls_name
     globals()[cls_name] = TestSplitBf16
 
@@ -287,8 +287,8 @@ class TestSplitAPI(unittest.TestCase):
         positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
         positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
-        x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
-        x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
+        x_1 = paddle.static.data(shape=[4, 5, 6], dtype='int32', name='x_1')
+        x_2 = paddle.static.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = paddle.split(
             x=x_1,

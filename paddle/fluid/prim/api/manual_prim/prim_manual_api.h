@@ -30,21 +30,16 @@ using IntArray = paddle::experimental::IntArray;
 using DataType = phi::DataType;
 
 template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
-
-template <typename T>
 Tensor full(const IntArray& shape,
             const Scalar& value,
             DataType dtype = DataType::FLOAT32,
             const Place& place = CPUPlace());
 
 template <typename T>
-std::vector<Tensor> split(const Tensor& x,
-                          const IntArray& sections,
-                          const Scalar& axis);
+Tensor cast(const Tensor& x, DataType dtype);
 
 template <typename T>
-Tensor cast(const Tensor& x, DataType dtype);
+Tensor reshape(const Tensor& x, const IntArray& shape);
 
 }  // namespace prim
 }  // namespace paddle

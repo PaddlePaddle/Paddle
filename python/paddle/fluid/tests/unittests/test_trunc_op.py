@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -35,10 +35,10 @@ class TestTruncOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_eager=True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5)
 
 
 class TestFloatTruncOp(TestTruncOp):
@@ -68,7 +68,7 @@ class TestTruncAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.trunc(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -86,7 +86,7 @@ class TestTruncAPI(unittest.TestCase):
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [20, 20], 'bool')
+            x = paddle.static.data('X', [20, 20], 'bool')
             self.assertRaises(TypeError, paddle.trunc, x)
 
 
