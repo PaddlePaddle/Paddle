@@ -395,8 +395,8 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
     // 'var->SetLodLevel' will fail. This case will happen when execute
     // 'test_hsigmoid_op.py'. So it is needed to assert 'var' type.
-    if ((var->GetType() != proto::VarType::LOD_TENSOR &&
-         var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) ||
+    if ((var && (var->GetType() != proto::VarType::LOD_TENSOR &&
+                 var->GetType() != proto::VarType::LOD_TENSOR_ARRAY)) ||
         (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array())) {
       VLOG(3) << "this tensor or input metatensor is not phi::DenseTensor or "
                  "LoDTensorArray.";
