@@ -147,28 +147,28 @@ void InstanceNormKernel(const Context &dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
 
   DenseTensor saved_mean_tmp, saved_variance_tmp;
-  phi::funcs::SetConstant<GPUContext, BatchNormParamType<AccT>> functor;
+  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
 
   if (saved_mean) {
-    dev_ctx.template Alloc<BatchNormParamType<AccT>>(saved_mean);
-    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<AccT>>(0));
+    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_mean_tmp = phi::Full<BatchNormParamType<AccT>>(
-        dev_ctx, {NxC}, static_cast<BatchNormParamType<AccT>>(0));
+    saved_mean_tmp = phi::Full<BatchNormParamType<T>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   if (saved_variance) {
-    dev_ctx.template Alloc<BatchNormParamType<AccT>>(saved_variance);
-    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<AccT>>(0));
+    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_variance_tmp = phi::Full<BatchNormParamType<AccT>>(
-        dev_ctx, {NxC}, static_cast<BatchNormParamType<AccT>>(0));
+    saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   auto *saved_mean_data = saved_mean
-                              ? saved_mean->data<BatchNormParamType<AccT>>()
-                              : saved_mean_tmp.data<BatchNormParamType<AccT>>();
+                              ? saved_mean->data<BatchNormParamType<T>>()
+                              : saved_mean_tmp.data<BatchNormParamType<T>>();
   auto *saved_variance_data =
-      saved_variance ? saved_variance->data<BatchNormParamType<AccT>>()
-                     : saved_variance_tmp.data<BatchNormParamType<AccT>>();
+      saved_variance ? saved_variance->data<BatchNormParamType<T>>()
+                     : saved_variance_tmp.data<BatchNormParamType<T>>();
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -185,9 +185,9 @@ void InstanceNormKernel(const Context &dev_ctx,
           static_cast<void *>(y->template data<T>()),
           in_param_desc_,
           const_cast<void *>(static_cast<const void *>(
-              scale_tmp.template data<BatchNormParamType<AccT>>())),
+              scale_tmp.template data<BatchNormParamType<T>>())),
           const_cast<void *>(static_cast<const void *>(
-              bias_tmp.template data<BatchNormParamType<AccT>>())),
+              bias_tmp.template data<BatchNormParamType<T>>())),
           0,
           nullptr,
           nullptr,
@@ -211,8 +211,8 @@ void InstanceNormKernel(const Context &dev_ctx,
           data_desc_,
           y->template data<T>(),
           in_param_desc_,
-          scale_tmp.template data<BatchNormParamType<AccT>>(),
-          bias_tmp.template data<BatchNormParamType<AccT>>(),
+          scale_tmp.template data<BatchNormParamType<T>>(),
+          bias_tmp.template data<BatchNormParamType<T>>(),
           0,
           nullptr,
           nullptr,
