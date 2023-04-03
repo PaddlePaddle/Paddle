@@ -39,54 +39,13 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
-
-template <typename T>
-static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
-                      const int ring_id,
-                      const phi::GPUContext &ctx) {
-  if (ring_id == -1) return;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
-
-  if (map->has(ring_id)) {
-    paddle::distributed::ProcessGroup *pg = map->get(ring_id);
-    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL *>(pg);
-    paddle::distributed::AllreduceOptions opts;
-    opts.reduce_op = distributed::ReduceOp::SUM;
-    auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
-    task->Wait();
-  } else {
-    auto dtype = platform::ToNCCLDataType(
-        framework::TransToProtoVarType(tensor.dtype()));
-    int64_t numel = tensor.numel();
-    const void *sendbuff = tensor.data<T>();
-    auto place = ctx.GetPlace();
-    void *recvbuff = ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    auto stream = ctx.stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
-  }
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
-      "parallel op."));
-#endif
-}
 
 template <typename T>
 class FusedAttentionGradKernel : public framework::OpKernel<T> {
@@ -476,7 +435,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
             ln_out, qkv_weight, d_qkv_out, d_ln_out, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
-      AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
+      phi::fusion::AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
       layer_norm_compute.ComputeBackward(x_data,
                                          d_ln_out_data,
                                          ln_scale_data,
@@ -494,7 +453,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
             input_x, qkv_weight, d_qkv_out, d_x, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
-      AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
+      phi::fusion::AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
     }
 
     if (add_residual) {

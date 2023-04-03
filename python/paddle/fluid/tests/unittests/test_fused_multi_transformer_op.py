@@ -28,7 +28,7 @@ from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
 
-seed = 53
+seed = 42
 
 random.seed(seed)
 default_main_program().random_seed = seed
